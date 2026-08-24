@@ -2,6 +2,20 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.1.0](https://github.com/dyphn1/Docuvia/compare/v1.0.0...v1.1.0) (2026-08-24)
+
+### Bug Fixes
+
+- **core:** contain workspace-relative fs access behind safe-fs helpers (issue [#208](https://github.com/dyphn1/Docuvia/issues/208)) ([f50ec93](https://github.com/dyphn1/Docuvia/commit/f50ec939c0a7fa5141efcae5f341f8dc4687cf86))
+- **git-local:** surface fast-import stdin write errors instead of discarding them (issue [#186](https://github.com/dyphn1/Docuvia/issues/186)) ([a30e4a2](https://github.com/dyphn1/Docuvia/commit/a30e4a27da1f8c994795f910bb625a4988588f36))
+
+### Features
+
+- **core,cli:** surface l3 write-path provenance in the query read path ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([1114924](https://github.com/dyphn1/Docuvia/commit/1114924151c61a5a74250f0abc391fc1695f6101)), closes [190/#199](https://github.com/dyphn1/Docuvia/issues/199)
+- **git-local,schema,ui-core:** blame-based L3 validity pass at sync-knowledge ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([c5a0fa5](https://github.com/dyphn1/Docuvia/commit/c5a0fa5cda2742d9d268e4c9b1a2161b0fd4ccf8))
+- **schema,ui-core:** capture region anchors from diff hunks at L3 write time ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([f7ccc53](https://github.com/dyphn1/Docuvia/commit/f7ccc530b71ac4aedcb855de25d1f0c4fa234aec))
+- **ui-core:** flush-time writer-side L3 contradiction warning ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([9973c42](https://github.com/dyphn1/Docuvia/commit/9973c42c9d716d9173c3d1b4eb4cec8890cecfe5))
+
 # 1.0.0 (2026-08-23)
 
 ### Bug Fixes

@@ -15,6 +15,7 @@ import {
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
+import { computeL2GitPathsByNodeId, renderL3Card } from "./l3-card-renderer.js";
 import { toL2NodeId } from "../constants/node-ids.js";
 
 // Bounded concurrency for the per-symbol/per-file markdown write loop below, mirroring old
@@ -34,8 +35,9 @@ interface RenderNode {
 /**
  * Renders the current knowledge-graph state (already persisted to `IGraphStore`) into the
  * git-diffable directory shape `snapshot` packs onto the hidden knowledge branch — `graph/
- * nodes.jsonl`, `graph/edges.jsonl`, and one markdown file per file/symbol node under
- * `knowledge/`. Pure directory rendering (Domain Core, no git operations of its own — see
+ * nodes.jsonl`, `graph/edges.jsonl`, one markdown file per file/symbol node under `knowledge/`,
+ * and (when the caller passes `l3Rows`) one `knowledge/_l3/<content_hash>.md` decision card per
+ * exportable L3 row. Pure directory rendering (Domain Core, no git operations of its own — see
  * `KnowledgeGitService.packSnapshotToKnowledgeBranch()` for the git-write step).
  *
  * A node is classified "file" vs "symbol" by whether it's the target of a `contains` link — the
@@ -47,7 +49,7 @@ export class SnapshotRendererService implements ISnapshotRenderer {
   public async render(
     input: SnapshotRenderInput,
   ): Promise<SnapshotRenderResult> {
-    const { outDir, l2Rows, linkRows } = input;
+    const { outDir, l2Rows, linkRows, l3Rows } = input;
 
     const graphDir = path.join(outDir, GitConstants.GRAPH_DIR_NAME);
     const knowledgeDir = path.join(outDir, GitConstants.KNOWLEDGE_DIR_NAME);
@@ -171,12 +173,48 @@ export class SnapshotRendererService implements ISnapshotRenderer {
       ),
     );
 
+    if (l3Rows && l3Rows.length > 0) {
+      await this.writeL3Cards(outDir, l3Rows, l2Rows, linkRows);
+    }
+
     return {
       nodesWritten: nodesData.length,
       edgesWritten: edgesData.length,
       markdownFilesWritten,
       errors,
     };
+  }
+
+  /** Writes one `knowledge/_l3/<content_hash>.md` card per resolvable L3 row — moved here from
+   *  the Orchestration layer's `pack-current-graph.ts` (issue #206) so card rendering stays a
+   *  Domain Core implementation detail behind `ISnapshotRenderer` instead of being imported
+   *  directly by `lib/ui-core`. Rows without a resolved L2 git path or content hash are skipped,
+   *  exactly as the original UI-layer copy did. */
+  private async writeL3Cards(
+    outDir: string,
+    l3Rows: NonNullable<SnapshotRenderInput["l3Rows"]>,
+    l2Rows: SnapshotRenderInput["l2Rows"],
+    linkRows: SnapshotRenderInput["linkRows"],
+  ): Promise<void> {
+    const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
+    const l3Dir = path.join(
+      outDir,
+      GitConstants.KNOWLEDGE_DIR_NAME,
+      GitConstants.L3_DIR_NAME,
+    );
+    await fs.mkdir(l3Dir, { recursive: true });
+    await Promise.all(
+      l3Rows.map(async (row) => {
+        if (!row.content_hash) return;
+        const l2Path = l2GitPaths.get(row.l2_node_id);
+        if (!l2Path) return;
+        await fs.writeFile(
+          path.join(l3Dir, `${row.content_hash}.md`),
+          renderL3Card(row, l2Path),
+          UTF8_ENCODING,
+        );
+      }),
+    );
   }
 
   private async writeMarkdown(mdPath: string, node: RenderNode): Promise<void> {

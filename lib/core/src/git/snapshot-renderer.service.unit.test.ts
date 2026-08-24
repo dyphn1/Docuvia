@@ -2,8 +2,35 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { L2NodeRow, NodeLinkRow } from "@workspace/contracts";
+import type { L2NodeRow, L3NodeRow, NodeLinkRow } from "@workspace/contracts";
 import { SnapshotRendererService } from "./snapshot-renderer.service.js";
+
+function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
+  return {
+    id: 1,
+    l2_node_id: 1,
+    title: "Uses async/await throughout",
+    content: "All I/O paths use async/await.",
+    node_type: "decision",
+    source_commits: JSON.stringify(["commit-1", "commit-2"]),
+    commit_hash: "commit-2",
+    ai_generated: 1,
+    confidence: 0.9,
+    noise_score: null,
+    created_at: "2024-01-01T00:00:00.000Z",
+    last_verified_at: null,
+    occurrence_count: 2,
+    introduced_in_commit: null,
+    verified_until_commit: null,
+    validity_status: "pending",
+    source: "analyze",
+    content_hash: "abc123hash",
+    extraction_model: "gpt-4o-mini",
+    source_files: JSON.stringify(["src/a.ts"]),
+    initial_source_commits: JSON.stringify(["commit-1"]),
+    ...overrides,
+  };
+}
 
 function makeL2(overrides: Partial<L2NodeRow> = {}): L2NodeRow {
   return {
@@ -376,5 +403,50 @@ describe("SnapshotRendererService.render()", () => {
     const written = fs.readdirSync(symbolDir);
     expect(written).toContain("Aux_.md");
     expect(written).not.toContain("Aux.md");
+  });
+
+  it("writes one knowledge/_l3/<content_hash>.md card per resolvable l3Row when l3Rows are passed (issue #206)", async () => {
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const l3Row = makeL3({ content_hash: "abc123hash" });
+
+    await renderer.render({
+      outDir,
+      l2Rows: [fileNode],
+      linkRows: [],
+      l3Rows: [l3Row],
+    });
+
+    const cardPath = path.join(outDir, "knowledge", "_l3", "abc123hash.md");
+    expect(fs.existsSync(cardPath)).toBe(true);
+    const card = fs.readFileSync(cardPath, "utf8");
+    expect(card).toContain("Uses async/await throughout");
+    expect(card).toContain("knowledge/src/a.ts.md");
+  });
+
+  it("skips l3Rows without a content hash or without a resolvable L2 git path", async () => {
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+
+    await renderer.render({
+      outDir,
+      l2Rows: [fileNode],
+      linkRows: [],
+      l3Rows: [
+        makeL3({ id: 2, content_hash: null }),
+        // points at an L2 node that doesn't exist -> no git path -> skipped
+        makeL3({ id: 3, l2_node_id: 999, content_hash: "def456hash" }),
+        makeL3({ content_hash: "abc123hash" }),
+      ],
+    });
+
+    const l3Dir = path.join(outDir, "knowledge", "_l3");
+    expect(fs.readdirSync(l3Dir)).toEqual(["abc123hash.md"]);
   });
 });

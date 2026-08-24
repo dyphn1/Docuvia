@@ -1,4 +1,8 @@
-import type { L2NodeRow, NodeLinkRow } from "./graph-store.interfaces.js";
+import type {
+  L2NodeRow,
+  L3NodeRow,
+  NodeLinkRow,
+} from "./graph-store.interfaces.js";
 
 /**
  * Renders the local knowledge graph's current state (already persisted to `IGraphStore` by
@@ -12,6 +16,13 @@ export interface SnapshotRenderInput {
   outDir: string;
   l2Rows: L2NodeRow[];
   linkRows: NodeLinkRow[];
+  /**
+   * Exportable L3 decision rows (`IGraphStore.l3.getAllExportable()`'s output). When present, the
+   * renderer additionally writes one `knowledge/_l3/<content_hash>.md` card per resolvable row —
+   * the Orchestration layer passes the rows straight through and never touches card rendering
+   * itself (issue #206). Optional so existing callers/mocks stay valid.
+   */
+  l3Rows?: L3NodeRow[];
 }
 
 export interface SnapshotRenderResult {

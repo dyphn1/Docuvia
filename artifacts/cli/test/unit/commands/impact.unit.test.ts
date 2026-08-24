@@ -135,6 +135,43 @@ describe("impactCommand", () => {
     expect(spinnerWarn).toHaveBeenCalled();
   });
 
+  it("renders an UNKNOWN risk level with the warning styling and prints the riskNote (issue #192 -- empty results are never a false-safe LOW)", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [],
+      riskLevel: "UNKNOWN",
+      epistemic: "lower-bound",
+      riskNote:
+        "No static dependents found. The edge graph models calls/extends/implements only.",
+    });
+
+    await impactCommand("target");
+
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Note: No static dependents found. The edge graph models",
+      ),
+    );
+    expect(ui.warn).toHaveBeenCalledWith("Risk level: UNKNOWN");
+  });
+
+  it("prints a lower-bound non-empty result's riskNote after the table (issue #192 partial coverage)", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [{ name: "caller", type: "module" }],
+      riskLevel: "HIGH",
+      epistemic: "lower-bound",
+      riskNote:
+        "Only 3 of 10 workspace files have been analyzed -- this result may be missing dependents from unprocessed files.",
+    });
+
+    await impactCommand("target");
+
+    expect(ui.table).toHaveBeenCalled();
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Only 3 of 10 workspace files"),
+    );
+    expect(ui.warn).toHaveBeenCalledWith("Risk level: HIGH");
+  });
+
   it("prints the structured result as JSON and skips the banner/spinner when format is 'json'", async () => {
     const result = {
       blastRadius: [{ name: "caller", type: "module" }],

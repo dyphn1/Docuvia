@@ -32,6 +32,10 @@ coverage
 npm-debug.log
 yarn-error.log
 
+# Impact-accuracy eval output (issue #192) — dated CSV/markdown reports from
+# `pnpm run eval:impact`. Local runs are disposable; CI uploads them as artifacts instead.
+/evaluate/results
+
 # System Files
 .DS_Store
 Thumbs.db

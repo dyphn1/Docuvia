@@ -48,6 +48,7 @@ function printBlastRadius(
   riskLevel: RiskLevel,
   tierBCoverage?: TierBCoverageHint,
   coverageNote?: string,
+  riskNote?: string,
 ): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
@@ -82,11 +83,20 @@ function printBlastRadius(
     }
   }
 
+  // Issue #192: an empty result is UNKNOWN (never a false-safe LOW), and a lower-bound result
+  // carries the reason -- always surface it so "zero" can never read as a confident answer.
+  if (riskNote) {
+    ui.warn(UI_MESSAGES.IMPACT_RISK_NOTE_PREFIX + riskNote);
+  }
+
   ui.log(FORMAT_MARKERS.EMPTY);
   const riskLine = UI_MESSAGES.IMPACT_RISK_PREFIX + riskLevel;
   if (riskLevel === RiskLevels.CRITICAL) {
     ui.error(riskLine);
-  } else if (riskLevel === RiskLevels.HIGH) {
+  } else if (
+    riskLevel === RiskLevels.HIGH ||
+    riskLevel === RiskLevels.UNKNOWN
+  ) {
     ui.warn(riskLine);
   } else {
     ui.log(riskLine);
@@ -114,6 +124,7 @@ function printHumanResult(
     result.riskLevel,
     result.tierBCoverage,
     result.coverageNote,
+    result.riskNote,
   );
 }
 

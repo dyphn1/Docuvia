@@ -24,10 +24,3 @@ export {
   isSupportedSourceFile,
   isDiscoverableSourceFile,
 } from "./utils/language-detection.js";
-// L3 distribution (phase2-l3-distribution.md): `renderL3Card`/`computeL2GitPathsByNodeId` are
-// pure, side-effect-free rendering helpers `SnapshotWorkflow` calls directly, the same "narrow
-// exception" precedent as `isSupportedSourceFile` above.
-export {
-  renderL3Card,
-  computeL2GitPathsByNodeId,
-} from "./git/l3-card-renderer.js";

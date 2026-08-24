@@ -4,13 +4,10 @@ import path from "node:path";
 import {
   docuviaFactory,
   TOKENS,
-  UTF8_ENCODING,
   type IGraphStore,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
-// Narrow documented exception (lib/core/src/index.ts): L3 renderers, not movable to contracts.
-import { computeL2GitPathsByNodeId, renderL3Card } from "@workspace/core";
 import { SNAPSHOT_TEMP_DIR_PREFIX } from "./snapshot-messages.js";
 import type { SnapshotResult } from "./snapshot-result.js";
 
@@ -23,6 +20,9 @@ import type { SnapshotResult } from "./snapshot-result.js";
  * the branch's initial commit empty until the next manual `docuvia snapshot` or `git push`
  * (`KnowledgeGitService.ensureKnowledgeBranch`'s doc comment). Never skips and never opens its own
  * store -- the caller decides whether packing is warranted and owns the store's lifecycle.
+ *
+ * L3 decision cards are rendered by `ISnapshotRenderer` itself (the rows are passed straight
+ * through as `l3Rows`) -- this layer never touches card rendering details (issue #206).
  */
 export async function packCurrentGraphOntoKnowledgeBranch(
   workspaceRoot: string,
@@ -42,9 +42,8 @@ export async function packCurrentGraphOntoKnowledgeBranch(
       outDir: tempDir,
       l2Rows,
       linkRows,
+      l3Rows: store.l3.getAllExportable(),
     });
-
-    await writeL3Cards(tempDir, store, l2Rows, linkRows);
 
     await store.withWriteLock(() => {
       store.meta.set(GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING, "true");
@@ -60,36 +59,4 @@ export async function packCurrentGraphOntoKnowledgeBranch(
   } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
-}
-
-/** Verbatim copy of `SnapshotWorkflow`'s private `writeL3Cards` -- both call sites render the same
- *  `knowledge/_l3/<content_hash>.md` cards the same way. */
-async function writeL3Cards(
-  tempDir: string,
-  store: IGraphStore,
-  l2Rows: ReturnType<IGraphStore["graph"]["getAllNodes"]>,
-  linkRows: ReturnType<IGraphStore["graph"]["getAllLinks"]>,
-): Promise<void> {
-  const l3Rows = store.l3.getAllExportable();
-  if (l3Rows.length === 0) return;
-
-  const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
-  const l3Dir = path.join(
-    tempDir,
-    GitConstants.KNOWLEDGE_DIR_NAME,
-    GitConstants.L3_DIR_NAME,
-  );
-  await fs.mkdir(l3Dir, { recursive: true });
-  await Promise.all(
-    l3Rows.map(async (row) => {
-      if (!row.content_hash) return;
-      const l2Path = l2GitPaths.get(row.l2_node_id);
-      if (!l2Path) return;
-      await fs.writeFile(
-        path.join(l3Dir, `${row.content_hash}.md`),
-        renderL3Card(row, l2Path),
-        UTF8_ENCODING,
-      );
-    }),
-  );
 }

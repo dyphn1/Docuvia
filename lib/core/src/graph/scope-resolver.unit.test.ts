@@ -187,4 +187,47 @@ describe("ScopeResolver", () => {
     const result = resolver.resolveCall("b.ts", "foo");
     expect(result).toBeNull();
   });
+
+  it("refuses to resolve a tsconfig path alias that traverses outside the workspace root (issue #208)", () => {
+    // A malicious/compromised tsconfig maps an alias at "../../secrets" -- even though such a
+    // file "exists" (mocked), the containment check must reject the escape instead of reading it.
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json")) return true;
+      return sp.includes("/secrets/");
+    });
+    vi.spyOn(fs, "readFileSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json")) {
+        return JSON.stringify({
+          compilerOptions: {
+            paths: { "@evil/*": ["../../secrets"] },
+          },
+        });
+      }
+      return "";
+    });
+    vi.spyOn(fs, "statSync").mockImplementation(((p: any) => {
+      if (String(p).includes("/secrets/")) {
+        return { isFile: () => true };
+      }
+      throw new Error(`File not found: ${p}`);
+    }) as any);
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile(
+      "src/consumer.ts",
+      [
+        {
+          localName: "steal",
+          originalName: "steal",
+          modulePath: "@evil/keychain",
+        },
+      ],
+      [],
+      [],
+    );
+
+    expect(resolver.resolveCall("src/consumer.ts", "steal")).toBeNull();
+  });
 });

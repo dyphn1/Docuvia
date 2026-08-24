@@ -3,10 +3,11 @@ import * as fs from "fs";
 import type { ILogger } from "@workspace/contracts";
 import {
   createNoopLogger,
-  UTF8_ENCODING,
   NODE_MODULES_DIR_NAME,
+  UTF8_ENCODING,
 } from "@workspace/contracts";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
+import { readFileWithinRoot, resolveWithinRoot } from "../utils/safe-fs.js";
 
 /**
  * Cross-file call/implements/extends edge resolution — the logic `persist-ast-graph.ts` uses
@@ -318,8 +319,9 @@ export class ScopeResolver {
       /\/$/,
       "",
     );
-    const fullBaseDir = path.join(this.workspaceRoot, baseDir);
-    if (!fs.existsSync(fullBaseDir)) return;
+    // Issue #208: globs come from the analyzed workspace's own config files, so contain them.
+    const fullBaseDir = resolveWithinRoot(this.workspaceRoot, baseDir);
+    if (!fullBaseDir || !fs.existsSync(fullBaseDir)) return;
 
     let entries: fs.Dirent[];
     try {
@@ -359,10 +361,12 @@ export class ScopeResolver {
   /** Reads pnpm-workspace.yaml or package.json#workspaces to find monorepo package globs. */
   private getWorkspaceGlobs(): string[] {
     try {
-      const pnpmWsPath = path.join(this.workspaceRoot, PNPM_WORKSPACE_FILENAME);
-      if (fs.existsSync(pnpmWsPath)) {
-        const content = fs.readFileSync(pnpmWsPath, UTF8_ENCODING);
-        const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(content);
+      const pnpmWsContent = readFileWithinRoot(
+        this.workspaceRoot,
+        PNPM_WORKSPACE_FILENAME,
+      );
+      if (pnpmWsContent) {
+        const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(pnpmWsContent);
         if (block) {
           const globs = [
             ...block[1].matchAll(/^\s*-\s+["']?([^"'\n#]+?)["']?\s*$/gm),
@@ -371,12 +375,12 @@ export class ScopeResolver {
         }
       }
 
-      const pkgJsonPath = path.join(
+      const pkgJsonContent = readFileWithinRoot(
         this.workspaceRoot,
         ConfigFilenames.PACKAGE_JSON,
       );
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      if (pkgJsonContent) {
+        const pkgJson = JSON.parse(pkgJsonContent);
         if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
         if (Array.isArray(pkgJson.workspaces?.packages))
           return pkgJson.workspaces.packages;
@@ -429,22 +433,22 @@ export class ScopeResolver {
     subpath: string | undefined,
   ): string | null {
     try {
-      const pkgJsonPath = path.join(
+      // Issue #208: pkgName comes from an arbitrary import specifier, so the joined path is
+      // containment-checked before any fs access.
+      const pkgJsonContent = readFileWithinRoot(
         this.workspaceRoot,
-        NODE_MODULES_DIR_NAME,
-        pkgName,
-        ConfigFilenames.PACKAGE_JSON,
+        path.join(NODE_MODULES_DIR_NAME, pkgName, ConfigFilenames.PACKAGE_JSON),
       );
-      if (!fs.existsSync(pkgJsonPath)) return null;
+      if (!pkgJsonContent) return null;
 
-      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      const pkgJson = JSON.parse(pkgJsonContent);
       const entry: string =
         subpath ||
         pkgJson.module ||
         pkgJson.main ||
         DEFAULT_PACKAGE_ENTRY_FILENAME;
       const relPath = path.posix.join(NODE_MODULES_DIR_NAME, pkgName, entry);
-      if (fs.existsSync(path.join(this.workspaceRoot, relPath))) return relPath;
+      if (resolveWithinRoot(this.workspaceRoot, relPath)) return relPath;
       return null;
     } catch {
       // Ignore unreadable/invalid package.json
@@ -469,29 +473,45 @@ export class ScopeResolver {
    */
   private static readonly COMPILED_JS_EXTENSION_PATTERN = /\.(m|c)?jsx?$/;
 
-  private findFileWithExtension(basePath: string): string | null {
-    const fullBasePath = path.join(this.workspaceRoot, basePath);
-    if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile())
-      return basePath;
-
-    for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
-      if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
+  /** First of `candidates` (workspace-relative paths) whose containment-resolved absolute form
+   *  exists — returns the candidate itself, or null. With `requireFile`, also demands a regular
+   *  file (`statSync().isFile()`), mirroring the old exact-match branch. Keeps the containment
+   *  check (issue #208) in one place so no candidate can bypass it. */
+  private firstExisting(
+    candidates: string[],
+    requireFile = false,
+  ): string | null {
+    for (const rel of candidates) {
+      const full = resolveWithinRoot(this.workspaceRoot, rel);
+      if (!full || !fs.existsSync(full)) continue;
+      if (requireFile && !fs.statSync(full).isFile()) continue;
+      return rel;
     }
+    return null;
+  }
+
+  private findFileWithExtension(basePath: string): string | null {
+    const exact = this.firstExisting([basePath], true);
+    if (exact) return exact;
+
+    const withExt = this.firstExisting(
+      RESOLVABLE_FILE_EXTENSIONS.map((ext) => basePath + ext),
+    );
+    if (withExt) return withExt;
 
     if (ScopeResolver.COMPILED_JS_EXTENSION_PATTERN.test(basePath)) {
       const stem = basePath.replace(
         ScopeResolver.COMPILED_JS_EXTENSION_PATTERN,
         "",
       );
-      const fullStem = path.join(this.workspaceRoot, stem);
-      for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
-        if (fs.existsSync(fullStem + ext)) return stem + ext;
-      }
+      const stemHit = this.firstExisting(
+        RESOLVABLE_FILE_EXTENSIONS.map((ext) => stem + ext),
+      );
+      if (stemHit) return stemHit;
     }
 
-    for (const ext of RESOLVABLE_INDEX_SUFFIXES) {
-      if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
-    }
-    return null; // unresolved
+    return this.firstExisting(
+      RESOLVABLE_INDEX_SUFFIXES.map((suffix) => basePath + suffix),
+    );
   }
 }

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.constructor
+id: lib/core/src/discovery/file-discovery.service.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/discovery/file-discovery.service.ts

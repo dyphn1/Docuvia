@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.resolveSpanningBoundaries
+id: lib/ast-core/src/detector/semantic-diff.ts#resolveSpanningBoundaries
 type: symbol
 name: resolveSpanningBoundaries
 filePath: lib/ast-core/src/detector/semantic-diff.ts

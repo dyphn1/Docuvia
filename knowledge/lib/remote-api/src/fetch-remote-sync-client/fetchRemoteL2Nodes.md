@@ -1,5 +1,5 @@
 ---
-id: lib/remote-api/src/fetch-remote-sync-client.ts#FetchRemoteSyncClient.fetchRemoteL2Nodes
+id: lib/remote-api/src/fetch-remote-sync-client.ts#fetchRemoteL2Nodes
 type: symbol
 name: fetchRemoteL2Nodes
 filePath: lib/remote-api/src/fetch-remote-sync-client.ts

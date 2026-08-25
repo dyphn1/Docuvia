@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/hermes.platform.ts#HermesPlatform.uninstallHooks
+id: artifacts/cli/src/platforms/hermes.platform.ts#uninstallHooks
 type: symbol
 name: uninstallHooks
 filePath: artifacts/cli/src/platforms/hermes.platform.ts

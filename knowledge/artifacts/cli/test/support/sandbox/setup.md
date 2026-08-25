@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#TestSandbox.setup
+id: artifacts/cli/test/support/sandbox.ts#setup
 type: symbol
 name: setup
 filePath: artifacts/cli/test/support/sandbox.ts

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/codex.platform.ts#CodexPlatform.installHooks
+id: artifacts/cli/src/platforms/codex.platform.ts#installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/codex.platform.ts

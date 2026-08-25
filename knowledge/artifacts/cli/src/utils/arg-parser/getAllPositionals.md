@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/arg-parser.ts#ArgParser.getAllPositionals
+id: artifacts/cli/src/utils/arg-parser.ts#getAllPositionals
 type: symbol
 name: getAllPositionals
 filePath: artifacts/cli/src/utils/arg-parser.ts

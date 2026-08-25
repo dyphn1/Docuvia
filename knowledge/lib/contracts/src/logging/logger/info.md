@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#Logger.info
+id: lib/contracts/src/logging/logger.ts#info
 type: symbol
 name: info
 filePath: lib/contracts/src/logging/logger.ts

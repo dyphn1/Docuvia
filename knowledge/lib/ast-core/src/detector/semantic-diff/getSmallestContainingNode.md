@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.getSmallestContainingNode
+id: lib/ast-core/src/detector/semantic-diff.ts#getSmallestContainingNode
 type: symbol
 name: getSmallestContainingNode
 filePath: lib/ast-core/src/detector/semantic-diff.ts

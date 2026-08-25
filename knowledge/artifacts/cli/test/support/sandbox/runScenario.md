@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#TestSandbox.runScenario
+id: artifacts/cli/test/support/sandbox.ts#runScenario
 type: symbol
 name: runScenario
 filePath: artifacts/cli/test/support/sandbox.ts

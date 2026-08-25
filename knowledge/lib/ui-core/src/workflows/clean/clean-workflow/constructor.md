@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.constructor
+id: lib/ui-core/src/workflows/clean/clean-workflow.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/ui-core/src/workflows/clean/clean-workflow.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/meta-repo.ts#MetaRepo.get
+id: lib/schema/src/sqlite/repos/meta-repo.ts#get
 type: symbol
 name: get
 filePath: lib/schema/src/sqlite/repos/meta-repo.ts

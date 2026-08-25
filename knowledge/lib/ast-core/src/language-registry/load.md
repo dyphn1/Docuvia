@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#LanguageRegistry.load
+id: lib/ast-core/src/language-registry.ts#load
 type: symbol
 name: load
 filePath: lib/ast-core/src/language-registry.ts

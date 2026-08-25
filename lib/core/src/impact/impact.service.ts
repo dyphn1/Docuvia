@@ -5,11 +5,17 @@ import type {
   ILogger,
   RiskLevel,
 } from "@workspace/contracts";
-import { createNoopLogger, RiskLevels } from "@workspace/contracts";
+import {
+  BlastRadiusEdgeSources,
+  createNoopLogger,
+  LinkTypes,
+  RiskLevels,
+} from "@workspace/contracts";
 
 const ImpactMessages = {
   NO_NODE_RESOLVED: "No node resolved for impact target",
   RESOLVED_BLAST_RADIUS: "Resolved blast radius",
+  LSP_FALLBACK_APPLIED: "Applied ast_call_sites fallback for blast radius",
 } as const;
 
 /**
@@ -98,18 +104,93 @@ export class ImpactService implements IImpactService {
 
     const blastRadius = store.graph
       .getIncomingEdges(node.id)
-      .map(({ id, name, type }) => {
-        const l3Rows = store.l3.getByL2NodeId(id);
-        const why =
-          l3Rows.length > 0
-            ? l3Rows.map((row) => ({ title: row.title, content: row.content }))
-            : undefined;
-        return why ? { name, type, why } : { name, type };
-      });
+      .map(({ id, name, type }) => this.buildEntry(store, id, name, type));
+
+    // Issue #217: when nothing except the trivial self-file `contains` link points at the
+    // target, ScopeResolver never resolved any real caller -- exactly where dynamic-loading
+    // dependents (runtime-variable plugin paths, computed `import()` specifiers) hide. The
+    // ast_call_sites reverse read runs only on this path, so the static fast path's latency
+    // is untouched.
+    if (!this.hasStaticCallerEdge(store, node.id)) {
+      const staticNames = new Set(blastRadius.map((entry) => entry.name));
+      const fallbackEntries = this.resolveCallSiteFallback(
+        store,
+        node,
+        staticNames,
+      );
+      if (fallbackEntries.length > 0) {
+        this.logger.debug(ImpactMessages.LSP_FALLBACK_APPLIED, {
+          target,
+          count: fallbackEntries.length,
+        });
+      }
+      blastRadius.push(...fallbackEntries);
+    }
+
     this.logger.debug(ImpactMessages.RESOLVED_BLAST_RADIUS, {
       target,
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  /** `true` when at least one incoming edge is a real caller relationship -- anything but the
+   *  containing file's own `contains` link (IMPT-001 keeps that link in the reported radius,
+   *  but it is not evidence a caller exists). */
+  private hasStaticCallerEdge(store: IGraphStore, nodeId: number): boolean {
+    return store.graph
+      .getIncomingRelations(nodeId)
+      .some((relation) => relation.linkType !== LinkTypes.CONTAINS);
+  }
+
+  /** Issue #217: reverse-reads `ast_call_sites` for call sites naming the target symbol and
+   *  maps each calling file back to its module node, labeled
+   *  `edgeSource: "lsp-fallback"` -- a same-named call exists here, which is weaker evidence
+   *  than a ScopeResolver-resolved edge but strictly better than an invisible dependent. */
+  private resolveCallSiteFallback(
+    store: IGraphStore,
+    node: { id: number; name: string; type: string; filePath?: string },
+    alreadyResolvedNames: ReadonlySet<string>,
+  ): BlastRadiusEntry[] {
+    const projectId = store.projects.getFirst()?.id;
+    if (!projectId) return [];
+
+    const sitesByFile = store.callSites.getByTargetFunctions(projectId, [
+      node.name,
+    ]);
+
+    const entries: BlastRadiusEntry[] = [];
+    for (const filePath of sitesByFile.keys()) {
+      // A file calling itself is recursion, not a dependent; files already visible via static
+      // edges (the `contains` link included) must not be double-counted -- the radius count
+      // feeds risk scoring directly (IMPT-001).
+      if (filePath === node.filePath) continue;
+      if (alreadyResolvedNames.has(filePath)) continue;
+      const dependent = store.graph.findNodeByName(filePath);
+      // Guard against findNodeByName's LIKE stage: only an exact-name module row counts as
+      // the dependent -- a substring match is coincidence, not evidence.
+      if (!dependent || dependent.name !== filePath) continue;
+      entries.push({
+        ...this.buildEntry(store, dependent.id, dependent.name, dependent.type),
+        edgeSource: BlastRadiusEdgeSources.LSP_FALLBACK,
+      });
+    }
+    return entries;
+  }
+
+  /** One blast-radius entry with its optional L3 "why" payload attached (shared by the static
+   *  edge path and the #217 fallback so both carry identical enrichment). */
+  private buildEntry(
+    store: IGraphStore,
+    nodeId: number,
+    name: string,
+    type: string,
+  ): BlastRadiusEntry {
+    const l3Rows = store.l3.getByL2NodeId(nodeId);
+    const why =
+      l3Rows.length > 0
+        ? l3Rows.map((row) => ({ title: row.title, content: row.content }))
+        : undefined;
+    return why ? { name, type, why } : { name, type };
   }
 }

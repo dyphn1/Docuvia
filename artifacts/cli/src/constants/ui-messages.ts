@@ -275,6 +275,10 @@ export const UI_MESSAGES = {
   IMPACT_WHY_PREFIX: "Decision: ",
   IMPACT_COL_NAME: "Name",
   IMPACT_COL_TYPE: "Type",
+  /** Issue #217 -- third table column, present only when at least one entry came from the
+   *  ast_call_sites fallback; static rows read "static", fallback rows "lsp-fallback". */
+  IMPACT_COL_SOURCE: "Source",
+  IMPACT_EDGE_SOURCE_STATIC: "static",
   /** Labels the "why" block for one blast-radius entry -- printed below the Name/Type table
    *  (`ui.table`), since a table row can't hold prose-length L3 decision content. */
   IMPACT_ENTRY_WHY_LABEL: (name: string) => `${name}:`,

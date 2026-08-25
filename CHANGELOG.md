@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.3.0](https://github.com/dyphn1/Docuvia/compare/v1.2.0...v1.3.0) (2026-08-25)
+
+### Features
+
+- **impact:** ast_call_sites reverse lookup as blast-radius fallback (issue [#217](https://github.com/dyphn1/Docuvia/issues/217)) ([3f6a06a](https://github.com/dyphn1/Docuvia/commit/3f6a06a39284d0e5a506714158f8c5de04423687)), closes [#218](https://github.com/dyphn1/Docuvia/issues/218) [#192](https://github.com/dyphn1/Docuvia/issues/192)
+
 # [1.2.0](https://github.com/dyphn1/Docuvia/compare/v1.1.0...v1.2.0) (2026-08-25)
 
 ### Features

@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.3.1](https://github.com/dyphn1/Docuvia/compare/v1.3.0...v1.3.1) (2026-08-25)
+
+### Bug Fixes
+
+- **ast-core:** surface query-compile failures instead of silently falling back ([8e4b6d1](https://github.com/dyphn1/Docuvia/commit/8e4b6d198fc0c6dbbd9dfe4a3fbdf651b09990f0))
+- **ci:** stop swallowing the eval summary's PR-comment failures ([b1592d0](https://github.com/dyphn1/Docuvia/commit/b1592d02c5ccbd917eb698fdacca1a6a19cbab14))
+
 # [1.3.0](https://github.com/dyphn1/Docuvia/compare/v1.2.0...v1.3.0) (2026-08-25)
 
 ### Features

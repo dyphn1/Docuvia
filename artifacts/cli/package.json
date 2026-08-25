@@ -1,6 +1,6 @@
 {
   "name": "docuvia",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Codebase Knowledge Evolver — maintains a local knowledge graph of your workspace: modules, dependencies, blast radius, and recorded architectural decisions.",
   "license": "MIT",
   "type": "module",

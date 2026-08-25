@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.2.0](https://github.com/dyphn1/Docuvia/compare/v1.1.0...v1.2.0) (2026-08-25)
+
+### Features
+
+- **ast:** index exported consts + resolve barrel re-export chains ([#192](https://github.com/dyphn1/Docuvia/issues/192) gaps 1+2) ([5b2369b](https://github.com/dyphn1/Docuvia/commit/5b2369b0bffd596ca6938bf5108428fe47bde212)), closes [#217](https://github.com/dyphn1/Docuvia/issues/217)
+- **impact:** UNKNOWN risk for empty results + impact-accuracy eval corpus/harness ([#192](https://github.com/dyphn1/Docuvia/issues/192)) ([f42e0d8](https://github.com/dyphn1/Docuvia/commit/f42e0d843bb84faa369145a66497fb0aae90e1ae)), closes [#217](https://github.com/dyphn1/Docuvia/issues/217)
+
 # [1.1.0](https://github.com/dyphn1/Docuvia/compare/v1.0.0...v1.1.0) (2026-08-24)
 
 ### Bug Fixes

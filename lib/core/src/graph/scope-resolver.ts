@@ -193,21 +193,13 @@ export class ScopeResolver {
     // 2. Check if it's imported
     const imports = this.importsByFile.get(normalizedSource) || [];
     for (const imp of imports) {
-      if (imp.localName === callName) {
-        const resolvedPath = this.resolveModulePath(
-          normalizedSource,
-          imp.modulePath,
-        );
-        if (resolvedPath) {
-          return {
-            targetFile: resolvedPath,
-            targetSymbol:
-              imp.originalName === WILDCARD_IMPORT_MARKER
-                ? callName
-                : imp.originalName,
-          };
-        }
-      }
+      if (imp.localName !== callName) continue;
+      const resolved = this.resolveImportedBinding(
+        normalizedSource,
+        imp,
+        callName,
+      );
+      if (resolved) return resolved;
     }
 
     // 3. Go packages are directory-scoped: check for a same-directory sibling `.go` file that
@@ -220,6 +212,70 @@ export class ScopeResolver {
       if (goResult) return goResult;
     }
 
+    return null;
+  }
+
+  /** Resolves one matched import descriptor to its defining file: module-path resolution
+   *  followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
+   *  file itself -- the prior behavior floor -- when the chain dead-ends. */
+  private resolveImportedBinding(
+    normalizedSource: string,
+    imp: ImportDescriptor,
+    callName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const resolvedPath = this.resolveModulePath(
+      normalizedSource,
+      imp.modulePath,
+    );
+    if (!resolvedPath) return null;
+
+    const targetSymbol =
+      imp.originalName === WILDCARD_IMPORT_MARKER ? callName : imp.originalName;
+    return (
+      this.resolveReexportTarget(
+        normalizedSource,
+        resolvedPath,
+        targetSymbol,
+      ) ?? {
+        targetFile: resolvedPath,
+        targetSymbol,
+      }
+    );
+  }
+
+  /**
+   * Issue #192 gap 2: follows a barrel re-export chain (`export { X } from "./y"`, made visible
+   * by edge-computer's export_statement descriptors) from `startFile` until the file that actually
+   * declares `symbol` as a local. Bounded by a visited set seeded with `originFile` so mutually
+   * recursive re-exports terminate. Returns null when the chain dead-ends (symbol defined
+   * nowhere along it) -- callers fall back to the pre-chain behavior of targeting the barrel
+   * itself, so this can only improve resolution, never regress it.
+   */
+  private resolveReexportTarget(
+    originFile: string,
+    startFile: string,
+    startSymbol: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    let currentFile = startFile;
+    let currentSymbol = startSymbol;
+    const visitedFiles = new Set<string>([originFile]);
+    while (!visitedFiles.has(currentFile)) {
+      visitedFiles.add(currentFile);
+      if (this.localsByFile.get(currentFile)?.has(currentSymbol)) {
+        return { targetFile: currentFile, targetSymbol: currentSymbol };
+      }
+      const reexport = this.importsByFile
+        .get(currentFile)
+        ?.find((imp) => imp.localName === currentSymbol);
+      if (!reexport) return null;
+      const nextFile = this.resolveModulePath(currentFile, reexport.modulePath);
+      if (!nextFile) return null;
+      currentFile = nextFile;
+      currentSymbol =
+        reexport.originalName === WILDCARD_IMPORT_MARKER
+          ? currentSymbol
+          : reexport.originalName;
+    }
     return null;
   }
 

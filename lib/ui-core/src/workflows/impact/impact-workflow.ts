@@ -4,11 +4,18 @@ import {
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
+  type IGraphStore,
   type ILogger,
+  type RiskLevel,
+  type TierBCoverageHint,
 } from "@workspace/contracts";
 import { resolveTierBCoverageHint } from "@workspace/contracts";
 import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
+import {
+  pickBackCompatCoverageNote,
+  resolveImpactEpistemic,
+} from "./resolve-impact-epistemic.js";
 import type { ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
@@ -90,50 +97,97 @@ export class ImpactWorkflow {
         riskLevel,
       });
 
-      // `impact` only ever reports the incoming/blast-radius direction -- `outgoingEmpty` is
-      // hardcoded `false` so the "own file's outgoing calls" half of the hint never applies here
-      // (see `resolveTierBCoverageHint`'s doc comment). Re-resolves the node by name (mirrors
-      // `query.service.ts`'s own "re-resolve for metadata" precedent) since `IImpactService`
-      // doesn't expose the resolved node's `filePath` today.
-      const node = store.graph.findNodeByName(target);
-      const tierBCoverage = docuviaFactory
-        .resolve(TOKENS.TierBCoverageHintProvider)
-        .resolve(store, node?.filePath, blastRadius.length === 0, false);
-
-      // Issue #136: a factory/registry-mediated dependency (docuviaFactory.register/resolve,
-      // TOKENS.*) is invisible to the static edge graph -- an empty blast radius for such a
-      // symbol is "partial coverage", never a confident LOW. Emits the note so the CLI (and any
-      // `--format=json` consumer) can distinguish "confirmed no dependents" from "the graph can't
-      // see the dependents".
-      const coverageNote = await this.resolveCoverageNote(
-        node,
-        blastRadius.length,
-      );
-
       return {
         blastRadius,
-        riskLevel,
-        ...(coverageNote ? { coverageNote } : {}),
-        ...(tierBCoverage ? { tierBCoverage } : {}),
+        ...(await this.resolveEpistemicFields(
+          store,
+          target,
+          blastRadius.length,
+          riskLevel,
+        )),
       };
     } finally {
       await store.close();
     }
   }
 
-  /** Issue #136: the registry-mediated coverage note, or `undefined` when the blast radius is
-   *  non-empty (a confident answer needs no note) or the resolved node is missing/unreadable.
-   *  Extracted out of `execute()` to keep its cyclomatic complexity under the ESLint budget. */
-  private async resolveCoverageNote(
-    node: { filePath?: string } | undefined,
+  /** Issue #192/#136: resolves every confidence-adjacent field of the result -- the epistemic
+   *  verdict (`riskLevel` override / `epistemic` / `riskNote`), the back-compat `coverageNote`,
+   *  and `tierBCoverage`. Extracted out of `execute()` to keep its cyclomatic complexity under
+   *  the ESLint budget (same refactor precedent as the old `resolveCoverageNote`). */
+  private async resolveEpistemicFields(
+    store: IGraphStore,
+    target: string,
     blastRadiusLength: number,
-  ): Promise<string | undefined> {
-    if (blastRadiusLength === 0 && node?.filePath) {
-      if (await this.fileUsesFactoryRegistry(node.filePath)) {
-        return IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE;
-      }
-    }
-    return undefined;
+    computedRiskLevel: RiskLevel,
+  ): Promise<Omit<ImpactResult, "blastRadius">> {
+    const { tierBCoverage, registryMediated } = await this.resolveTargetContext(
+      store,
+      target,
+      blastRadiusLength,
+    );
+
+    // Issue #192: raw workspace Tier B counts feed the epistemic verdict directly (unlike
+    // `tierBCoverage`, which only fires on empty results) so a non-empty-but-partial graph is
+    // flagged too -- a partially-populated graph must never read as a complete answer.
+    const coverage = store.files.getTierBCoverage();
+
+    const epistemicResult = resolveImpactEpistemic({
+      blastRadiusCount: blastRadiusLength,
+      computedRiskLevel,
+      workspaceFilesProcessed: coverage?.processedFiles,
+      workspaceFilesTotal: coverage?.totalFiles,
+      registryMediated,
+    });
+
+    const coverageNote = pickBackCompatCoverageNote(
+      registryMediated,
+      epistemicResult.riskNote,
+    );
+
+    return {
+      riskLevel: epistemicResult.riskLevel,
+      ...(epistemicResult.epistemic
+        ? { epistemic: epistemicResult.epistemic }
+        : {}),
+      ...(epistemicResult.riskNote
+        ? { riskNote: epistemicResult.riskNote }
+        : {}),
+      ...(coverageNote ? { coverageNote } : {}),
+      ...(tierBCoverage ? { tierBCoverage } : {}),
+    };
+  }
+
+  /** Resolves the target's node metadata: the Tier B hint (empty-result-only gating lives in
+   *  `resolveTierBCoverageHint`) and the issue #136 registry-mediated signal. Extracted from
+   *  `resolveEpistemicFields` for the ESLint complexity budget. */
+  private async resolveTargetContext(
+    store: IGraphStore,
+    target: string,
+    blastRadiusLength: number,
+  ): Promise<{
+    tierBCoverage?: TierBCoverageHint;
+    registryMediated: boolean;
+  }> {
+    // `impact` only ever reports the incoming/blast-radius direction -- `outgoingEmpty` is
+    // hardcoded `false` so the "own file's outgoing calls" half of the hint never applies here
+    // (see `resolveTierBCoverageHint`'s doc comment). Re-resolves the node by name (mirrors
+    // `query.service.ts`'s own "re-resolve for metadata" precedent) since `IImpactService`
+    // doesn't expose the resolved node's `filePath` today.
+    const node = store.graph.findNodeByName(target);
+    const tierBCoverage = docuviaFactory
+      .resolve(TOKENS.TierBCoverageHintProvider)
+      .resolve(store, node?.filePath, blastRadiusLength === 0, false);
+
+    // Issue #136: a factory/registry-mediated dependency (docuviaFactory.register/resolve,
+    // TOKENS.*) is invisible to the static edge graph -- an empty blast radius for such a
+    // symbol is "partial coverage", never a confident LOW.
+    const registryMediated =
+      blastRadiusLength === 0 &&
+      !!node?.filePath &&
+      (await this.fileUsesFactoryRegistry(node.filePath));
+
+    return { tierBCoverage, registryMediated };
   }
 
   /** Issue #136: `true` when `filePath` (workspace-relative) contains the docuviaFactory registry

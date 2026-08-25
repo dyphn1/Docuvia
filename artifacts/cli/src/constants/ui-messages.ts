@@ -283,6 +283,9 @@ export const UI_MESSAGES = {
    *  tracked file hasn't been Tier B-processed yet). */
   IMPACT_TIER_B_INCOMPLETE: (unprocessed: number, total: number) =>
     `${unprocessed} of ${total} tracked file(s) have never been Tier B-processed -- this may be incomplete, not confirmed zero. Run \`docuvia analyze --escalate-to-lsp --full\` to resync.`,
+  /** Issue #192 -- printed under an empty blast radius (or a lower-bound non-empty one) to
+   *  explain which coverage gap applies; verbatim from the workflow's `riskNote` field. */
+  IMPACT_RISK_NOTE_PREFIX: "Note: ",
 
   // Uninstall Command
   UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",

@@ -150,9 +150,10 @@ export {
   CHAT_TOOL_TYPE,
   ChatToolChoiceModes,
 } from "./interfaces/llm-client.interfaces.js";
-export { RiskLevels } from "./interfaces/impact.interfaces.js";
+export { RiskLevels, EpistemicLevels } from "./interfaces/impact.interfaces.js";
 export type {
   RiskLevel,
+  EpistemicLevel,
   BlastRadiusEntry,
   IImpactService,
 } from "./interfaces/impact.interfaces.js";

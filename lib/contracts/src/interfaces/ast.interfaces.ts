@@ -12,6 +12,11 @@ export interface AstImportDescriptor {
   localName: string;
   originalName: string;
   modulePath: string;
+  /** True when this descriptor came from a TS/JS barrel re-export
+   *  (`export { X } from "./y"`, issue #192 gap 2) rather than a plain import statement --
+   *  persist-ast-graph links these as file-level `depends_on` edges (a barrel depends on its
+   *  source even though it has no call sites). */
+  viaReexport?: boolean;
 }
 
 export interface ParsedAstFileData {
@@ -29,6 +34,15 @@ export interface ParsedAstFileData {
     startLine: number;
     endLine: number;
     methods: string[];
+    contentHash?: string;
+  }>;
+  /** Exported variable declarators (`export const X = ...`) — TS/JS only today (issue #192
+   *  gap 1). Declarators whose initializer is an arrow_function/function_expression are
+   *  excluded: they are already indexed as functions via the `functions` collector. */
+  variables?: Array<{
+    name: string;
+    startLine: number;
+    endLine: number;
     contentHash?: string;
   }>;
   /** One static call site. `startLine`/`startColumn` are the 0-based source position of the

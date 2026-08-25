@@ -12,9 +12,31 @@ export const RiskLevels = {
   MEDIUM: "MEDIUM",
   HIGH: "HIGH",
   CRITICAL: "CRITICAL",
+  /**
+   * Issue #192: an empty upstream (blast-radius) result is `UNKNOWN`, never `LOW` -- absence of
+   * static edges (calls/implements/extends only) is NOT evidence that no code depends on the
+   * target. Runtime-variable imports, computed `import()` specifiers, and `child_process` spawns
+   * produce no edge, so a zero can never be trusted as a confident answer. Mirrors GitNexus's
+   * impact-risk semantics ("never a false-safe zero"); downstream/outgoing emptiness is exempt,
+   * but `docuvia impact` only ever reports the upstream direction.
+   */
+  UNKNOWN: "UNKNOWN",
 } as const;
 
 export type RiskLevel = (typeof RiskLevels)[keyof typeof RiskLevels];
+
+/**
+ * Issue #192: how completely the edge graph observed the dependency surface behind an impact
+ * result. `EXACT` results omit the field entirely (omit-when-confident convention); any
+ * `LOWER_BOUND` result carries a human-readable `riskNote` explaining which coverage gap applies.
+ */
+export const EpistemicLevels = {
+  EXACT: "exact",
+  LOWER_BOUND: "lower-bound",
+} as const;
+
+export type EpistemicLevel =
+  (typeof EpistemicLevels)[keyof typeof EpistemicLevels];
 
 export interface BlastRadiusEntry {
   name: string;

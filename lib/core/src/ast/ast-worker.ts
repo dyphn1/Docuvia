@@ -10,6 +10,8 @@ import {
   loadDefaultRegistry,
 } from "@workspace/ast-core";
 import {
+  ENCODING_HEX,
+  HASH_ALGO_SHA256,
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
   type AstExportKind,
@@ -22,14 +24,15 @@ import { AstMessages, AstNodeTypes } from "./ast-constants.js";
  * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
  * produce a one-line JSONL diff for that symbol without touching its untouched siblings' hashes.
  *
- * Inlines the "sha256"/"hex" literals `../constants/encoding.js` also exports rather than
- * importing them: this file is the one place in the codebase that must run standalone inside a
- * `worker_threads` Worker, and a relative `.js`-to-`.ts` sibling import needs a resolve hook that
- * tsx registers on the main thread but does not propagate into workers — a Node/tsx limitation,
- * not a bundling one (dist/ sidesteps it by shipping a fully-compiled worker instead).
+ * The algorithm/digest constants come from `@workspace/contracts` (issue #211) so the worker's
+ * hashes can never drift from the main thread's (`ast-worker-pool.ts`, `file-discovery.service.ts`)
+ * or `lib/schema`'s. Package-name imports resolve through node_modules and work fine inside a
+ * `worker_threads` Worker (as the existing contracts/ast-core imports above prove) — only bare
+ * relative `.js`-to-`.ts` sibling imports needed a tsx resolve hook that doesn't propagate into
+ * workers, and even that limitation is moot in dist/ where a fully-compiled worker ships.
  */
 function symbolContentHash(node: Node): string {
-  return createHash("sha256").update(node.text).digest("hex");
+  return createHash(HASH_ALGO_SHA256).update(node.text).digest(ENCODING_HEX);
 }
 
 /**
@@ -88,6 +91,15 @@ export interface AstParseResponse {
       startLine: number;
       endLine: number;
       methods: string[];
+      contentHash?: string;
+    }>;
+    /** Exported variable declarators (`export const X = ...`) — TS/JS only today (issue #192
+     *  gap 1). Function-valued initializers (arrow functions / function expressions) are
+     *  excluded: they are already indexed as functions via `functions`. */
+    variables?: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
       contentHash?: string;
     }>;
     calls: Array<{
@@ -391,6 +403,38 @@ function collectClassNodes(
   return classNodes;
 }
 
+/**
+ * Extracts exported variable declarators via the provider and appends their summaries to
+ * `variables` (issue #192 gap 1: `export const X = ...` must be an indexable symbol so
+ * `impact <X>` resolves instead of "No matching node"). The query only matches exported
+ * `lexical_declaration` declarators with plain identifier names; this collector additionally
+ * skips function-valued initializers (arrow_function/function_expression) since those are
+ * already indexed as functions by the `functions` query + resolveCallableName path.
+ */
+const FUNCTION_VALUE_NODE_TYPES = new Set<string>([
+  "arrow_function",
+  "function_expression",
+]);
+
+function collectVariableNodes(
+  tree: Tree,
+  provider: LanguageProvider,
+  variables: NonNullable<AstExtractionResult["variables"]>,
+): Node[] {
+  const variableNodes = provider.extractVariables?.(tree.rootNode) ?? [];
+  for (const node of variableNodes) {
+    const value = node.childForFieldName("value");
+    if (value && FUNCTION_VALUE_NODE_TYPES.has(value.type)) continue;
+    variables.push({
+      name: getNodeName(node),
+      startLine: node.startPosition.row,
+      endLine: node.endPosition.row,
+      contentHash: symbolContentHash(node),
+    });
+  }
+  return variableNodes;
+}
+
 /** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction.
  *
  *  `classNodes` (GRPH-006) lets each function's enclosing class/struct be resolved via the same
@@ -616,6 +660,7 @@ function extractAstData(
   const exports: AstExtractionResult["exports"] = [];
   const functions: AstExtractionResult["functions"] = [];
   const classes: AstExtractionResult["classes"] = [];
+  const variables: NonNullable<AstExtractionResult["variables"]> = [];
   const calls: AstExtractionResult["calls"] = [];
   const implementsList: NonNullable<AstExtractionResult["implements"]> = [];
   const extendsList: NonNullable<AstExtractionResult["extends"]> = [];
@@ -635,6 +680,8 @@ function extractAstData(
 
       const importNodes = provider.extractImports(tree.rootNode);
       imports.push(...parseImportDescriptors(importNodes));
+
+      collectVariableNodes(tree, provider, variables);
 
       collectCallEdges(tree, provider, functionNodes, calls);
       collectImplementsEdges(tree, provider, classNodes, implementsList);
@@ -656,12 +703,34 @@ function extractAstData(
     exports,
     functions,
     classes,
+    variables,
     calls,
     implements: implementsList,
     extends: extendsList,
     workerSpawns,
     decisions,
   };
+}
+
+/** Logs any query pattern that failed to compile, then clears them so a later file of the same
+ *  language doesn't re-report the same failure. Drained rather than read because the provider is
+ *  reused for the worker's whole lifetime.
+ *
+ *  Exported for the wiring test: the module-scoped `logger` posts to `parentPort`, which is
+ *  null outside a real worker, so this path is otherwise unobservable (same reason
+ *  `buildParseResponse` is exported). */
+export function reportQueryCompileFailures(
+  provider: LanguageProvider,
+  language: SupportedLanguage,
+): void {
+  for (const failure of provider.drainQueryCompileFailures?.() ?? []) {
+    logger.error(AstMessages.QUERY_COMPILE_FAILED, {
+      language,
+      kind: failure.kind,
+      pattern: failure.pattern,
+      message: failure.message,
+    });
+  }
 }
 
 /** Parses `request.code` with the resolved provider/grammar and runs the full AST extraction pass, releasing the tree-sitter tree/parser handles once done. */
@@ -680,6 +749,7 @@ function parseAndExtract(
   // pattern fails to compile against the installed grammar degrades to that field's
   // descendantsOfType fallback (DefaultProvider.compileQuery) rather than throwing.
   provider.initQueries?.(langInstance);
+  reportQueryCompileFailures(provider, language);
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider, language);

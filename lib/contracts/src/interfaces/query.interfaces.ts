@@ -1,4 +1,4 @@
-import type { IGraphStore } from "./graph-store.interfaces.js";
+import type { IGraphStore, ValidityStatus } from "./graph-store.interfaces.js";
 
 /**
  * Local-first (no-LLM) natural-language + structural query surface (Domain Core logic) —
@@ -81,6 +81,29 @@ export interface LocalSearchResult {
   matchType: QueryMatchType;
 }
 
+/**
+ * One L3 ("why") decision in a `LocalQueryResult`, with its write-path provenance attached
+ * (issue #68, provenance axis). Every provenance field is optional so older callers/fixtures
+ * that only carry `{title, content}` stay valid; `QueryService.query()` populates them from
+ * the underlying `l3_nodes` row whenever it resolves one. Consumers (the prompt formatter,
+ * MCP tools) must treat a missing field as "unknown" and omit the corresponding attribute
+ * from rendered output, never fabricate a default.
+ */
+export interface LocalQueryResultL3Entry {
+  title: string;
+  content: string | null;
+  /** `l3_nodes.id` — stable handle for follow-up writes/reads (e.g. future anchor work). */
+  id?: number;
+  nodeType?: string;
+  /** Who authored the decision (`analyze` pipeline / `agent-authored` / `git-import`). */
+  source?: string;
+  confidence?: number | null;
+  /** HEAD sha stamped when the decision was written; null on unborn/headless-HEAD writes. */
+  commitHash?: string | null;
+  validityStatus?: ValidityStatus;
+  createdAt?: string;
+}
+
 export interface LocalQueryResult {
   l2: {
     name: string;
@@ -88,7 +111,7 @@ export interface LocalQueryResult {
     filePath?: string;
     matchType: QueryMatchType;
   } | null;
-  l3: Array<{ title: string; content: string | null }>;
+  l3: LocalQueryResultL3Entry[];
   context: GraphContext | null;
 }
 

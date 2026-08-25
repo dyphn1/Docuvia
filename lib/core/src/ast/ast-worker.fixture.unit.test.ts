@@ -589,3 +589,64 @@ describe("typescript fixture: call-site position (issue #11 plan A, Finding C)",
     expect(memberCall!.startColumn).toBe(10);
   });
 });
+
+// ── Issue #192 gaps 1+2: exported consts + barrel re-exports ──────────────
+
+const CONST_AND_BARREL_SRC = `
+export const EVAL_MAX_RETRIES = 3;
+const localTemp = "not-exported";
+export const lazyHandler = () => { localTemp.length; };
+export { evalChainHelper } from "../deep/util";
+export { origThing as outwardThing } from "../deep/other";
+`;
+
+describe("typescript fixture: exported consts and barrel re-exports (issue #192)", () => {
+  it("indexes an exported scalar const as a variable symbol, but not a non-exported one", async () => {
+    const response = await buildParseResponse({
+      taskId: "const-indexing",
+      filePath: "consts.ts",
+      code: CONST_AND_BARREL_SRC,
+      language: "typescript",
+    });
+
+    const names = (response.data!.variables ?? []).map((v) => v.name);
+    expect(names).toContain("EVAL_MAX_RETRIES");
+    expect(names).not.toContain("localTemp");
+  });
+
+  it("does not double-index function-valued const initializers (already functions)", async () => {
+    const response = await buildParseResponse({
+      taskId: "const-arrow-exclusion",
+      filePath: "consts.ts",
+      code: CONST_AND_BARREL_SRC,
+      language: "typescript",
+    });
+
+    const names = (response.data!.variables ?? []).map((v) => v.name);
+    expect(names).not.toContain("lazyHandler");
+  });
+
+  it("emits viaReexport import descriptors for export...from statements", async () => {
+    const response = await buildParseResponse({
+      taskId: "barrel-descriptors",
+      filePath: "mid/index.ts",
+      code: `export { evalChainHelper } from "../deep/util";\nexport { origThing as outwardThing } from "../deep/other";\n`,
+      language: "typescript",
+    });
+
+    expect(response.data!.imports).toEqual([
+      {
+        localName: "evalChainHelper",
+        originalName: "evalChainHelper",
+        modulePath: "../deep/util",
+        viaReexport: true,
+      },
+      {
+        localName: "outwardThing",
+        originalName: "origThing",
+        modulePath: "../deep/other",
+        viaReexport: true,
+      },
+    ]);
+  });
+});

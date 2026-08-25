@@ -275,6 +275,10 @@ export const UI_MESSAGES = {
   IMPACT_WHY_PREFIX: "Decision: ",
   IMPACT_COL_NAME: "Name",
   IMPACT_COL_TYPE: "Type",
+  /** Issue #217 -- third table column, present only when at least one entry came from the
+   *  ast_call_sites fallback; static rows read "static", fallback rows "lsp-fallback". */
+  IMPACT_COL_SOURCE: "Source",
+  IMPACT_EDGE_SOURCE_STATIC: "static",
   /** Labels the "why" block for one blast-radius entry -- printed below the Name/Type table
    *  (`ui.table`), since a table row can't hold prose-length L3 decision content. */
   IMPACT_ENTRY_WHY_LABEL: (name: string) => `${name}:`,
@@ -283,6 +287,9 @@ export const UI_MESSAGES = {
    *  tracked file hasn't been Tier B-processed yet). */
   IMPACT_TIER_B_INCOMPLETE: (unprocessed: number, total: number) =>
     `${unprocessed} of ${total} tracked file(s) have never been Tier B-processed -- this may be incomplete, not confirmed zero. Run \`docuvia analyze --escalate-to-lsp --full\` to resync.`,
+  /** Issue #192 -- printed under an empty blast radius (or a lower-bound non-empty one) to
+   *  explain which coverage gap applies; verbatim from the workflow's `riskNote` field. */
+  IMPACT_RISK_NOTE_PREFIX: "Note: ",
 
   // Uninstall Command
   UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",
@@ -375,6 +382,11 @@ export const UI_MESSAGES = {
   QUERY_L2_PREFIX: "Module: ",
   QUERY_NO_L2: "No matching module found.",
   QUERY_L3_PREFIX: "Decision: ",
+  /** Human-readable mirror of the prompt-format `<l3_decision>` provenance attributes
+   *  (issue #68, provenance axis) — tells a human reading the default output who authored a
+   *  decision and whether it is still considered valid. Rendered only when the entry carries
+   *  provenance; omitted entirely otherwise. */
+  QUERY_L3_PROVENANCE: (parts: string[]) => ` (${parts.join(", ")})`,
   QUERY_UNKNOWN_STATUS: "unknown",
   QUERY_INCOMING_HEADER: "Incoming (callers/dependents)",
   QUERY_OUTGOING_HEADER: "Outgoing (dependencies)",

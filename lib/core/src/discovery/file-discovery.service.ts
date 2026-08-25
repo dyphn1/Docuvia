@@ -1,4 +1,3 @@
-import { ENCODING_HEX, HASH_ALGO_SHA256 } from "../constants/encoding.js";
 import path from "path";
 import fs from "fs/promises";
 import crypto from "crypto";
@@ -15,6 +14,8 @@ import type {
 import {
   createNoopLogger,
   DOCUVIA_DIR_NAME,
+  ENCODING_HEX,
+  HASH_ALGO_SHA256,
   UTF8_ENCODING,
 } from "@workspace/contracts";
 import {

@@ -48,6 +48,9 @@ export interface ParsedImportDescriptor {
   localName: string;
   originalName: string;
   modulePath: string;
+  /** True for TS/JS barrel re-export descriptors (`export { X } from "./y"`) — see
+   *  collectTsJsExportFromDescriptors. */
+  viaReexport?: boolean;
 }
 
 /**
@@ -104,6 +107,7 @@ const SINGLE_TYPE_IMPORT_HANDLERS: Record<
   (stmt: Node, descriptors: ParsedImportDescriptor[]) => void
 > = {
   [TreeSitterNodeTypes.IMPORT_STATEMENT]: collectTsJsImportDescriptors,
+  [TreeSitterNodeTypes.EXPORT_STATEMENT]: collectTsJsExportFromDescriptors,
   [TreeSitterNodeTypes.IMPORT_FROM_STATEMENT]:
     collectPythonFromStatementDescriptors,
   [TreeSitterNodeTypes.USE_DECLARATION]: collectRustUseDescriptors,
@@ -168,6 +172,42 @@ function collectTsJsImportDescriptors(
 }
 
 // ── Python ────────────────────────────────────────────────────────────
+/**
+ * TS/JS barrel re-export (`export { X } from "./y"` — issue #192's gap 2). Emits one descriptor
+ * per export specifier so a barrel file becomes self-describing: an importer of `X` from the
+ * barrel can then be chained through it to `./y` by ScopeResolver.resolveReexportTarget.
+ * Direction note: `export { A as B } from "./y"` means importers see `B` while `A` is the
+ * original name in `./y`, so localName = outward-facing alias/name, originalName = source name.
+ *
+ * Only re-export forms (those carrying a `source` clause) produce descriptors — a plain local
+ * `export const/class/function` is a definition, not a dependency, and must not fabricate one.
+ * `export * from "./y"` has no named binding to track and is skipped.
+ */
+function collectTsJsExportFromDescriptors(
+  stmt: Node,
+  descriptors: ParsedImportDescriptor[],
+): void {
+  const sourceNode = stmt.childForFieldName("source");
+  if (!sourceNode) return;
+  const srcText = sourceNode.text.replace(/['"]/g, "");
+
+  const exportClause = stmt.descendantsOfType("export_clause")[0];
+  if (!exportClause) return;
+
+  for (const spec of exportClause.descendantsOfType("export_specifier")) {
+    if (!spec) continue;
+    const nameNode = spec.childForFieldName("name");
+    if (!nameNode) continue;
+    const aliasNode = spec.childForFieldName("alias");
+    descriptors.push({
+      localName: aliasNode ? aliasNode.text : nameNode.text,
+      originalName: nameNode.text,
+      modulePath: srcText,
+      viaReexport: true,
+    });
+  }
+}
+
 function collectPythonFromStatementDescriptors(
   stmt: Node,
   descriptors: ParsedImportDescriptor[],

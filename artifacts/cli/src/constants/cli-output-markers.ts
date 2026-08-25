@@ -12,4 +12,6 @@ export const OUTPUT_FORMAT_MARKERS = {
   DOUBLE_QUOTE: '"',
   EMPTY: "",
   ELLIPSIS: "...",
+  /** Abbreviated git sha length used when rendering provenance (matches `git log --oneline`). */
+  SHORT_SHA_LENGTH: 7,
 } as const;

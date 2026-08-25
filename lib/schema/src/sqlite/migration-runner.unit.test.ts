@@ -95,6 +95,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "extraction_model",
     "source_files",
     "initial_source_commits",
+    "anchor_ranges",
   ],
   docuvia_meta: ["key", "value"],
   ast_call_sites: [
@@ -170,6 +171,8 @@ describe("applyMigrations", () => {
       "0007_fts_porter_stemming.sql",
       "0008_ast_call_sites.sql",
       "0009_l2_node_key_lookup_index.sql",
+      "0010_l3_anchor_ranges.sql",
+      "0011_ast_call_sites_target_idx.sql",
     ]);
   });
 
@@ -231,7 +234,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(9);
+    expect(migrationRows).toHaveLength(11);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

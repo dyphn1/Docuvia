@@ -66,6 +66,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -73,6 +74,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
@@ -277,7 +279,7 @@ describe("SnapshotWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
-  it("renders knowledge/_l3/<content_hash>.md cards for exportable L3 rows into tempDir before packing, with source_commits frozen at initial_source_commits", async () => {
+  it("passes exportable L3 rows through to ISnapshotRenderer.render() as l3Rows when packing", async () => {
     const l2Rows = [
       {
         id: 1,
@@ -320,6 +322,7 @@ describe("SnapshotWorkflow.execute()", () => {
       extraction_model: "gpt-4o-mini",
       source_files: JSON.stringify(["src/a.ts"]),
       initial_source_commits: JSON.stringify(["commit-1"]),
+      anchor_ranges: null,
     };
 
     const store = makeMockStore({
@@ -349,21 +352,21 @@ describe("SnapshotWorkflow.execute()", () => {
         getByL2NodeId: vi.fn(),
         upsertDecision: vi.fn(),
         importCard: vi.fn(),
+        updateValidityStatus: vi.fn(),
       },
     });
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi.fn().mockResolvedValue(store),
     );
+    const renderMock = vi.fn().mockResolvedValue({
+      nodesWritten: 1,
+      edgesWritten: 0,
+      markdownFilesWritten: 1,
+    });
     docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
-      render: vi.fn().mockResolvedValue({
-        nodesWritten: 1,
-        edgesWritten: 0,
-        markdownFilesWritten: 1,
-      }),
+      render: renderMock,
     }));
 
-    let l3CardFileNames: string[] = [];
-    let l3CardContent = "";
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
@@ -372,16 +375,7 @@ describe("SnapshotWorkflow.execute()", () => {
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
       deleteKnowledgeBranch: vi.fn(),
-      packSnapshotToKnowledgeBranch: vi
-        .fn()
-        .mockImplementation(async (_cwd: string, tempDir: string) => {
-          const l3Dir = path.join(tempDir, "knowledge", "_l3");
-          l3CardFileNames = await fs.readdir(l3Dir);
-          l3CardContent = await fs.readFile(
-            path.join(l3Dir, l3CardFileNames[0]),
-            "utf8",
-          );
-        }),
+      packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
@@ -390,13 +384,12 @@ describe("SnapshotWorkflow.execute()", () => {
 
     await new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute();
 
-    expect(l3CardFileNames).toEqual(["abc123hash.md"]);
-    expect(l3CardContent).toContain('"content_hash": "abc123hash"');
-    expect(l3CardContent).toContain('"l2_path": "knowledge/src/a.ts.md"');
-    // Frozen at initial_source_commits ("commit-1"), not the row's current, grown source_commits
-    // ("commit-1", "commit-2") -- L3DIST-002/003.
-    expect(l3CardContent).toContain('"source_commits": [\n    "commit-1"\n  ]');
-    expect(l3CardContent).toContain("All I/O paths use async/await.");
+    // The Orchestration layer passes exportable L3 rows straight through to ISnapshotRenderer --
+    // card rendering itself is a Domain Core detail behind the interface (issue #206), covered by
+    // snapshot-renderer.service.unit.test.ts / l3-card-renderer.unit.test.ts in lib/core.
+    expect(renderMock).toHaveBeenCalledWith(
+      expect.objectContaining({ l3Rows: [l3Row] }),
+    );
   });
 
   it("skips snapshot generation entirely when the latest snapshot, last Tier B commit, and HEAD match, and no batch is pending", async () => {

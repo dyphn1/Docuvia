@@ -13,6 +13,7 @@ import {
   type IGraphStore,
   type IHydrationService,
   type IKnowledgeGitService,
+  type ILineBlameProvider,
 } from "@workspace/contracts";
 import { SyncKnowledgeWorkflow } from "./sync-knowledge-workflow.js";
 
@@ -109,6 +110,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -116,6 +118,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
@@ -157,8 +160,15 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
     // L3-import routine, which needs a git provider + a writable store.
     const gitProvider = makeMockGitProvider({
       listFilesAtRef: vi.fn().mockResolvedValue([]),
+      // Unborn HEAD: the issue #68 validity pass resolves its inputs, sees no HEAD, and
+      // returns without judging -- keeping this test about the import delegation.
+      getHeadSha: vi.fn().mockResolvedValue(undefined),
     });
     docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
+    docuviaFactory.register(
+      TOKENS.LineBlameProvider,
+      () => gitProvider as unknown as ILineBlameProvider,
+    );
     const store = makeMockStore();
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi
@@ -198,7 +208,9 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
       "merge-sha",
       store,
     );
-    expect(store.close).toHaveBeenCalledTimes(1);
+    // Two store opens+close cycles: the L3-import's and the issue #68 validity pass's (which
+    // no-ops on an unborn HEAD but still opens/closes its own store).
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it("threads the constructor's gitNetworkTimeoutMs through to TOKENS.KnowledgeGitService's resolve() params", async () => {

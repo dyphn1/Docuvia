@@ -9,6 +9,7 @@
 export const QueryCaptureName = {
   CLASS: "class",
   FUNCTION: "function",
+  VARIABLE: "variable",
   IMPORT: "import",
   CALL: "call",
   IMPLEMENTS: "implements",

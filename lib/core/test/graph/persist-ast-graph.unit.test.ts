@@ -30,6 +30,7 @@ describe("GraphPersisterService", () => {
         deleteForFile: vi.fn(),
         insertMany: vi.fn(),
         getForFiles: vi.fn().mockReturnValue(new Map()),
+        getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
       },
     };
     persister = new GraphPersisterService();

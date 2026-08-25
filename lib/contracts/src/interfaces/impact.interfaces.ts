@@ -12,13 +12,55 @@ export const RiskLevels = {
   MEDIUM: "MEDIUM",
   HIGH: "HIGH",
   CRITICAL: "CRITICAL",
+  /**
+   * Issue #192: an empty upstream (blast-radius) result is `UNKNOWN`, never `LOW` -- absence of
+   * static edges (calls/implements/extends only) is NOT evidence that no code depends on the
+   * target. Runtime-variable imports, computed `import()` specifiers, and `child_process` spawns
+   * produce no edge, so a zero can never be trusted as a confident answer. Mirrors GitNexus's
+   * impact-risk semantics ("never a false-safe zero"); downstream/outgoing emptiness is exempt,
+   * but `docuvia impact` only ever reports the upstream direction.
+   */
+  UNKNOWN: "UNKNOWN",
 } as const;
 
 export type RiskLevel = (typeof RiskLevels)[keyof typeof RiskLevels];
 
+/**
+ * Issue #192: how completely the edge graph observed the dependency surface behind an impact
+ * result. `EXACT` results omit the field entirely (omit-when-confident convention); any
+ * `LOWER_BOUND` result carries a human-readable `riskNote` explaining which coverage gap applies.
+ */
+export const EpistemicLevels = {
+  EXACT: "exact",
+  LOWER_BOUND: "lower-bound",
+} as const;
+
+export type EpistemicLevel =
+  (typeof EpistemicLevels)[keyof typeof EpistemicLevels];
+
+/**
+ * Issue #217: which source produced a blast-radius entry. Static entries (`node_links`
+ * incoming edges) OMIT the field entirely (omit-when-confident convention); only entries
+ * recovered by the `ast_call_sites` reverse lookup -- call sites ScopeResolver could not
+ * resolve into an edge at ingestion time -- carry `edgeSource`, so downstream consumers can
+ * treat them as lower-confidence ("a call to this name exists here", not "this exact
+ * definition is imported").
+ */
+export const BlastRadiusEdgeSources = {
+  LSP_FALLBACK: "lsp-fallback",
+} as const;
+
+export type BlastRadiusEdgeSource =
+  (typeof BlastRadiusEdgeSources)[keyof typeof BlastRadiusEdgeSources];
+
 export interface BlastRadiusEntry {
   name: string;
   type: string;
+  /**
+   * Issue #217: present ONLY on entries recovered from the `ast_call_sites` reverse lookup
+   * (see `BlastRadiusEdgeSources`). A static-edge entry omits the field.
+   */
+  edgeSource?: BlastRadiusEdgeSource;
   /**
    * L3 "why" data (decisions/context) attached to this node, when any exists — populated by
    * `ImpactService.getBlastRadius` from `IL3NodesRepo.getByL2NodeId`. Omitted (not an empty

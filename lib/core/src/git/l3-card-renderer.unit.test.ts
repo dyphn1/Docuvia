@@ -52,6 +52,7 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     extraction_model: "gpt-4o-mini",
     source_files: JSON.stringify(["src/a.ts"]),
     initial_source_commits: JSON.stringify(["commit-1"]),
+    anchor_ranges: null,
     ...overrides,
   };
 }
@@ -168,6 +169,7 @@ describe("renderL3Card / parseL3Card", () => {
   it("falls back to source_commits when initial_source_commits is null (pre-migration row)", () => {
     const row = makeL3({
       initial_source_commits: null,
+      anchor_ranges: null,
       source_commits: JSON.stringify(["only-commit"]),
     });
     const parsed = parseL3Card(renderL3Card(row, "knowledge/src/a.ts.md"));

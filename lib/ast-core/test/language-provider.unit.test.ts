@@ -115,6 +115,59 @@ describe("DefaultProvider", () => {
       provider.deleteQueries(); // no init
       expect(true).toBe(true);
     });
+
+    // A declared pattern that fails to compile and a language that declares no such pattern
+    // both leave the compiled query undefined and both silently fall back to
+    // descendantsOfType. Recording the former is what keeps a real grammar-compat break from
+    // looking identical to "nothing to index here" (issue #192 follow-up).
+    it("records a declared pattern that fails to compile, so the fallback is not silent", () => {
+      vi.mocked(Query).mockImplementationOnce(() => {
+        throw new Error(
+          "Query error at 1:1. Invalid node type export_statement",
+        );
+      });
+
+      provider = new DefaultProvider(mockQueryConfig);
+      provider.initQueries({} as Language);
+
+      const failures = provider.drainQueryCompileFailures();
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.message).toContain("Invalid node type");
+      expect(failures[0]?.pattern).toBeTruthy();
+
+      provider.deleteQueries();
+    });
+
+    it("drains failures so the same one is never reported twice", () => {
+      vi.mocked(Query).mockImplementationOnce(() => {
+        throw new Error("boom");
+      });
+
+      provider = new DefaultProvider(mockQueryConfig);
+      provider.initQueries({} as Language);
+
+      expect(provider.drainQueryCompileFailures()).toHaveLength(1);
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
+
+      provider.deleteQueries();
+    });
+
+    it("records nothing when every declared pattern compiles", () => {
+      provider = new DefaultProvider(mockQueryConfig);
+      provider.initQueries({} as Language);
+
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
+
+      provider.deleteQueries();
+    });
+
+    // The undeclared case must stay silent -- most languages legitimately omit `variables`.
+    it("does not record a failure for a query the language simply does not declare", () => {
+      provider = new DefaultProvider(mockConfig);
+      provider.initQueries({} as Language);
+
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
+    });
   });
 
   describe("Extraction logic", () => {

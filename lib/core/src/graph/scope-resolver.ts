@@ -3,10 +3,11 @@ import * as fs from "fs";
 import type { ILogger } from "@workspace/contracts";
 import {
   createNoopLogger,
-  UTF8_ENCODING,
   NODE_MODULES_DIR_NAME,
+  UTF8_ENCODING,
 } from "@workspace/contracts";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
+import { readFileWithinRoot, resolveWithinRoot } from "../utils/safe-fs.js";
 
 /**
  * Cross-file call/implements/extends edge resolution — the logic `persist-ast-graph.ts` uses
@@ -192,21 +193,13 @@ export class ScopeResolver {
     // 2. Check if it's imported
     const imports = this.importsByFile.get(normalizedSource) || [];
     for (const imp of imports) {
-      if (imp.localName === callName) {
-        const resolvedPath = this.resolveModulePath(
-          normalizedSource,
-          imp.modulePath,
-        );
-        if (resolvedPath) {
-          return {
-            targetFile: resolvedPath,
-            targetSymbol:
-              imp.originalName === WILDCARD_IMPORT_MARKER
-                ? callName
-                : imp.originalName,
-          };
-        }
-      }
+      if (imp.localName !== callName) continue;
+      const resolved = this.resolveImportedBinding(
+        normalizedSource,
+        imp,
+        callName,
+      );
+      if (resolved) return resolved;
     }
 
     // 3. Go packages are directory-scoped: check for a same-directory sibling `.go` file that
@@ -219,6 +212,70 @@ export class ScopeResolver {
       if (goResult) return goResult;
     }
 
+    return null;
+  }
+
+  /** Resolves one matched import descriptor to its defining file: module-path resolution
+   *  followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
+   *  file itself -- the prior behavior floor -- when the chain dead-ends. */
+  private resolveImportedBinding(
+    normalizedSource: string,
+    imp: ImportDescriptor,
+    callName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const resolvedPath = this.resolveModulePath(
+      normalizedSource,
+      imp.modulePath,
+    );
+    if (!resolvedPath) return null;
+
+    const targetSymbol =
+      imp.originalName === WILDCARD_IMPORT_MARKER ? callName : imp.originalName;
+    return (
+      this.resolveReexportTarget(
+        normalizedSource,
+        resolvedPath,
+        targetSymbol,
+      ) ?? {
+        targetFile: resolvedPath,
+        targetSymbol,
+      }
+    );
+  }
+
+  /**
+   * Issue #192 gap 2: follows a barrel re-export chain (`export { X } from "./y"`, made visible
+   * by edge-computer's export_statement descriptors) from `startFile` until the file that actually
+   * declares `symbol` as a local. Bounded by a visited set seeded with `originFile` so mutually
+   * recursive re-exports terminate. Returns null when the chain dead-ends (symbol defined
+   * nowhere along it) -- callers fall back to the pre-chain behavior of targeting the barrel
+   * itself, so this can only improve resolution, never regress it.
+   */
+  private resolveReexportTarget(
+    originFile: string,
+    startFile: string,
+    startSymbol: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    let currentFile = startFile;
+    let currentSymbol = startSymbol;
+    const visitedFiles = new Set<string>([originFile]);
+    while (!visitedFiles.has(currentFile)) {
+      visitedFiles.add(currentFile);
+      if (this.localsByFile.get(currentFile)?.has(currentSymbol)) {
+        return { targetFile: currentFile, targetSymbol: currentSymbol };
+      }
+      const reexport = this.importsByFile
+        .get(currentFile)
+        ?.find((imp) => imp.localName === currentSymbol);
+      if (!reexport) return null;
+      const nextFile = this.resolveModulePath(currentFile, reexport.modulePath);
+      if (!nextFile) return null;
+      currentFile = nextFile;
+      currentSymbol =
+        reexport.originalName === WILDCARD_IMPORT_MARKER
+          ? currentSymbol
+          : reexport.originalName;
+    }
     return null;
   }
 
@@ -318,8 +375,9 @@ export class ScopeResolver {
       /\/$/,
       "",
     );
-    const fullBaseDir = path.join(this.workspaceRoot, baseDir);
-    if (!fs.existsSync(fullBaseDir)) return;
+    // Issue #208: globs come from the analyzed workspace's own config files, so contain them.
+    const fullBaseDir = resolveWithinRoot(this.workspaceRoot, baseDir);
+    if (!fullBaseDir || !fs.existsSync(fullBaseDir)) return;
 
     let entries: fs.Dirent[];
     try {
@@ -359,10 +417,12 @@ export class ScopeResolver {
   /** Reads pnpm-workspace.yaml or package.json#workspaces to find monorepo package globs. */
   private getWorkspaceGlobs(): string[] {
     try {
-      const pnpmWsPath = path.join(this.workspaceRoot, PNPM_WORKSPACE_FILENAME);
-      if (fs.existsSync(pnpmWsPath)) {
-        const content = fs.readFileSync(pnpmWsPath, UTF8_ENCODING);
-        const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(content);
+      const pnpmWsContent = readFileWithinRoot(
+        this.workspaceRoot,
+        PNPM_WORKSPACE_FILENAME,
+      );
+      if (pnpmWsContent) {
+        const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(pnpmWsContent);
         if (block) {
           const globs = [
             ...block[1].matchAll(/^\s*-\s+["']?([^"'\n#]+?)["']?\s*$/gm),
@@ -371,12 +431,12 @@ export class ScopeResolver {
         }
       }
 
-      const pkgJsonPath = path.join(
+      const pkgJsonContent = readFileWithinRoot(
         this.workspaceRoot,
         ConfigFilenames.PACKAGE_JSON,
       );
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      if (pkgJsonContent) {
+        const pkgJson = JSON.parse(pkgJsonContent);
         if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
         if (Array.isArray(pkgJson.workspaces?.packages))
           return pkgJson.workspaces.packages;
@@ -429,22 +489,22 @@ export class ScopeResolver {
     subpath: string | undefined,
   ): string | null {
     try {
-      const pkgJsonPath = path.join(
+      // Issue #208: pkgName comes from an arbitrary import specifier, so the joined path is
+      // containment-checked before any fs access.
+      const pkgJsonContent = readFileWithinRoot(
         this.workspaceRoot,
-        NODE_MODULES_DIR_NAME,
-        pkgName,
-        ConfigFilenames.PACKAGE_JSON,
+        path.join(NODE_MODULES_DIR_NAME, pkgName, ConfigFilenames.PACKAGE_JSON),
       );
-      if (!fs.existsSync(pkgJsonPath)) return null;
+      if (!pkgJsonContent) return null;
 
-      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      const pkgJson = JSON.parse(pkgJsonContent);
       const entry: string =
         subpath ||
         pkgJson.module ||
         pkgJson.main ||
         DEFAULT_PACKAGE_ENTRY_FILENAME;
       const relPath = path.posix.join(NODE_MODULES_DIR_NAME, pkgName, entry);
-      if (fs.existsSync(path.join(this.workspaceRoot, relPath))) return relPath;
+      if (resolveWithinRoot(this.workspaceRoot, relPath)) return relPath;
       return null;
     } catch {
       // Ignore unreadable/invalid package.json
@@ -469,29 +529,45 @@ export class ScopeResolver {
    */
   private static readonly COMPILED_JS_EXTENSION_PATTERN = /\.(m|c)?jsx?$/;
 
-  private findFileWithExtension(basePath: string): string | null {
-    const fullBasePath = path.join(this.workspaceRoot, basePath);
-    if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile())
-      return basePath;
-
-    for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
-      if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
+  /** First of `candidates` (workspace-relative paths) whose containment-resolved absolute form
+   *  exists — returns the candidate itself, or null. With `requireFile`, also demands a regular
+   *  file (`statSync().isFile()`), mirroring the old exact-match branch. Keeps the containment
+   *  check (issue #208) in one place so no candidate can bypass it. */
+  private firstExisting(
+    candidates: string[],
+    requireFile = false,
+  ): string | null {
+    for (const rel of candidates) {
+      const full = resolveWithinRoot(this.workspaceRoot, rel);
+      if (!full || !fs.existsSync(full)) continue;
+      if (requireFile && !fs.statSync(full).isFile()) continue;
+      return rel;
     }
+    return null;
+  }
+
+  private findFileWithExtension(basePath: string): string | null {
+    const exact = this.firstExisting([basePath], true);
+    if (exact) return exact;
+
+    const withExt = this.firstExisting(
+      RESOLVABLE_FILE_EXTENSIONS.map((ext) => basePath + ext),
+    );
+    if (withExt) return withExt;
 
     if (ScopeResolver.COMPILED_JS_EXTENSION_PATTERN.test(basePath)) {
       const stem = basePath.replace(
         ScopeResolver.COMPILED_JS_EXTENSION_PATTERN,
         "",
       );
-      const fullStem = path.join(this.workspaceRoot, stem);
-      for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
-        if (fs.existsSync(fullStem + ext)) return stem + ext;
-      }
+      const stemHit = this.firstExisting(
+        RESOLVABLE_FILE_EXTENSIONS.map((ext) => stem + ext),
+      );
+      if (stemHit) return stemHit;
     }
 
-    for (const ext of RESOLVABLE_INDEX_SUFFIXES) {
-      if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
-    }
-    return null; // unresolved
+    return this.firstExisting(
+      RESOLVABLE_INDEX_SUFFIXES.map((suffix) => basePath + suffix),
+    );
   }
 }

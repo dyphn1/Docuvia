@@ -923,6 +923,58 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(row!.content_hash).toBeTruthy();
   });
 
+  it("l3 repo: upsertDecision() stores region anchors on a fresh insert (issue #68), leaves them untouched on the dedup path, and omits them when not captured", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const baseInput = {
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await rather than raw promise chains.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "abc123",
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    };
+
+    // Without capture: NULL ("unknown region"), never an empty confirmed range.
+    const uncaptured = store.l3.upsertDecision({ ...baseInput });
+    expect(store.l3.getById(uncaptured.id)!.anchor_ranges).toBeNull();
+
+    const withAnchors = store.l3.upsertDecision({
+      ...baseInput,
+      title: "Second distinct decision",
+      content: "Different claim entirely.",
+      anchorRanges: [{ path: "src/a.ts", startRow: 9, endRow: 14 }],
+    });
+    const anchoredRow = store.l3.getById(withAnchors.id)!;
+    expect(JSON.parse(anchoredRow.anchor_ranges!)).toEqual([
+      { path: "src/a.ts", startRow: 9, endRow: 14 },
+    ]);
+
+    // Dedup/occurrence-bump path must not touch the existing row's anchors.
+    store.l3.upsertDecision({
+      ...baseInput,
+      title: "Second distinct decision",
+      content: "Different claim entirely.",
+      anchorRanges: [{ path: "src/a.ts", startRow: 0, endRow: 0 }],
+    });
+    const afterDedup = store.l3.getById(withAnchors.id)!;
+    expect(afterDedup.occurrence_count).toBe(2);
+    expect(JSON.parse(afterDedup.anchor_ranges!)).toEqual([
+      { path: "src/a.ts", startRow: 9, endRow: 14 },
+    ]);
+  });
+
   it("l3 repo: upsertDecision() bumps occurrence_count and appends a new commit sha instead of duplicating the row on a content_hash match", () => {
     const project = store.projects.insert({
       name: "demo",
@@ -1455,6 +1507,71 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
         .getForFiles(projectA.id, ["src/shared.ts"])
         .get("src/shared.ts"),
     ).toEqual([{ targetFunction: "foo", startLine: 0, startColumn: 0 }]);
+  });
+
+  it("callSites repo: getByTargetFunctions() reverse-reads by callee name, keyed by the calling file (issue #217 impact fallback)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+
+    // No rows yet -- absent from the map, not present with an empty array (same convention
+    // as getForFiles), and an empty target list short-circuits without touching the DB.
+    expect(
+      store.callSites.getByTargetFunctions(project.id, ["loadPlugin"]),
+    ).toEqual(new Map());
+    expect(store.callSites.getByTargetFunctions(project.id, [])).toEqual(
+      new Map(),
+    );
+
+    store.callSites.insertMany(project.id, "src/host.ts", [
+      // The unresolved-dynamic-loading shape issue #217 targets: a call site whose
+      // ScopeResolver resolution failed still has its row here.
+      { targetFunction: "loadPlugin", startLine: 10, startColumn: 4 },
+      { targetFunction: "loadPlugin", startLine: 20, startColumn: 2 },
+      { targetFunction: "other", startLine: 30, startColumn: 0 },
+    ]);
+    store.callSites.insertMany(project.id, "src/other-host.ts", [
+      { targetFunction: "loadPlugin", startLine: 5, startColumn: 8 },
+    ]);
+
+    const result = store.callSites.getByTargetFunctions(project.id, [
+      "loadPlugin",
+      "never-called-anywhere",
+    ]);
+
+    expect(result.size).toBe(2);
+    expect(result.get("src/host.ts")).toEqual([
+      { startLine: 10, startColumn: 4 },
+      { startLine: 20, startColumn: 2 },
+    ]);
+    expect(result.get("src/other-host.ts")).toEqual([
+      { startLine: 5, startColumn: 8 },
+    ]);
+  });
+
+  it("callSites repo: getByTargetFunctions() scopes by projectId -- a call site inserted for one project is invisible to another", () => {
+    const projectA = store.projects.insert({
+      name: "a",
+      repoUrl: "file:///a",
+    });
+    const projectB = store.projects.insert({
+      name: "b",
+      repoUrl: "file:///b",
+    });
+
+    store.callSites.insertMany(projectA.id, "src/shared.ts", [
+      { targetFunction: "foo", startLine: 0, startColumn: 0 },
+    ]);
+
+    expect(store.callSites.getByTargetFunctions(projectB.id, ["foo"])).toEqual(
+      new Map(),
+    );
+    expect(
+      store.callSites
+        .getByTargetFunctions(projectA.id, ["foo"])
+        .get("src/shared.ts"),
+    ).toEqual([{ startLine: 0, startColumn: 0 }]);
   });
 
   it("callSites repo: deleteForFile() removes only that (project, file)'s rows, leaving other files' rows intact (delete-then-reinsert-on-reparse symmetry)", () => {

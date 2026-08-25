@@ -30,6 +30,7 @@ export type {
   ChangedFileStatus,
   DiffLineRange,
   IGitProvider,
+  ILineBlameProvider,
   WorktreeEntry,
 } from "./interfaces/git.interfaces.js";
 export { ChangedFileStatuses } from "./interfaces/git.interfaces.js";
@@ -86,6 +87,7 @@ export type {
   NodeLinkRow,
   L2NodeL1TagRow,
   L3NodeRow,
+  L3AnchorRange,
   L2NodeWithL3Children,
   IProjectsRepo,
   IProjectFilesRepo,
@@ -148,9 +150,15 @@ export {
   CHAT_TOOL_TYPE,
   ChatToolChoiceModes,
 } from "./interfaces/llm-client.interfaces.js";
-export { RiskLevels } from "./interfaces/impact.interfaces.js";
+export {
+  RiskLevels,
+  EpistemicLevels,
+  BlastRadiusEdgeSources,
+} from "./interfaces/impact.interfaces.js";
 export type {
   RiskLevel,
+  EpistemicLevel,
+  BlastRadiusEdgeSource,
   BlastRadiusEntry,
   IImpactService,
 } from "./interfaces/impact.interfaces.js";
@@ -164,6 +172,7 @@ export type {
   TierBCoverageHint,
   LocalSearchResult,
   LocalQueryResult,
+  LocalQueryResultL3Entry,
   QueryResultLayer,
   QueryMatchType,
   IQueryService,
@@ -237,7 +246,13 @@ export {
   ConfigDetectionTags,
 } from "./constants/discovery-tags.js";
 
-export { UTF8_ENCODING } from "./constants/encoding.js";
+export {
+  UTF8_ENCODING,
+  ENCODING_HEX,
+  ENCODING_BASE64,
+  HASH_ALGO_SHA256,
+  HASH_ALGO_MD5,
+} from "./constants/encoding.js";
 export {
   GIT_DEFAULT_REMOTE_NAME,
   GitConstants,

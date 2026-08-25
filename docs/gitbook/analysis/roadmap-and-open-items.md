@@ -470,7 +470,12 @@ call is never persisted as a 'calls' link"`) now asserts the `calls` link IS per
 > `_test`-package caveat above, this one isn't yet noted inline in the new code — flagged here as a
 > candidate follow-up, not fixed. Aside: `docuvia impact` on `scope-resolver.ts` returned "No
 > dependents found" this session despite the file clearly being used elsewhere — a known gap in the
-> impact tool's own dependency tracking, not evidence this file is dead code.
+> impact tool's own dependency tracking, not evidence this file is dead code. Issue #217's
+> `ast_call_sites` blast-radius fallback now recovers the _same-named call-site_ half of this gap
+> (receiver-method calls across files surface as `edgeSource: "lsp-fallback"` entries); what
+> remains open here is that Tier A's call extractor does not index constructor-call sites
+> (`new ScopeResolver(...)` produces no `ast_call_sites` row), so class-consumer edges still need
+> the extractor change tracked under issue #192.
 
 Found 2026-08-04 while investigating a topology-collapse symptom flagged in the Go benchmark pass
 (full detail: [`go-cli-benchmark.md`](../../cli-test-analysis/go-cli-benchmark.md) §1.5, summary in

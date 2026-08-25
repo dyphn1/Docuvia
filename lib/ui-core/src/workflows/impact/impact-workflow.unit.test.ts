@@ -57,7 +57,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       upsertFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
-      getTierBCoverage: vi.fn(),
+      // Full-coverage default -- issue #192's epistemic ladder treats unreadable counts as
+      // incomplete, which would flag every result lower-bound; tests exercising the partial
+      // path override this explicitly.
+      getTierBCoverage: vi
+        .fn()
+        .mockReturnValue({ totalFiles: 10, processedFiles: 10 }),
     },
     tags: {
       upsertTag: vi.fn(),
@@ -91,6 +96,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -98,6 +104,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
@@ -177,7 +184,7 @@ describe("ImpactWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(2);
   });
 
-  it("attaches tierBCoverage when the blast radius is empty and workspace Tier B coverage is incomplete (typescript-cli-benchmark.md §5.3/§5.7 item 2)", async () => {
+  it("attaches tierBCoverage and an UNKNOWN risk verdict when the blast radius is empty and workspace Tier B coverage is incomplete (typescript-cli-benchmark.md §5.3/§5.7 item 2 + issue #192)", async () => {
     const store = makeMockStore({
       graph: {
         ...makeMockStore().graph,
@@ -229,12 +236,14 @@ describe("ImpactWorkflow.execute()", () => {
 
     expect(result).toEqual({
       blastRadius: [],
-      riskLevel: "LOW",
+      riskLevel: "UNKNOWN",
+      epistemic: "lower-bound",
+      riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(3, 10),
       tierBCoverage: tierBCoverageHint,
     });
   });
 
-  it("omits tierBCoverage when the blast radius is empty but workspace Tier B coverage is complete (confirmed zero, matches today's ImpactResult shape exactly)", async () => {
+  it("reports UNKNOWN (never a confident LOW) when the blast radius is empty even at full Tier B coverage -- static edges only model calls/extends/implements, so zero is never trusted (issue #192)", async () => {
     const store = makeMockStore({
       graph: {
         ...makeMockStore().graph,
@@ -275,7 +284,12 @@ describe("ImpactWorkflow.execute()", () => {
       createMockLogger(),
     ).execute("target");
 
-    expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+    expect(result).toEqual({
+      blastRadius: [],
+      riskLevel: "UNKNOWN",
+      epistemic: "lower-bound",
+      riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+    });
     expect(result && "tierBCoverage" in result).toBe(false);
   });
 
@@ -299,7 +313,7 @@ describe("ImpactWorkflow.execute()", () => {
       return { store, impactService };
     }
 
-    it("attaches the note when the blast radius is empty and the resolved node's own file uses the docuviaFactory/TOKENS registry pattern -- issue #136's exact false-LOW repro", async () => {
+    it("attaches the note when the blast radius is empty and the resolved node's own file uses the docuviaFactory/TOKENS registry pattern -- issue #136's exact false-LOW repro, now surfaced as riskNote (issue #192)", async () => {
       const { store, impactService } = makeStoreWithTargetNode([], {
         id: 1,
         name: "someSymbol",
@@ -327,14 +341,17 @@ describe("ImpactWorkflow.execute()", () => {
         path.join("/workspace/demo", "lib/contracts/src/index.ts"),
         expect.any(String),
       );
+      // The epistemic ladder picked the registry wording as riskNote, so the standalone
+      // coverageNote is suppressed (same sentence twice adds nothing).
       expect(result).toEqual({
         blastRadius: [],
-        riskLevel: "LOW",
-        coverageNote: IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE,
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE,
       });
     });
 
-    it("omits the note when the blast radius is empty but the file has no registry pattern -- 'no dependents' is a confident LOW here", async () => {
+    it("reports UNKNOWN with the static-edges-only note when the blast radius is empty and the file has no registry pattern -- 'no dependents' is never a confident LOW (issue #192)", async () => {
       const { store, impactService } = makeStoreWithTargetNode([], {
         id: 1,
         name: "plainSymbol",
@@ -358,11 +375,16 @@ describe("ImpactWorkflow.execute()", () => {
         createMockLogger(),
       ).execute("plainSymbol");
 
-      expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+      expect(result).toEqual({
+        blastRadius: [],
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      });
       expect(result && "coverageNote" in result).toBe(false);
     });
 
-    it("omits the note when the file can't be read (deleted on disk / path mismatch) -- an unreadable file is never an error, just no note", async () => {
+    it("reports UNKNOWN with the static-edges-only note when the file can't be read (deleted on disk / path mismatch) -- an unreadable file is never an error, just no registry hedge", async () => {
       const { store, impactService } = makeStoreWithTargetNode([], {
         id: 1,
         name: "ghostSymbol",
@@ -384,11 +406,16 @@ describe("ImpactWorkflow.execute()", () => {
         createMockLogger(),
       ).execute("ghostSymbol");
 
-      expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+      expect(result).toEqual({
+        blastRadius: [],
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      });
       expect(result && "coverageNote" in result).toBe(false);
     });
 
-    it("omits the note when the blast radius is non-empty even if the file uses the registry -- a real blast radius is a confident answer", async () => {
+    it("omits the note when the blast radius is non-empty even if the file uses the registry -- a real blast radius at full coverage is an exact answer", async () => {
       const { store, impactService } = makeStoreWithTargetNode(
         [{ name: "dependent", type: "module" }],
         {

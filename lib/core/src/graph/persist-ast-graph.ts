@@ -102,6 +102,11 @@ export class GraphPersisterService implements IGraphPersister {
         locals.push(...result.data.functions.map((f) => f.name));
       if (result.data.classes)
         locals.push(...result.data.classes.map((c) => c.name));
+      // Issue #192 gap 1: exported consts count as local symbols too -- without them a barrel
+      // re-exporting a const can't be chained to the defining file, and resolveCall's own-file
+      // check misses them.
+      if (result.data.variables)
+        locals.push(...result.data.variables.map((v) => v.name));
       resolver.registerFile(result.file, result.data.imports || [], [], locals);
     }
   }
@@ -175,6 +180,14 @@ export class GraphPersisterService implements IGraphPersister {
         usedNodeKeys,
       );
       this.insertClassNodes(
+        store,
+        projectId,
+        result,
+        fileId,
+        symbolsForFile,
+        usedNodeKeys,
+      );
+      this.insertVariableNodes(
         store,
         projectId,
         result,
@@ -257,6 +270,42 @@ export class GraphPersisterService implements IGraphPersister {
       store.graph.insertLink({
         sourceNodeId: fileId,
         targetNodeId: clsId,
+        linkType: LinkTypes.CONTAINS,
+      });
+    }
+  }
+
+  /** Issue #192 gap 1: exported `const X = ...` declarations become symbol nodes (same
+   *  MODULE type + `${file}#${name}` key convention as functions/classes -- identity is carried
+   *  entirely by the key, so no new node type is needed) so impact/query can resolve them. */
+  private insertVariableNodes(
+    store: IGraphStore,
+    projectId: number,
+    result: ParsedAstFileResult,
+    fileId: number,
+    symbolsForFile: Map<string, number>,
+    usedNodeKeys: Set<string>,
+  ): void {
+    for (const variable of result.data.variables ?? []) {
+      const nodeKey = buildUniqueNodeKey(
+        usedNodeKeys,
+        `${result.file}#${variable.name}`,
+        variable.startLine,
+      );
+      usedNodeKeys.add(nodeKey);
+      const variableId = store.graph.insertNode({
+        projectId,
+        name: variable.name,
+        type: L2NodeTypes.MODULE,
+        description: "",
+        pathPatterns: [result.file],
+        nodeKey,
+        contentHash: variable.contentHash,
+      });
+      symbolsForFile.set(variable.name, variableId);
+      store.graph.insertLink({
+        sourceNodeId: fileId,
+        targetNodeId: variableId,
         linkType: LinkTypes.CONTAINS,
       });
     }
@@ -365,6 +414,66 @@ export class GraphPersisterService implements IGraphPersister {
         spawn.targetPath,
       );
     }
+    this.linkReexports(
+      store,
+      resolver,
+      result,
+      sourceFileId,
+      fileIdMap,
+      symbolIdMap,
+    );
+  }
+
+  /** Issue #192 gap 2: a barrel re-export (`export { X } from "../deep/util"`) is a real
+   *  file-level dependency -- the barrel breaks if its source moves, even though it has no call
+   *  sites. Resolves the descriptor through the ScopeResolver (whose re-export chaining lands on
+   *  the defining file) and inserts a `depends_on` edge from the barrel's FILE node. */
+  private linkReexports(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    result: ParsedAstFileResult,
+    sourceFileId: number,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+  ): void {
+    for (const imp of result.data.imports ?? []) {
+      if (!imp.viaReexport) continue;
+      this.linkReexport(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        fileIdMap,
+        symbolIdMap,
+        imp.localName,
+      );
+    }
+  }
+
+  private linkReexport(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    sourceFile: string,
+    sourceFileId: number,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    localName: string,
+  ): void {
+    const resolved = resolver.resolveCall(sourceFile, localName);
+    if (!resolved) return;
+    const targetNodeId = this.resolveTargetNodeId(
+      store,
+      fileIdMap,
+      symbolIdMap,
+      resolved.targetFile,
+      resolved.targetSymbol,
+    );
+    if (!targetNodeId || targetNodeId === sourceFileId) return;
+    store.graph.insertLink({
+      sourceNodeId: sourceFileId,
+      targetNodeId,
+      linkType: LinkTypes.DEPENDS_ON,
+    });
   }
 
   /** Resolves one `new Worker(<path>)` spawn site (TS/JS only — see `ast-worker.ts`'s

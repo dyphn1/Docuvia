@@ -37,6 +37,20 @@ export async function retryTransientFsRace<T>(
   throw lastErr;
 }
 
+/** Removes a temporary repo directory, retrying the transient Windows race where a just-killed
+ *  git child process (fast-import, gc, ...) briefly still holds file handles inside .git --
+ *  an immediate delete then fails with EPERM/EBUSY (surfaced as the PR CI windows-latest flake).
+ *  Mirrors the retry semantics of fs.promises.rm's maxRetries, centralized here so every
+ *  afterEach cleans up the same way instead of half the suite rolling its own. */
+export async function removeTempDir(dir: string): Promise<void> {
+  await fs.promises.rm(dir, {
+    recursive: true,
+    force: true,
+    maxRetries: 8,
+    retryDelay: 250,
+  });
+}
+
 export interface TempGitRepo {
   dir: string;
   provider: GitLocalProvider;

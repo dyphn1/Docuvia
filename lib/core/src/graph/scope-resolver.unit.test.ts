@@ -187,4 +187,203 @@ describe("ScopeResolver", () => {
     const result = resolver.resolveCall("b.ts", "foo");
     expect(result).toBeNull();
   });
+
+  it("refuses to resolve a tsconfig path alias that traverses outside the workspace root (issue #208)", () => {
+    // A malicious/compromised tsconfig maps an alias at "../../secrets" -- even though such a
+    // file "exists" (mocked), the containment check must reject the escape instead of reading it.
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json")) return true;
+      return sp.includes("/secrets/");
+    });
+    vi.spyOn(fs, "readFileSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json")) {
+        return JSON.stringify({
+          compilerOptions: {
+            paths: { "@evil/*": ["../../secrets"] },
+          },
+        });
+      }
+      return "";
+    });
+    vi.spyOn(fs, "statSync").mockImplementation(((p: any) => {
+      if (String(p).includes("/secrets/")) {
+        return { isFile: () => true };
+      }
+      throw new Error(`File not found: ${p}`);
+    }) as any);
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile(
+      "src/consumer.ts",
+      [
+        {
+          localName: "steal",
+          originalName: "steal",
+          modulePath: "@evil/keychain",
+        },
+      ],
+      [],
+      [],
+    );
+
+    expect(resolver.resolveCall("src/consumer.ts", "steal")).toBeNull();
+  });
+
+  // ── Issue #192 gap 2: barrel re-export chains ──────────────────────────
+  function mockBarrelFilesystem(): void {
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json"))
+        return false;
+      if (sp.endsWith("src/mid/index.ts")) return true;
+      if (sp.endsWith("src/deep/util.ts")) return true;
+      return false;
+    });
+  }
+
+  it("resolves an import through a barrel re-export to the defining file (issue #192 gap 2)", () => {
+    mockBarrelFilesystem();
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/deep/util.ts", [], [], ["evalChainHelper"]);
+    // The barrel itself defines nothing but re-exports the symbol from ../deep/util.
+    resolver.registerFile(
+      "src/mid/index.ts",
+      [
+        {
+          localName: "evalChainHelper",
+          originalName: "evalChainHelper",
+          modulePath: "../deep/util",
+        },
+      ],
+      [],
+      [],
+    );
+    resolver.registerFile(
+      "src/app-main.ts",
+      [
+        {
+          localName: "evalChainHelper",
+          originalName: "evalChainHelper",
+          modulePath: "./mid",
+        },
+      ],
+      [],
+      [],
+    );
+
+    const result = resolver.resolveCall("src/app-main.ts", "evalChainHelper");
+    expect(result).toEqual({
+      targetFile: "src/deep/util.ts",
+      targetSymbol: "evalChainHelper",
+    });
+  });
+
+  it("follows the re-export alias back to the ORIGINAL name in the defining file (export { A as B })", () => {
+    mockBarrelFilesystem();
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/deep/util.ts", [], [], ["originalName"]);
+    resolver.registerFile(
+      "src/mid/index.ts",
+      [
+        {
+          localName: "outwardAlias",
+          originalName: "originalName",
+          modulePath: "../deep/util",
+        },
+      ],
+      [],
+      [],
+    );
+    resolver.registerFile(
+      "src/consumer.ts",
+      [
+        {
+          localName: "outwardAlias",
+          originalName: "outwardAlias",
+          modulePath: "./mid",
+        },
+      ],
+      [],
+      [],
+    );
+
+    expect(resolver.resolveCall("src/consumer.ts", "outwardAlias")).toEqual({
+      targetFile: "src/deep/util.ts",
+      targetSymbol: "originalName",
+    });
+  });
+
+  it("falls back to the barrel file itself when the re-export chain dead-ends (prior behavior floor)", () => {
+    mockBarrelFilesystem();
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    // util does NOT define evalChainHelper; the re-export points nowhere real.
+    resolver.registerFile("src/deep/util.ts", [], [], []);
+    resolver.registerFile(
+      "src/mid/index.ts",
+      [
+        {
+          localName: "evalChainHelper",
+          originalName: "evalChainHelper",
+          modulePath: "../deep/util",
+        },
+      ],
+      [],
+      [],
+    );
+    resolver.registerFile(
+      "src/app-main.ts",
+      [
+        {
+          localName: "evalChainHelper",
+          originalName: "evalChainHelper",
+          modulePath: "./mid",
+        },
+      ],
+      [],
+      [],
+    );
+
+    const result = resolver.resolveCall("src/app-main.ts", "evalChainHelper");
+    expect(result).toEqual({
+      targetFile: "src/mid/index.ts",
+      targetSymbol: "evalChainHelper",
+    });
+  });
+
+  it("guards against mutually-recursive re-export cycles (terminates, no infinite loop)", () => {
+    mockBarrelFilesystem();
+
+    const reExportFooFromB = [
+      { localName: "foo", originalName: "foo", modulePath: "../b/b" },
+    ];
+    const reExportFooFromA = [
+      { localName: "foo", originalName: "foo", modulePath: "../a/a" },
+    ];
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/a/a.ts", reExportFooFromB, [], []);
+    resolver.registerFile("src/b/b.ts", reExportFooFromA, [], []);
+    resolver.registerFile(
+      "src/consumer.ts",
+      [{ localName: "foo", originalName: "foo", modulePath: "./a/a" }],
+      [],
+      [],
+    );
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json"))
+        return false;
+      if (sp.endsWith("src/a/a.ts") || sp.endsWith("src/b/b.ts")) return true;
+      return false;
+    });
+
+    const result = resolver.resolveCall("src/consumer.ts", "foo");
+    // Falls back to the first hop's file rather than looping forever -- same floor as a
+    // dead-ending chain.
+    expect(result?.targetFile).toBe("src/a/a.ts");
+  });
 });

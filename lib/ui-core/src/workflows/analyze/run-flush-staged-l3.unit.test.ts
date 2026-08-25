@@ -112,9 +112,13 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     l3: {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
-      getByL2NodeId: vi.fn(),
+      // Contract: getByL2NodeId always returns an array (possibly empty) -- the default
+      // reflects that instead of undefined, so code relying on the contract fails loudly
+      // rather than being defensively papered over.
+      getByL2NodeId: vi.fn().mockReturnValue([]),
       upsertDecision: vi.fn().mockReturnValue({ id: 1, deduped: false }),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -122,6 +126,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
@@ -481,5 +486,101 @@ describe("runFlushStagedL3", () => {
       stillPending: 0,
       noGraphToAttach: false,
     });
+  });
+
+  it("warns on a same-anchor contradiction but still flushes (issue #68 -- warn, never block)", async () => {
+    writeHooksConfig(tmpDir, true);
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "src", "a.ts"), "export const a = 1;\n");
+    await stagePendingDecisions(
+      tmpDir,
+      "src/a.ts",
+      [
+        {
+          title: "Agent-authored decision",
+          nodeType: "decision",
+          content: "Divergent rewrite of the same claim.",
+          confidence: 0.9,
+        },
+      ],
+      createMockLogger(),
+    );
+
+    const store = makeMockStore();
+    // An existing decision on the same anchor making the same titled claim with different
+    // content -- exactly the deterministic contradiction rule's trigger shape.
+    store.l3.getByL2NodeId = vi.fn().mockReturnValue([
+      {
+        id: 42,
+        l2_node_id: 1,
+        title: "agent-authored DECISION",
+        content: "Original wording.",
+        node_type: "decision",
+        source_commits: "[]",
+        commit_hash: "feed0000",
+        ai_generated: 1,
+        confidence: 0.9,
+        noise_score: null,
+        created_at: "2026-08-23 00:00:00",
+        last_verified_at: null,
+        occurrence_count: 1,
+        introduced_in_commit: null,
+        verified_until_commit: null,
+        validity_status: "pending",
+        source: "analyze",
+        content_hash: null,
+        extraction_model: null,
+        source_files: null,
+        initial_source_commits: null,
+        anchor_ranges: null,
+      },
+    ]);
+    registerPersistenceMocks(store, {
+      getHeadSha: vi.fn().mockResolvedValue(HEAD_SHA),
+      getFilesChangedByCommit: vi.fn().mockResolvedValue(["src/a.ts"]),
+    });
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    const result = await runFlushStagedL3({ workspaceRoot: tmpDir, logger });
+
+    // The write proceeds -- the warning never blocks the flush.
+    expect(result).toMatchObject({ flushed: 1, deduped: 0 });
+    expect(store.l3.upsertDecision).toHaveBeenCalledTimes(1);
+    expect(
+      logger.events.some(
+        (e) =>
+          e.level === "warn" &&
+          e.message.includes("conflicts with an existing analyze decision"),
+      ),
+    ).toBe(true);
+  });
+
+  it("flushes silently when nothing on the anchor contradicts (issue #68 check is quiet on clean anchors)", async () => {
+    writeHooksConfig(tmpDir, true);
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "src", "a.ts"), "export const a = 1;\n");
+    await stagePendingDecisions(
+      tmpDir,
+      "src/a.ts",
+      oneDecision,
+      createMockLogger(),
+    );
+
+    const store = makeMockStore();
+    store.l3.getByL2NodeId = vi.fn().mockReturnValue([]);
+    registerPersistenceMocks(store, {
+      getHeadSha: vi.fn().mockResolvedValue(HEAD_SHA),
+      getFilesChangedByCommit: vi.fn().mockResolvedValue(["src/a.ts"]),
+    });
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    const result = await runFlushStagedL3({ workspaceRoot: tmpDir, logger });
+
+    expect(result).toMatchObject({ flushed: 1 });
+    expect(
+      logger.events.some((e) => e.message.includes("conflicts with")),
+    ).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import type { ILogger } from "../logging/types.js";
 import type { IGitProvider } from "../interfaces/git.interfaces.js";
+import type { ILineBlameProvider } from "../interfaces/git.interfaces.js";
 import type { IKnowledgeGitService } from "../interfaces/knowledge-git.interfaces.js";
 import type {
   IConfigScanner,
@@ -65,6 +66,8 @@ type KnowledgeGitServiceParams = LoggerParams & {
  */
 export const TOKENS = {
   GitProvider: createToken<IGitProvider>("IGitProvider"),
+  /** Per-line blame ownership (issue #68) — implemented by the same GitLocalProvider instance factory as `GitProvider`, registered separately because it is a narrow analysis-read capability with one consumer (the L3 validity pass). */
+  LineBlameProvider: createToken<ILineBlameProvider>("ILineBlameProvider"),
   KnowledgeGitService: createToken<
     IKnowledgeGitService,
     KnowledgeGitServiceParams

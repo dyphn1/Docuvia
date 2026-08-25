@@ -96,4 +96,45 @@ export class CallSitesRepo implements ICallSitesRepo {
 
     return result;
   }
+
+  /** Issue #217's impact fallback read-back -- see `ICallSitesRepo.getByTargetFunctions`'s doc
+   *  comment. Mirrors `getForFiles`'s prepared-statement/IN-clause idiom, keyed by the calling
+   *  file instead of filtered by it. Backed by `0011_ast_call_sites_target_idx.sql`. */
+  getByTargetFunctions(
+    projectId: number,
+    targetFunctions: string[],
+  ): Map<string, Array<{ startLine: number; startColumn: number }>> {
+    const result = new Map<
+      string,
+      Array<{ startLine: number; startColumn: number }>
+    >();
+    if (targetFunctions.length === 0) return result;
+
+    const placeholders = targetFunctions.map(() => "?").join(",");
+    const rows = this.db
+      .prepare(
+        `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}
+         FROM ${SchemaTables.AST_CALL_SITES}
+         WHERE ${SchemaColumns.PROJECT_ID} = ? AND ${SchemaColumns.TARGET_FUNCTION} IN (${placeholders})`,
+      )
+      .all(projectId, ...targetFunctions) as Pick<
+      AstCallSiteRow,
+      "file_path" | "start_line" | "start_column"
+    >[];
+
+    for (const row of rows) {
+      const entry = {
+        startLine: row.start_line,
+        startColumn: row.start_column,
+      };
+      const existing = result.get(row.file_path);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        result.set(row.file_path, [entry]);
+      }
+    }
+
+    return result;
+  }
 }

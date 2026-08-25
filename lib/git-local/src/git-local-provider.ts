@@ -79,6 +79,8 @@ const GIT_SUBCOMMAND = {
   PUSH: "push",
   MERGE_BASE: "merge-base",
   WORKTREE: "worktree",
+  /** `blame --porcelain` — per-line owning-commit attribution (see `getBlameLineOwners`). */
+  BLAME: "blame",
 } as const;
 
 /** Git CLI flags/arguments (beyond the subcommand name itself) this provider shells out with. */
@@ -1293,5 +1295,49 @@ export class GitLocalProvider implements IGitProvider {
     const gitDir = await this.getGitDir(cwd);
     const lockPath = path.join(gitDir, KNOWLEDGE_LOCK_FILE_NAME);
     await fs.rm(lockPath, { force: true });
+  }
+
+  public async getBlameLineOwners(
+    cwd: string,
+    filePath: string,
+  ): Promise<Map<number, string>> {
+    const owners = new Map<number, string>();
+    try {
+      // `--porcelain` (machine-readable, stable across git versions and locales; LC_ALL=C is
+      // pinned by execFileAsync anyway) over `-l`: the long form is for humans. Each line entry
+      // reads `<sha> <origLine> <finalLine>[ <count>]`; a count N means this sha owns final
+      // lines finalLine..finalLine+N-1.
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.BLAME,
+          GIT_ARG.PORCELAIN,
+          GIT_ARG.PATHSPEC_SEPARATOR,
+          filePath,
+        ],
+        { cwd },
+      );
+
+      // Optional `^` prefix marks a boundary commit (blame's history walk limit) -- still a
+      // real owning commit, so strip it rather than dropping those lines as unknown.
+      const entryRe = /^\^?([0-9a-f]{40}) (\d+) (\d+)(?: (\d+))?$/;
+      for (const line of stdout.split("\n")) {
+        const match = entryRe.exec(line);
+        if (!match) continue;
+        const sha = match[1];
+        const firstFinalLine = Number(match[3]);
+        const count = match[4] === undefined ? 1 : Number(match[4]);
+        if (!owners.has(firstFinalLine)) {
+          owners.set(firstFinalLine, sha);
+        }
+        for (let l = firstFinalLine + 1; l < firstFinalLine + count; l++) {
+          if (!owners.has(l)) owners.set(l, sha);
+        }
+      }
+    } catch {
+      // A nonexistent file/path or unavailable git yields no ownership data — callers treat
+      // that as "unknown", never a fatal error (mirrors getChangedLineRanges' contract).
+    }
+    return owners;
   }
 }

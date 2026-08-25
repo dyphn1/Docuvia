@@ -14,6 +14,7 @@ import {
   KNOWLEDGE_BRANCH,
   createTempGitRepo,
   git,
+  removeTempDir,
   retryTransientFsRace,
   type TempGitRepo,
 } from "./git-local-fixtures.test-support.js";
@@ -29,8 +30,10 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     provider = repo.provider;
   }, 60_000);
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  afterEach(async () => {
+    // A timed-out runFastImport's killed fast-import child can still hold .git handles for a
+    // moment on Windows -- an immediate sync rm fails EPERM, so retry (removeTempDir).
+    await removeTempDir(tmpDir);
   });
 
   it("isGitRepository returns true inside a git repo and false otherwise", async () => {
@@ -673,18 +676,8 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
   }, 60_000);
 
   afterEach(async () => {
-    await fs.promises.rm(tmpDir, {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-      retryDelay: 100,
-    });
-    await fs.promises.rm(remoteDir, {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-      retryDelay: 100,
-    });
+    await removeTempDir(tmpDir);
+    await removeTempDir(remoteDir);
   });
 
   it("pushRef publishes the branch, fetchRef + getRefSha read it back into refs/remotes/origin/*", async () => {
@@ -891,8 +884,8 @@ describe("GitLocalProvider — acquireKnowledgeLock / releaseKnowledgeLock", () 
     provider = repo.provider;
   });
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(tmpDir);
   });
 
   it("acquires and releases the lock file under .git/", async () => {
@@ -991,8 +984,8 @@ describe("GitLocalProvider — git worktree support (roadmap item #10)", () => {
     await git(mainDir, ["worktree", "remove", "--force", worktreeDir]).catch(
       () => undefined,
     );
-    fs.rmSync(mainDir, { recursive: true, force: true });
-    fs.rmSync(worktreeParent, { recursive: true, force: true });
+    await removeTempDir(mainDir);
+    await removeTempDir(worktreeParent);
   });
 
   it("a linked worktree's .git is a file, not a directory", () => {
@@ -1041,8 +1034,8 @@ describe("GitLocalProvider — getChangedFilesSince two-ref mode (Slice 2a delta
     provider = repo.provider;
   });
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(tmpDir);
   });
 
   it("reports added, modified, deleted, and renamed (with oldFile, across directories) between two commit shas, and omits untouched files", async () => {
@@ -1127,6 +1120,54 @@ describe("GitLocalProvider — getChangedFilesSince two-ref mode (Slice 2a delta
   });
 });
 
+describe("GitLocalProvider — getBlameLineOwners (issue #68's per-line ownership read)", () => {
+  let tmpDir: string;
+  let provider: GitLocalProvider;
+  let firstSha: string;
+
+  function lines(n: number): string {
+    return Array.from({ length: n }, (_, i) => `l${i + 1}`).join("\n") + "\n";
+  }
+
+  async function commitAll(message: string): Promise<string> {
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", message]);
+    const { stdout } = await git(tmpDir, ["rev-parse", "HEAD"]);
+    return stdout.trim();
+  }
+
+  beforeEach(async () => {
+    const repo = await createTempGitRepo("docuvia-git-local-blame-test-");
+    tmpDir = repo.dir;
+    provider = repo.provider;
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), lines(10));
+    firstSha = await commitAll("first");
+  });
+
+  afterEach(async () => {
+    await removeTempDir(tmpDir);
+  });
+
+  it("maps every final line to the sha of the commit that last touched it", async () => {
+    const content = lines(10).split("\n");
+    content[4] = "l5-rewritten"; // line 5 rewritten by a second commit
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    const secondSha = await commitAll("second");
+
+    const owners = await provider.getBlameLineOwners(tmpDir, "f.ts");
+
+    expect(owners.size).toBe(10);
+    expect(owners.get(1)).toBe(firstSha);
+    expect(owners.get(5)).toBe(secondSha);
+    expect(owners.get(6)).toBe(firstSha);
+  });
+
+  it("returns an empty map for a nonexistent file (unknown ownership, not a throw)", async () => {
+    const owners = await provider.getBlameLineOwners(tmpDir, "nope.ts");
+    expect(owners.size).toBe(0);
+  });
+});
+
 describe("GitLocalProvider — getChangedLineRanges hunk-header parsing (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
   let tmpDir: string;
   let provider: GitLocalProvider;
@@ -1156,8 +1197,8 @@ describe("GitLocalProvider — getChangedLineRanges hunk-header parsing (Slice 2
     baseSha = await headSha();
   });
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await removeTempDir(tmpDir);
   });
 
   it("a single-line change yields one range spanning that one line", async () => {

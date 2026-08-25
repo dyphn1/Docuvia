@@ -98,6 +98,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -105,6 +106,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
@@ -346,6 +348,7 @@ describe("HydrationService.hydrate()", () => {
         getByL2NodeId: vi.fn(),
         upsertDecision: vi.fn(),
         importCard,
+        updateValidityStatus: vi.fn(),
       },
     });
     const service = new HydrationService(git);

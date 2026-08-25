@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/call-sites-repo.ts#CallSitesRepo.anonymous
+id: lib/schema/src/sqlite/repos/call-sites-repo.ts#CallSitesRepo.anonymous@L112
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/call-sites-repo.ts

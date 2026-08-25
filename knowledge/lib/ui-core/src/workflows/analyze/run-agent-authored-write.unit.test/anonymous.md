@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-agent-authored-write.unit.test.ts#anonymous@L296
+id: lib/ui-core/src/workflows/analyze/run-agent-authored-write.unit.test.ts#anonymous@L292
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/run-agent-authored-write.unit.test.ts

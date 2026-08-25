@@ -43,6 +43,32 @@ function printEntryWhy(entryName: string, why: BlastRadiusEntry["why"]): void {
   }
 }
 
+/** Issue #217: the Source column appears only when at least one entry came from the
+ *  ast_call_sites fallback -- a fully-static result keeps its two-column shape, and the mixed
+ *  case lets the reader see exactly which dependents are lower-confidence. Split out of
+ *  `printBlastRadius` for the ESLint complexity budget. */
+function printBlastRadiusTable(blastRadius: BlastRadiusEntry[]): void {
+  const hasFallbackEntries = blastRadius.some(
+    (entry) => entry.edgeSource !== undefined,
+  );
+  ui.table(
+    [
+      { header: UI_MESSAGES.IMPACT_COL_NAME },
+      { header: UI_MESSAGES.IMPACT_COL_TYPE },
+      ...(hasFallbackEntries
+        ? [{ header: UI_MESSAGES.IMPACT_COL_SOURCE }]
+        : []),
+    ],
+    blastRadius.map((entry) => [
+      entry.name,
+      entry.type,
+      ...(hasFallbackEntries
+        ? [entry.edgeSource ?? UI_MESSAGES.IMPACT_EDGE_SOURCE_STATIC]
+        : []),
+    ]),
+  );
+}
+
 function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
   riskLevel: RiskLevel,
@@ -70,13 +96,7 @@ function printBlastRadius(
       );
     }
   } else {
-    ui.table(
-      [
-        { header: UI_MESSAGES.IMPACT_COL_NAME },
-        { header: UI_MESSAGES.IMPACT_COL_TYPE },
-      ],
-      blastRadius.map((entry) => [entry.name, entry.type]),
-    );
+    printBlastRadiusTable(blastRadius);
     ui.log(FORMAT_MARKERS.EMPTY);
     for (const entry of blastRadius) {
       printEntryWhy(entry.name, entry.why);

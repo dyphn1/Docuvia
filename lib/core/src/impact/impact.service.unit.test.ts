@@ -255,5 +255,157 @@ describe("ImpactService", () => {
         { name: "caller", type: "module" },
       ]);
     });
+
+    // Issue #217: when no real caller edge exists (the only incoming link is the trivial
+    // self-file `contains`, or nothing at all), the blast radius falls back to a reverse read
+    // of `ast_call_sites` -- call sites whose ScopeResolver resolution failed produce no
+    // `node_links` edge but DO have a row here, so dynamic-loading dependents stop being
+    // invisible. Such entries are labeled `edgeSource: "lsp-fallback"` so downstream can tell
+    // them apart from confirmed static edges.
+    describe("ast_call_sites fallback (issue #217)", () => {
+      it("appends lsp-fallback entries from reverse-read call sites when no static caller edge exists", () => {
+        store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+        });
+        store.graph.insertNode({
+          projectId,
+          name: "src/host.ts",
+          pathPatterns: ["src/host.ts"],
+        });
+        store.callSites.insertMany(projectId, "src/host.ts", [
+          { targetFunction: "loadPlugin", startLine: 10, startColumn: 2 },
+        ]);
+
+        expect(impactService.getBlastRadius(store, "loadPlugin")).toEqual([
+          {
+            name: "src/host.ts",
+            type: "module",
+            edgeSource: "lsp-fallback",
+          },
+        ]);
+      });
+
+      it("still fires when the only incoming link is the trivial self-file 'contains' edge, but excludes that file instead of double-counting it", () => {
+        const spy = vi.spyOn(store.callSites, "getByTargetFunctions");
+        const fileId = store.graph.insertNode({
+          projectId,
+          name: "src/plugin.ts",
+          pathPatterns: ["src/plugin.ts"],
+        });
+        store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+          nodeKey: "src/plugin.ts#loadPlugin",
+        });
+        store.graph.insertLink({
+          sourceNodeId: fileId,
+          targetNodeId: store.graph.findNodeIdByName(
+            "src/plugin.ts",
+            "loadPlugin",
+          ) as number,
+          linkType: "contains",
+        });
+        // The defining file calling its own symbol is recursion, not a dependent -- excluded.
+        store.callSites.insertMany(projectId, "src/plugin.ts", [
+          { targetFunction: "loadPlugin", startLine: 3, startColumn: 0 },
+        ]);
+
+        expect(impactService.getBlastRadius(store, "loadPlugin")).toEqual([
+          { name: "src/plugin.ts", type: "module" },
+        ]);
+        expect(spy).toHaveBeenCalledTimes(1);
+      });
+
+      it("attaches L3 'why' data to an lsp-fallback entry like a static one", () => {
+        store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+        });
+        const hostFileId = store.graph.insertNode({
+          projectId,
+          name: "src/host.ts",
+          pathPatterns: ["src/host.ts"],
+        });
+        store.l3.upsertDecision({
+          projectId,
+          l2NodeId: hostFileId,
+          title: "host decision",
+          content: "loads plugins dynamically",
+          nodeType: "decision",
+          confidence: 0.9,
+          commitSha: null,
+          extractionModel: null,
+          sourceFiles: [],
+        });
+        store.callSites.insertMany(projectId, "src/host.ts", [
+          { targetFunction: "loadPlugin", startLine: 10, startColumn: 2 },
+        ]);
+
+        expect(impactService.getBlastRadius(store, "loadPlugin")).toEqual([
+          {
+            name: "src/host.ts",
+            type: "module",
+            why: [
+              { title: "host decision", content: "loads plugins dynamically" },
+            ],
+            edgeSource: "lsp-fallback",
+          },
+        ]);
+      });
+
+      it("does not query call sites at all when a real static caller edge exists (fallback fires only when needed)", () => {
+        const spy = vi.spyOn(store.callSites, "getByTargetFunctions");
+        const targetId = store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+        });
+        const callerId = store.graph.insertNode({
+          projectId,
+          name: "src/host.ts",
+          pathPatterns: ["src/host.ts"],
+        });
+        store.graph.insertLink({
+          sourceNodeId: callerId,
+          targetNodeId: targetId,
+          linkType: "calls",
+        });
+        store.callSites.insertMany(projectId, "src/host.ts", [
+          { targetFunction: "loadPlugin", startLine: 10, startColumn: 2 },
+        ]);
+
+        expect(impactService.getBlastRadius(store, "loadPlugin")).toEqual([
+          { name: "src/host.ts", type: "module" },
+        ]);
+        expect(spy).not.toHaveBeenCalled();
+      });
+
+      it("skips the target's own file and files absent from the graph, and never trusts a LIKE match as the dependent node", () => {
+        store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+        });
+        // A node whose NAME merely contains the calling path -- findNodeByName's LIKE stage
+        // would resolve "src/ho" to this; the fallback must not treat it as the dependent.
+        store.graph.insertNode({
+          projectId,
+          name: "src/host.ts.bak.ts",
+          pathPatterns: ["src/host.ts.bak.ts"],
+        });
+        store.callSites.insertMany(projectId, "src/plugin.ts", [
+          { targetFunction: "loadPlugin", startLine: 1, startColumn: 0 },
+        ]);
+        store.callSites.insertMany(projectId, "src/host.ts", [
+          { targetFunction: "loadPlugin", startLine: 10, startColumn: 2 },
+        ]);
+
+        expect(impactService.getBlastRadius(store, "loadPlugin")).toEqual([]);
+      });
+    });
   });
 });

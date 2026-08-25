@@ -540,6 +540,17 @@ export interface ICallSitesRepo {
     string,
     Array<{ targetFunction: string; startLine: number; startColumn: number }>
   >;
+  /** Issue #217's impact fallback read-back -- the reverse of `getForFiles`: every persisted
+   *  call site whose `target_function` is one of `targetFunctions`, keyed by the calling
+   *  file's exact relativePath (same no-normalization/no-empty-array convention as
+   *  `getForFiles`). This is what surfaces dependents ScopeResolver could never resolve into a
+   *  `node_links` edge (runtime-variable plugin paths, computed `import()` specifiers, ...):
+   *  the call site row exists even though the edge doesn't. Returns an empty map without
+   *  touching the database when `targetFunctions` is empty. */
+  getByTargetFunctions(
+    projectId: number,
+    targetFunctions: string[],
+  ): Map<string, Array<{ startLine: number; startColumn: number }>>;
 }
 
 /**

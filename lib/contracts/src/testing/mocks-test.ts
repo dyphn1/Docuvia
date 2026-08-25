@@ -71,6 +71,7 @@ export function makeMockStore(
       deleteForFile: vi.fn(),
       insertMany: vi.fn(),
       getForFiles: vi.fn().mockReturnValue(new Map()),
+      getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
     withWriteLock: async (fn: any) => fn(),
     withTransaction: (fn: any) => fn(),

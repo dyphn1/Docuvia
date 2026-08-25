@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/check-l3-contradictions.unit.test.ts#anonymous@L43
+id: lib/ui-core/src/workflows/analyze/check-l3-contradictions.unit.test.ts#anonymous@L65
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/check-l3-contradictions.unit.test.ts

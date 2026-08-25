@@ -714,8 +714,12 @@ function extractAstData(
 
 /** Logs any query pattern that failed to compile, then clears them so a later file of the same
  *  language doesn't re-report the same failure. Drained rather than read because the provider is
- *  reused for the worker's whole lifetime. */
-function reportQueryCompileFailures(
+ *  reused for the worker's whole lifetime.
+ *
+ *  Exported for the wiring test: the module-scoped `logger` posts to `parentPort`, which is
+ *  null outside a real worker, so this path is otherwise unobservable (same reason
+ *  `buildParseResponse` is exported). */
+export function reportQueryCompileFailures(
   provider: LanguageProvider,
   language: SupportedLanguage,
 ): void {

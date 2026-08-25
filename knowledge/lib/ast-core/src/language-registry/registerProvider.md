@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#registerProvider
+id: lib/ast-core/src/language-registry.ts#LanguageRegistry.registerProvider
 type: symbol
 name: registerProvider
 filePath: lib/ast-core/src/language-registry.ts

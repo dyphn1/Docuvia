@@ -8,3 +8,4 @@ filePath: artifacts/cli/test/integration/commands/init.test.ts
 
 File: `artifacts/cli/test/integration/commands/init.test.ts`
 
+

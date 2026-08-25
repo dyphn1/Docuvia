@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.anonymous@L563
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.anonymous@L643
 type: symbol
 name: anonymous
 filePath: lib/core/src/graph/scope-resolver.ts

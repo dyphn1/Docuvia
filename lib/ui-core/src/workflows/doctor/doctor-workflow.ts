@@ -34,6 +34,7 @@ import { resolveQueuedLanguages } from "../analyze/tier-b-gate.js";
 import { readTierCQueue } from "../analyze/tier-c-queue.js";
 import { readPendingDecisions } from "../analyze/pending-l3-decisions-store.js";
 import { ANALYZE_EVENTS } from "../analyze/analyze-messages.js";
+import { aggregateStoredCallResolution } from "../analyze/call-resolution-stats.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { probeDocuviaResolvable } from "./git-hook-resolvability.js";
 import * as path from "path";
@@ -208,6 +209,11 @@ export class DoctorWorkflow {
       // counts) and git (recently-changed files), gated on either being skipped.
       await this.runOrSkip(skipDb || skipGit, () =>
         this.runAgentAuthoredAdoptionDiagnostic(diagnostics),
+      ),
+      // Issue #221: Tier A call-graph resolution health -- db-only (the counters live under
+      // META_KEY_CALL_RESOLUTION_STATS), gated on skipDb. Informational-only (always true).
+      await this.runOrSkip(skipDb, () =>
+        this.runCallGraphResolutionDiagnostic(diagnostics),
       ),
     ];
   }
@@ -1243,6 +1249,76 @@ export class DoctorWorkflow {
       };
       return true;
     } catch {
+      return true;
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /**
+   * Issue #221: Tier A call-graph resolution health -- reads the per-file call-site resolution
+   * counters the ingestion workflows stamp under `META_KEY_CALL_RESOLUTION_STATS` and reports
+   * `resolved / (total - selfDiscarded)` as an informational diagnostic. Always PASS for now
+   * (mirroring `TIER_B_COMMIT_CAP`'s always-PASS precedent): the rate conflates method-call
+   * style with real resolution gaps until #192 fixes the constructor-call extraction blind
+   * spot, so failing the build on it would encode an untuned baseline as a defect. A missing/
+   * unopenable db or absent meta key (never analyzed) degrades to a visible PASS-with-no-data
+   * / silently skipped respectively, never a doctor crash.
+   */
+  private async runCallGraphResolutionDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const { byFile, total } = aggregateStoredCallResolution(store);
+      const files = Object.keys(byFile).length;
+
+      if (files === 0 || total.total === 0) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.CALL_GRAPH_RESOLUTION] = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.CALL_GRAPH_RESOLUTION_NO_DATA,
+        };
+        return true;
+      }
+
+      // Self-calls resolve to their own node by design (persisted nowhere), so they're
+      // excluded from the denominator rather than counted as failures.
+      const applicable = total.total - total.selfDiscarded;
+      const rate = applicable > 0 ? total.resolved / applicable : 1;
+      const belowThreshold =
+        rate < GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD;
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.CALL_GRAPH_RESOLUTION] = belowThreshold
+        ? {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.CALL_GRAPH_RESOLUTION_LOW(
+              total.resolved,
+              applicable,
+              rate * 100,
+              files,
+            ),
+            suggestion: DOCTOR_MESSAGES.CALL_GRAPH_RESOLUTION_LOW_SUGGESTION,
+          }
+        : {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.CALL_GRAPH_RESOLUTION_OK(
+              total.resolved,
+              applicable,
+              files,
+            ),
+          };
+      return true;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- degrades to
+      // silently skipped, never a doctor crash.
       return true;
     } finally {
       await store?.close();

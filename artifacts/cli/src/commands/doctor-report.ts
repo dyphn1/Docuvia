@@ -24,7 +24,9 @@ const CATEGORY_RULES: CategoryRule[] = [
       k === "graph_empty" ||
       // Issue #135: L2 semantic coverage is a graph-content property, rendered with the rest of
       // the database/knowledge-graph diagnostics.
-      k === "l2_semantic_coverage",
+      k === "l2_semantic_coverage" ||
+      // Issue #221: call-graph resolution health is likewise a graph-content property.
+      k === "call_graph_resolution",
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_GIT_HOOKS,

@@ -458,6 +458,128 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Call Graph Resolution Check (issue #221)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(byFile: Record<string, unknown> | undefined) {
+      const raw = byFile === undefined ? undefined : JSON.stringify({ byFile });
+      return {
+        meta: { get: vi.fn().mockReturnValue(raw) },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore(undefined);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+    });
+
+    it("reports an informational no-data PASS when no resolution counters were ever stamped", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore(undefined);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "No call-site resolution data",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS with the rate when resolution is at or above the threshold, excluding self-calls from the denominator", async () => {
+      registerPassingDbAndGitRunners();
+      // 9 resolved + 1 selfDiscarded out of 12 total -> 9/11 applicable ≈ 81.8%.
+      const store = makeMockStore({
+        "a.ts": { total: 12, resolved: 9, selfDiscarded: 1, unresolved: 2 },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "9/11",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("stays PASS below the threshold (informational-only) but carries the low-resolution note and suggestion", async () => {
+      registerPassingDbAndGitRunners();
+      // 1 resolved of 10 applicable = 10%.
+      const store = makeMockStore({
+        "a.ts": { total: 10, resolved: 1, selfDiscarded: 0, unresolved: 9 },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "1/10",
+      );
+      expect(result.diagnostics["call_graph_resolution"].suggestion).toContain(
+        "docuvia analyze --escalate-to-lsp --full",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently when the db can't be opened", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+    });
+  });
+
   describe("Graph Empty Check (issue #57)", () => {
     function registerPassingDbAndGitRunners() {
       vi.mocked(fs.stat).mockResolvedValue({} as any);

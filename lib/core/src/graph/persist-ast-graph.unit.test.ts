@@ -188,7 +188,11 @@ describe("GraphPersisterService.persist()", () => {
         parsedResults,
         tags: [],
       }),
-    ).resolves.toEqual({ updatedCount: 1 });
+    ).resolves.toEqual({
+      updatedCount: 1,
+      callResolution: undefined,
+      callResolutionByFile: {},
+    });
 
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");
     const raw = new DatabaseCtor(dbPath, { readonly: true });
@@ -430,5 +434,81 @@ describe("GraphPersisterService.persist()", () => {
     expect(callSites.get("src/a.ts")).toEqual([
       { targetFunction: "c", startLine: 3, startColumn: 3 },
     ]);
+  });
+
+  it("reports per-file call-resolution counters: resolved, self-discarded, and unresolved (issue #221)", async () => {
+    const parsedResults: ParsedAstFileResult[] = [
+      {
+        file: "src/a.ts",
+        hash: "hash-a",
+        data: {
+          imports: [],
+          exports: [],
+          functions: [
+            { name: "foo", startLine: 0, endLine: 1 },
+            { name: "bar", startLine: 2, endLine: 3 },
+          ],
+          classes: [],
+          calls: [
+            // Resolves: same-file local.
+            {
+              sourceFunction: "foo",
+              targetFunction: "bar",
+              startLine: 1,
+              startColumn: 2,
+            },
+            // Self-call: foo calling itself resolves to its own node -> selfDiscarded.
+            {
+              sourceFunction: "foo",
+              targetFunction: "foo",
+              startLine: 1,
+              startColumn: 8,
+            },
+            // No local/import/Go-fallback match -> unresolved (the old silent drop).
+            {
+              sourceFunction: "foo",
+              targetFunction: "neverDefinedAnywhere",
+              startLine: 1,
+              startColumn: 14,
+            },
+          ],
+        },
+      },
+      {
+        file: "src/b.ts",
+        hash: "hash-b",
+        data: {
+          imports: [],
+          exports: [],
+          functions: [],
+          classes: [],
+          calls: [],
+        },
+      },
+    ];
+
+    const result = await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
+
+    expect(result.callResolutionByFile?.["src/a.ts"]).toEqual({
+      total: 3,
+      resolved: 1,
+      selfDiscarded: 1,
+      unresolved: 1,
+    });
+    // Files with zero call sites produce no entry at all (not a zeroed one), so doctor's
+    // no-data state stays distinguishable from an all-unresolved repo.
+    expect(result.callResolutionByFile?.["src/b.ts"]).toBeUndefined();
+    expect(result.callResolution).toEqual({
+      total: 3,
+      resolved: 1,
+      selfDiscarded: 1,
+      unresolved: 1,
+    });
   });
 });

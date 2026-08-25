@@ -2,12 +2,38 @@ import {
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
+  type CallResolutionStats,
+  aggregateCallResolution,
   L2NodeTypes,
   LinkTypes,
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
+
+/** Mutable per-file accumulator `linkSymbolReference` increments while resolving one file's
+ *  call sites (issue #221). `unresolved` is derived at close time (`total - resolved -
+ *  selfDiscarded`) so the hot path only touches three fields. */
+type CallResolutionCounters = {
+  total: number;
+  resolved: number;
+  selfDiscarded: number;
+};
+
+function newCallResolutionCounters(): CallResolutionCounters {
+  return { total: 0, resolved: 0, selfDiscarded: 0 };
+}
+
+function closeCallResolutionCounters(
+  counters: CallResolutionCounters,
+): CallResolutionStats {
+  return {
+    total: counters.total,
+    resolved: counters.resolved,
+    selfDiscarded: counters.selfDiscarded,
+    unresolved: counters.total - counters.resolved - counters.selfDiscarded,
+  };
+}
 
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
@@ -28,7 +54,11 @@ export class GraphPersisterService implements IGraphPersister {
     projectId: number;
     parsedResults: ParsedAstFileResult[];
     tags: string[];
-  }): Promise<{ updatedCount: number }> {
+  }): Promise<{
+    updatedCount: number;
+    callResolution?: CallResolutionStats;
+    callResolutionByFile?: Record<string, CallResolutionStats>;
+  }> {
     const { store, workspaceRoot, projectId, parsedResults, tags } = input;
 
     return store.withWriteLock(() =>
@@ -50,7 +80,11 @@ export class GraphPersisterService implements IGraphPersister {
     projectId: number,
     parsedResults: ParsedAstFileResult[],
     tags: string[],
-  ): { updatedCount: number } {
+  ): {
+    updatedCount: number;
+    callResolution?: CallResolutionStats;
+    callResolutionByFile?: Record<string, CallResolutionStats>;
+  } {
     return store.withTransaction(() => {
       const resolver = new ScopeResolver(workspaceRoot);
       this.registerResolverFiles(resolver, parsedResults);
@@ -59,6 +93,10 @@ export class GraphPersisterService implements IGraphPersister {
       // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
       // actual function/class node instead of collapsing to a file-to-file edge.
       const symbolIdMap = new Map<string, Map<string, number>>();
+
+      // Issue #221: per-file Tier A call-site resolution counters, aggregated for the caller
+      // (the orchestration layer stamps them into docuvia_meta / the analyze log).
+      const callResolutionByFile: Record<string, CallResolutionStats> = {};
 
       this.upsertTags(store, tags);
       // Suspends l2_nodes_fts's sync triggers for the duration of this per-file insert/delete
@@ -83,9 +121,16 @@ export class GraphPersisterService implements IGraphPersister {
         parsedResults,
         fileIdMap,
         symbolIdMap,
+        callResolutionByFile,
       );
 
-      return { updatedCount };
+      const files = Object.keys(callResolutionByFile);
+      const callResolution =
+        files.length > 0
+          ? aggregateCallResolution(callResolutionByFile)
+          : undefined;
+
+      return { updatedCount, callResolution, callResolutionByFile };
     });
   }
 
@@ -320,6 +365,7 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    callResolutionByFile: Record<string, CallResolutionStats>,
   ): number {
     let updatedCount = 0;
 
@@ -327,6 +373,7 @@ export class GraphPersisterService implements IGraphPersister {
       const sourceFileId = fileIdMap.get(result.file);
       if (!sourceFileId) continue;
 
+      const counters = newCallResolutionCounters();
       this.linkParsedResultRelations(
         store,
         resolver,
@@ -334,7 +381,12 @@ export class GraphPersisterService implements IGraphPersister {
         sourceFileId,
         fileIdMap,
         symbolIdMap,
+        counters,
       );
+      if (counters.total > 0) {
+        callResolutionByFile[result.file] =
+          closeCallResolutionCounters(counters);
+      }
 
       store.files.upsertFile({
         projectId,
@@ -354,6 +406,7 @@ export class GraphPersisterService implements IGraphPersister {
     sourceFileId: number,
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    counters: CallResolutionCounters,
   ): void {
     const sourceSymbols = symbolIdMap.get(result.file);
 
@@ -369,6 +422,8 @@ export class GraphPersisterService implements IGraphPersister {
         call.sourceFunction,
         call.targetFunction,
         LinkTypes.CALLS,
+        false,
+        counters,
       );
     }
     for (const impl of result.data.implements ?? []) {
@@ -545,7 +600,9 @@ export class GraphPersisterService implements IGraphPersister {
     targetFunctionOrClass: string,
     linkType: string,
     useNameFallback = false,
+    callCounters?: CallResolutionCounters,
   ): void {
+    if (callCounters) callCounters.total++;
     const resolved = resolver.resolveCall(sourceFile, targetFunctionOrClass);
     const targetNodeId = resolved
       ? this.resolveTargetNodeId(
@@ -567,7 +624,13 @@ export class GraphPersisterService implements IGraphPersister {
     );
 
     if (targetNodeId !== sourceNodeId) {
+      if (callCounters) callCounters.resolved++;
       store.graph.insertLink({ sourceNodeId, targetNodeId, linkType });
+    } else if (callCounters) {
+      // Self-call: the site resolved to the caller's own node -- structurally unresolvable
+      // into a usable edge by design (persisted nowhere), so tracked separately from
+      // unresolved and excluded from health-rate denominators.
+      callCounters.selfDiscarded++;
     }
   }
 

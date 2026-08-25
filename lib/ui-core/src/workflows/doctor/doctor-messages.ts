@@ -50,6 +50,13 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
    *  "4 agent-authored decisions ever, none this week" is visible instead of silent. Always PASS
    *  (informational, soft enforcement), mirroring `TIER_B_COMMIT_CAP`'s precedent. */
   AGENT_AUTHED_ADOPTION: "agent_authored_adoption",
+  /** Issue #221: Tier A call-graph resolution health -- % of extracted call sites
+   *  (`ast_call_sites`) that resolved into a persisted `calls` link, accumulated per file by the
+   *  ingestion workflows under `META_KEY_CALL_RESOLUTION_STATS`. Informational-only (always
+   *  PASS): a low rate currently conflates method-call style with real resolution gaps, so it
+   *  must not red the build until #192 fixes the constructor-call extraction blind spot and the
+   *  baseline is re-measured. */
+  CALL_GRAPH_RESOLUTION: "call_graph_resolution",
 } as const;
 
 /** Extension used to identify per-command run-log files under `.docuvia/logs/`. */
@@ -257,4 +264,26 @@ export const DOCTOR_MESSAGES = {
   AGENT_HOOKS_FOUND: (platformName: string) => `${platformName} hooks found.`,
   AGENT_HOOKS_NOT_FOUND: (platformName: string) =>
     `${platformName} hooks not found (run \`docuvia init\` to install).`,
+
+  /** Issue #221: Tier A call-graph resolution health (see `CALL_GRAPH_RESOLUTION`'s key doc
+   *  comment). Always PASS (informational-only until #192's extractor blind spot is fixed and
+   *  the baseline is re-measured); `applicable` excludes self-calls, which resolve to their own
+   *  node by design and are never usable edges. */
+  CALL_GRAPH_RESOLUTION_NO_DATA:
+    "No call-site resolution data recorded yet (run `docuvia analyze` to populate it).",
+  CALL_GRAPH_RESOLUTION_OK: (
+    resolved: number,
+    applicable: number,
+    files: number,
+  ) =>
+    `Call-graph resolution: ${resolved}/${applicable} applicable call site(s) resolved into calls edges across ${files} ingested file(s).`,
+  CALL_GRAPH_RESOLUTION_LOW: (
+    resolved: number,
+    applicable: number,
+    pct: number,
+    files: number,
+  ) =>
+    `Call-graph resolution is low: only ${pct.toFixed(1)}% of applicable call sites resolved into calls edges (${resolved}/${applicable} across ${files} file(s)) -- impact results in these areas may understate real dependents ("no dependents" can mean "unresolved", not "safe").`,
+  CALL_GRAPH_RESOLUTION_LOW_SUGGESTION:
+    "Run `docuvia analyze --escalate-to-lsp --full` to let Tier B LSP edge resolution recover the unresolved call sites.",
 } as const;

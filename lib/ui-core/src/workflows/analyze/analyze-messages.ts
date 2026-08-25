@@ -147,6 +147,8 @@ export const ANALYZE_EVENTS = {
   FULL_PARSE_FAILURE: "analyze.full.parse_failure",
   FULL_FILE_SKIPPED_OVERSIZED: "analyze.full.file_skipped_oversized",
   FULL_SNAPSHOT_FAILED: "analyze.full.snapshot_failed",
+  /** Issue #221: per-run Tier A call-site resolution counters (aggregate over the run's files). */
+  FULL_CALL_RESOLUTION: "analyze.full.call_resolution",
   /** `runDeltaIngestion`'s own start/summary lines (§6b). */
   DELTA_START: "analyze.delta.start",
   /** GRPH-006's delta-ingestion guard (`isNodeKeyFormatStale`) -- logged instead of `DELTA_START`
@@ -161,6 +163,8 @@ export const ANALYZE_EVENTS = {
   DELTA_FILE_SKIPPED_OVERSIZED: "analyze.delta.file_skipped_oversized",
   /** Per-file line from `runParseAndPersist` attributed to delta ingestion. */
   DELTA_PARSE_FAILURE: "analyze.delta.parse_failure",
+  /** Issue #221: per-run Tier A call-site resolution counters (aggregate over the run's files). */
+  DELTA_CALL_RESOLUTION: "analyze.delta.call_resolution",
   FOCUSED_START: "analyze.focused.start",
   FOCUSED_ERROR: "analyze.focused.error",
   FOCUSED_SUMMARY: "analyze.focused.summary",

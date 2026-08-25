@@ -15,7 +15,9 @@ import { appendImpactLogLine } from "./impact-log-writer.js";
 import {
   pickBackCompatCoverageNote,
   resolveImpactEpistemic,
+  type TargetFileResolution,
 } from "./resolve-impact-epistemic.js";
+import { readCallResolution } from "../analyze/call-resolution-stats.js";
 import type { ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
@@ -121,11 +123,8 @@ export class ImpactWorkflow {
     blastRadiusLength: number,
     computedRiskLevel: RiskLevel,
   ): Promise<Omit<ImpactResult, "blastRadius">> {
-    const { tierBCoverage, registryMediated } = await this.resolveTargetContext(
-      store,
-      target,
-      blastRadiusLength,
-    );
+    const { tierBCoverage, registryMediated, targetFileResolution } =
+      await this.resolveTargetContext(store, target, blastRadiusLength);
 
     // Issue #192: raw workspace Tier B counts feed the epistemic verdict directly (unlike
     // `tierBCoverage`, which only fires on empty results) so a non-empty-but-partial graph is
@@ -138,6 +137,7 @@ export class ImpactWorkflow {
       workspaceFilesProcessed: coverage?.processedFiles,
       workspaceFilesTotal: coverage?.totalFiles,
       registryMediated,
+      targetFileResolution,
     });
 
     const coverageNote = pickBackCompatCoverageNote(
@@ -159,8 +159,9 @@ export class ImpactWorkflow {
   }
 
   /** Resolves the target's node metadata: the Tier B hint (empty-result-only gating lives in
-   *  `resolveTierBCoverageHint`) and the issue #136 registry-mediated signal. Extracted from
-   *  `resolveEpistemicFields` for the ESLint complexity budget. */
+   *  `resolveTierBCoverageHint`), the issue #136 registry-mediated signal, and issue #221 P2''s
+   *  own-file call-resolution counters. Extracted from `resolveEpistemicFields` for the ESLint
+   *  complexity budget. */
   private async resolveTargetContext(
     store: IGraphStore,
     target: string,
@@ -168,6 +169,7 @@ export class ImpactWorkflow {
   ): Promise<{
     tierBCoverage?: TierBCoverageHint;
     registryMediated: boolean;
+    targetFileResolution?: TargetFileResolution;
   }> {
     // `impact` only ever reports the incoming/blast-radius direction -- `outgoingEmpty` is
     // hardcoded `false` so the "own file's outgoing calls" half of the hint never applies here
@@ -187,7 +189,21 @@ export class ImpactWorkflow {
       !!node?.filePath &&
       (await this.fileUsesFactoryRegistry(node.filePath));
 
-    return { tierBCoverage, registryMediated };
+    // Issue #221 P2': the target's own file's Tier A call-site resolution counters -- an empty
+    // blast radius whose own file left most call sites unresolved is even less trustworthy
+    // than the generic static-edges-only caveat. Absent stats degrade to `undefined`.
+    let targetFileResolution: TargetFileResolution | undefined;
+    if (node?.filePath) {
+      const stats = readCallResolution(store)[node.filePath];
+      if (stats) {
+        targetFileResolution = {
+          resolved: stats.resolved,
+          applicable: stats.total - stats.selfDiscarded,
+        };
+      }
+    }
+
+    return { tierBCoverage, registryMediated, targetFileResolution };
   }
 
   /** Issue #136: `true` when `filePath` (workspace-relative) contains the docuviaFactory registry

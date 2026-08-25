@@ -215,7 +215,94 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipDb, () =>
         this.runCallGraphResolutionDiagnostic(diagnostics),
       ),
+      // Issue #221 P3: the canary self-test -- db-only, gated on skipDb. Unlike the two
+      // informational checks above, a lookup/FTS desync is a real integrity defect -> FAILs.
+      await this.runOrSkip(skipDb, () =>
+        this.runCanarySelfTestDiagnostic(diagnostics),
+      ),
     ];
+  }
+
+  /**
+   * Issue #221 P3: the graph-integrity canary. Samples a few known-present `l2_nodes` names and
+   * asserts the two read paths every query/impact depends on actually see them:
+   * 1. exact-name lookup (`findNodeByName`) resolves each sampled name;
+   * 2. FTS search for a token derived from a sampled name returns rows (the `l2_nodes_fts` sync
+   *    triggers are suspended during bulk loads -- a desynced index silently zeroes out keyword
+   *    queries while counts look healthy, roadmap item 25's failure class).
+   * An empty sample degrades to silently skipped (covered by `graph_empty`'s own FAIL). Never
+   * throws past this method.
+   */
+  private async runCanarySelfTestDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const sample = store.graph.getCanarySample(
+        GitConstants.DEFAULT_CANARY_SAMPLE_SIZE,
+      );
+      if (sample.length === 0) return true;
+
+      // Check 1: every sampled name must resolve through query/impact's own entry point.
+      const missed = sample.filter(
+        ({ name }) => !store?.graph.findNodeByName(name),
+      );
+      if (missed.length > 0) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.CANARY_SELF_TEST] = {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.CANARY_SELF_TEST_LOOKUP_FAIL(
+            missed.length,
+            sample.length,
+          ),
+          suggestion: DOCTOR_MESSAGES.CANARY_SELF_TEST_FAIL_SUGGESTION,
+        };
+        return false;
+      }
+
+      // Check 2: FTS must answer for a token derived from a real node's name. Tokens shorter
+      // than three alphanumeric chars are noise-prone (single letters, version suffixes), so a
+      // name without one skips the check rather than failing on an unsuitable probe.
+      let ftsToken: string | undefined;
+      for (const { name } of sample) {
+        const segments = name.split(/[^A-Za-z0-9]+/).filter(Boolean);
+        ftsToken = segments.reduce(
+          (best, s) => (s.length >= 3 && s.length > best.length ? s : best),
+          "",
+        );
+        if (ftsToken) break;
+      }
+      if (ftsToken) {
+        const hits = store.fts.searchL2Nodes([ftsToken], 10);
+        if (hits.length === 0) {
+          diagnostics[DOCTOR_DIAGNOSTIC_KEYS.CANARY_SELF_TEST] = {
+            status: DiagnosticStatus.FAIL,
+            message: DOCTOR_MESSAGES.CANARY_SELF_TEST_FTS_FAIL(ftsToken),
+            suggestion: DOCTOR_MESSAGES.CANARY_SELF_TEST_FAIL_SUGGESTION,
+          };
+          return false;
+        }
+      }
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.CANARY_SELF_TEST] = {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.CANARY_SELF_TEST_OK(sample.length),
+      };
+      return true;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- degrades to
+      // silently skipped, never a doctor crash.
+      return true;
+    } finally {
+      await store?.close();
+    }
   }
 
   /**

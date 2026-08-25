@@ -101,6 +101,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     graph: {
       deleteNodesForPath: vi.fn(),
       getSemanticCoverage: vi.fn(),
+      getCanarySample: vi.fn().mockReturnValue([]),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),

@@ -580,6 +580,158 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Canary Self-Test (issue #221 P3)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(options?: {
+      sample?: Array<{ name: string }>;
+      findNodeByName?: ReturnType<typeof vi.fn>;
+      searchL2Nodes?: ReturnType<typeof vi.fn>;
+    }) {
+      return {
+        graph: {
+          getCanarySample:
+            options?.sample !== undefined
+              ? vi.fn().mockReturnValue(options.sample)
+              : vi.fn().mockReturnValue([]),
+          findNodeByName:
+            options?.findNodeByName ??
+            // Default healthy: every lookup resolves.
+            vi
+              .fn()
+              .mockImplementation((name: string) =>
+                name ? { id: 1, name, type: "module" } : undefined,
+              ),
+        },
+        fts: {
+          searchL2Nodes:
+            options?.searchL2Nodes ??
+            vi.fn().mockReturnValue([{ id: 1, name: "queryCommand" }]),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+    });
+
+    it("is skipped silently on an empty sample -- covered by graph_empty's own FAIL", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ sample: [] });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(store.graph.getCanarySample).toHaveBeenCalled();
+    });
+
+    it("passes when every sampled name resolves and FTS answers a known-present token", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "queryCommand" }, { name: "ImpactWorkflow" }],
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain("2");
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("FAILs when a sampled l2_nodes row can't be resolved by exact-name lookup", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "findable" }, { name: "lostRow" }],
+        findNodeByName: vi
+          .fn()
+          .mockImplementation((name: string) =>
+            name === "findable"
+              ? { id: 1, name: "findable", type: "module" }
+              : undefined,
+          ),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain(
+        "1 of 2",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("FAILs when the FTS index returns nothing for a known-indexed token", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "queryCommand" }],
+        searchL2Nodes: vi.fn().mockReturnValue([]),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain(
+        'token "queryCommand"',
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("skips the FTS probe when no sampled name has a >=3-char alphanumeric segment", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "--" }, { name: "_a_" }],
+        searchL2Nodes: vi.fn(),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(store.fts.searchL2Nodes).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Graph Empty Check (issue #57)", () => {
     function registerPassingDbAndGitRunners() {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
@@ -1906,6 +2058,7 @@ describe("DoctorWorkflow", () => {
             totalNodes: 1,
             describedNodes: 1,
           }),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({
@@ -2085,6 +2238,7 @@ describe("DoctorWorkflow", () => {
         graph: {
           count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
           getSemanticCoverage: vi.fn().mockReturnValue(coverage),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({
@@ -2350,6 +2504,7 @@ describe("DoctorWorkflow", () => {
             totalNodes: 1,
             describedNodes: 1,
           }),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({

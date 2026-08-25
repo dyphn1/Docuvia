@@ -1,10 +1,19 @@
 import {
   EpistemicLevels,
+  GitConstants,
   RiskLevels,
   type EpistemicLevel,
   type RiskLevel,
 } from "@workspace/contracts";
 import { IMPACT_MESSAGES } from "./impact-messages.js";
+
+/** Issue #221 P2': the target's own file's Tier A call-site resolution counters (applicable =
+ *  total minus self-discarded), `undefined` when the file has no stamped stats -- which must
+ *  never silently sharpen confidence, mirroring the coverage-counts convention below. */
+export interface TargetFileResolution {
+  resolved: number;
+  applicable: number;
+}
 
 export interface ImpactEpistemicInput {
   /** Number of incoming-edge dependents `ImpactService.getBlastRadius` resolved. */
@@ -19,6 +28,9 @@ export interface ImpactEpistemicInput {
   /** Issue #136 signal: the target's own file uses the docuviaFactory/TOKENS registry pattern,
    *  whose cross-package edges the static graph does not model. */
   registryMediated: boolean;
+  /** Issue #221 P2' signal: see `TargetFileResolution`. Optional so existing callers keep
+   *  compiling; absence degrades to the pre-existing note ladder unchanged. */
+  targetFileResolution?: TargetFileResolution;
 }
 
 export interface ImpactEpistemicResult {
@@ -32,12 +44,17 @@ export interface ImpactEpistemicResult {
 }
 
 /** Note selection for an empty blast radius (first match wins): partial Tier B coverage >
- *  registry-mediated dependents > the structural static-edges-only caveat. Split out of
- *  `resolveImpactEpistemic` to keep both under the ESLint complexity budget. */
+ *  registry-mediated dependents > issue #221 P2''s low own-file resolution > the structural
+ *  static-edges-only caveat. The low-resolution rung deliberately sits *below* the two
+ *  pre-existing rungs so no previously-shipped note wording changes (existing outputs are
+ *  byte-stable); it only sharpens the generic fallback for targets whose own file's ingestion
+ *  left most call sites unresolved. Split out of `resolveImpactEpistemic` to keep both under
+ *  the ESLint complexity budget. */
 function pickEmptyRiskNote(
   workspaceFilesProcessed: number | undefined,
   workspaceFilesTotal: number | undefined,
   registryMediated: boolean,
+  targetFileResolution: TargetFileResolution | undefined,
 ): string {
   const coverageIncomplete =
     workspaceFilesProcessed === undefined ||
@@ -49,9 +66,22 @@ function pickEmptyRiskNote(
       workspaceFilesTotal ?? 0,
     );
   }
-  return registryMediated
-    ? IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE
-    : IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY;
+  if (registryMediated) {
+    return IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE;
+  }
+  if (
+    targetFileResolution &&
+    targetFileResolution.applicable >=
+      GitConstants.DEFAULT_CALL_RESOLUTION_MIN_SAMPLE &&
+    targetFileResolution.resolved / targetFileResolution.applicable <
+      GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD
+  ) {
+    return IMPACT_MESSAGES.RISK_NOTE_EMPTY_LOW_RESOLUTION(
+      targetFileResolution.resolved,
+      targetFileResolution.applicable,
+    );
+  }
+  return IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY;
 }
 
 /**
@@ -85,6 +115,7 @@ export function resolveImpactEpistemic(
         workspaceFilesProcessed,
         workspaceFilesTotal,
         registryMediated,
+        input.targetFileResolution,
       ),
     };
   }

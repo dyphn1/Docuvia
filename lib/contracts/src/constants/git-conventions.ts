@@ -299,6 +299,23 @@ export const GitConstants = {
    */
   DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD: 0.5,
 
+  /**
+   * Minimum applicable call sites (total minus self-discarded) a file needs before its
+   * resolution rate is statistically meaningful for issue #221's consumers (`doctor`'s note
+   * and `impact`'s empty-result why-note): below this, one or two unresolved calls would flip
+   * the verdict on an otherwise-fine file. Placeholder value -- tune if real usage shows it's
+   * off.
+   */
+  DEFAULT_CALL_RESOLUTION_MIN_SAMPLE: 5,
+
+  /**
+   * Issue #221 P3: how many `l2_nodes` names `doctor`'s canary self-test samples
+   * (`IGraphNodesRepo.getCanarySample`). Large enough that a lookup/FTS regression is very
+   * likely to hit at least one sampled row, small enough to stay free even at 100k+ nodes.
+   * Placeholder value -- tune if real usage shows it's off.
+   */
+  DEFAULT_CANARY_SAMPLE_SIZE: 20,
+
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**
    * Fires the Tier B batch on push (phase1-decision-integration.md §8h, D7) — synchronous, with

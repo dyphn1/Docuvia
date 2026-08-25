@@ -73,6 +73,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     graph: {
       deleteNodesForPath: vi.fn(),
       getSemanticCoverage: vi.fn(),
+      getCanarySample: vi.fn().mockReturnValue([]),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
@@ -447,6 +448,84 @@ describe("ImpactWorkflow.execute()", () => {
         riskLevel: "LOW",
       });
       expect(result && "coverageNote" in result).toBe(false);
+    });
+  });
+
+  describe("low own-file call resolution note (issue #221 P2')", () => {
+    function makeStoreWithResolution(
+      filePath: string,
+      byFile: Record<string, unknown>,
+    ) {
+      const store = makeMockStore({
+        graph: {
+          ...makeMockStore().graph,
+          findNodeByName: vi
+            .fn()
+            .mockReturnValue({ id: 1, name: "s", type: "module", filePath }),
+        },
+        meta: {
+          get: vi.fn().mockReturnValue(JSON.stringify({ byFile })),
+          set: vi.fn(),
+        },
+      });
+      const impactService: IImpactService = {
+        getBlastRadius: vi.fn().mockReturnValue([]),
+        computeRiskLevel: vi.fn().mockReturnValue("LOW"),
+      };
+      return { store, impactService };
+    }
+
+    async function executeWith(
+      store: IGraphStore,
+      impactService: IImpactService,
+    ) {
+      // Non-registry file contents -- an earlier test's mockResolvedValue would otherwise
+      // leak in and trip the higher-priority registry-mediated rung.
+      vi.mocked(fs.readFile).mockResolvedValue("export const x = 1;\n");
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+      return new ImpactWorkflow("/workspace/demo", createMockLogger()).execute(
+        "s",
+      );
+    }
+
+    it("attaches the low-resolution why-note when the target's own file resolved few of its call sites", async () => {
+      const { store, impactService } = makeStoreWithResolution("src/low.ts", {
+        "src/low.ts": {
+          total: 10,
+          resolved: 1,
+          selfDiscarded: 0,
+          unresolved: 9,
+        },
+      });
+
+      const result = await executeWith(store, impactService);
+
+      expect(result).toEqual({
+        blastRadius: [],
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_LOW_RESOLUTION(1, 10),
+      });
+    });
+
+    it("omits the note when the target's file has no stamped resolution stats (absent = generic caveat)", async () => {
+      const { store, impactService } = makeStoreWithResolution("src/plain.ts", {
+        "other.ts": { total: 10, resolved: 1, selfDiscarded: 0, unresolved: 9 },
+      });
+
+      const result = await executeWith(store, impactService);
+
+      expect(result).toMatchObject({
+        riskLevel: "UNKNOWN",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      });
     });
   });
 

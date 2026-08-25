@@ -26,7 +26,9 @@ const CATEGORY_RULES: CategoryRule[] = [
       // the database/knowledge-graph diagnostics.
       k === "l2_semantic_coverage" ||
       // Issue #221: call-graph resolution health is likewise a graph-content property.
-      k === "call_graph_resolution",
+      k === "call_graph_resolution" ||
+      // Issue #221 P3: the canary self-test probes graph-content read paths (lookup + FTS).
+      k === "canary_self_test",
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_GIT_HOOKS,

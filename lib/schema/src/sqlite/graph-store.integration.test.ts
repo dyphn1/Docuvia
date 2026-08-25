@@ -303,6 +303,34 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
   });
 
+  it("graph repo: getCanarySample() returns a LIMIT-bounded, id-ordered sample of non-empty names (issue #221 P3)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    expect(store.graph.getCanarySample(10)).toEqual([]);
+
+    for (const name of ["src/a.ts", "b", "", "src/c.ts"]) {
+      store.graph.insertNode({
+        projectId: project.id,
+        name,
+        pathPatterns: [name],
+      });
+    }
+
+    // Empty-string names are excluded (they can't feed a lookup/FTS probe); insertion order
+    // (== id order) is preserved so doctor's sample is deterministic across runs.
+    expect(store.graph.getCanarySample(10)).toEqual([
+      { name: "src/a.ts" },
+      { name: "b" },
+      { name: "src/c.ts" },
+    ]);
+    expect(store.graph.getCanarySample(2)).toEqual([
+      { name: "src/a.ts" },
+      { name: "b" },
+    ]);
+  });
+
   it("graph repo: findNodesForChangedFiles() returns l2_nodes intersecting the changed-file set, each paired with its l3_nodes", () => {
     const project = store.projects.insert({
       name: "demo",

@@ -344,6 +344,13 @@ export interface IGraphNodesRepo {
    * issue #135 documents.
    */
   getSemanticCoverage(): { totalNodes: number; describedNodes: number };
+  /**
+   * Issue #221 P3: a small deterministic sample of non-empty `l2_nodes` names (`ORDER BY id`,
+   * primary-key ordered, so no full scan) feeding `doctor`'s canary self-test — the exact-name
+   * lookup and FTS-sync assertions need real, known-present names without materializing every
+   * row of a 100k+-node graph (`getAllNodes()`'s job, too heavy here).
+   */
+  getCanarySample(limit: number): Array<{ name: string }>;
   getIncomingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;

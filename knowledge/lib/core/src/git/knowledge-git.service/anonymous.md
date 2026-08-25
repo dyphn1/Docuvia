@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.anonymous@L560
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.anonymous@L285
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/knowledge-git.service.ts

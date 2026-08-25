@@ -2,6 +2,10 @@
 {"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#isEnabled","type":"contains"}
 {"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"calls"}
 {"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"contains"}
+{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#isEnabled","type":"calls"}
+{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#isEnabled","type":"contains"}
+{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#readInput","type":"calls"}
+{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#readInput","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L305","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L408","type":"contains"}

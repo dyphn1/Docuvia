@@ -17,6 +17,10 @@ export interface ResolvedLspBinary {
    *  needed); `false` for the `npx --no-install` fallback, whose actual resolvability can only be
    *  known by attempting it (§8c's gate probes it live in that case). */
   locallyResolved: boolean;
+  /** `true` when `command` came straight from the user's explicit config override rather than an
+   *  automatic resolution -- such a command is user-consented, so the spawn probe's basename
+   *  allowlist (issue #207) is waived for it. Absent (`undefined`) for auto-resolved commands. */
+  fromUserOverride?: boolean;
   env?: NodeJS.ProcessEnv;
 }
 
@@ -94,6 +98,7 @@ export function resolveNpmNpxBinary(
         command: override.binary,
         args: override.args ?? config.defaultArgs,
         locallyResolved: true,
+        fromUserOverride: true,
       },
       env,
     );
@@ -225,6 +230,7 @@ export async function resolvePathNativeBinary(
       command: override.binary,
       args: override.args ?? config.defaultArgs,
       locallyResolved: true,
+      fromUserOverride: true,
     };
   }
 
@@ -256,6 +262,18 @@ export async function resolvePathNativeBinary(
   };
 }
 
+/** Normalizes a command path (or bare binary name) to a comparable basename: trimmed, backslashes
+ *  folded to forward slashes (so Windows paths compare correctly on any host), lowercased, with
+ *  the `.exe` suffix stripped -- `/usr/bin/rust-analyzer`, `C:\tools\RUST-ANALYZER.EXE` and the
+ *  bare allowlist entry `rust-analyzer` all compare equal. */
+function executableBasename(command: string): string {
+  const posixified = command.trim().replace(/\\/g, "/");
+  return path.posix
+    .basename(posixified)
+    .replace(/\.exe$/i, "")
+    .toLowerCase();
+}
+
 /**
  * Live spawn probe for the PATH-native strategy: runs `command --version` to prove the resolved
  * *file* can actually be spawned. PATH resolution alone is not a truthful availability signal for
@@ -264,11 +282,25 @@ export async function resolvePathNativeBinary(
  * bare `--version` (never the server's `defaultArgs` -- a mode flag like `--stdio` is irrelevant
  * to a probe and could confuse a server that treats it as a command tail). Rust's preflight opts
  * in; other PATH-native languages keep their cheap resolution-only gate.
+ *
+ * When `allowedBasenames` is given (issue #207), `command`'s executable basename must match one of
+ * them or nothing is spawned at all and the probe reports not-spawnable -- defense in depth against
+ * a compromised/decoyed resolution returning an unexpected executable. Explicit user config
+ * overrides are exempt: their callers simply don't pass the allowlist (`fromUserOverride`).
  */
 export async function probeBinaryVersionSpawnable(
   command: string,
   timeoutMs: number = VERSION_PROBE_TIMEOUT_MS,
+  allowedBasenames?: readonly string[],
 ): Promise<boolean> {
+  if (
+    allowedBasenames &&
+    !allowedBasenames.some(
+      (name) => executableBasename(name) === executableBasename(command),
+    )
+  ) {
+    return false;
+  }
   try {
     await execFileAsync(command, ["--version"], { timeout: timeoutMs });
     return true;
@@ -318,6 +350,7 @@ export function resolveLocalManifestBinary(
       command: override.binary,
       args: override.args ?? config.defaultArgs,
       locallyResolved: true,
+      fromUserOverride: true,
     };
   }
 

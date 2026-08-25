@@ -40,11 +40,21 @@ const RA_PROBE_TIMEOUT_MS = 5000;
  *  time (its rust-analyzer proxy in `~/.cargo/bin` is a symlink that errors `Unknown binary
  *  'rust-analyzer'` when the component isn't installed) -- so PATH resolution alone is not a
  *  truthful availability signal for Rust. See `probeBinaryVersionSpawnable` in
- *  `lsp-binary-resolver-strategies.ts`. */
+ *  `lsp-binary-resolver-strategies.ts`.
+ *
+ *  Auto-resolved commands are probed under the `rust-analyzer` basename allowlist (issue #207):
+ *  if a decoyed resolution ever yields an unexpected executable, nothing is spawned and the gate
+ *  reports not-spawnable. Explicit user config overrides are exempt -- the user consented to that
+ *  exact command. */
 export async function probeRustAnalyzerSpawnable(
   command: string,
+  allowedBasenames?: readonly string[],
 ): Promise<boolean> {
-  return probeBinaryVersionSpawnable(command, RA_PROBE_TIMEOUT_MS);
+  return probeBinaryVersionSpawnable(
+    command,
+    RA_PROBE_TIMEOUT_MS,
+    allowedBasenames,
+  );
 }
 
 /**
@@ -69,7 +79,12 @@ export async function checkRustLspPreflight(
   const lspBinaryResolvable = resolved.locallyResolved;
   const lspBinarySpawnable =
     !lspBinaryResolvable ||
-    (await probeRustAnalyzerSpawnable(resolved.command));
+    (await probeRustAnalyzerSpawnable(
+      resolved.command,
+      // Issue #207: enforce the expected-binary basename allowlist for auto-resolved commands
+      // only -- an explicit user override may legitimately point at a differently-named wrapper.
+      resolved.fromUserOverride ? undefined : [RustLspConstants.BINARY_NAME],
+    ));
 
   if (!markerFileResolvable) {
     return {

@@ -712,6 +712,23 @@ function extractAstData(
   };
 }
 
+/** Logs any query pattern that failed to compile, then clears them so a later file of the same
+ *  language doesn't re-report the same failure. Drained rather than read because the provider is
+ *  reused for the worker's whole lifetime. */
+function reportQueryCompileFailures(
+  provider: LanguageProvider,
+  language: SupportedLanguage,
+): void {
+  for (const failure of provider.drainQueryCompileFailures?.() ?? []) {
+    logger.error(AstMessages.QUERY_COMPILE_FAILED, {
+      language,
+      kind: failure.kind,
+      pattern: failure.pattern,
+      message: failure.message,
+    });
+  }
+}
+
 /** Parses `request.code` with the resolved provider/grammar and runs the full AST extraction pass, releasing the tree-sitter tree/parser handles once done. */
 function parseAndExtract(
   code: string,
@@ -728,6 +745,7 @@ function parseAndExtract(
   // pattern fails to compile against the installed grammar degrades to that field's
   // descendantsOfType fallback (DefaultProvider.compileQuery) rather than throwing.
   provider.initQueries?.(langInstance);
+  reportQueryCompileFailures(provider, language);
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider, language);

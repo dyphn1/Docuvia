@@ -28,6 +28,17 @@ export interface LanguageProvider {
   extractExtends?: (rootNode: Node) => Node[];
   initQueries?: (language: Language) => void;
   deleteQueries?: () => void;
+  /** Declared query patterns that failed to compile, drained so each is reported once.
+   *  Absent on providers that don't compile queries at all. */
+  drainQueryCompileFailures?: () => QueryCompileFailure[];
+}
+
+/** One declared query pattern that failed to compile against the loaded grammar.
+ *  See `DefaultProvider.queryCompileFailures` for why a failure has to be recorded at all. */
+export interface QueryCompileFailure {
+  kind: keyof LanguageQueryConfig;
+  pattern: string;
+  message: string;
 }
 
 export interface LanguageQueryConfig {
@@ -108,24 +119,46 @@ export class DefaultProvider implements LanguageProvider {
     if (this.compiledQueries || !this.config.queries) return;
     const q = this.config.queries;
     this.compiledQueries = {
-      classes: this.compileQuery(language, q.classes),
-      functions: this.compileQuery(language, q.functions),
-      variables: this.compileQuery(language, q.variables),
-      imports: this.compileQuery(language, q.imports),
-      calls: this.compileQuery(language, q.calls),
-      implements: this.compileQuery(language, q.implements),
-      extends: this.compileQuery(language, q.extends),
+      classes: this.compileQuery(language, q.classes, "classes"),
+      functions: this.compileQuery(language, q.functions, "functions"),
+      variables: this.compileQuery(language, q.variables, "variables"),
+      imports: this.compileQuery(language, q.imports, "imports"),
+      calls: this.compileQuery(language, q.calls, "calls"),
+      implements: this.compileQuery(language, q.implements, "implements"),
+      extends: this.compileQuery(language, q.extends, "extends"),
     };
+  }
+
+  /** Query patterns that were declared by the config but failed to compile against the loaded
+   *  grammar. Drained (not read) by the caller so each failure is reported once per provider.
+   *
+   *  Why this exists: `compileQuery` returns `undefined` both when a language declares no such
+   *  query and when a declared one fails to compile, and `extractNodes` silently falls back in
+   *  either case. That made a real compile failure indistinguishable from "nothing to do" --
+   *  it surfaced only as quietly missing symbols/edges downstream (issue #192 follow-up). */
+  private readonly queryCompileFailures: QueryCompileFailure[] = [];
+
+  /** Returns the recorded compile failures and clears them, so a caller that logs them can't
+   *  re-report the same failure on a later extraction from the same provider. */
+  drainQueryCompileFailures(): QueryCompileFailure[] {
+    return this.queryCompileFailures.splice(0);
   }
 
   private compileQuery(
     language: Language,
     pattern: string | undefined,
+    kind: keyof LanguageQueryConfig,
   ): Query | undefined {
+    // An undeclared query is a legitimate "this language doesn't index that" -- not a failure.
     if (!pattern) return undefined;
     try {
       return new Query(language, pattern);
-    } catch {
+    } catch (error) {
+      this.queryCompileFailures.push({
+        kind,
+        pattern,
+        message: error instanceof Error ? error.message : String(error),
+      });
       return undefined;
     }
   }

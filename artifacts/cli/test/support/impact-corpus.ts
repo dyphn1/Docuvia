@@ -9,6 +9,13 @@
  *   3. re-export chain              (barrel re-export between the definition and the caller)
  *   4. child_process spawn          (execFile of another project file)
  *
+ * Plus the gap issue #217's `ast_call_sites` fallback is meant to close but currently does
+ * not -- kept as a failing row on purpose so the miss stays visible (see the case's own
+ * comment for the dotted-vs-bare `target_function` mismatch behind it):
+ *
+ *   5. unresolved receiver call     (cross-file method call on a value whose type
+ *                                    ScopeResolver can't resolve, so no static edge is built)
+ *
  * Files live as inline strings (not fixture files in a source tree) so intentional dynamic-
  * import patterns never enter typecheck/lint's purview. Symbol names are `eval`-prefixed to be
  * globally unique -- impact resolves targets by exact-then-LIKE name match.
@@ -94,6 +101,32 @@ export const CORPUS_FILES: Record<string, string> = {
     "",
   ].join("\n"),
 
+  // ── Case 7 (open gap): receiver-method call ScopeResolver can't type-resolve ──
+  // `engine` has no resolvable type, so no `calls` edge is built from render-host.ts to
+  // EvalRenderer.evalRenderTemplate. Issue #217's fallback is supposed to recover this, and
+  // currently does NOT: Tier A stores the call site's target_function as the full dotted text
+  // `engine.evalRenderTemplate`, while ImpactService.resolveCallSiteFallback looks up the
+  // node's bare name `evalRenderTemplate` with an exact IN (...) match, so the two never meet.
+  // Verified against a live `docuvia init` + `impact` run, 2026-08-25.
+  //
+  // This case therefore scores 0.000 today, on purpose: the fallback DOES work for bare
+  // identifier calls (`evalPlainHelper()`), so without a case like this the corpus would
+  // report the feature as fine while its headline use case silently misses.
+  "src/renderer.ts": [
+    "export class EvalRenderer {",
+    "  evalRenderTemplate(): string {",
+    '    return "rendered";',
+    "  }",
+    "}",
+    "",
+  ].join("\n"),
+  "src/render-host.ts": [
+    "export function evalRunRender(engine) {",
+    "  return engine.evalRenderTemplate();",
+    "}",
+    "",
+  ].join("\n"),
+
   // ── Case 6 (blind spot #4): child_process spawning a project file ─────────
   "scripts/migrate.ts": [
     "export function runMigrations(): string {",
@@ -119,7 +152,8 @@ export interface GoldenCase {
     | "re-export-chain"
     | "runtime-variable-import"
     | "computed-import-specifier"
-    | "child-process-spawn";
+    | "child-process-spawn"
+    | "unresolved-receiver-call";
   /** Impact target resolved via `findNodeByName` (exact match by design). */
   target: string;
   /** Human-labeled ground truth: workspace-relative files that genuinely depend on `target`. */
@@ -166,5 +200,13 @@ export const GOLDEN_CASES: GoldenCase[] = [
     // task-runner execFile's the compiled migrate script -- a real operational dependency the
     // edge graph does not model (only literal `new Worker(...)` spawns are special-cased).
     expectedDependentFiles: ["src/task-runner.ts"],
+  },
+  {
+    scenario: "unresolved-receiver-call",
+    target: "evalRenderTemplate",
+    // render-host.ts genuinely depends on evalRenderTemplate -- deleting renderer.ts breaks it.
+    // Expected to fail today (see the fixture comment above for the dotted-vs-bare mismatch);
+    // this row is the regression signal that will flip to 1.000 when that lookup is fixed.
+    expectedDependentFiles: ["src/render-host.ts"],
   },
 ];

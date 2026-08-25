@@ -8,7 +8,15 @@ const JAVASCRIPT_WASM_FILE = "tree-sitter-javascript.wasm";
 export const javascriptConfig: LanguageConfig = {
   extensions: JAVASCRIPT_EXTENSIONS,
   wasm_file: JAVASCRIPT_WASM_FILE,
-  imports: [LanguageNodeTypes.IMPORT_STATEMENT],
+  // Mirrors the `imports` query below: both an `import_statement` and a re-exporting
+  // `export ... from` are dependency-bearing. Kept in sync deliberately -- when the query
+  // fails to compile, extractNodes() silently falls back to this list, and a list narrower
+  // than the query turns that failure into missing edges rather than an error (issue #192
+  // follow-up).
+  imports: [
+    LanguageNodeTypes.IMPORT_STATEMENT,
+    TreeSitterNodeTypes.EXPORT_STATEMENT,
+  ],
   classes: [LanguageNodeTypes.CLASS_DECLARATION],
   functions: [
     LanguageNodeTypes.FUNCTION_DECLARATION,

@@ -60,14 +60,25 @@ jobs:
             evaluate/results/*.summary.md
           retention-days: 90
 
+      # `continue-on-error` (not `|| echo`) keeps this report-only workflow non-gating while
+      # still showing a red step when posting fails. The previous `|| echo` swallowed every
+      # failure into a green check -- including the fact that `--edit-if-exists` is not a real
+      # `gh pr comment` flag (the valid ones are `--edit-last` / `--create-if-none`), so this
+      # step had never actually posted a summary to any PR.
+      #
+      # Posting a fresh comment rather than `--edit-last`: `--edit-last` targets the last
+      # comment by the *current user*, and the Knowledge Graph review job also comments as
+      # github-actions[bot] -- editing "the last one" would clobber its review.
       - name: Post summary to PR
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.number }}
         run: |
-          gh pr comment "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --edit-if-exists \
-            --body-file evaluate/results/impact_accuracy_$(date +%F).summary.md \
-            || echo "PR comment skipped (summary file missing or comment failed)"
+          set -euo pipefail
+          # Glob rather than rebuilding the dated filename: the scorer owns that name, and a
+          # date computed here drifts from it across a UTC midnight mid-run.
+          summary="$(ls -1 evaluate/results/*.summary.md | tail -n 1)"
+          echo "Posting $summary to PR #$PR_NUMBER"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$summary"

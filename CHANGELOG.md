@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.3.2](https://github.com/dyphn1/Docuvia/compare/v1.3.1...v1.3.2) (2026-08-25)
+
+### Bug Fixes
+
+- **lsp:** basename-allowlist the --version spawn probe (issue [#207](https://github.com/dyphn1/Docuvia/issues/207)) ([8fc0a7f](https://github.com/dyphn1/Docuvia/commit/8fc0a7f7014df29c885962be6341632015e3e765))
+
 ## [1.3.1](https://github.com/dyphn1/Docuvia/compare/v1.3.0...v1.3.1) (2026-08-25)
 
 ### Bug Fixes

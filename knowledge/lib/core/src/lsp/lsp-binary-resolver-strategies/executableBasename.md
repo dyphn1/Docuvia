@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/lsp-binary-resolver-strategies.ts#anonymous@L298
+id: lib/core/src/lsp/lsp-binary-resolver-strategies.ts#executableBasename
 type: symbol
-name: anonymous
+name: executableBasename
 filePath: lib/core/src/lsp/lsp-binary-resolver-strategies.ts
 ---
-# Symbol: anonymous
+# Symbol: executableBasename
 
 File: `lib/core/src/lsp/lsp-binary-resolver-strategies.ts`

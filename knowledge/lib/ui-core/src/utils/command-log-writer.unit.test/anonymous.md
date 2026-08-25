@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/utils/command-log-writer.unit.test.ts#anonymous@L23
+id: lib/ui-core/src/utils/command-log-writer.unit.test.ts#anonymous@L69
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/utils/command-log-writer.unit.test.ts

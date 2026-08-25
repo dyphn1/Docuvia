@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType@L1
+id: lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType
 type: symbol
 name: DecisionNodeType
 filePath: lib/ui-core/src/workflows/analyze/analyze-result.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/analyze-result.ts
 # Symbol: DecisionNodeType
 
 File: `lib/ui-core/src/workflows/analyze/analyze-result.ts`
+s`

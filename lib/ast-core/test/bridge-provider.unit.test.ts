@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseOpenApiSpec, isOpenApiFile } from "../src/bridge-provider.js";
+import {
+  parseOpenApiSpec,
+  isOpenApiFile,
+  BridgeParseResult,
+} from "../src/bridge-provider.js";
 import * as yamlLib from "js-yaml";
 
 describe("BridgeProvider", () => {
@@ -22,6 +26,11 @@ describe("BridgeProvider", () => {
     expect(result.contractName).toBe("Test API");
     expect(result.endpointCount).toBe(1);
     expect(result.events.length).toBe(2);
+    expect(result.events[0]).toMatchObject({
+      type: "api_contract",
+      contractName: "Test API",
+      version: "3.0.0",
+    });
     expect(result.events[1]).toMatchObject({
       type: "api_contract",
       method: "GET",
@@ -51,8 +60,17 @@ paths:
     );
     expect(result.contractName).toBe("YAML API");
     expect(result.endpointCount).toBe(1);
-    expect(result.events[1].method).toBe("POST");
-    expect(result.events[1].fullPath).toBe("/v1/posts");
+    expect(result.events[0]).toMatchObject({
+      type: "api_contract",
+      contractName: "YAML API",
+      version: "3.0.0",
+    });
+    expect(result.events[1]).toMatchObject({
+      type: "api_contract",
+      method: "POST",
+      path: "/posts",
+      fullPath: "/v1/posts",
+    });
   });
 
   it("extracts base path from host/basePath", async () => {
@@ -108,16 +126,22 @@ paths:
   it("returns empty for invalid yaml", async () => {
     const result = await parseOpenApiSpec(":", "api.yaml", "yaml");
     expect(result.endpointCount).toBe(0);
+    expect(result.events).toHaveLength(0);
+    expect(result.contractName).toBe("");
   });
 
   it("returns empty for non-object spec", async () => {
     const result = await parseOpenApiSpec("null", "api.json", "json");
     expect(result.endpointCount).toBe(0);
+    expect(result.events).toHaveLength(0);
+    expect(result.contractName).toBe("");
   });
 
   it("returns empty if openapi or swagger not defined", async () => {
     const result = await parseOpenApiSpec('{"info": {}}', "api.json", "json");
     expect(result.endpointCount).toBe(0);
+    expect(result.events).toHaveLength(0);
+    expect(result.contractName).toBe("");
   });
 
   it("isOpenApiFile detects signature", () => {

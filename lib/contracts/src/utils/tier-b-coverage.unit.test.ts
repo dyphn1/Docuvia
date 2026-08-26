@@ -2,12 +2,22 @@ import { describe, it, expect, vi } from "vitest";
 import type { IGraphStore } from "@workspace/contracts";
 import { resolveTierBCoverageHint } from "./tier-b-coverage.js";
 
+interface MockStore {
+  files: {
+    getAllHashes: ReturnType<typeof vi.fn>;
+    upsertFile: ReturnType<typeof vi.fn>;
+    markTierBProcessed: ReturnType<typeof vi.fn>;
+    getTierBFileStatus: ReturnType<typeof vi.fn>;
+    getTierBCoverage: ReturnType<typeof vi.fn>;
+  };
+}
+
 function makeMockStore(overrides: {
   fileStatus?:
     | { lastProcessedAt: string | null; lastProcessedCommitSha: string | null }
     | undefined;
   coverage?: { totalFiles: number; processedFiles: number };
-}): IGraphStore {
+}): MockStore {
   return {
     files: {
       getAllHashes: vi.fn(),
@@ -20,18 +30,23 @@ function makeMockStore(overrides: {
           overrides.coverage ?? { totalFiles: 1, processedFiles: 1 },
         ),
     },
-  } as unknown as IGraphStore;
+  };
 }
 
 describe("resolveTierBCoverageHint()", () => {
   it("returns undefined when neither direction is empty (short-circuits before touching the store)", () => {
     const store = makeMockStore({});
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", false, false);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      false,
+      false,
+    );
 
-    expect(result).toBeUndefined();
-    expect(store.files.getTierBFileStatus).not.toHaveBeenCalled();
-    expect(store.files.getTierBCoverage).not.toHaveBeenCalled();
+    expect(result).toBe(undefined);
+    expect(store.files.getTierBFileStatus.mock.calls).toHaveLength(0);
+    expect(store.files.getTierBCoverage.mock.calls).toHaveLength(0);
   });
 
   it("outgoing empty + own file never processed -> hint attached (needsOutgoingHint quadrant)", () => {
@@ -40,7 +55,12 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 5, processedFiles: 5 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", false, true);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      false,
+      true,
+    );
 
     expect(result).toEqual({
       ownFileLastProcessedAt: null,
@@ -58,9 +78,14 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 5, processedFiles: 5 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", false, true);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      false,
+      true,
+    );
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(undefined);
   });
 
   it("incoming empty + workspace coverage incomplete -> hint attached (needsIncomingHint quadrant)", () => {
@@ -72,7 +97,12 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 10, processedFiles: 3 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", true, false);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      true,
+      false,
+    );
 
     expect(result).toEqual({
       ownFileLastProcessedAt: "2026-01-01",
@@ -90,9 +120,14 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 10, processedFiles: 10 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", true, false);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      true,
+      false,
+    );
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(undefined);
   });
 
   it("both empty: only the applicable quadrant(s) drive the hint -- own file unprocessed AND coverage incomplete", () => {
@@ -101,7 +136,12 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 4, processedFiles: 1 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", true, true);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      true,
+      true,
+    );
 
     expect(result).toEqual({
       ownFileLastProcessedAt: null,
@@ -119,9 +159,14 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 4, processedFiles: 4 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", true, true);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      true,
+      true,
+    );
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(undefined);
   });
 
   it("treats a missing project_files row for the own file (undefined status) the same as never-processed", () => {
@@ -131,7 +176,7 @@ describe("resolveTierBCoverageHint()", () => {
     });
 
     const result = resolveTierBCoverageHint(
-      store,
+      store as unknown as IGraphStore,
       "src/never-parsed.ts",
       false,
       true,
@@ -149,10 +194,15 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 2, processedFiles: 2 },
     });
 
-    const result = resolveTierBCoverageHint(store, undefined, false, true);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      undefined,
+      false,
+      true,
+    );
 
-    expect(result?.ownFileLastProcessedAt).toBeNull();
-    expect(store.files.getTierBFileStatus).not.toHaveBeenCalled();
+    expect(result?.ownFileLastProcessedAt).toBe(null);
+    expect(store.files.getTierBFileStatus.mock.calls).toHaveLength(0);
   });
 
   it("workspaceFilesTotal === 0 edge case: processedFiles(0) < totalFiles(0) is false, so no incoming hint", () => {
@@ -164,8 +214,13 @@ describe("resolveTierBCoverageHint()", () => {
       coverage: { totalFiles: 0, processedFiles: 0 },
     });
 
-    const result = resolveTierBCoverageHint(store, "src/a.ts", true, false);
+    const result = resolveTierBCoverageHint(
+      store as unknown as IGraphStore,
+      "src/a.ts",
+      true,
+      false,
+    );
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(undefined);
   });
 });

@@ -291,7 +291,7 @@ describe("ImpactWorkflow.execute()", () => {
       epistemic: "lower-bound",
       riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
     });
-    expect(result && "tierBCoverage" in result).toBe(false);
+    expect(result).not.toHaveProperty("tierBCoverage");
   });
 
   describe("coverageNote (issue #136 -- registry-mediated dependents the static edge graph can't see)", () => {
@@ -382,7 +382,7 @@ describe("ImpactWorkflow.execute()", () => {
         epistemic: "lower-bound",
         riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
       });
-      expect(result && "coverageNote" in result).toBe(false);
+      expect(result).not.toHaveProperty("coverageNote");
     });
 
     it("reports UNKNOWN with the static-edges-only note when the file can't be read (deleted on disk / path mismatch) -- an unreadable file is never an error, just no registry hedge", async () => {
@@ -413,7 +413,7 @@ describe("ImpactWorkflow.execute()", () => {
         epistemic: "lower-bound",
         riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
       });
-      expect(result && "coverageNote" in result).toBe(false);
+      expect(result).not.toHaveProperty("coverageNote");
     });
 
     it("omits the note when the blast radius is non-empty even if the file uses the registry -- a real blast radius at full coverage is an exact answer", async () => {
@@ -447,7 +447,7 @@ describe("ImpactWorkflow.execute()", () => {
         blastRadius: [{ name: "dependent", type: "module" }],
         riskLevel: "LOW",
       });
-      expect(result && "coverageNote" in result).toBe(false);
+      expect(result).not.toHaveProperty("coverageNote");
     });
   });
 

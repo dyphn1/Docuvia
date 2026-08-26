@@ -276,6 +276,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -303,7 +304,9 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(openStore).toHaveBeenCalled();
-      expect(result.diagnostics["tier_b_commit_cap"]).toBeDefined();
+      expect(result.diagnostics["tier_b_commit_cap"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
     });
 
     it("reports PASS with the exceeded message when the accumulated changed-bytes counter is at or above the cap", async () => {
@@ -390,6 +393,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -484,6 +488,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -577,6 +582,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
 
@@ -627,6 +633,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is skipped silently on an empty sample -- covered by graph_empty's own FAIL", async () => {
@@ -763,6 +770,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["graph_empty"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -888,6 +896,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is skipped silently (no diagnostic key, no crash) when GitProvider isn't registered", async () => {
@@ -901,6 +910,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -1030,6 +1040,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
 
     it("is skipped silently on an unborn/headless HEAD (no commit to compare against)", async () => {
@@ -1662,6 +1673,7 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["pre_push_hook"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     describe("--fix (T6)", () => {
@@ -2008,6 +2020,7 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("skips the check entirely (no diagnostic key, provider never called) when skipLsp is set -- escape hatch for fixtures that deliberately have no LSP environment (e.g. SQLite concurrency tests)", async () => {
@@ -2092,6 +2105,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -2273,6 +2287,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -2390,6 +2405,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipDb: true, skipLogs: true });
 
       expect(result.diagnostics["worktree_divergence"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipGit is set", async () => {
@@ -2568,6 +2584,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is skipped silently when GitProvider isn't registered", async () => {
@@ -2578,6 +2595,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb or skipGit is set", async () => {

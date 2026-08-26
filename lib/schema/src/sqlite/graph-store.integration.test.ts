@@ -49,6 +49,8 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(project.id).toBeGreaterThan(0);
     expect(project.name).toBe("demo");
     expect(project.repo_url).toBe("file:///demo");
+    expect(project.repo_url).toMatch(/^file:\/\//);
+    expect(typeof project.name).toBe("string");
   });
 
   it("projects repo: getFirst()/insert() round-trip", () => {
@@ -60,6 +62,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
     const first = store.projects.getFirst();
     expect(first).toEqual(inserted);
+    expect(first).toBeDefined();
+    expect(first!.id).toBeGreaterThan(0);
+    expect(first!.name).toBe("demo");
+    expect(first!.repo_url).toMatch(/^file:\/\//);
   });
 
   it("projects repo: getOrInsert() inserts once and returns the same row on every later call", () => {
@@ -85,6 +91,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "demo",
       repoUrl: "file:///demo",
     });
+    expect(project.repo_url).toMatch(/^file:\/\//);
 
     expect(store.files.getAllHashes()).toEqual([]);
 
@@ -125,11 +132,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "demo",
       repoUrl: "file:///demo",
     });
+    expect(project.repo_url).toMatch(/^file:\/\//);
+    expect(project.name).toBe("demo");
 
     // No `project_files` row at all yet -- undefined, not a zeroed-out status object.
     expect(store.files.getTierBFileStatus("src/a.ts")).toBeUndefined();
-
-    // Coverage over an empty table.
     expect(store.files.getTierBCoverage()).toEqual({
       totalFiles: 0,
       processedFiles: 0,
@@ -198,6 +205,8 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "demo",
       repoUrl: "file:///demo",
     });
+    expect(project.repo_url).toMatch(/^file:\/\//);
+    expect(project.id).toBeGreaterThan(0);
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "src/a.ts",
@@ -210,6 +219,8 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
 
     const tagId = store.tags.getIdByName("typescript");
     expect(tagId).toBeDefined();
+    expect(typeof tagId).toBe("number");
+    expect(tagId!).toBeGreaterThan(0);
 
     store.tags.linkNodeToTag(nodeId, tagId as number);
   });
@@ -235,6 +246,17 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       targetNodeId: fnNodeId,
       linkType: "contains",
     });
+
+    const allLinks = store.graph.getAllLinks();
+    expect(allLinks).toHaveLength(1);
+    expect(allLinks[0].link_type).toBe("contains");
+    expect([
+      "contains",
+      "depends_on",
+      "calls",
+      "extends",
+      "implements",
+    ]).toContain(allLinks[0].link_type);
 
     expect(store.graph.findNodeIdByName("src/a.ts", "doThing")).toBe(fnNodeId);
     expect(store.graph.findNodeIdByName("src/a.ts", "missing")).toBeUndefined();
@@ -398,6 +420,8 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       targetNodeId: staleNodeId,
       linkType: "depends_on",
     });
+    const linkCheck = store.graph.getAllLinks();
+    expect(linkCheck.some((l) => l.link_type === "depends_on")).toBe(true);
     store.tags.upsertTag("typescript");
     const tagId = store.tags.getIdByName("typescript") as number;
     store.tags.linkNodeToTag(staleNodeId, tagId);
@@ -441,6 +465,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       filePath: "src/a.ts",
     });
     expect(store.graph.findNodeByName("nope")).toBeUndefined();
+    expect(store.graph.findNodeByName("nope")?.id).toBeUndefined();
   });
 
   it("graph repo: findNodeByName() prefers a non-test/spec node over a same-named test/spec node", () => {
@@ -680,6 +705,15 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       { id: calleeId, name: "callee", type: "module", linkType: "calls" },
       { id: calleeId, name: "callee", type: "module", linkType: "depends_on" },
     ]);
+    for (const rel of store.graph.getOutgoingRelations(callerId)) {
+      expect([
+        "calls",
+        "depends_on",
+        "contains",
+        "extends",
+        "implements",
+      ]).toContain(rel.linkType);
+    }
     expect(
       store.graph
         .getIncomingRelations(calleeId)
@@ -780,6 +814,13 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       target_node_id: b,
       link_type: "calls",
     });
+    expect([
+      "contains",
+      "depends_on",
+      "calls",
+      "extends",
+      "implements",
+    ]).toContain(store.graph.getAllLinks()[0].link_type);
   });
 
   it("tags repo: getAllTagLinks() returns every (l2NodeId, tagName) pairing", () => {
@@ -829,6 +870,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(exportable[0].title).toBe("kept decision");
     expect(store.l3.getById(exportable[0].id)?.title).toBe("kept decision");
     expect(store.l3.getById(999999)).toBeUndefined();
+    expect(store.l3.getById(999999)?.title).toBeUndefined();
   });
 
   it("l3 repo: getByL2NodeId() returns only the rows for that l2_node_id", () => {
@@ -871,6 +913,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
 
     expect(store.graph.findNodeIdByNodeKey("src/a.ts")).toBe(nodeId);
+    expect(store.graph.findNodeIdByNodeKey("src/a.ts")).toBeGreaterThan(0);
     expect(store.graph.findNodeIdByNodeKey("src/missing.ts")).toBeUndefined();
   });
 
@@ -1634,12 +1677,15 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
 
   it("meta repo: get()/set() round-trip, and upserts an existing key rather than erroring", () => {
     expect(store.meta.get("knowledgeTipSha")).toBeUndefined();
+    expect(typeof store.meta.get("knowledgeTipSha")).toBe("undefined");
 
     store.meta.set("knowledgeTipSha", "aaa111");
     expect(store.meta.get("knowledgeTipSha")).toBe("aaa111");
+    expect(typeof store.meta.get("knowledgeTipSha")).toBe("string");
 
     store.meta.set("knowledgeTipSha", "bbb222");
     expect(store.meta.get("knowledgeTipSha")).toBe("bbb222");
+    expect(store.meta.get("knowledgeTipSha")).not.toBe("aaa111");
   });
 
   it("graph repo: bulkLoadGraph() wipes existing nodes/links and rebuilds from node_key, dropping edges with an unresolvable endpoint", () => {

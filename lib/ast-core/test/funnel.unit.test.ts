@@ -26,13 +26,16 @@ describe("ParsingFunnel", () => {
 
   it("accepts valid registered extensions", () => {
     const res = funnel.process("content", "test.ts", ".ts");
-    expect(res).toEqual({ accepted: true, mappedExtension: ".ts" });
+    expect(res.accepted).toBe(true);
+    expect(res.mappedExtension).toBe(".ts");
+    expect(res.reason).toBeUndefined();
   });
 
   it("rejects unknown extensions", () => {
     const res = funnel.process("content", "test.unknown", ".unknown");
     expect(res.accepted).toBe(false);
     expect(res.reason).toContain("not allowed");
+    expect(res.mappedExtension).toBeUndefined();
   });
 
   it("rejects binary files", () => {
@@ -40,6 +43,7 @@ describe("ParsingFunnel", () => {
     const res = funnel.process(binary, "binary.bin", ".ts");
     expect(res.accepted).toBe(false);
     expect(res.reason).toContain("Binary file detected");
+    expect(res.mappedExtension).toBeUndefined();
   });
 
   it("rejects invalid UTF-8 files", () => {
@@ -47,6 +51,7 @@ describe("ParsingFunnel", () => {
     const res = funnel.process(invalidUtf8, "invalid.ts", ".ts");
     expect(res.accepted).toBe(false);
     expect(res.reason).toContain("Invalid UTF-8");
+    expect(res.mappedExtension).toBeUndefined();
   });
 
   it("detects node shebang", () => {
@@ -55,23 +60,27 @@ describe("ParsingFunnel", () => {
       "cli",
       "",
     );
-    expect(res).toEqual({ accepted: true, mappedExtension: ".js" });
+    expect(res.accepted).toBe(true);
+    expect(res.mappedExtension).toBe(".js");
   });
 
   it("detects python shebang", () => {
     const res = funnel.process("#!/usr/bin/python\nprint(1)", "cli", "");
-    expect(res).toEqual({ accepted: true, mappedExtension: ".py" });
+    expect(res.accepted).toBe(true);
+    expect(res.mappedExtension).toBe(".py");
   });
 
   it("rejects file with no extension and no shebang", () => {
     const res = funnel.process("just text", "cli", "");
     expect(res.accepted).toBe(false);
     expect(res.reason).toContain("No file extension and no shebang detected");
+    expect(res.mappedExtension).toBeUndefined();
   });
 
   it("rejects shell script shebang if not in registry", () => {
     const res = funnel.process("#!/bin/bash\necho 1", "cli", "");
     expect(res.accepted).toBe(false);
     expect(res.reason).toContain("Extension .sh not allowed");
+    expect(res.mappedExtension).toBeUndefined();
   });
 });

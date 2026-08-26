@@ -137,6 +137,9 @@ describe("QueryWorkflow.execute()", () => {
 
     expect(queryService.query).toHaveBeenCalledWith(store, "authService", 5);
     expect(result).toEqual(queryResult);
+    expect(result.l2).toEqual({ name: "authService", matchType: "exact" });
+    expect(result.l3).toEqual([]);
+    expect(result.context).toBeNull();
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
   });

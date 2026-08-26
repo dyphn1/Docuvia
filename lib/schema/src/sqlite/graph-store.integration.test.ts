@@ -1873,7 +1873,15 @@ describe("callSites repo: callee evidence columns (issue #192, migration 0012)",
 
   afterEach(async () => {
     await store.close();
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    // Windows: SQLite may hold file handles briefly after close; retry rmSync.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
   });
 
   it("insertMany() persists decomposition fields and getByTargetFunctions() OR-matches callee_name", async () => {

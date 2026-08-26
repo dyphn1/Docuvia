@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L45
+id: artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/utils/arg-parser.unit.test.ts

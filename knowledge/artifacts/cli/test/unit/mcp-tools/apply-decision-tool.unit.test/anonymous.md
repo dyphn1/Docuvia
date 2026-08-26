@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts#anonymous@L11
+id: artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts`
+ts`

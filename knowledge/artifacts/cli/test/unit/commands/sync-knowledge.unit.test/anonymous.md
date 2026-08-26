@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts`
+

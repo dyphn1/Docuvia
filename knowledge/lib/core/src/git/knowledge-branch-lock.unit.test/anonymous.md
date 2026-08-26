@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-branch-lock.unit.test.ts#anonymous@L54
+id: lib/core/src/git/knowledge-branch-lock.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/knowledge-branch-lock.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/git/knowledge-branch-lock.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/git/knowledge-branch-lock.unit.test.ts`
+ts`

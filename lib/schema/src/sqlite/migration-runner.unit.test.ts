@@ -106,6 +106,9 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "start_line",
     "start_column",
     "created_at",
+    "callee_name",
+    "receiver_text",
+    "callee_kind",
   ],
 };
 
@@ -173,6 +176,7 @@ describe("applyMigrations", () => {
       "0009_l2_node_key_lookup_index.sql",
       "0010_l3_anchor_ranges.sql",
       "0011_ast_call_sites_target_idx.sql",
+      "0012_ast_call_sites_callee_fields.sql",
     ]);
   });
 
@@ -234,7 +238,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(11);
+    expect(migrationRows).toHaveLength(12);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

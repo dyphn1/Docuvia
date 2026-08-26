@@ -387,3 +387,85 @@ describe("ScopeResolver", () => {
     expect(result?.targetFile).toBe("src/a/a.ts");
   });
 });
+
+// ── Issue #192 root-cause fix: member-call resolution (resolveMemberCall) ─────────────
+
+describe("ScopeResolver.resolveMemberCall", () => {
+  const workspaceRoot = "/mock/workspace";
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    // No tsconfig files -- keep module resolution to plain relative paths.
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json"))
+        return false;
+      if (sp.endsWith("src/state/store.ts")) return true;
+      return false;
+    });
+    vi.spyOn(fs, "statSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("src/state/store.ts")) {
+        return { isFile: () => true } as any;
+      }
+      throw new Error(`File not found: ${p}`);
+    });
+  });
+
+  it("resolves a this-receiver call to a same-file method", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/service.ts", [], [], ["refresh", "helper"]);
+
+    expect(
+      resolver.resolveMemberCall("src/service.ts", "this", "refresh"),
+    ).toEqual({ targetFile: "src/service.ts", targetSymbol: "refresh" });
+  });
+
+  it("returns null for a this-receiver whose method is not defined in the file (inherited, not guessed)", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/service.ts", [], [], ["refresh"]);
+
+    expect(
+      resolver.resolveMemberCall("src/service.ts", "this", "toString"),
+    ).toBeNull();
+  });
+
+  it("resolves an import-binding receiver's method in the defining module", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile(
+      "src/app/main.ts",
+      [
+        {
+          localName: "store",
+          originalName: "store",
+          modulePath: "../state/store.js",
+        },
+      ],
+      [],
+      [],
+    );
+    // The defining module declares the method as a local symbol.
+    resolver.registerFile("src/state/store.ts", [], [], ["commit"]);
+
+    expect(
+      resolver.resolveMemberCall("src/app/main.ts", "store", "commit"),
+    ).toEqual({ targetFile: "src/state/store.ts", targetSymbol: "commit" });
+  });
+
+  it("falls back to a same-file local for a non-import receiver (static/local-object heuristic)", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/math.ts", [], [], ["round"]);
+
+    expect(
+      resolver.resolveMemberCall("src/math.ts", "Numbers", "round"),
+    ).toEqual({ targetFile: "src/math.ts", targetSymbol: "round" });
+  });
+
+  it("refuses an unknown receiver with no same-file candidate (no project-wide guessing)", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("src/a.ts", [], [], []);
+    resolver.registerFile("src/b.ts", [], [], ["close"]);
+
+    expect(resolver.resolveMemberCall("src/a.ts", "conn", "close")).toBeNull();
+  });
+});

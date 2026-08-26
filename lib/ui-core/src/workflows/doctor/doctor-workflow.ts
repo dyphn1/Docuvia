@@ -1376,9 +1376,11 @@ export class DoctorWorkflow {
         return true;
       }
 
-      // Self-calls resolve to their own node by design (persisted nowhere), so they're
+      // Self-calls resolve to their own node by design (persisted nowhere), and #192's
+      // 'arg-chain'/'computed' shapes have no statically nameable callee at all -- both are
       // excluded from the denominator rather than counted as failures.
-      const applicable = total.total - total.selfDiscarded;
+      const applicable =
+        total.total - total.selfDiscarded - (total.unresolvable ?? 0);
       const rate = applicable > 0 ? total.resolved / applicable : 1;
       const belowThreshold =
         rate < GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD;

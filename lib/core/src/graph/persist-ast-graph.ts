@@ -13,15 +13,16 @@ import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
 
 /** Mutable per-file accumulator `linkSymbolReference` increments while resolving one file's
  *  call sites (issue #221). `unresolved` is derived at close time (`total - resolved -
- *  selfDiscarded`) so the hot path only touches three fields. */
+ *  selfDiscarded - unresolvable`) so the hot path only touches the incrementing fields. */
 type CallResolutionCounters = {
   total: number;
   resolved: number;
   selfDiscarded: number;
+  unresolvable: number;
 };
 
 function newCallResolutionCounters(): CallResolutionCounters {
-  return { total: 0, resolved: 0, selfDiscarded: 0 };
+  return { total: 0, resolved: 0, selfDiscarded: 0, unresolvable: 0 };
 }
 
 function closeCallResolutionCounters(
@@ -31,7 +32,12 @@ function closeCallResolutionCounters(
     total: counters.total,
     resolved: counters.resolved,
     selfDiscarded: counters.selfDiscarded,
-    unresolved: counters.total - counters.resolved - counters.selfDiscarded,
+    unresolvable: counters.unresolvable,
+    unresolved:
+      counters.total -
+      counters.resolved -
+      counters.selfDiscarded -
+      counters.unresolvable,
   };
 }
 
@@ -189,6 +195,9 @@ export class GraphPersisterService implements IGraphPersister {
           targetFunction: c.targetFunction,
           startLine: c.startLine,
           startColumn: c.startColumn,
+          calleeName: c.calleeName,
+          receiverText: c.receiverText,
+          calleeKind: c.calleeKind,
         })),
       );
 
@@ -424,6 +433,11 @@ export class GraphPersisterService implements IGraphPersister {
         LinkTypes.CALLS,
         false,
         counters,
+        {
+          calleeName: call.calleeName,
+          receiverText: call.receiverText,
+          calleeKind: call.calleeKind,
+        },
       );
     }
     for (const impl of result.data.implements ?? []) {
@@ -577,6 +591,53 @@ export class GraphPersisterService implements IGraphPersister {
     }
   }
 
+  /** Issue #192: a call site is structurally unresolvable by name matching when its shape has
+   *  no statically nameable callee — an invocation-result receiver (`expect(x).toEqual`,
+   *  `'arg-chain'`), computed access (`obj[expr]()`, `'computed'`), or (pre-0012 rows /
+   *  unknown shapes) raw text carrying call parentheses. */
+  private isUnresolvableCallShape(
+    targetFunctionOrClass: string,
+    memberCall?: {
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
+  ): boolean {
+    const calleeKind = memberCall?.calleeKind;
+    return (
+      calleeKind === "arg-chain" ||
+      calleeKind === "computed" ||
+      (!calleeKind && targetFunctionOrClass.includes("("))
+    );
+  }
+
+  /** Member/this-shaped calls try `resolveMemberCall` first (receiver-aware); everything
+   *  falls back to the classic bare-name `resolveCall`. Returns null when neither matches --
+   *  still an unresolved site, never a guess. */
+  private resolveCallTarget(
+    resolver: ScopeResolver,
+    sourceFile: string,
+    targetFunctionOrClass: string,
+    memberCall?: {
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
+  ): { targetFile: string; targetSymbol: string } | null {
+    const calleeKind = memberCall?.calleeKind;
+    if (
+      (calleeKind === "member" || calleeKind === "this") &&
+      memberCall?.calleeName &&
+      memberCall.receiverText
+    ) {
+      const memberResolved = resolver.resolveMemberCall(
+        sourceFile,
+        memberCall.receiverText,
+        memberCall.calleeName,
+      );
+      if (memberResolved) return memberResolved;
+    }
+    return resolver.resolveCall(sourceFile, targetFunctionOrClass);
+  }
+
   /** Resolves one call/implements/extends edge and, if the resolved target is a real (and
    *  distinct) node, inserts the link. Mirrors old inline `processLink` closure 1:1.
    *
@@ -601,9 +662,59 @@ export class GraphPersisterService implements IGraphPersister {
     linkType: string,
     useNameFallback = false,
     callCounters?: CallResolutionCounters,
+    memberCall?: {
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
   ): void {
     if (callCounters) callCounters.total++;
-    const resolved = resolver.resolveCall(sourceFile, targetFunctionOrClass);
+
+    // Issue #192: shape-classified calls take the member-resolution path. 'arg-chain'
+    // (receiver is itself an invocation) and 'computed' (`obj[expr]()`) have no statically
+    // nameable callee -- counted as unresolvable (excluded from health denominators), not as
+    // resolution failures.
+    if (this.isUnresolvableCallShape(targetFunctionOrClass, memberCall)) {
+      if (callCounters) callCounters.unresolvable++;
+      return;
+    }
+    const resolved = this.resolveCallTarget(
+      resolver,
+      sourceFile,
+      targetFunctionOrClass,
+      memberCall,
+    );
+    this.insertResolvedLink(
+      store,
+      resolved,
+      targetFunctionOrClass,
+      useNameFallback,
+      sourceSymbols,
+      sourceSymbolName,
+      sourceFileId,
+      fileIdMap,
+      symbolIdMap,
+      linkType,
+      callCounters,
+    );
+  }
+
+  /** Resolves `resolved` (or the implements/extends name fallback) to concrete node ids and
+   *  inserts the edge unless it degenerates to a self-call -- which is tracked separately
+   *  from unresolved (persisted nowhere by design). */
+  private insertResolvedLink(
+    store: IGraphStore,
+    resolved: { targetFile: string; targetSymbol: string } | null,
+    targetFunctionOrClass: string,
+    useNameFallback: boolean,
+    sourceSymbols: Map<string, number> | undefined,
+    sourceSymbolName: string | undefined,
+    sourceFileId: number,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    linkType: string,
+    callCounters?: CallResolutionCounters,
+  ): void {
     const targetNodeId = resolved
       ? this.resolveTargetNodeId(
           store,

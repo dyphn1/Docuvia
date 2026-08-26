@@ -57,4 +57,7 @@ export const SchemaColumns = {
   TARGET_FUNCTION: "target_function",
   START_LINE: "start_line",
   START_COLUMN: "start_column",
+  CALLEE_NAME: "callee_name",
+  RECEIVER_TEXT: "receiver_text",
+  CALLEE_KIND: "callee_kind",
 } as const;

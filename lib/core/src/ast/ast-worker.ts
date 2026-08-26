@@ -112,6 +112,10 @@ export interface AstParseResponse {
        *  forward-tier-b-edge-resolution-plan.md Slice 1. */
       startLine: number;
       startColumn: number;
+      /** Issue #192 decomposition of the callee expression -- see `getCalleeEvidence`. */
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
     }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
@@ -258,19 +262,120 @@ export function resolveCallableName(node: Node): string {
 }
 
 /**
- * Extracts just the callee (target function/method name) from a call node.
- * The field holding the callee expression is named differently across
- * grammars ("function" for TS/JS/Python/Rust/Go/C/C++, "name" for Java/PHP,
- * "method" for Ruby) — try the common ones, falling back to the whole
- * node's text if none match.
+ * Normalizes the many capture shapes the per-language `calls` queries produce into "the
+ * callee expression":
+ * - TS/JS/Go/Rust/C++/Python capture the callee expression *directly* (`@call` sits on the
+ *   bracketed `[identifier | member_expression]` alternation inside `function:`), so the
+ *   captured node IS the callee -- it carries none of the fields below and falls through to
+ *   itself.
+ * - Ruby (`method:`), Java (`name:`), PHP (`name:`) capture the bare callee identifier field.
+ * - C# captures whole call nodes (`invocation_expression` / `object_creation_expression`),
+ *   which need unwrapping to their `expression:` / `type:` child.
  */
-function getCallTargetText(node: Node): string {
-  const callee =
+function unwrapToCalleeExpression(node: Node): Node {
+  return (
     node.childForFieldName("function") ||
+    node.childForFieldName("expression") || // C# invocation_expression
+    node.childForFieldName("type") || // C# object_creation_expression (`new Foo()` -> Foo)
     node.childForFieldName("name") ||
-    node.childForFieldName("method");
-  return callee?.text ?? node.text;
+    node.childForFieldName("method") ||
+    node
+  );
 }
+
+/**
+ * Issue #192 root-cause fix: decomposes a call site's callee into the evidence name-based
+ * resolution actually needs, instead of persisting one opaque raw string. `target_function`
+ * keeps carrying the (whitespace-normalized) full expression for Tier B seeding and #217's
+ * impact fallback; the decomposition answers:
+ *
+ * - `calleeName` — terminal callee identifier (`doSomething` of `service.doSomething()`),
+ *   what ScopeResolver's bare-name model matches against. Before this change the raw string
+ *   including the receiver was persisted, making every OOP-style call structurally
+ *   unmatchable -- the single largest cause of the ~12.8% distinct-target resolution rate.
+ * - `receiverText` — receiver expression (`service`, `this.logger`), kept as evidence for
+ *   import-binding receiver resolution (ScopeResolver.resolveMemberCall).
+ * - `calleeKind` — shape classifier. `'arg-chain'` (receiver is itself an invocation result,
+ *   e.g. `expect(x).toEqual`, `vi.fn().mockResolvedValue`) and `'computed'` (`obj[expr]()`)
+ *   are structurally unresolvable by name matching; classifying them lets the health-rate
+ *   denominators exclude them instead of counting them as failures (~51% of the unresolved
+ *   distinct targets in this repo's own graph were arg-chain junk from mock chains).
+ *
+ * Language-generic by construction: for any `receiver.callee` shape the callee expression's
+ * rightmost named child is the callee identifier and the second-to-last is the receiver
+ * (TS/JS nested `member_expression`, Go `selector_expression`, Rust/C++ `field_expression`,
+ * Python `attribute`). A bare identifier has no usable second child -> `'bare'`.
+ */
+export function getCalleeEvidence(node: Node): {
+  targetFunction: string;
+  calleeName?: string;
+  receiverText?: string;
+  calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+} {
+  const callee = unwrapToCalleeExpression(node);
+
+  const children = callee.namedChildren;
+  const terminal = children[children.length - 1];
+  const receiver =
+    children.length >= 2 ? children[children.length - 2] : undefined;
+
+  // Bare identifier call (`foo()`), or a grammar whose query already captured the callee
+  // identifier directly (Java `name:`, PHP `name:`, Ruby `method:`).
+  if (!terminal || !receiver) {
+    return {
+      targetFunction: normalizeCallText(callee.text),
+      calleeName: callee.text,
+      calleeKind: "bare",
+    };
+  }
+
+  if (!CALLEE_IDENTIFIER_NODE_TYPES.has(terminal.type)) {
+    // Computed access (`obj[expr]()`) -- no static callee name to match on.
+    return {
+      targetFunction: normalizeCallText(callee.text),
+      calleeKind: "computed",
+    };
+  }
+
+  const calleeName = terminal.text;
+  const receiverText = receiver.text;
+
+  // Invocation-result receivers (`expect(x).toEqual`, `vi.fn().mockResolvedValue`,
+  // `new Date().toISOString`) -- the receiver's runtime type is the call's return value,
+  // unknowable by name matching. A '(' anywhere in the receiver text catches both direct
+  // call receivers and deeper chains (`vi.fn().mock.calls[0]`) in one conservative test.
+  if (receiverText.includes("(")) {
+    return {
+      targetFunction: normalizeCallText(callee.text),
+      calleeName,
+      receiverText,
+      calleeKind: "arg-chain",
+    };
+  }
+
+  return {
+    targetFunction: normalizeCallText(callee.text),
+    calleeName,
+    receiverText,
+    calleeKind:
+      receiverText === "this" || receiverText === "super" ? "this" : "member",
+  };
+}
+
+/** Collapses insignificant whitespace so multi-line call expressions
+ *  (`vi\n  .fn()`) persist as one comparable string instead of newline-laced junk
+ *  that no exact-match consumer (#217's impact fallback) could ever hit. */
+function normalizeCallText(text: string): string {
+  return text.replace(/\s+/g, "");
+}
+
+const CALLEE_IDENTIFIER_NODE_TYPES = new Set([
+  "identifier",
+  "property_identifier",
+  "field_identifier",
+  "shorthand_property_identifier",
+  "attribute",
+]);
 
 /** Resolves a call-site's *seed position* for Tier B forward resolution (issue #11 plan A,
  *  Finding C): for a bare identifier call (`foo()`), `node` already *is* the identifier and its
@@ -486,11 +591,15 @@ function collectCallEdges(
   for (const node of callNodes) {
     if (calls.length >= 1000) break; // Circuit breaker limit
     const position = getCallSitePosition(node);
+    const evidence = getCalleeEvidence(node);
     calls.push({
       sourceFunction: findEnclosingContainerName(node, functionIds),
-      targetFunction: getCallTargetText(node),
+      targetFunction: evidence.targetFunction,
       startLine: position.row,
       startColumn: position.column,
+      calleeName: evidence.calleeName,
+      receiverText: evidence.receiverText,
+      calleeKind: evidence.calleeKind,
     });
   }
 }

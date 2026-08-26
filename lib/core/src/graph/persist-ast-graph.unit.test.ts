@@ -436,7 +436,7 @@ describe("GraphPersisterService.persist()", () => {
     ]);
   });
 
-  it("reports per-file call-resolution counters: resolved, self-discarded, and unresolved (issue #221)", async () => {
+  it("reports per-file call-resolution counters: resolved, self-discarded, unresolvable, unresolved (issues #221+#192)", async () => {
     const parsedResults: ParsedAstFileResult[] = [
       {
         file: "src/a.ts",
@@ -447,6 +447,7 @@ describe("GraphPersisterService.persist()", () => {
           functions: [
             { name: "foo", startLine: 0, endLine: 1 },
             { name: "bar", startLine: 2, endLine: 3 },
+            { name: "refresh", startLine: 4, endLine: 5 },
           ],
           classes: [],
           calls: [
@@ -470,6 +471,27 @@ describe("GraphPersisterService.persist()", () => {
               targetFunction: "neverDefinedAnywhere",
               startLine: 1,
               startColumn: 14,
+            },
+            // #192: this-receiver member call resolves via the same-file method.
+            {
+              sourceFunction: "foo",
+              targetFunction: "this.refresh",
+              startLine: 6,
+              startColumn: 2,
+              calleeName: "refresh",
+              receiverText: "this",
+              calleeKind: "this",
+            },
+            // #192: invocation-result receiver -> structurally unresolvable by name
+            // matching; excluded from the denominator as `unresolvable`, not a failure.
+            {
+              sourceFunction: "foo",
+              targetFunction: "expect(x).toEqual",
+              startLine: 7,
+              startColumn: 2,
+              calleeName: "toEqual",
+              receiverText: "expect(x)",
+              calleeKind: "arg-chain",
             },
           ],
         },
@@ -496,18 +518,20 @@ describe("GraphPersisterService.persist()", () => {
     });
 
     expect(result.callResolutionByFile?.["src/a.ts"]).toEqual({
-      total: 3,
-      resolved: 1,
+      total: 5,
+      resolved: 2,
       selfDiscarded: 1,
+      unresolvable: 1,
       unresolved: 1,
     });
     // Files with zero call sites produce no entry at all (not a zeroed one), so doctor's
     // no-data state stays distinguishable from an all-unresolved repo.
     expect(result.callResolutionByFile?.["src/b.ts"]).toBeUndefined();
     expect(result.callResolution).toEqual({
-      total: 3,
-      resolved: 1,
+      total: 5,
+      resolved: 2,
       selfDiscarded: 1,
+      unresolvable: 1,
       unresolved: 1,
     });
   });

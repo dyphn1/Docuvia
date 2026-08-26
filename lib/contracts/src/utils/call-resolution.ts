@@ -11,11 +11,14 @@ export function aggregateCallResolution(
     resolved: 0,
     selfDiscarded: 0,
     unresolved: 0,
+    unresolvable: 0,
   };
   for (const stats of Object.values(byFile)) {
     aggregate.total += stats.total;
     aggregate.resolved += stats.resolved;
     aggregate.selfDiscarded += stats.selfDiscarded;
+    aggregate.unresolvable =
+      (aggregate.unresolvable ?? 0) + (stats.unresolvable ?? 0);
     aggregate.unresolved += stats.unresolved;
   }
   return aggregate;

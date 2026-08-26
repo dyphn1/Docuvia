@@ -1813,3 +1813,92 @@ describe("GraphStore.open DB classification", () => {
     await reader.close();
   });
 });
+
+describe("callSites repo: callee evidence columns (issue #192, migration 0012)", () => {
+  let tempDir: string;
+  let dbPath: string;
+  let store: GraphStore;
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-call-evidence-"));
+    dbPath = path.join(tempDir, ".docuvia", "local.db");
+    store = await GraphStore.open({ dbPath });
+  });
+
+  afterEach(async () => {
+    await store.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("insertMany() persists decomposition fields and getByTargetFunctions() OR-matches callee_name", async () => {
+    const project = store.projects.insert({
+      name: "callee-evidence",
+      repoUrl: "file:///callee-evidence",
+    });
+
+    store.callSites.insertMany(project.id, "src/a.ts", [
+      // Member call: raw string includes the receiver; callee_name is the matchable part.
+      {
+        targetFunction: "service.doSomething",
+        startLine: 1,
+        startColumn: 2,
+        calleeName: "doSomething",
+        receiverText: "service",
+        calleeKind: "member",
+      },
+      // Bare call: no receiver, kind 'bare'.
+      {
+        targetFunction: "foo",
+        startLine: 3,
+        startColumn: 4,
+        calleeName: "foo",
+        calleeKind: "bare",
+      },
+      // Pre-0012-style row: decomposition absent -> NULLs.
+      { targetFunction: "legacy", startLine: 5, startColumn: 6 },
+    ]);
+
+    const raw = new Database(dbPath, { readonly: true })
+      .prepare(
+        "SELECT target_function, callee_name, receiver_text, callee_kind FROM ast_call_sites ORDER BY id",
+      )
+      .all() as Array<Record<string, unknown>>;
+    expect(raw).toEqual([
+      {
+        target_function: "service.doSomething",
+        callee_name: "doSomething",
+        receiver_text: "service",
+        callee_kind: "member",
+      },
+      {
+        target_function: "foo",
+        callee_name: "foo",
+        receiver_text: null,
+        callee_kind: "bare",
+      },
+      {
+        target_function: "legacy",
+        callee_name: null,
+        receiver_text: null,
+        callee_kind: null,
+      },
+    ]);
+
+    // #217 impact fallback: a lookup by the bare callee identifier must now find member
+    // calls whose raw target_function ("service.doSomething") could never exact-match.
+    const byCallee = store.callSites.getByTargetFunctions(project.id, [
+      "doSomething",
+    ]);
+    expect(byCallee.get("src/a.ts")).toEqual([
+      { startLine: 1, startColumn: 2 },
+    ]);
+
+    // Raw-string matching still works (back-compat).
+    const byRaw = store.callSites.getByTargetFunctions(project.id, ["foo"]);
+    expect(byRaw.get("src/a.ts")).toEqual([{ startLine: 3, startColumn: 4 }]);
+
+    expect(
+      store.callSites.getByTargetFunctions(project.id, ["no-such-symbol"]),
+    ).toEqual(new Map());
+  });
+});

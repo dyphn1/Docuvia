@@ -7727,6 +7727,7 @@
 {"source":"lib/git-local/test/diagnostic-runner.unit.test.ts","target":"lib/git-local/test/diagnostic-runner.unit.test.ts#anonymous@L31","type":"contains"}
 {"source":"lib/git-local/test/diagnostic-runner.unit.test.ts","target":"lib/git-local/test/diagnostic-runner.unit.test.ts#anonymous@L47","type":"contains"}
 {"source":"lib/git-local/test/diagnostic-runner.unit.test.ts","target":"lib/git-local/test/diagnostic-runner.unit.test.ts#anonymous@L48","type":"contains"}
+{"source":"lib/git-local/test/fast-import.unit.test.ts","target":"lib/git-local/src/fast-import.ts","type":"calls"}
 {"source":"lib/git-local/test/fast-import.unit.test.ts","target":"lib/git-local/src/fast-import.ts#buildFastImportData","type":"calls"}
 {"source":"lib/git-local/test/fast-import.unit.test.ts","target":"lib/git-local/src/fast-import.ts#buildFastImportData","type":"calls"}
 {"source":"lib/git-local/test/fast-import.unit.test.ts","target":"lib/git-local/src/fast-import.ts#buildFastImportData","type":"calls"}
@@ -8227,6 +8228,8 @@
 {"source":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.runRead","target":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.releaseRead","type":"calls"}
 {"source":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.runWrite","target":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.acquireWrite","type":"calls"}
 {"source":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.runWrite","target":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.releaseWrite","type":"calls"}
+{"source":"lib/schema/src/sqlite/read-write-lock.unit.test.ts","target":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.runRead","type":"calls"}
+{"source":"lib/schema/src/sqlite/read-write-lock.unit.test.ts","target":"lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.runWrite","type":"calls"}
 {"source":"lib/schema/src/sqlite/read-write-lock.unit.test.ts","target":"lib/schema/src/sqlite/read-write-lock.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/schema/src/sqlite/read-write-lock.unit.test.ts","target":"lib/schema/src/sqlite/read-write-lock.unit.test.ts#anonymous@L106","type":"contains"}
 {"source":"lib/schema/src/sqlite/read-write-lock.unit.test.ts","target":"lib/schema/src/sqlite/read-write-lock.unit.test.ts#anonymous@L114","type":"contains"}

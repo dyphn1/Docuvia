@@ -21,7 +21,7 @@ pnpm run test
 # docs/gitbook/analysis/phase1-decision-integration.md §8h and
 # docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.
 if command -v npx > /dev/null 2>&1; then
-  npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge
+  npx --no-install docuvia hooks check tier-b-c-prepush && npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge
 fi
 # Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability
 # requirement (failures only ever surface via JSONL logs / doctor, never to the pushing

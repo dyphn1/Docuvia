@@ -27,6 +27,12 @@ node_modules
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# AI coding assistants (local configs)
+.claude/settings.json
+.continue/
+.cursor/
+.hermes.md
+
 # misc
 coverage
 npm-debug.log

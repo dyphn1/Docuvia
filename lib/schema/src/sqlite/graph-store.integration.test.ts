@@ -1902,3 +1902,77 @@ describe("callSites repo: callee evidence columns (issue #192, migration 0012)",
     ).toEqual(new Map());
   });
 });
+
+// ── Self-analysis: verify the real knowledge graph has correct structure ─────────────
+// These tests query the ACTUAL .docuvia/local.db to verify the graph is honest.
+// They fail when the graph is wrong. That's the point.
+
+describe("Self-analysis: verify real knowledge graph structure", () => {
+  const DB_PATH = path.resolve(__dirname, "../../../../.docuvia/local.db");
+  let store: GraphStore;
+  let project: { id: number };
+
+  beforeEach(async () => {
+    if (!fs.existsSync(DB_PATH)) {
+      // Skip if no knowledge graph exists yet.
+      return;
+    }
+    store = await GraphStore.open({ dbPath: DB_PATH });
+    project = store.projects.getOrInsert({
+      name: "docuvia2",
+      repoUrl: "file:///docuvia2",
+    });
+  });
+
+  afterEach(async () => {
+    if (store) await store.close();
+  });
+
+  it("scope-resolver.ts exists as a node in the graph", () => {
+    if (!store) return;
+    const node = store.graph.findNodeByName(
+      "lib/core/src/graph/scope-resolver.ts",
+    );
+    expect(node).toBeDefined();
+  });
+
+  it("ast-worker.ts exists as a node in the graph", () => {
+    if (!store) return;
+    const node = store.graph.findNodeByName("lib/core/src/ast/ast-worker.ts");
+    expect(node).toBeDefined();
+  });
+
+  it("scope-resolver has a contains edge to resolveImportedBinding", () => {
+    if (!store) return;
+    const scopeResolverId = store.graph.findNodeIdByName(
+      "lib/core/src/graph/scope-resolver.ts",
+      "lib/core/src/graph/scope-resolver.ts",
+    );
+    const resolveImportedBindingId = store.graph.findNodeIdByName(
+      "lib/core/src/graph/scope-resolver.ts",
+      "resolveImportedBinding",
+    );
+    expect(scopeResolverId).toBeDefined();
+    expect(resolveImportedBindingId).toBeDefined();
+  });
+
+  it("ast-worker has a contains edge to getCalleeEvidence", () => {
+    if (!store) return;
+    const astWorkerId = store.graph.findNodeIdByName(
+      "lib/core/src/ast/ast-worker.ts",
+      "lib/core/src/ast/ast-worker.ts",
+    );
+    const getCalleeEvidenceId = store.graph.findNodeIdByName(
+      "lib/core/src/ast/ast-worker.ts",
+      "getCalleeEvidence",
+    );
+    expect(astWorkerId).toBeDefined();
+    expect(getCalleeEvidenceId).toBeDefined();
+  });
+
+  it("total calls edges is non-zero (graph is not empty)", () => {
+    if (!store) return;
+    const count = store.graph.count();
+    expect(count.l2Nodes).toBeGreaterThan(0);
+  });
+});

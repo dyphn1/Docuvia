@@ -125,23 +125,21 @@ describe("TopologyBuilderService.build()", () => {
     const graph = buildSampleGraph();
 
     const fileTopologyNode = graph.nodes.find((n) => n.id === "l2:1");
-    expect(fileTopologyNode).toBeDefined();
-    expect(fileTopologyNode?.kind).toBe("file");
-    expect(fileTopologyNode?.tags).toEqual(["typescript"]);
-    expect(fileTopologyNode?.l2Type).toBe("module");
+    expect(fileTopologyNode).toMatchObject({
+      kind: "file",
+      tags: ["typescript"],
+      l2Type: "module",
+    });
 
     const fnTopologyNode = graph.nodes.find((n) => n.id === "l2:2");
-    expect(fnTopologyNode).toBeDefined();
-    expect(fnTopologyNode?.kind).toBe("symbol");
-    expect(fnTopologyNode?.l2Type).toBe("module");
+    expect(fnTopologyNode).toMatchObject({ kind: "symbol", l2Type: "module" });
   });
 
   it("surfaces L3 decision enrichment fields on decision topology nodes", () => {
     const graph = buildSampleGraph();
 
     const decisionNode = graph.nodes.find((n) => n.id === "l3:5");
-    expect(decisionNode).toBeDefined();
-    expect(decisionNode?.kind).toBe("decision");
+    expect(decisionNode).toMatchObject({ kind: "decision" });
     expect(decisionNode?.parent).toBe("l2:1");
     expect(decisionNode?.content).toBe("we chose X because Y");
     expect(decisionNode?.decisionType).toBe("rule");

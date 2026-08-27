@@ -92,15 +92,18 @@ describe("Command: docuvia analyze --escalate-to-lsp (real filesystem, no LSP in
         l.event === "analyze.tierB.file_skipped_language" &&
         l.file === "README.md",
     );
-    expect(languageSkip).toBeTruthy();
+    expect(languageSkip).toBeDefined();
+    expect(languageSkip!.event).toBe("analyze.tierB.file_skipped_language");
+    expect(languageSkip!.file).toBe("README.md");
 
     const degraded = lines.find((l) => l.event === "analyze.tierB.degraded");
-    expect(degraded).toBeTruthy();
-    expect(typeof degraded.reason).toBe("string");
-    expect(degraded.reason.length).toBeGreaterThan(0);
+    expect(degraded).toBeDefined();
+    expect(typeof degraded!.reason).toBe("string");
+    expect(degraded!.reason.length).toBeGreaterThanOrEqual(1);
 
     const summary = lines.find((l) => l.event === "analyze.tierB.summary");
-    expect(summary).toBeTruthy();
+    expect(summary).toBeDefined();
+    expect(summary!.event).toBe("analyze.tierB.summary");
     expect(summary.degraded).toBe(true);
     expect(summary.edgesApplied).toBe(0);
     expect(summary.filesSkippedLanguage).toBe(1);

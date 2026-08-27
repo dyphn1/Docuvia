@@ -118,7 +118,7 @@ describe("Language Configurations", () => {
     it(`should have valid configuration for ${name}`, () => {
       expect(config).toBeDefined();
       expect(Array.isArray(config.extensions)).toBe(true);
-      expect(config.extensions.length).toBeGreaterThan(0);
+      expect(config.extensions.length).toBeGreaterThanOrEqual(1);
       expect(typeof config.wasm_file).toBe("string");
       expect(config.queries).toBeDefined();
     });

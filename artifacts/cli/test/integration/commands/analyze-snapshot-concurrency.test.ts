@@ -98,7 +98,7 @@ describe("Command: docuvia analyze (delta) concurrent with docuvia snapshot (rea
     // succeed cleanly.
     const log = await sandbox.runGit(["log", "docuvia-knowledge", "--oneline"]);
     expect(log.exitCode).toBe(0);
-    expect(log.stdout.trim().length).toBeGreaterThan(0);
+    expect(log.stdout.trim().length).toBeGreaterThanOrEqual(1);
 
     const fsck = await sandbox.runGit(["fsck", "--full"]);
     expect(fsck.exitCode).toBe(0);

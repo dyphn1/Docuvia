@@ -60,7 +60,7 @@ describe("checkTypeScriptLspPreflight()", () => {
 
     expect(result.nodeModulesPresent).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   }, 15000);
 
   it("reports not ready when node_modules exists but no tsconfig/jsconfig does", async () => {

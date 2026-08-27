@@ -1021,9 +1021,14 @@ export class GitLocalProvider implements IGitProvider {
     branchName: string,
     commitMessage: string,
     timestamp?: number,
+    /** When true (internal operations like snapshot), allows sourceDir outside workspace root. */
+    allowOutsideWorkspace = false,
   ): Promise<void> {
     try {
-      const files = await collectDirectoryFiles(sourceDir);
+      const files = await collectDirectoryFiles(
+        sourceDir,
+        allowOutsideWorkspace ? undefined : cwd,
+      );
       const now =
         timestamp !== undefined ? timestamp : Math.floor(Date.now() / 1000);
       const parentCommitSha = await this.getBranchTipSha(cwd, branchName);

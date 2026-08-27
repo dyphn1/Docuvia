@@ -678,6 +678,12 @@ export class GraphPersisterService implements IGraphPersister {
       if (callCounters) callCounters.unresolvable++;
       return;
     }
+    // ISSUE #230 FIX: Same-file bare call fallback.
+    if (!memberCall && resolver.getLocalsByFile().get(sourceFile)?.has(targetFunctionOrClass)) {
+      if (callCounters) callCounters.resolved++;
+      store.graph.insertLink({ sourceNodeId: sourceFileId, targetNodeId: sourceFileId, linkType });
+      return;
+    }
     const resolved = this.resolveCallTarget(
       resolver,
       sourceFile,

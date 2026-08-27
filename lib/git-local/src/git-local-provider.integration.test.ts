@@ -283,8 +283,8 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
       );
     }
     const siblingEntry = normalized.find((w) => w.branch === "feat/b");
-    expect(siblingEntry).toBeDefined();
-    expect(siblingEntry!.path).toMatch(/\/worktree-b$/i);
+    expect(siblingEntry?.branch).toBe("feat/b");
+    expect(siblingEntry?.path).toMatch(/\/worktree-b$/i);
     expect(worktrees).toHaveLength(2);
   });
 

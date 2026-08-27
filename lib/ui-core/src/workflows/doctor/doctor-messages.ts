@@ -50,6 +50,18 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
    *  "4 agent-authored decisions ever, none this week" is visible instead of silent. Always PASS
    *  (informational, soft enforcement), mirroring `TIER_B_COMMIT_CAP`'s precedent. */
   AGENT_AUTHED_ADOPTION: "agent_authored_adoption",
+  /** Issue #221: Tier A call-graph resolution health -- % of extracted call sites
+   *  (`ast_call_sites`) that resolved into a persisted `calls` link, accumulated per file by the
+   *  ingestion workflows under `META_KEY_CALL_RESOLUTION_STATS`. Informational-only (always
+   *  PASS): a low rate currently conflates method-call style with real resolution gaps, so it
+   *  must not red the build until #192 fixes the constructor-call extraction blind spot and the
+   *  baseline is re-measured. */
+  CALL_GRAPH_RESOLUTION: "call_graph_resolution",
+  /** Issue #221 P3: the canary self-test -- known-present l2_nodes names must resolve through
+   *  `findNodeByName`, and an FTS query for a token derived from a sampled name must return
+   *  rows. Catches lookup-plumbing regressions and a desynced `l2_nodes_fts` index (the sync
+   *  triggers are suspended during bulk loads) that count-only diagnostics can't see. */
+  CANARY_SELF_TEST: "canary_self_test",
 } as const;
 
 /** Extension used to identify per-command run-log files under `.docuvia/logs/`. */
@@ -257,4 +269,36 @@ export const DOCTOR_MESSAGES = {
   AGENT_HOOKS_FOUND: (platformName: string) => `${platformName} hooks found.`,
   AGENT_HOOKS_NOT_FOUND: (platformName: string) =>
     `${platformName} hooks not found (run \`docuvia init\` to install).`,
+
+  /** Issue #221: Tier A call-graph resolution health (see `CALL_GRAPH_RESOLUTION`'s key doc
+   *  comment). Always PASS (informational-only until #192's extractor blind spot is fixed and
+   *  the baseline is re-measured); `applicable` excludes self-calls, which resolve to their own
+   *  node by design and are never usable edges. */
+  CALL_GRAPH_RESOLUTION_NO_DATA:
+    "No call-site resolution data recorded yet (run `docuvia analyze` to populate it).",
+  CALL_GRAPH_RESOLUTION_OK: (
+    resolved: number,
+    applicable: number,
+    files: number,
+  ) =>
+    `Call-graph resolution: ${resolved}/${applicable} applicable call site(s) resolved into calls edges across ${files} ingested file(s).`,
+  CALL_GRAPH_RESOLUTION_LOW: (
+    resolved: number,
+    applicable: number,
+    pct: number,
+    files: number,
+  ) =>
+    `Call-graph resolution is low: only ${pct.toFixed(1)}% of applicable call sites resolved into calls edges (${resolved}/${applicable} across ${files} file(s)) -- impact results in these areas may understate real dependents ("no dependents" can mean "unresolved", not "safe").`,
+  CALL_GRAPH_RESOLUTION_LOW_SUGGESTION:
+    "Run `docuvia analyze --escalate-to-lsp --full` to let Tier B LSP edge resolution recover the unresolved call sites.",
+
+  /** Issue #221 P3: canary self-test (see `CANARY_SELF_TEST`'s key doc comment). */
+  CANARY_SELF_TEST_OK: (checked: number) =>
+    `Graph self-test passed: ${checked} sampled node(s) resolved via exact-name lookup; the FTS index answered a known-present token.`,
+  CANARY_SELF_TEST_LOOKUP_FAIL: (misses: number, checked: number) =>
+    `Graph self-test FAILED: ${misses} of ${checked} sampled l2_nodes row(s) could not be resolved by exact-name lookup -- rows exist that query/impact can never find.`,
+  CANARY_SELF_TEST_FTS_FAIL: (token: string) =>
+    `Graph self-test FAILED: FTS search for known-indexed token "${token}" returned 0 rows while l2_nodes holds data -- the FTS index is out of sync with l2_nodes.`,
+  CANARY_SELF_TEST_FAIL_SUGGESTION:
+    "Run `docuvia analyze --full` to rebuild the local graph from the working tree (or `docuvia hydrate --force` to re-pull it from the knowledge branch).",
 } as const;

@@ -13,6 +13,7 @@ import { seedProjectRow } from "./seed-project-row.js";
 import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
+import { stampFullCallResolution } from "../analyze/call-resolution-stats.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
 import {
   buildInitResult,
@@ -154,22 +155,28 @@ export class InitWorkflow {
 
       // 4. Parse + persist (adds per-file language tags to the same shared tag set).
       logger.info(INIT_MESSAGES.PARSING_AST);
-      const { parsedResults, failures } = await runParseAndPersist({
-        astProcessor,
-        graphPersister,
-        store,
-        workspaceRoot,
-        projectId: project.id,
-        filesToParse: discoveryResult.filesToParse,
-        skippedOversized: discoveryResult.skippedOversized,
-        tags: discoveryResult.tags,
-        appendLogLine: appendInitLogLine,
-        logEvents: {
-          parseFailure: INIT_EVENTS.PARSE_FAILURE,
-          fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
-        },
-      });
+      const { parsedResults, failures, callResolutionByFile } =
+        await runParseAndPersist({
+          astProcessor,
+          graphPersister,
+          store,
+          workspaceRoot,
+          projectId: project.id,
+          filesToParse: discoveryResult.filesToParse,
+          skippedOversized: discoveryResult.skippedOversized,
+          tags: discoveryResult.tags,
+          appendLogLine: appendInitLogLine,
+          logEvents: {
+            parseFailure: INIT_EVENTS.PARSE_FAILURE,
+            fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
+          },
+        });
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
+
+      // Issue #221: init's parse+persist pass covers the whole workspace, so its per-file
+      // call-resolution counters replace the stored map wholesale (same semantics as
+      // analyze's full-ingestion branch, which shares this helper).
+      stampFullCallResolution(store, callResolutionByFile ?? {});
 
       // 4b2. Stamp `lastIngestedSourceSha` and queue every just-parsed file for Tier B (LSP
       // cross-file edge resolution) -- the same step `analyze`'s own empty-graph full-ingestion

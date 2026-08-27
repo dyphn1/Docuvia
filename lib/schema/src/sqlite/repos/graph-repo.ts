@@ -234,6 +234,24 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     }
   }
 
+  /** Issue #221 P3: deterministic primary-key-ordered sample of non-empty names — LIMIT-bounded,
+   *  so it stays cheap on a 100k+-node graph (unlike `getAllNodes()`). */
+  getCanarySample(limit: number): Array<{ name: string }> {
+    try {
+      return this.db
+        .prepare(
+          `SELECT name FROM ${SchemaTables.L2_NODES} WHERE name != '' ORDER BY id LIMIT ?`,
+        )
+        .all(limit) as Array<{ name: string }>;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.COUNT_FAILED,
+        err,
+      );
+    }
+  }
+
   /**
    * l2_nodes whose `path_patterns` intersects `changedFiles`, each paired with its l3_nodes —
    * used by `sync` (mirrors old Docuvia's `SyncService.readLocalCandidates`).

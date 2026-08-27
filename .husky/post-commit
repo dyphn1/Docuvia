@@ -2,6 +2,11 @@
 # Docuvia Knowledge Graph Evolver Hook
 # Non-intrusively extracts AST deltas in the background
 if command -v npx > /dev/null 2>&1; then
-  # Fire and forget (do not block commit)
-  npx --no-install docuvia analyze > /dev/null 2>&1 &
+  mkdir -p .docuvia/logs
+  # Fire and forget (do not block commit) -- nohup keeps the process alive after this hook's
+  # shell exits; output goes to a log file (not /dev/null) so failures are visible (issue #58).
+  nohup npx --no-install docuvia analyze >> .docuvia/logs/post-commit-hook.log 2>&1 &
+  # Flush any staged agent-authored L3 decisions for this commit (roadmap items 32-34, issue #42).
+  # Self-gated internally on the commit-l3-write toggle -- see run-flush-staged-l3.ts.
+  nohup npx --no-install docuvia analyze --flush-staged-l3 >> .docuvia/logs/post-commit-hook.log 2>&1 &
 fi

@@ -93,16 +93,60 @@ describe("ReadWriteLock", () => {
   it("should release the lock when the guarded function throws", async () => {
     // Arrange
     const lock = new ReadWriteLock();
+    const events: string[] = [];
 
-    // Act
+    // Act — first write throws
     await expect(
       lock.runWrite(async () => {
+        events.push("write1:start");
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
 
     // Assert — lock must be reusable after the failure
-    const result = await lock.runWrite(async () => "recovered");
+    const result = await lock.runWrite(async () => {
+      events.push("write2:start");
+      return "recovered";
+    });
     expect(result).toBe("recovered");
+    expect(events).toEqual(["write1:start", "write2:start"]);
+  });
+
+  it("should allow a new writer to acquire the lock after a previous writer completes (full acquire/release/re-acquire cycle)", async () => {
+    const lock = new ReadWriteLock();
+    const events: string[] = [];
+
+    // First acquisition
+    await lock.runWrite(async () => {
+      events.push("acquire-1");
+    });
+    expect(events).toEqual(["acquire-1"]);
+
+    // Second acquisition — proves the lock was fully released
+    await lock.runWrite(async () => {
+      events.push("acquire-2");
+    });
+    expect(events).toEqual(["acquire-1", "acquire-2"]);
+
+    // Third acquisition — confirms repeated cycling works
+    await lock.runWrite(async () => {
+      events.push("acquire-3");
+    });
+    expect(events).toEqual(["acquire-1", "acquire-2", "acquire-3"]);
+  });
+
+  it("should serialize a writer after a reader completes (reader-to-writer handoff)", async () => {
+    const lock = new ReadWriteLock();
+    const events: string[] = [];
+
+    await lock.runRead(async () => {
+      events.push("read");
+    });
+    expect(events).toEqual(["read"]);
+
+    await lock.runWrite(async () => {
+      events.push("write");
+    });
+    expect(events).toEqual(["read", "write"]);
   });
 });

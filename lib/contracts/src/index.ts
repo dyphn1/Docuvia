@@ -119,7 +119,10 @@ export type {
   HydrationResult,
   IHydrationService,
 } from "./interfaces/hydration.interfaces.js";
-export type { IGraphPersister } from "./interfaces/graph-persister.interfaces.js";
+export type {
+  IGraphPersister,
+  CallResolutionStats,
+} from "./interfaces/graph-persister.interfaces.js";
 export type {
   RemoteL2NodeSummary,
   CreateL3EventPayload,
@@ -288,6 +291,7 @@ export {
 export { acquireProcessLock } from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
 export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
+export { aggregateCallResolution } from "./utils/call-resolution.js";
 export type {
   ProcessLockOptions,
   ProcessLockHandle,

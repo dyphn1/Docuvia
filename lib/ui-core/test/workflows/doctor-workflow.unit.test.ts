@@ -276,6 +276,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -303,7 +304,9 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(openStore).toHaveBeenCalled();
-      expect(result.diagnostics["tier_b_commit_cap"]).toBeDefined();
+      expect(result.diagnostics["tier_b_commit_cap"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
     });
 
     it("reports PASS with the exceeded message when the accumulated changed-bytes counter is at or above the cap", async () => {
@@ -390,6 +393,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -458,6 +462,283 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Call Graph Resolution Check (issue #221)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(byFile: Record<string, unknown> | undefined) {
+      const raw = byFile === undefined ? undefined : JSON.stringify({ byFile });
+      return {
+        meta: { get: vi.fn().mockReturnValue(raw) },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore(undefined);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+    });
+
+    it("reports an informational no-data PASS when no resolution counters were ever stamped", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore(undefined);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "No call-site resolution data",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS with the rate when resolution is at or above the threshold, excluding self-calls from the denominator", async () => {
+      registerPassingDbAndGitRunners();
+      // 9 resolved + 1 selfDiscarded out of 12 total -> 9/11 applicable ≈ 81.8%.
+      const store = makeMockStore({
+        "a.ts": { total: 12, resolved: 9, selfDiscarded: 1, unresolved: 2 },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "9/11",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("stays PASS below the threshold (informational-only) but carries the low-resolution note and suggestion", async () => {
+      registerPassingDbAndGitRunners();
+      // 1 resolved of 10 applicable = 10%.
+      const store = makeMockStore({
+        "a.ts": { total: 10, resolved: 1, selfDiscarded: 0, unresolved: 9 },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["call_graph_resolution"].message).toContain(
+        "1/10",
+      );
+      expect(result.diagnostics["call_graph_resolution"].suggestion).toContain(
+        "docuvia analyze --escalate-to-lsp --full",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently when the db can't be opened", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
+  describe("Canary Self-Test (issue #221 P3)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(options?: {
+      sample?: Array<{ name: string }>;
+      findNodeByName?: ReturnType<typeof vi.fn>;
+      searchL2Nodes?: ReturnType<typeof vi.fn>;
+    }) {
+      return {
+        graph: {
+          getCanarySample:
+            options?.sample !== undefined
+              ? vi.fn().mockReturnValue(options.sample)
+              : vi.fn().mockReturnValue([]),
+          findNodeByName:
+            options?.findNodeByName ??
+            // Default healthy: every lookup resolves.
+            vi
+              .fn()
+              .mockImplementation((name: string) =>
+                name ? { id: 1, name, type: "module" } : undefined,
+              ),
+        },
+        fts: {
+          searchL2Nodes:
+            options?.searchL2Nodes ??
+            vi.fn().mockReturnValue([{ id: 1, name: "queryCommand" }]),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently on an empty sample -- covered by graph_empty's own FAIL", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ sample: [] });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(store.graph.getCanarySample).toHaveBeenCalled();
+    });
+
+    it("passes when every sampled name resolves and FTS answers a known-present token", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "queryCommand" }, { name: "ImpactWorkflow" }],
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain("2");
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("FAILs when a sampled l2_nodes row can't be resolved by exact-name lookup", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "findable" }, { name: "lostRow" }],
+        findNodeByName: vi
+          .fn()
+          .mockImplementation((name: string) =>
+            name === "findable"
+              ? { id: 1, name: "findable", type: "module" }
+              : undefined,
+          ),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain(
+        "1 of 2",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("FAILs when the FTS index returns nothing for a known-indexed token", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "queryCommand" }],
+        searchL2Nodes: vi.fn().mockReturnValue([]),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["canary_self_test"].message).toContain(
+        'token "queryCommand"',
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("skips the FTS probe when no sampled name has a >=3-char alphanumeric segment", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        sample: [{ name: "--" }, { name: "_a_" }],
+        searchL2Nodes: vi.fn(),
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["canary_self_test"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(store.fts.searchL2Nodes).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Graph Empty Check (issue #57)", () => {
     function registerPassingDbAndGitRunners() {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
@@ -489,6 +770,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["graph_empty"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -614,6 +896,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is skipped silently (no diagnostic key, no crash) when GitProvider isn't registered", async () => {
@@ -627,6 +910,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -756,6 +1040,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
 
     it("is skipped silently on an unborn/headless HEAD (no commit to compare against)", async () => {
@@ -1388,6 +1673,7 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["pre_push_hook"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     describe("--fix (T6)", () => {
@@ -1734,6 +2020,7 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("skips the check entirely (no diagnostic key, provider never called) when skipLsp is set -- escape hatch for fixtures that deliberately have no LSP environment (e.g. SQLite concurrency tests)", async () => {
@@ -1784,6 +2071,7 @@ describe("DoctorWorkflow", () => {
             totalNodes: 1,
             describedNodes: 1,
           }),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({
@@ -1817,6 +2105,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -1963,6 +2252,7 @@ describe("DoctorWorkflow", () => {
         graph: {
           count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
           getSemanticCoverage: vi.fn().mockReturnValue(coverage),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({
@@ -1997,6 +2287,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
       expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb is set", async () => {
@@ -2114,6 +2405,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipDb: true, skipLogs: true });
 
       expect(result.diagnostics["worktree_divergence"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipGit is set", async () => {
@@ -2228,6 +2520,7 @@ describe("DoctorWorkflow", () => {
             totalNodes: 1,
             describedNodes: 1,
           }),
+          getCanarySample: vi.fn().mockReturnValue([]),
         },
         files: {
           getTierBCoverage: vi.fn().mockReturnValue({
@@ -2291,6 +2584,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is skipped silently when GitProvider isn't registered", async () => {
@@ -2301,6 +2595,7 @@ describe("DoctorWorkflow", () => {
       const result = await wf.execute({ skipLogs: true });
 
       expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
     });
 
     it("is not evaluated at all when skipDb or skipGit is set", async () => {

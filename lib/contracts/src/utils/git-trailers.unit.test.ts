@@ -16,12 +16,12 @@ describe("parseSourceTrailer()", () => {
   });
 
   it("returns undefined when the trailer is absent", () => {
-    expect(parseSourceTrailer("Snapshot [unknown]")).toBeUndefined();
-    expect(parseSourceTrailer("Docuvia-Other: abcdef\n")).toBeUndefined();
+    expect(parseSourceTrailer("Snapshot [unknown]")).toBe(undefined);
+    expect(parseSourceTrailer("Docuvia-Other: abcdef\n")).toBe(undefined);
   });
 
   it("returns undefined for an empty message", () => {
-    expect(parseSourceTrailer("")).toBeUndefined();
+    expect(parseSourceTrailer("")).toBe(undefined);
   });
 
   it("ignores non-trailer lines", () => {

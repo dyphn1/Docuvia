@@ -650,3 +650,75 @@ describe("typescript fixture: exported consts and barrel re-exports (issue #192)
     ]);
   });
 });
+
+// ── Issue #192 root-cause fix: callee evidence decomposition ──────────────
+
+const CALLEE_EVIDENCE_SRC = `function main() {
+  foo();
+  service.doSomething();
+  this.refresh();
+  expect(result).toEqual(3);
+  obj[expr]();
+}
+const multi = vi
+  .fn();
+`;
+
+describe("typescript fixture: callee evidence decomposition (issue #192)", () => {
+  let calls: Array<Record<string, unknown>>;
+
+  beforeAll(async () => {
+    const response = await buildParseResponse({
+      taskId: "callee-evidence",
+      filePath: "callee-evidence.ts",
+      code: CALLEE_EVIDENCE_SRC,
+      language: "typescript",
+    });
+    calls = response.data!.calls as unknown as Array<Record<string, unknown>>;
+  });
+
+  it("classifies a bare identifier call", () => {
+    const bare = calls.find((c) => c.calleeKind === "bare");
+    expect(bare).toMatchObject({ calleeName: "foo" });
+    expect(bare!.receiverText).toBeUndefined();
+  });
+
+  it("decomposes a member call into calleeName + receiverText", () => {
+    const member = calls.find((c) => c.calleeName === "doSomething");
+    expect(member).toBeDefined();
+    expect(member).toMatchObject({
+      receiverText: "service",
+      calleeKind: "member",
+      targetFunction: "service.doSomething",
+    });
+  });
+
+  it("classifies a this-receiver call", () => {
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        calleeName: "refresh",
+        receiverText: "this",
+        calleeKind: "this",
+      }),
+    );
+  });
+
+  it("classifies an invocation-result receiver as arg-chain (excluded from resolution denominators)", () => {
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        calleeName: "toEqual",
+        calleeKind: "arg-chain",
+      }),
+    );
+  });
+
+  it("normalizes a multi-line member chain's raw text and still decomposes the callee", () => {
+    const multi = calls.find((c) => c.calleeName === "fn");
+    expect(multi).toBeDefined();
+    expect(multi).toMatchObject({
+      targetFunction: "vi.fn",
+      receiverText: "vi",
+      calleeKind: "member",
+    });
+  });
+});

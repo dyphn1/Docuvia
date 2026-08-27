@@ -2,12 +2,44 @@ import {
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
+  type CallResolutionStats,
+  aggregateCallResolution,
   L2NodeTypes,
   LinkTypes,
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
+
+/** Mutable per-file accumulator `linkSymbolReference` increments while resolving one file's
+ *  call sites (issue #221). `unresolved` is derived at close time (`total - resolved -
+ *  selfDiscarded - unresolvable`) so the hot path only touches the incrementing fields. */
+type CallResolutionCounters = {
+  total: number;
+  resolved: number;
+  selfDiscarded: number;
+  unresolvable: number;
+};
+
+function newCallResolutionCounters(): CallResolutionCounters {
+  return { total: 0, resolved: 0, selfDiscarded: 0, unresolvable: 0 };
+}
+
+function closeCallResolutionCounters(
+  counters: CallResolutionCounters,
+): CallResolutionStats {
+  return {
+    total: counters.total,
+    resolved: counters.resolved,
+    selfDiscarded: counters.selfDiscarded,
+    unresolvable: counters.unresolvable,
+    unresolved:
+      counters.total -
+      counters.resolved -
+      counters.selfDiscarded -
+      counters.unresolvable,
+  };
+}
 
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
@@ -28,7 +60,11 @@ export class GraphPersisterService implements IGraphPersister {
     projectId: number;
     parsedResults: ParsedAstFileResult[];
     tags: string[];
-  }): Promise<{ updatedCount: number }> {
+  }): Promise<{
+    updatedCount: number;
+    callResolution?: CallResolutionStats;
+    callResolutionByFile?: Record<string, CallResolutionStats>;
+  }> {
     const { store, workspaceRoot, projectId, parsedResults, tags } = input;
 
     return store.withWriteLock(() =>
@@ -50,7 +86,11 @@ export class GraphPersisterService implements IGraphPersister {
     projectId: number,
     parsedResults: ParsedAstFileResult[],
     tags: string[],
-  ): { updatedCount: number } {
+  ): {
+    updatedCount: number;
+    callResolution?: CallResolutionStats;
+    callResolutionByFile?: Record<string, CallResolutionStats>;
+  } {
     return store.withTransaction(() => {
       const resolver = new ScopeResolver(workspaceRoot);
       this.registerResolverFiles(resolver, parsedResults);
@@ -59,6 +99,10 @@ export class GraphPersisterService implements IGraphPersister {
       // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
       // actual function/class node instead of collapsing to a file-to-file edge.
       const symbolIdMap = new Map<string, Map<string, number>>();
+
+      // Issue #221: per-file Tier A call-site resolution counters, aggregated for the caller
+      // (the orchestration layer stamps them into docuvia_meta / the analyze log).
+      const callResolutionByFile: Record<string, CallResolutionStats> = {};
 
       this.upsertTags(store, tags);
       // Suspends l2_nodes_fts's sync triggers for the duration of this per-file insert/delete
@@ -83,9 +127,16 @@ export class GraphPersisterService implements IGraphPersister {
         parsedResults,
         fileIdMap,
         symbolIdMap,
+        callResolutionByFile,
       );
 
-      return { updatedCount };
+      const files = Object.keys(callResolutionByFile);
+      const callResolution =
+        files.length > 0
+          ? aggregateCallResolution(callResolutionByFile)
+          : undefined;
+
+      return { updatedCount, callResolution, callResolutionByFile };
     });
   }
 
@@ -144,6 +195,9 @@ export class GraphPersisterService implements IGraphPersister {
           targetFunction: c.targetFunction,
           startLine: c.startLine,
           startColumn: c.startColumn,
+          calleeName: c.calleeName,
+          receiverText: c.receiverText,
+          calleeKind: c.calleeKind,
         })),
       );
 
@@ -320,6 +374,7 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    callResolutionByFile: Record<string, CallResolutionStats>,
   ): number {
     let updatedCount = 0;
 
@@ -327,6 +382,7 @@ export class GraphPersisterService implements IGraphPersister {
       const sourceFileId = fileIdMap.get(result.file);
       if (!sourceFileId) continue;
 
+      const counters = newCallResolutionCounters();
       this.linkParsedResultRelations(
         store,
         resolver,
@@ -334,7 +390,12 @@ export class GraphPersisterService implements IGraphPersister {
         sourceFileId,
         fileIdMap,
         symbolIdMap,
+        counters,
       );
+      if (counters.total > 0) {
+        callResolutionByFile[result.file] =
+          closeCallResolutionCounters(counters);
+      }
 
       store.files.upsertFile({
         projectId,
@@ -354,6 +415,7 @@ export class GraphPersisterService implements IGraphPersister {
     sourceFileId: number,
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    counters: CallResolutionCounters,
   ): void {
     const sourceSymbols = symbolIdMap.get(result.file);
 
@@ -369,6 +431,13 @@ export class GraphPersisterService implements IGraphPersister {
         call.sourceFunction,
         call.targetFunction,
         LinkTypes.CALLS,
+        false,
+        counters,
+        {
+          calleeName: call.calleeName,
+          receiverText: call.receiverText,
+          calleeKind: call.calleeKind,
+        },
       );
     }
     for (const impl of result.data.implements ?? []) {
@@ -522,6 +591,53 @@ export class GraphPersisterService implements IGraphPersister {
     }
   }
 
+  /** Issue #192: a call site is structurally unresolvable by name matching when its shape has
+   *  no statically nameable callee — an invocation-result receiver (`expect(x).toEqual`,
+   *  `'arg-chain'`), computed access (`obj[expr]()`, `'computed'`), or (pre-0012 rows /
+   *  unknown shapes) raw text carrying call parentheses. */
+  private isUnresolvableCallShape(
+    targetFunctionOrClass: string,
+    memberCall?: {
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
+  ): boolean {
+    const calleeKind = memberCall?.calleeKind;
+    return (
+      calleeKind === "arg-chain" ||
+      calleeKind === "computed" ||
+      (!calleeKind && targetFunctionOrClass.includes("("))
+    );
+  }
+
+  /** Member/this-shaped calls try `resolveMemberCall` first (receiver-aware); everything
+   *  falls back to the classic bare-name `resolveCall`. Returns null when neither matches --
+   *  still an unresolved site, never a guess. */
+  private resolveCallTarget(
+    resolver: ScopeResolver,
+    sourceFile: string,
+    targetFunctionOrClass: string,
+    memberCall?: {
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
+  ): { targetFile: string; targetSymbol: string } | null {
+    const calleeKind = memberCall?.calleeKind;
+    if (
+      (calleeKind === "member" || calleeKind === "this") &&
+      memberCall?.calleeName &&
+      memberCall.receiverText
+    ) {
+      const memberResolved = resolver.resolveMemberCall(
+        sourceFile,
+        memberCall.receiverText,
+        memberCall.calleeName,
+      );
+      if (memberResolved) return memberResolved;
+    }
+    return resolver.resolveCall(sourceFile, targetFunctionOrClass);
+  }
+
   /** Resolves one call/implements/extends edge and, if the resolved target is a real (and
    *  distinct) node, inserts the link. Mirrors old inline `processLink` closure 1:1.
    *
@@ -545,8 +661,60 @@ export class GraphPersisterService implements IGraphPersister {
     targetFunctionOrClass: string,
     linkType: string,
     useNameFallback = false,
+    callCounters?: CallResolutionCounters,
+    memberCall?: {
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
+    },
   ): void {
-    const resolved = resolver.resolveCall(sourceFile, targetFunctionOrClass);
+    if (callCounters) callCounters.total++;
+
+    // Issue #192: shape-classified calls take the member-resolution path. 'arg-chain'
+    // (receiver is itself an invocation) and 'computed' (`obj[expr]()`) have no statically
+    // nameable callee -- counted as unresolvable (excluded from health denominators), not as
+    // resolution failures.
+    if (this.isUnresolvableCallShape(targetFunctionOrClass, memberCall)) {
+      if (callCounters) callCounters.unresolvable++;
+      return;
+    }
+    const resolved = this.resolveCallTarget(
+      resolver,
+      sourceFile,
+      targetFunctionOrClass,
+      memberCall,
+    );
+    this.insertResolvedLink(
+      store,
+      resolved,
+      targetFunctionOrClass,
+      useNameFallback,
+      sourceSymbols,
+      sourceSymbolName,
+      sourceFileId,
+      fileIdMap,
+      symbolIdMap,
+      linkType,
+      callCounters,
+    );
+  }
+
+  /** Resolves `resolved` (or the implements/extends name fallback) to concrete node ids and
+   *  inserts the edge unless it degenerates to a self-call -- which is tracked separately
+   *  from unresolved (persisted nowhere by design). */
+  private insertResolvedLink(
+    store: IGraphStore,
+    resolved: { targetFile: string; targetSymbol: string } | null,
+    targetFunctionOrClass: string,
+    useNameFallback: boolean,
+    sourceSymbols: Map<string, number> | undefined,
+    sourceSymbolName: string | undefined,
+    sourceFileId: number,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    linkType: string,
+    callCounters?: CallResolutionCounters,
+  ): void {
     const targetNodeId = resolved
       ? this.resolveTargetNodeId(
           store,
@@ -567,7 +735,13 @@ export class GraphPersisterService implements IGraphPersister {
     );
 
     if (targetNodeId !== sourceNodeId) {
+      if (callCounters) callCounters.resolved++;
       store.graph.insertLink({ sourceNodeId, targetNodeId, linkType });
+    } else if (callCounters) {
+      // Self-call: the site resolved to the caller's own node -- structurally unresolvable
+      // into a usable edge by design (persisted nowhere), so tracked separately from
+      // unresolved and excluded from health-rate denominators.
+      callCounters.selfDiscarded++;
     }
   }
 

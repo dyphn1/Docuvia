@@ -216,8 +216,8 @@ export class ScopeResolver {
   }
 
   /** Resolves one matched import descriptor to its defining file: module-path resolution
-   *  followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
-   *  file itself -- the prior behavior floor -- when the chain dead-ends. */
+   * followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
+   * file itself -- the prior behavior floor -- when the chain dead-ends. */
   private resolveImportedBinding(
     normalizedSource: string,
     imp: ImportDescriptor,
@@ -241,6 +241,90 @@ export class ScopeResolver {
         targetSymbol,
       }
     );
+  }
+
+  /**
+   * Issue #192 root-cause fix -- member-call resolution (`obj.method()`, `this.method()`).
+   * `resolveCall` only ever saw bare names, so every OOP-style call was structurally
+   * unresolvable (~43% of this repo's own unresolved sites were member/this receivers).
+   * Precision-first ladder, same "unique-or-refuse" discipline as CRG's scoped_resolver:
+   *
+   * 1. **this/super receiver** -> the callee must be a same-file symbol (a method of an
+   *    enclosing/derived class). Same-file scoping keeps a wrong match cheap.
+   * 2. **import-binding receiver** -> the receiver identifier is a known import local name
+   *    (e.g. `import { docuviaFactory } ...; docuviaFactory.register(...)`): resolve the
+   *    binding's defining module, then look the callee up as a local/exported symbol there,
+   *    following barrel re-export chains exactly like a bare import would.
+   * 3. **same-file static/local-object fallback** -> `ClassName.staticFn()` or a helper
+   *    object calling into its own file's symbols. Only consulted for receivers that are
+   *    neither this/super nor imports, and only within the caller's own file.
+   *
+   * Deliberately NOT covered (stays unresolved rather than guessed): receivers bound to local
+   * variables whose type comes from another module's exports without a direct import binding
+   * (`const s = makeStore(); s.commit()`) -- that needs real type inference. Unknown-receiver
+   * calls are never matched project-wide (the `Add`/`Close` false-match hazard is why
+   * `useNameFallback` is implements/extends-only).
+   */
+  public resolveMemberCall(
+    sourceFilePath: string,
+    receiverText: string,
+    calleeName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const normalizedSource = sourceFilePath.replace(/\\/g, "/");
+
+    // 1. this/super -> same-file method.
+    if (receiverText === "this" || receiverText === "super") {
+      if (this.localsByFile.get(normalizedSource)?.has(calleeName)) {
+        return { targetFile: normalizedSource, targetSymbol: calleeName };
+      }
+      return null;
+    }
+
+    // 2. Receiver is an imported binding -> method lives in the binding's defining module.
+    const viaImport = this.resolveImportReceiverMethod(
+      normalizedSource,
+      receiverText,
+      calleeName,
+    );
+    if (viaImport) return viaImport;
+
+    // 3. Same-file static/local-object heuristic.
+    if (this.localsByFile.get(normalizedSource)?.has(calleeName)) {
+      return { targetFile: normalizedSource, targetSymbol: calleeName };
+    }
+
+    return null;
+  }
+
+  /** Ladder step 2 of `resolveMemberCall`: when the receiver identifier is a known import
+   *  local name, resolve the binding's module and look the callee up there (following barrel
+   *  re-export chains like a bare import would). */
+  private resolveImportReceiverMethod(
+    normalizedSource: string,
+    receiverText: string,
+    calleeName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const imports = this.importsByFile.get(normalizedSource) || [];
+    for (const imp of imports) {
+      if (imp.localName !== receiverText) continue;
+      const bindingFile = this.resolveModulePath(
+        normalizedSource,
+        imp.modulePath,
+      );
+      if (!bindingFile) continue;
+      const viaReexport = this.resolveReexportTarget(
+        normalizedSource,
+        bindingFile,
+        calleeName,
+      );
+      if (viaReexport) return viaReexport;
+      if (this.localsByFile.get(bindingFile)?.has(calleeName)) {
+        return { targetFile: bindingFile, targetSymbol: calleeName };
+      }
+      // The binding resolved but doesn't declare the callee (e.g. namespace object holding
+      // re-exported members): keep scanning other same-named bindings, else fall through.
+    }
+    return null;
   }
 
   /**

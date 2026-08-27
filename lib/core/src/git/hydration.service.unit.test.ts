@@ -73,6 +73,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     graph: {
       deleteNodesForPath: vi.fn(),
       getSemanticCoverage: vi.fn(),
+      getCanarySample: vi.fn().mockReturnValue([]),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
@@ -234,6 +235,7 @@ describe("HydrationService.hydrate()", () => {
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -323,6 +325,7 @@ describe("HydrationService.hydrate()", () => {
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -431,6 +434,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -486,6 +490,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -526,6 +531,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -579,6 +585,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
       graph: {
         deleteNodesForPath: vi.fn(),
         getSemanticCoverage: vi.fn(),
+        getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),

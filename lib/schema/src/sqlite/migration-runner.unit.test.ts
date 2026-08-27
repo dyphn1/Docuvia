@@ -106,10 +106,68 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "start_line",
     "start_column",
     "created_at",
+    "callee_name",
+    "receiver_text",
+    "callee_kind",
   ],
 };
 
 const EXPECTED_FTS_TABLES = ["l2_nodes_fts", "l3_nodes_fts"];
+
+const EXPECTED_COLUMN_TYPES: Record<string, Record<string, string>> = {
+  projects: {
+    id: "INTEGER",
+    name: "TEXT",
+    repo_url: "TEXT",
+    status: "TEXT",
+    vcs_type: "TEXT",
+    created_at: "TEXT",
+    updated_at: "TEXT",
+  },
+  l2_nodes: {
+    id: "INTEGER",
+    project_id: "INTEGER",
+    name: "TEXT",
+    type: "TEXT",
+    ai_generated: "INTEGER",
+    created_at: "TEXT",
+    path_patterns: "TEXT",
+  },
+  node_links: {
+    id: "INTEGER",
+    source_node_id: "INTEGER",
+    target_node_id: "INTEGER",
+    link_type: "TEXT",
+    commit_sha: "TEXT",
+    created_at: "TEXT",
+  },
+  l3_nodes: {
+    id: "INTEGER",
+    l2_node_id: "INTEGER",
+    title: "TEXT",
+    content: "TEXT",
+    node_type: "TEXT",
+    source_commits: "TEXT",
+    commit_hash: "TEXT",
+    ai_generated: "INTEGER",
+    confidence: "REAL",
+    occurrence_count: "INTEGER",
+    validity_status: "TEXT",
+    source: "TEXT",
+    content_hash: "TEXT",
+  },
+  ast_call_sites: {
+    id: "INTEGER",
+    project_id: "INTEGER",
+    file_path: "TEXT",
+    target_function: "TEXT",
+    start_line: "INTEGER",
+    start_column: "INTEGER",
+    callee_name: "TEXT",
+    receiver_text: "TEXT",
+    callee_kind: "TEXT",
+  },
+};
 
 describe("applyMigrations", () => {
   let dbPath: string;
@@ -139,10 +197,29 @@ describe("applyMigrations", () => {
         .get(table);
       expect(row, `expected table "${table}" to exist`).toBeDefined();
 
-      const columns = (
-        db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
-      ).map((c) => c.name);
+      const pragmaRows = db.prepare(`PRAGMA table_info(${table})`).all() as {
+        name: string;
+        type: string;
+        notnull: number;
+        dflt_value: string | null;
+      }[];
+      const columns = pragmaRows.map((c) => c.name);
       expect(columns.sort()).toEqual([...expectedColumns].sort());
+
+      const expectedTypes = EXPECTED_COLUMN_TYPES[table];
+      if (expectedTypes) {
+        for (const [colName, expectedType] of Object.entries(expectedTypes)) {
+          const col = pragmaRows.find((c) => c.name === colName);
+          expect(
+            col,
+            `expected column "${colName}" in table "${table}" to exist`,
+          ).toBeDefined();
+          expect(
+            col!.type,
+            `expected column "${colName}" in table "${table}" to have type "${expectedType}"`,
+          ).toBe(expectedType);
+        }
+      }
     }
 
     for (const table of EXPECTED_FTS_TABLES) {
@@ -152,6 +229,10 @@ describe("applyMigrations", () => {
         )
         .get(table);
       expect(row, `expected FTS5 table "${table}" to exist`).toBeDefined();
+      expect(
+        (row as { name: string }).name,
+        `expected FTS5 table "${table}" name to match`,
+      ).toBe(table);
     }
   });
 
@@ -173,6 +254,7 @@ describe("applyMigrations", () => {
       "0009_l2_node_key_lookup_index.sql",
       "0010_l3_anchor_ranges.sql",
       "0011_ast_call_sites_target_idx.sql",
+      "0012_ast_call_sites_callee_fields.sql",
     ]);
   });
 
@@ -207,6 +289,7 @@ describe("applyMigrations", () => {
       )
       .get();
     expect(index).toBeDefined();
+    expect((index as { name: string }).name).toBe("l2_nodes_node_key_idx");
 
     const plan = db
       .prepare(
@@ -234,7 +317,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(11);
+    expect(migrationRows).toHaveLength(12);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

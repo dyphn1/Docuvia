@@ -1,5 +1,6 @@
 import type {
   AstParseFailure,
+  CallResolutionStats,
   DiscoveredFile,
   IAstProcessor,
   IGraphPersister,
@@ -11,6 +12,9 @@ export interface RunParseAndPersistResult {
   parsedResults: ParsedAstFileResult[];
   failures: AstParseFailure[];
   tags: Set<string>;
+  /** Issue #221: per-file Tier A call-site resolution counters from this run's persist, absent
+   *  when no parsed file had extractable call sites. */
+  callResolutionByFile?: Record<string, CallResolutionStats>;
 }
 
 /** Event names for the two per-file JSONL lines this phase emits, supplied by the caller so the
@@ -75,7 +79,7 @@ export async function runParseAndPersist(deps: {
     });
   }
 
-  await graphPersister.persist({
+  const persistResult = await graphPersister.persist({
     store,
     workspaceRoot,
     projectId,
@@ -83,5 +87,10 @@ export async function runParseAndPersist(deps: {
     tags: Array.from(tags),
   });
 
-  return { parsedResults, failures, tags };
+  return {
+    parsedResults,
+    failures,
+    tags,
+    callResolutionByFile: persistResult.callResolutionByFile,
+  };
 }

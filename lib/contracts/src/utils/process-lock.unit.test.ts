@@ -28,7 +28,9 @@ describe("acquireProcessLock()", () => {
     const lockPath = await makeLockPath();
 
     const lock = await acquireProcessLock(lockPath);
-    await expect(fs.stat(lockPath)).resolves.toBeDefined();
+    await expect(fs.readFile(lockPath, UTF8_ENCODING)).resolves.toBe(
+      String(process.pid),
+    );
 
     await lock.release();
     await expect(fs.stat(lockPath)).rejects.toThrow();
@@ -39,7 +41,7 @@ describe("acquireProcessLock()", () => {
     const lock = await acquireProcessLock(lockPath);
 
     await lock.release();
-    await expect(lock.release()).resolves.toBeUndefined();
+    await expect(lock.release()).resolves.toBe(undefined);
   });
 
   it("waits for a held lock to be released, then acquires it, invoking onWaiting once", async () => {

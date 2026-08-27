@@ -135,13 +135,111 @@ describe("QueryWorkflow.execute()", () => {
       createMockLogger(),
     ).execute("authService", 5);
 
+    // Verify the service was called with correct arguments
     expect(queryService.query).toHaveBeenCalledWith(store, "authService", 5);
+    // Verify the full result structure matches the QueryResult contract
     expect(result).toEqual(queryResult);
     expect(result.l2).toEqual({ name: "authService", matchType: "exact" });
     expect(result.l3).toEqual([]);
     expect(result.context).toBeNull();
+    // Verify no extra/unexpected properties leaked into the result
+    expect(Object.keys(result)).toEqual(["l2", "l3", "context"]);
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes through a full QueryResult with l3 entries and context without dropping fields", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    const fullQueryResult = {
+      l2: {
+        name: "authService",
+        type: "module",
+        filePath: "src/auth.ts",
+        matchType: "exact" as const,
+      },
+      l3: [
+        { title: "auth decision", content: "handles JWT", confidence: 0.9 },
+        { title: "rate limiter", content: "throttle", confidence: 0.7 },
+      ],
+      context: {
+        incoming: [{ name: "router", type: "module" }],
+        outgoing: [{ name: "logger", type: "module" }],
+      },
+    };
+    const queryService: IQueryService = {
+      extractKeywords: vi.fn(),
+      getContext: vi.fn(),
+      search: vi.fn(),
+      query: vi.fn().mockReturnValue(fullQueryResult),
+    };
+    docuviaFactory.register(TOKENS.QueryService, () => queryService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new QueryWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("authService", 10);
+
+    // Verify the full structure is passed through without field loss
+    expect(result.l2).toEqual({
+      name: "authService",
+      type: "module",
+      filePath: "src/auth.ts",
+      matchType: "exact",
+    });
+    expect(result.l3).toHaveLength(2);
+    expect(result.l3[0]).toEqual({
+      title: "auth decision",
+      content: "handles JWT",
+      confidence: 0.9,
+    });
+    expect(result.l3[1]).toEqual({
+      title: "rate limiter",
+      content: "throttle",
+      confidence: 0.7,
+    });
+    expect(result.context).toEqual({
+      incoming: [{ name: "router", type: "module" }],
+      outgoing: [{ name: "logger", type: "module" }],
+    });
+    expect(Object.keys(result)).toEqual(["l2", "l3", "context"]);
+  });
+
+  it("returns an exact-shape null-l2 result when the target doesn't resolve", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    const emptyResult = { l2: null, l3: [], context: null };
+    const queryService: IQueryService = {
+      extractKeywords: vi.fn(),
+      getContext: vi.fn(),
+      search: vi.fn(),
+      query: vi.fn().mockReturnValue(emptyResult),
+    };
+    docuviaFactory.register(TOKENS.QueryService, () => queryService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new QueryWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("nonexistent", 5);
+
+    expect(result).toEqual({ l2: null, l3: [], context: null });
+    expect(result.l2).toBeNull();
+    expect(result.l3).toEqual([]);
+    expect(result.context).toBeNull();
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

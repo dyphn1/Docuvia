@@ -15,6 +15,14 @@ const ParserErrorMessages = {
   PARSE_FAILED: "Failed to parse file with tree-sitter",
 } as const;
 
+function toUint8Array(input: unknown): Uint8Array {
+  if (input instanceof Uint8Array) return input;
+  if (input instanceof ArrayBuffer) return new Uint8Array(input);
+  throw new TypeError(
+    `Expected Uint8Array or ArrayBuffer from WASM loader, got ${typeof input}`,
+  );
+}
+
 export type WasmLoader = (
   wasmFileName: string,
 ) => Promise<Uint8Array | ArrayBuffer | string>;
@@ -55,7 +63,7 @@ export async function* generateAst(
   const lang =
     typeof wasmBytesOrPath === "string"
       ? await Language.load(wasmBytesOrPath)
-      : await Language.load(new Uint8Array(wasmBytesOrPath as any));
+      : await Language.load(toUint8Array(wasmBytesOrPath));
 
   const parser = new Parser();
   parser.setLanguage(lang);

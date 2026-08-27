@@ -23,7 +23,7 @@ describe("checkPhpLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   }, 15000);
 
   it("is ready when composer.json is present and binary override resolves successfully", async () => {

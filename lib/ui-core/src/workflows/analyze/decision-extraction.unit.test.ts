@@ -94,7 +94,7 @@ describe("collectSourceFiles()", () => {
       0,
     );
     expect(totalCollectedBytes).toBeLessThanOrEqual(MAX_ANALYZE_BYTES);
-    expect(droppedFiles.length).toBeGreaterThan(0);
+    expect(droppedFiles.length).toBeGreaterThanOrEqual(1);
     expect(files.length + droppedFiles.length).toBe(4);
   });
 

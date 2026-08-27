@@ -81,6 +81,10 @@ jobs:
       - name: Run tests
         run: pnpm run test
 
+      - name: Test quality gate
+        if: runner.os == 'Linux'
+        run: bash scripts/test-quality-gate.sh
+
   ocr-review:
     name: OpenCodeReview
     runs-on: ubuntu-latest

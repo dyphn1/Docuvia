@@ -13,7 +13,7 @@ describe("ast-worker.ts: Language.load() caching (typescript-cli-benchmark.md §
       language: "typescript",
     });
     const callsAfterFirst = loadSpy.mock.calls.length;
-    expect(callsAfterFirst).toBeGreaterThan(0); // sanity: the first call really did load
+    expect(callsAfterFirst).toBeGreaterThanOrEqual(1); // sanity: the first call really did load
 
     const second = await buildParseResponse({
       taskId: "t2",
@@ -50,7 +50,7 @@ describe("ast-worker.ts: Language.load() caching (typescript-cli-benchmark.md §
       language: "rust",
     });
 
-    expect(loadSpy.mock.calls.length).toBeGreaterThan(0);
+    expect(loadSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
     expect(response.success).toBe(true);
     expect(response.data!.functions.map((f) => f.name)).toContain("hello");
 

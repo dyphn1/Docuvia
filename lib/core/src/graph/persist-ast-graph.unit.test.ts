@@ -61,8 +61,8 @@ describe("GraphPersisterService.persist()", () => {
 
     const fileNodeId = store.graph.findNodeIdByName("src/a.ts", "src/a.ts");
     const fnNodeId = store.graph.findNodeIdByName("src/a.ts", "foo");
-    expect(fileNodeId).toBeDefined();
-    expect(fnNodeId).toBeDefined();
+    expect(fileNodeId).toBeTypeOf("number");
+    expect(fnNodeId).toBeTypeOf("number");
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
@@ -91,8 +91,8 @@ describe("GraphPersisterService.persist()", () => {
       tags: ["typescript", "backend"],
     });
 
-    expect(store.tags.getIdByName("typescript")).toBeDefined();
-    expect(store.tags.getIdByName("backend")).toBeDefined();
+    expect(store.tags.getIdByName("typescript")).toBeTypeOf("number");
+    expect(store.tags.getIdByName("backend")).toBeTypeOf("number");
   });
 
   it("resolves an intra-file call edge via ScopeResolver ('calls' link between the two function nodes)", async () => {
@@ -130,8 +130,8 @@ describe("GraphPersisterService.persist()", () => {
 
     const fooId = store.graph.findNodeIdByName("src/a.ts", "foo");
     const barId = store.graph.findNodeIdByName("src/a.ts", "bar");
-    expect(fooId).toBeDefined();
-    expect(barId).toBeDefined();
+    expect(fooId).toBeTypeOf("number");
+    expect(barId).toBeTypeOf("number");
 
     // GraphNodesRepo exposes no "list links" primitive, so query the persisted node_links row
     // directly via a second read-only connection to assert the "calls" edge itself (not just
@@ -144,7 +144,7 @@ describe("GraphPersisterService.persist()", () => {
           "SELECT * FROM node_links WHERE source_node_id = ? AND target_node_id = ? AND link_type = 'calls'",
         )
         .get(fooId, barId);
-      expect(link).toBeDefined();
+      expect(link).toHaveProperty("link_type", "calls");
     } finally {
       raw.close();
     }
@@ -292,8 +292,12 @@ describe("GraphPersisterService.persist()", () => {
 
     // Both the file node and the function node should still resolve to exactly one id each —
     // no duplicates left behind by the second persist.
-    expect(store.graph.findNodeIdByName("src/a.ts", "src/a.ts")).toBeDefined();
-    expect(store.graph.findNodeIdByName("src/a.ts", "foo")).toBeDefined();
+    expect(store.graph.findNodeIdByName("src/a.ts", "src/a.ts")).toBeTypeOf(
+      "number",
+    );
+    expect(store.graph.findNodeIdByName("src/a.ts", "foo")).toBeTypeOf(
+      "number",
+    );
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
@@ -336,14 +340,14 @@ describe("GraphPersisterService.persist()", () => {
     // No duplicate nodes after re-persist.
     expect(
       store.graph.findNodeIdByName("src/real.ts", "src/real.ts"),
-    ).toBeDefined();
+    ).toBeTypeOf("number");
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/real.ts", contentHash: "hash-real" },
     ]);
 
     // The call-resolution counters should be consistent between runs.
-    expect(first.callResolution).toBeDefined();
-    expect(second.callResolution).toBeDefined();
+    expect(first.callResolution).toHaveProperty("total");
+    expect(second.callResolution).toHaveProperty("total");
     expect(second.callResolution!.total).toBe(first.callResolution!.total);
   });
 
@@ -388,8 +392,8 @@ describe("GraphPersisterService.persist()", () => {
 
     const fooId = store.graph.findNodeIdByName("a.go", "Foo");
     const barId = store.graph.findNodeIdByName("b.go", "Bar");
-    expect(fooId).toBeDefined();
-    expect(barId).toBeDefined();
+    expect(fooId).toBeTypeOf("number");
+    expect(barId).toBeTypeOf("number");
 
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");
     const raw = new DatabaseCtor(dbPath, { readonly: true });
@@ -402,8 +406,7 @@ describe("GraphPersisterService.persist()", () => {
       // No import ties b.go to a.go, but ScopeResolver.resolveCall() now falls back to a
       // directory-scoped Go same-package lookup: since a.go and b.go share a directory and a.go
       // declares "Foo" as a local, the call resolves and linkSymbolReference() inserts the edge.
-      expect(link).toBeDefined();
-      expect((link as any).link_type).toBe("calls");
+      expect(link).toHaveProperty("link_type", "calls");
     } finally {
       raw.close();
     }

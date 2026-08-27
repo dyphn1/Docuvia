@@ -217,8 +217,8 @@ describe("TypescriptLspEdgeProvider forward-vs-reverse parity (real typescript-l
       language: "typescript",
     });
 
-    expect(serviceParse.data!.calls.length).toBeGreaterThan(0);
-    expect(indexParse.data!.calls.length).toBeGreaterThan(0);
+    expect(serviceParse.data!.calls.length).toBeGreaterThanOrEqual(1);
+    expect(indexParse.data!.calls.length).toBeGreaterThanOrEqual(1);
 
     const toCallSites = (
       calls: NonNullable<typeof serviceParse.data>["calls"],

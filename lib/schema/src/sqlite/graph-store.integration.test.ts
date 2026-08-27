@@ -62,7 +62,6 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
     const first = store.projects.getFirst();
     expect(first).toEqual(inserted);
-    expect(first).toBeDefined();
     expect(first!.id).toBeGreaterThan(0);
     expect(first!.name).toBe("demo");
     expect(first!.repo_url).toMatch(/^file:\/\//);
@@ -218,7 +217,6 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     store.tags.upsertTag("typescript");
 
     const tagId = store.tags.getIdByName("typescript");
-    expect(tagId).toBeDefined();
     expect(typeof tagId).toBe("number");
     expect(tagId!).toBeGreaterThan(0);
 
@@ -991,7 +989,8 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
     expect(JSON.parse(row!.source_commits)).toEqual(["abc123"]);
     expect(JSON.parse(row!.source_files!)).toEqual(["src/a.ts"]);
-    expect(row!.content_hash).toBeTruthy();
+    expect(typeof row!.content_hash).toBe("string");
+    expect(row!.content_hash!.length).toBeGreaterThan(0);
   });
 
   it("l3 repo: upsertDecision() stores region anchors on a fresh insert (issue #68), leaves them untouched on the dedup path, and omits them when not captured", () => {
@@ -1464,7 +1463,6 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       .searchL2Nodes(["query", "nonexistentxyz"], 10)
       .map((n) => n.id);
     expect(orFallback).toContain(bothId);
-    expect(orFallback.length).toBeGreaterThan(0);
   });
 
   it("fts repo: singular/plural variants stem to the same token (porter tokenizer, migration 0007)", () => {
@@ -1988,12 +1986,16 @@ describe("Self-analysis: verify real knowledge graph structure", () => {
       "lib/core/src/graph/scope-resolver.ts",
     );
     expect(node).toBeDefined();
+    expect(node!.name).toBe("lib/core/src/graph/scope-resolver.ts");
+    expect(node!.type).toBe("module");
   });
 
   it("ast-worker.ts exists as a node in the graph", () => {
     if (!store) return;
     const node = store.graph.findNodeByName("lib/core/src/ast/ast-worker.ts");
     expect(node).toBeDefined();
+    expect(node!.name).toBe("lib/core/src/ast/ast-worker.ts");
+    expect(node!.type).toBe("module");
   });
 
   it("scope-resolver has a contains edge to resolveImportedBinding", () => {
@@ -2006,8 +2008,10 @@ describe("Self-analysis: verify real knowledge graph structure", () => {
       "lib/core/src/graph/scope-resolver.ts",
       "resolveImportedBinding",
     );
-    expect(scopeResolverId).toBeDefined();
-    expect(resolveImportedBindingId).toBeDefined();
+    expect(typeof scopeResolverId).toBe("number");
+    expect(scopeResolverId!).toBeGreaterThan(0);
+    expect(typeof resolveImportedBindingId).toBe("number");
+    expect(resolveImportedBindingId!).toBeGreaterThan(0);
   });
 
   it("ast-worker has a contains edge to getCalleeEvidence", () => {
@@ -2020,8 +2024,10 @@ describe("Self-analysis: verify real knowledge graph structure", () => {
       "lib/core/src/ast/ast-worker.ts",
       "getCalleeEvidence",
     );
-    expect(astWorkerId).toBeDefined();
-    expect(getCalleeEvidenceId).toBeDefined();
+    expect(typeof astWorkerId).toBe("number");
+    expect(astWorkerId!).toBeGreaterThan(0);
+    expect(typeof getCalleeEvidenceId).toBe("number");
+    expect(getCalleeEvidenceId!).toBeGreaterThan(0);
   });
 
   it("total calls edges is non-zero (graph is not empty)", () => {

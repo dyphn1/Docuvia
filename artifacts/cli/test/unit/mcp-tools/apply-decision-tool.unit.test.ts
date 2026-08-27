@@ -35,7 +35,9 @@ describe("MCP applyDecision tool", () => {
 
   it("has correct tool definition", () => {
     expect(applyDecisionTool.definition.name).toBe("docuvia_apply_decision");
-    expect(applyDecisionTool.definition.description).toBeTruthy();
+    expect(
+      applyDecisionTool.definition.description!.length,
+    ).toBeGreaterThanOrEqual(1);
     expect(applyDecisionTool.definition.inputSchema.required).toContain(
       "targetPath",
     );

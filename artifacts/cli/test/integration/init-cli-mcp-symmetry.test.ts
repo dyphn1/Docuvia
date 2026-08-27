@@ -110,7 +110,7 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
     // read, no need for a real stdio transport either.
     vi.spyOn(process, "cwd").mockReturnValue(workspaceB);
     const mcpResult = await initTool.handler({});
-    expect(mcpResult.isError).toBeFalsy();
+    expect(mcpResult.isError).toBeUndefined();
 
     const dbPathA = path.join(workspaceA, ".docuvia", "local.db");
     const dbPathB = path.join(workspaceB, ".docuvia", "local.db");
@@ -186,7 +186,7 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
 
     const mcpResult = await mcpPromise;
     expect(mcpSettled).toBe(true);
-    expect(mcpResult.isError).toBeFalsy();
+    expect(mcpResult.isError).toBeUndefined();
 
     const dbPath = path.join(workspaceA, ".docuvia", "local.db");
     expect(fs.existsSync(dbPath)).toBe(true);

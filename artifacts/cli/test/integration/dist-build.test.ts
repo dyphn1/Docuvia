@@ -97,7 +97,7 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
         count: number;
       }
     ).count;
-    expect(nodeCountBeforeStatus).toBeGreaterThan(0);
+    expect(nodeCountBeforeStatus).toBeGreaterThanOrEqual(1);
 
     const statusResult = await sandbox.runDistCli(["status"]);
     expect(statusResult.exitCode).toBe(0);

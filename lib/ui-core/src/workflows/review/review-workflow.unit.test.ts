@@ -189,6 +189,7 @@ describe("ReviewWorkflow.execute()", () => {
       createMockLogger(),
     ).execute("main");
 
+    // Verify the service was called with correct arguments
     expect(gitProvider.getChangedFilesSince).toHaveBeenCalledWith(
       "/workspace/demo",
       "main",
@@ -201,9 +202,98 @@ describe("ReviewWorkflow.execute()", () => {
       baseRef: "main",
       filesChanged: [{ file: "src/a.ts", status: "modified" }],
     });
+    // Verify the full ChangeDetectionResult structure
+    expect(result.baseRef).toBe("main");
+    expect(result.filesChanged).toEqual([
+      { file: "src/a.ts", status: "modified" },
+    ]);
+    expect(result.affectedNodes).toEqual([]);
     expect(result.riskLevel).toBe("LOW");
+    expect(result.analysis).toBe(
+      "Base: main\nFiles changed: 1\nRisk level: LOW",
+    );
+    // Verify the core data fields are all present and correct
+    expect(result).toHaveProperty("baseRef", "main");
+    expect(result).toHaveProperty("filesChanged");
+    expect(result).toHaveProperty("affectedNodes");
+    expect(result).toHaveProperty("riskLevel", "LOW");
+    expect(result).toHaveProperty("analysis");
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes through a full ChangeDetectionResult with affectedNodes and blast-radius data", async () => {
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getChangedFilesSince: vi.fn().mockResolvedValue([
+          { file: "src/a.ts", status: "modified" },
+          { file: "src/b.ts", status: "added" },
+        ]),
+      }),
+    );
+
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    const fullResult = {
+      baseRef: "main",
+      filesChanged: [
+        { file: "src/a.ts", status: "modified" },
+        { file: "src/b.ts", status: "added" },
+      ],
+      affectedNodes: [
+        {
+          file: "src/a.ts",
+          impactedBy: [
+            { name: "sharedUtil", type: "module" },
+            { name: "logger", type: "module" },
+          ],
+        },
+        {
+          file: "src/b.ts",
+          impactedBy: [],
+        },
+      ],
+      riskLevel: "MEDIUM",
+      analysis: "Base: main\nFiles changed: 2\nRisk level: MEDIUM",
+    };
+    const changeDetectionService: IChangeDetectionService = {
+      detectChanges: vi.fn().mockReturnValue(fullResult),
+    };
+    docuviaFactory.register(
+      TOKENS.ChangeDetectionService,
+      () => changeDetectionService,
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ReviewWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("main");
+
+    // Verify the full structure is passed through without field loss
+    expect(result.baseRef).toBe("main");
+    expect(result.filesChanged).toHaveLength(2);
+    expect(result.filesChanged).toEqual([
+      { file: "src/a.ts", status: "modified" },
+      { file: "src/b.ts", status: "added" },
+    ]);
+    expect(result.affectedNodes).toHaveLength(2);
+    expect(result.affectedNodes[0].file).toBe("src/a.ts");
+    expect(result.affectedNodes[0].impactedBy).toHaveLength(2);
+    expect(result.affectedNodes[0].impactedBy[0]).toEqual({
+      name: "sharedUtil",
+      type: "module",
+    });
+    expect(result.affectedNodes[1].file).toBe("src/b.ts");
+    expect(result.affectedNodes[1].impactedBy).toEqual([]);
+    expect(result.riskLevel).toBe("MEDIUM");
+    expect(result.analysis).toContain("Files changed: 2");
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

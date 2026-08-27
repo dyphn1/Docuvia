@@ -1398,7 +1398,7 @@ describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
       const availability = await provider.checkAvailability(dir);
 
       expect(availability.available).toBe(false);
-      expect(availability.reason).toBeTruthy();
+      expect(availability.reason!.length).toBeGreaterThanOrEqual(1);
     } finally {
       await rmSyncRetrying(dir);
     }

@@ -275,7 +275,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_b_commit_cap");
       expect(result.allPassed).toBe(true);
     });
 
@@ -360,7 +360,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_b_commit_cap");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -392,7 +392,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_b_coverage");
       expect(result.allPassed).toBe(true);
     });
 
@@ -457,7 +457,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_b_coverage");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -487,7 +487,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("call_graph_resolution");
       expect(result.allPassed).toBe(true);
     });
 
@@ -500,7 +500,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipDb: true, skipLogs: true });
 
-      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("call_graph_resolution");
     });
 
     it("reports an informational no-data PASS when no resolution counters were ever stamped", async () => {
@@ -581,7 +581,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["call_graph_resolution"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("call_graph_resolution");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -632,7 +632,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("canary_self_test");
       expect(result.allPassed).toBe(true);
     });
 
@@ -646,7 +646,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["canary_self_test"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("canary_self_test");
       expect(store.graph.getCanarySample).toHaveBeenCalled();
     });
 
@@ -769,7 +769,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["graph_empty"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("graph_empty");
       expect(result.allPassed).toBe(true);
     });
 
@@ -852,7 +852,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["graph_empty"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("graph_empty");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -895,7 +895,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("post_commit_ingestion");
       expect(result.allPassed).toBe(true);
     });
 
@@ -909,7 +909,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("post_commit_ingestion");
       expect(result.allPassed).toBe(true);
     });
 
@@ -1039,7 +1039,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("post_commit_ingestion");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
 
@@ -1054,7 +1054,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("post_commit_ingestion");
       expect(result.allPassed).toBe(true);
     });
   });
@@ -1123,8 +1123,8 @@ describe("DoctorWorkflow", () => {
         skipHooks: true,
       });
 
-      expect(result.diagnostics["agent_hooks_claude"]).toBeUndefined();
-      expect(result.diagnostics["agent_hooks_cursor"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("agent_hooks_claude");
+      expect(result.diagnostics).not.toHaveProperty("agent_hooks_cursor");
       expect(fs.stat).not.toHaveBeenCalled();
     });
   });
@@ -1274,7 +1274,7 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(git.readHookFile).not.toHaveBeenCalled();
-      expect(result.diagnostics["git_hook"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("git_hook");
     });
 
     describe("--fix (T6)", () => {
@@ -1672,7 +1672,7 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
       });
 
-      expect(result.diagnostics["pre_push_hook"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("pre_push_hook");
       expect(result.allPassed).toBe(true);
     });
 
@@ -1875,7 +1875,7 @@ describe("DoctorWorkflow", () => {
         llmModel: "gpt-4o-mini",
       });
 
-      expect(result.diagnostics["llm_reachability"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("llm_reachability");
       expect(llmClient.checkBridgeReachability).not.toHaveBeenCalled();
       expect(result.allPassed).toBe(true);
     });
@@ -2007,7 +2007,7 @@ describe("DoctorWorkflow", () => {
       expect(result.diagnostics["lsp_binary_typescript"].status).toBe(
         DiagnosticStatus.PASS,
       );
-      expect(result.diagnostics["lsp_binary_python"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("lsp_binary_python");
       expect(pyCheck).not.toHaveBeenCalled();
     });
 
@@ -2019,7 +2019,7 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
       });
 
-      expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("lsp_binary_typescript");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2044,7 +2044,7 @@ describe("DoctorWorkflow", () => {
         skipLsp: true,
       });
 
-      expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("lsp_binary_typescript");
       expect(tsCheck).not.toHaveBeenCalled();
       expect(result.allPassed).toBe(true);
     });
@@ -2104,7 +2104,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
-      expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_c_queue");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2230,7 +2230,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("tier_c_queue");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -2286,7 +2286,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipGit: true, skipLogs: true });
 
-      expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("l2_semantic_coverage");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2378,7 +2378,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("l2_semantic_coverage");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
@@ -2404,7 +2404,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipDb: true, skipLogs: true });
 
-      expect(result.diagnostics["worktree_divergence"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("worktree_divergence");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2583,7 +2583,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("agent_authored_adoption");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2594,7 +2594,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("agent_authored_adoption");
       expect(result.allPassed).toBe(true);
     });
 
@@ -2696,7 +2696,7 @@ describe("DoctorWorkflow", () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
 
-      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.diagnostics).not.toHaveProperty("agent_authored_adoption");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });

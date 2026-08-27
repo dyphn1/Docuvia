@@ -269,7 +269,7 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     const pendingRaw = fake.meta.get(
       GitConstants.META_KEY_TIER_B_BATCH_PENDING,
     );
-    expect(pendingRaw).toBeTruthy();
+    expect(pendingRaw!.length).toBeGreaterThanOrEqual(1);
     const pending = JSON.parse(pendingRaw!);
     expect(pending).toEqual({ headSha: HEAD_SHA, remainingQueue: [] });
 

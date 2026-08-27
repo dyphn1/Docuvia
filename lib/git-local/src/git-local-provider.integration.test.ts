@@ -820,7 +820,7 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
       expect(await provider.isAncestor(tmpDir, shaB, shaA)).toBe(false);
 
       const timestampA = await provider.getCommitTimestamp(tmpDir, shaA);
-      expect(timestampA).toBeGreaterThan(0);
+      expect(timestampA).toBeGreaterThanOrEqual(1);
 
       const winningTree = await provider.getTreeSha(tmpDir, shaB); // adopt B's tree wholesale
       const mergeSha = await provider.createMergeCommit(

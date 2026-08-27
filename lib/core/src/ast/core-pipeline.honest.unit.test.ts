@@ -22,9 +22,9 @@ describe("Core pipeline: parse real Docuvia source files", () => {
   it("scope-resolver.ts: has functions, imports, and call sites", async () => {
     const result = await parseRealFile("lib/core/src/graph/scope-resolver.ts");
     expect(result.success).toBe(true);
-    expect(result.data!.functions.length).toBeGreaterThan(0);
-    expect(result.data!.imports.length).toBeGreaterThan(0);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.functions.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
 
     const fnNames = result.data!.functions.map((f) => f.name);
     expect(fnNames).toContain("resolveCall");
@@ -36,7 +36,7 @@ describe("Core pipeline: parse real Docuvia source files", () => {
       "lib/core/src/graph/persist-ast-graph.ts",
     );
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
 
     const importPaths = result.data!.imports.map((i) => i.modulePath);
     const hasScopeResolverImport = importPaths.some((p) =>
@@ -48,7 +48,7 @@ describe("Core pipeline: parse real Docuvia source files", () => {
   it("ast-worker.ts: imports from @workspace/ast-core and @workspace/contracts", async () => {
     const result = await parseRealFile("lib/core/src/ast/ast-worker.ts");
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
 
     const importPaths = result.data!.imports.map((i) => i.modulePath);
     const hasAstCore = importPaths.some((p) =>
@@ -71,8 +71,8 @@ describe("Core pipeline: parse real Docuvia source files", () => {
   it("ast-worker-pool.ts: has class AstWorkerPool and calls enqueueSpawn/spawnWorker", async () => {
     const result = await parseRealFile("lib/core/src/ast/ast-worker-pool.ts");
     expect(result.success).toBe(true);
-    expect(result.data!.classes.length).toBeGreaterThan(0);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.classes.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   it("impact-workflow.ts: has ImpactWorkflow class and call sites", async () => {
@@ -80,8 +80,8 @@ describe("Core pipeline: parse real Docuvia source files", () => {
       "lib/ui-core/src/workflows/impact/impact-workflow.ts",
     );
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
-    expect(result.data!.functions.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.functions.length).toBeGreaterThanOrEqual(1);
   });
 
   it("doctor-workflow.ts: has DoctorWorkflow class and call sites", async () => {
@@ -89,13 +89,13 @@ describe("Core pipeline: parse real Docuvia source files", () => {
       "lib/ui-core/src/workflows/doctor/doctor-workflow.ts",
     );
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   it("query.service.ts: has QueryService class and call sites", async () => {
     const result = await parseRealFile("lib/core/src/query/query.service.ts");
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   it("analyze-workflow.ts: imports ingestion modules", async () => {
@@ -116,7 +116,7 @@ describe("Core pipeline: parse real Docuvia source files", () => {
       "lib/core/src/discovery/file-discovery.service.ts",
     );
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -130,6 +130,7 @@ describe("Callee evidence: verify extraction from real code patterns", () => {
     });
     const call = result.data!.calls.find((c) => c.targetFunction === "foo");
     expect(call).toBeDefined();
+    expect(call!.targetFunction).toBe("foo");
   });
 
   it("member call: obj.method()", async () => {
@@ -158,6 +159,7 @@ describe("Callee evidence: verify extraction from real code patterns", () => {
       (c) => c.targetFunction.includes("bar") && c.sourceFunction === "baz",
     );
     expect(thisCall).toBeDefined();
+    expect(thisCall!.sourceFunction).toBe("baz");
   });
 
   it("import-based call: readFileSync()", async () => {

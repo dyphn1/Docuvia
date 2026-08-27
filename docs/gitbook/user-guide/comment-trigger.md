@@ -9,13 +9,13 @@ Docuvia supports **PR comment-triggered analysis** via GitHub Actions. When you 
 
 ## Available Commands
 
-| Command | Description |
-|---------|-------------|
-| `/docuvia analyze` | Run full AST analysis on the PR diff |
-| `/docuvia review` | Run blast-radius review against the base branch |
+| Command                    | Description                                       |
+| -------------------------- | ------------------------------------------------- |
+| `/docuvia analyze`         | Run full AST analysis on the PR diff              |
+| `/docuvia review`          | Run blast-radius review against the base branch   |
 | `/docuvia impact <symbol>` | Run impact analysis for a specific symbol or file |
-| `/docuvia query <concept>` | Query the knowledge graph for a concept or file |
-| `/docuvia status` | Show current knowledge graph status |
+| `/docuvia query <concept>` | Query the knowledge graph for a concept or file   |
+| `/docuvia status`          | Show current knowledge graph status               |
 
 ## Usage
 
@@ -87,5 +87,6 @@ Your GitHub association must be OWNER, MEMBER, or COLLABORATOR. Check your role 
 ### Analysis fails
 
 The workflow output includes stderr logs. Common causes:
+
 - Missing dependencies (the workflow installs and builds automatically).
 - Knowledge graph initialization failure (check if `docuvia init` works locally).

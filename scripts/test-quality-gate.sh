@@ -19,17 +19,31 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 WEAK_PATTERNS="toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)|toBeGreaterThan\(0\)"
 
+# ─── Prefer rg (ripgrep) when available; fall back to grep ──────────────
+if command -v rg >/dev/null 2>&1; then
+  SEARCH_CMD=(rg --no-heading -n --type ts -g '*.test.ts')
+  REGEX_FLAG=(-e)
+else
+  SEARCH_CMD=(grep -rn --include='*.test.ts')
+  REGEX_FLAG=(-E)
+fi
+
 # ─── Count weak assertions across all test files ────────────────────────
-WEAK_COUNT=$(rg -c "$WEAK_PATTERNS" --type ts -g "*.test.ts" "$REPO_ROOT" 2>/dev/null \
-  | awk -F: '{sum+=$2} END {print sum+0}')
+# Both rg and grep return exit code 1 when there are no matches. Under
+# set -euo pipefail this would abort the script before awk can print 0,
+# so we append || true to swallow the non-zero exit.
+WEAK_COUNT=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
+  | awk -F: '{count[$1]++} END {total=0; for(f in count) total+=count[f]; print total}' || true)
+WEAK_COUNT=${WEAK_COUNT:-0}
 
 # ─── Count total assertions (approximate: expect( calls) ────────────────
-TOTAL_ASSERTIONS=$(rg -c "expect\(" --type ts -g "*.test.ts" "$REPO_ROOT" 2>/dev/null \
-  | awk -F: '{sum+=$2} END {print sum+0}')
+TOTAL_ASSERTIONS=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "expect\(" "$REPO_ROOT" 2>/dev/null \
+  | awk -F: '{count[$1]++} END {total=0; for(f in count) total+=count[f]; print total}' || true)
+TOTAL_ASSERTIONS=${TOTAL_ASSERTIONS:-0}
 
 # ─── Compute ratio ──────────────────────────────────────────────────────
 if [ "$TOTAL_ASSERTIONS" -gt 0 ]; then
-  RATIO=$(echo "scale=1; $WEAK_COUNT * 100 / $TOTAL_ASSERTIONS" | bc)
+  RATIO=$(awk "BEGIN {printf \"%.1f\", $WEAK_COUNT * 100 / $TOTAL_ASSERTIONS}")
 else
   RATIO="0.0"
 fi
@@ -42,12 +56,13 @@ echo "║  Weak assertions:     $WEAK_COUNT / $TOTAL_ASSERTIONS total (${RATIO}%
 echo "║  Threshold:           220 (must decrease, never increase)"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Top offenders (weak assertion count per file):"
-rg -c "$WEAK_PATTERNS" --type ts -g "*.test.ts" "$REPO_ROOT" 2>/dev/null \
-  | sort -t: -k2 -rn \
+"${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
+  | awk -F: '{count[$1]++} END {for(f in count) print count[f]":"f}' \
+  | sort -t: -k1 -rn \
   | head -15 \
-  | while IFS=: read -r file count; do
+  | while IFS=: read -r count file; do
       printf "║    %4s  %s\n" "$count" "${file#$REPO_ROOT/}"
-    done
+    done || true
 echo "╠══════════════════════════════════════════════════════════════╣"
 
 # ─── Threshold check ────────────────────────────────────────────────────
@@ -67,7 +82,7 @@ else
   echo "║    toBeFalsy()      → toBe(false) or toBeNull()"
   echo "║    toBeGreaterThan(0) → toBe(n) or toHaveLength(n)"
   echo "║"
-  echo "║  Run: rg -n '$WEAK_PATTERNS' --type ts -g '*.test.ts' to find them"
+  echo "║  Run: grep -rn \"$WEAK_PATTERNS\" --include='*.test.ts' to find them"
   echo "╚══════════════════════════════════════════════════════════════╝"
   exit 1
 fi

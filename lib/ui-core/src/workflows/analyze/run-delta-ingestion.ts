@@ -21,7 +21,7 @@ import {
   MAX_FILE_SIZE_BYTES,
 } from "@workspace/contracts";
 // Narrow documented exception (lib/core/src/index.ts): registry-coupled, not movable to contracts.
-import { IDiscoverableSourceFileProvider } from "@workspace/contracts";
+import { isDiscoverableSourceFile } from "@workspace/core";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { mergeDeltaCallResolution } from "./call-resolution-stats.js";
@@ -203,7 +203,7 @@ function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
     if (entry.status === ChangedFileStatuses.RENAMED && entry.oldFile) {
       toDelete.add(entry.oldFile);
     }
-    if (!this.provider?.isDiscoverableSourceFile?.(entry.file)) continue;  // DI provider to be injected fully in follow-up PR
+    if (!isDiscoverableSourceFile(entry.file)) continue;
     toReparse.push(entry);
   }
 

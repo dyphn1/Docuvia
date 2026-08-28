@@ -103,16 +103,14 @@ export async function checkTypeScriptLspPreflight(
   const nodeModulesPresent = checkNodeModulesPresent(workspaceRoot);
   const tsconfigResolvable = checkTsconfigResolvable(workspaceRoot);
 
-  const resolved = resolveTypeScriptLspBinary(workspaceRoot, override);
-  const lspBinaryResolvable = resolved.locallyResolved
-    ? true
-    : await probeTsNpxResolvable(workspaceRoot);
-
+  // Short-circuit cheap synchronous checks BEFORE the expensive npx probe.
+  // On Windows the npx probe can take several seconds (slow .cmd shim startup),
+  // so we must not invoke it when a cheaper check already tells us the answer.
   if (!nodeModulesPresent) {
     return {
       nodeModulesPresent,
       tsconfigResolvable,
-      lspBinaryResolvable,
+      lspBinaryResolvable: false,
       ready: false,
       reason: TS_LSP_MESSAGES.nodeModulesMissing,
     };
@@ -121,11 +119,17 @@ export async function checkTypeScriptLspPreflight(
     return {
       nodeModulesPresent,
       tsconfigResolvable,
-      lspBinaryResolvable,
+      lspBinaryResolvable: false,
       ready: false,
       reason: TS_LSP_MESSAGES.tsconfigMissing,
     };
   }
+
+  const resolved = resolveTypeScriptLspBinary(workspaceRoot, override);
+  const lspBinaryResolvable = resolved.locallyResolved
+    ? true
+    : await probeTsNpxResolvable(workspaceRoot);
+
   if (!lspBinaryResolvable) {
     return {
       nodeModulesPresent,

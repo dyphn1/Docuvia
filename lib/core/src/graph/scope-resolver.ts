@@ -217,16 +217,6 @@ export class ScopeResolver {
       if (goResult) return goResult;
     }
 
-    // 4. Same-file bare call fallback: if callName exists as a local symbol (function/class/var) in THIS file,
-    //    treat it as a local symbol (covers self-call and intra-file helpers).
-    //    Guard: only trigger if we already know the file exists in localsByFile.
-    if (this.localsByFile.has(normalizedSource)) {
-      const locals = this.localsByFile.get(normalizedSource)!;
-      if (locals.has(callName)) {
-        return { targetFile: normalizedSource, targetSymbol: callName };
-      }
-    }
-
     return null;
   }
 

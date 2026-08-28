@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/platform-selection.ts#anonymous@L67
+id: artifacts/cli/src/utils/platform-selection.ts#anonymous@L61
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/utils/platform-selection.ts

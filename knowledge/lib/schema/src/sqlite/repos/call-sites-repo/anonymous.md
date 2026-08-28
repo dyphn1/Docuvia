@@ -7,4 +7,3 @@ filePath: lib/schema/src/sqlite/repos/call-sites-repo.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/repos/call-sites-repo.ts`
-.ts`

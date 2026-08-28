@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/init-multi-language.test.ts#anonymous@L35
+id: artifacts/cli/test/integration/commands/init-multi-language.test.ts#anonymous@L62
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/init-multi-language.test.ts

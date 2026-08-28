@@ -232,6 +232,17 @@ export function runFastImport(
       // rejection above whenever git exits non-zero without explaining itself on stderr.
       stdinWriteError = err;
     });
-    child.stdin.end(fastImportData, UTF8_ENCODING);
+    // Issue #257: `.end()` can throw synchronously when the stream is already destroyed
+    // (ERR_STREAM_DESTROYED). The `.on('error')` listener above only catches asynchronous
+    // error events — a synchronous throw here would leave the Promise forever pending and the
+    // child as a zombie until the timeout fires. Wrap in try/catch to reject immediately.
+    try {
+      child.stdin.end(fastImportData, UTF8_ENCODING);
+    } catch (err) {
+      child.kill(FAST_IMPORT_KILL_SIGNAL);
+      clearTimeout(timeout);
+      reject(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
   });
 }

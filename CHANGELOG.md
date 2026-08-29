@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.2](https://github.com/dyphn1/Docuvia/compare/v1.4.1...v1.4.2) (2026-08-29)
+
+### Bug Fixes
+
+- **husky:** skip pre-push verification suite for delete-only pushes ([b504976](https://github.com/dyphn1/Docuvia/commit/b504976803e0e2ea863f3b895b8d61d860205e5b))
+
 ## [1.4.1](https://github.com/dyphn1/Docuvia/compare/v1.4.0...v1.4.1) (2026-08-29)
 
 ### Bug Fixes

@@ -57,11 +57,12 @@ async function runPublish(
   scopeId: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
   spinner: ReturnType<typeof ui.spinner>,
+  pat: string,
 ) {
   try {
     // docuviaApi.sync() -- the Orchestration-layer method name is unchanged (IFCE-005 renamed
     // the CLI verb, not this internal call); see SyncWorkflow's own doc comment for why.
-    const result = await docuviaApi.sync(scopeId, logger);
+    const result = await docuviaApi.sync(scopeId, logger, pat);
     spinner.succeed(UI_MESSAGES.PUBLISH_SUCCESS + " " + result.message);
   } catch (error: unknown) {
     const message =
@@ -115,9 +116,8 @@ export async function publishCommand(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.API_URL, process.env.DOCUVIA_API_URL);
-  docuviaMemory.set(scopeId, MemoryKeys.PAT, process.env.MCP_PAT);
   docuviaMemory.set(scopeId, MemoryKeys.PROJECT_ID, projectId);
   docuviaMemory.set(scopeId, MemoryKeys.COMMIT_SHA, commitSha || undefined);
 
-  await runPublish(scopeId, logger, spinner);
+  await runPublish(scopeId, logger, spinner, process.env.MCP_PAT!);
 }

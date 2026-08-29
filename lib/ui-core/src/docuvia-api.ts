@@ -134,13 +134,22 @@ export const docuviaApi = {
     return new StatusWorkflow(workspaceRoot, logger).execute();
   },
 
-  async sync(scopeId: string, logger: ILogger): Promise<SyncResult> {
+  /**
+   * `pat` is passed explicitly rather than via `docuviaMemory` (issue #253): the token is a
+   * secret, so it never enters the shared UUID-scoped config store (where it would sit exposed to
+   * memory dumps / accidental logging for the whole run). The Presentation layer reads it from the
+   * environment and hands it straight across this call boundary.
+   */
+  async sync(
+    scopeId: string,
+    logger: ILogger,
+    pat: string,
+  ): Promise<SyncResult> {
     const workspaceRoot = requireMemory<string>(
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
     const apiUrl = requireMemory<string>(scopeId, MemoryKeys.API_URL);
-    const pat = requireMemory<string>(scopeId, MemoryKeys.PAT);
     const projectId = requireMemory<string>(scopeId, MemoryKeys.PROJECT_ID);
     const commitSha = docuviaMemory.get<string>(scopeId, MemoryKeys.COMMIT_SHA);
     return new SyncWorkflow(workspaceRoot, logger, apiUrl, pat).execute({

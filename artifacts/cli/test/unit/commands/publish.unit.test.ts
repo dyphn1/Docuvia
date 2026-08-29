@@ -71,15 +71,17 @@ describe("publishCommand", () => {
     expect(mockSync).not.toHaveBeenCalled();
   });
 
-  it("calls docuviaApi.sync with workspaceRoot/apiUrl/pat/projectId/commitSha scoped in memory, and cleans up the scope afterwards", async () => {
-    mockSync.mockImplementation(async (scopeId) => {
+  it("calls docuviaApi.sync with pat passed directly (not via memory), and cleans up the scope afterwards", async () => {
+    mockSync.mockImplementation(async (scopeId, _logger, pat) => {
       expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(
         expect.any(String),
       );
       expect(docuviaMemory.get(scopeId, "apiUrl")).toBe(
         "https://api.example.com",
       );
-      expect(docuviaMemory.get(scopeId, "pat")).toBe("test-pat");
+      // PAT should NOT be stored in memory (issue #253)
+      expect(docuviaMemory.get(scopeId, "pat")).toBeUndefined();
+      expect(pat).toBe("test-pat");
       expect(docuviaMemory.get(scopeId, "projectId")).toBe("42");
       expect(docuviaMemory.get(scopeId, "commitSha")).toBe("abc123");
       return {

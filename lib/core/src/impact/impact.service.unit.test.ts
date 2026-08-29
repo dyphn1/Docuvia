@@ -172,7 +172,8 @@ describe("ImpactService", () => {
 
   describe("getBlastRadius()", () => {
     it("returns undefined when the target does not resolve to any node", () => {
-      expect(impactService.getBlastRadius(store, "nope")).toBeUndefined();
+      const result = impactService.getBlastRadius(store, "nope");
+      expect(result).toBeUndefined();
     });
 
     it("returns the 1-hop set of nodes that depend on the resolved target", () => {
@@ -192,9 +193,115 @@ describe("ImpactService", () => {
         linkType: "calls",
       });
 
-      expect(impactService.getBlastRadius(store, "sharedUtil")).toEqual([
-        { name: "caller", type: "module" },
-      ]);
+      const result = impactService.getBlastRadius(store, "sharedUtil");
+      expect(result).toEqual([{ name: "caller", type: "module" }]);
+    });
+
+    it("returns multiple callers for a widely-used symbol", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "logger",
+        pathPatterns: ["src/logger.ts"],
+      });
+      const callerA = store.graph.insertNode({
+        projectId,
+        name: "authService",
+        pathPatterns: ["src/auth.ts"],
+      });
+      const callerB = store.graph.insertNode({
+        projectId,
+        name: "userService",
+        pathPatterns: ["src/user.ts"],
+      });
+      const callerC = store.graph.insertNode({
+        projectId,
+        name: "paymentService",
+        pathPatterns: ["src/payment.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerA,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerB,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerC,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+
+      const result = impactService.getBlastRadius(store, "logger");
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { name: "authService", type: "module" },
+          { name: "userService", type: "module" },
+          { name: "paymentService", type: "module" },
+        ]),
+      );
+    });
+
+    it("includes callers from different edge types (calls, extends, implements)", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "BaseController",
+        pathPatterns: ["src/base.ts"],
+      });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "authService",
+        pathPatterns: ["src/auth.ts"],
+      });
+      const extenderId = store.graph.insertNode({
+        projectId,
+        name: "AdminController",
+        pathPatterns: ["src/admin.ts"],
+      });
+      const implementerId = store.graph.insertNode({
+        projectId,
+        name: "ApiController",
+        pathPatterns: ["src/api.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.graph.insertLink({
+        sourceNodeId: extenderId,
+        targetNodeId: targetId,
+        linkType: "extends",
+      });
+      store.graph.insertLink({
+        sourceNodeId: implementerId,
+        targetNodeId: targetId,
+        linkType: "implements",
+      });
+
+      const result = impactService.getBlastRadius(store, "BaseController");
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { name: "authService", type: "module" },
+          { name: "AdminController", type: "module" },
+          { name: "ApiController", type: "module" },
+        ]),
+      );
+    });
+
+    it("returns an empty array when the node exists but has no incoming edges", () => {
+      store.graph.insertNode({
+        projectId,
+        name: "isolated",
+        pathPatterns: ["src/isolated.ts"],
+      });
+
+      const result = impactService.getBlastRadius(store, "isolated");
+      expect(result).toEqual([]);
     });
 
     it("attaches L3 'why' data to a blast-radius entry when its node has l3 rows", () => {

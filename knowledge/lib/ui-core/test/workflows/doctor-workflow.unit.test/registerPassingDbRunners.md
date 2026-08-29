@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbRunners@L2238
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbRunners
 type: symbol
 name: registerPassingDbRunners
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 # Symbol: registerPassingDbRunners
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`
+t.ts`

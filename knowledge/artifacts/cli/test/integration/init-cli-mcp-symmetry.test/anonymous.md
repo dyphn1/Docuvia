@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts`
+

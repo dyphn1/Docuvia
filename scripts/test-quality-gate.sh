@@ -20,25 +20,39 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEAK_PATTERNS="toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)|toBeGreaterThan\(0\)"
 
 # ─── Prefer rg (ripgrep) when available; fall back to grep ──────────────
+# `-c` (count mode) prints one "path:count" line per matching file, which is what both the
+# totals and the per-file breakdown below need.
 if command -v rg >/dev/null 2>&1; then
-  SEARCH_CMD=(rg --no-heading -n --type ts -g '*.test.ts')
+  SEARCH_CMD=(rg -c --type ts -g '*.test.ts')
   REGEX_FLAG=(-e)
 else
-  SEARCH_CMD=(grep -rn --include='*.test.ts')
+  SEARCH_CMD=(grep -rc --include='*.test.ts')
   REGEX_FLAG=(-E)
 fi
 
+# ─── Sum the counts out of "path:count" lines ────────────────────────────
+# On Windows, `path` itself can contain a colon (the drive letter, e.g.
+# "C:\Users\...\file.ts"), so a naive `awk -F: '{...$1...}'` split on the FIRST colon would
+# truncate every path down to "C" and silently misattribute every count (issue found in review:
+# totals still came out right by luck -- summing one bogus "C" bucket equals summing the real
+# ones -- but the per-file breakdown below was garbage on Windows). The count is always the
+# LAST field, so anchor there ($NF) instead -- safe regardless of how many colons appear
+# earlier in the path.
+sum_counts() {
+  awk -F: '{ n = $NF; if (n ~ /^[0-9]+$/) total += n } END { print total + 0 }'
+}
+
 # ─── Count weak assertions across all test files ────────────────────────
 # Both rg and grep return exit code 1 when there are no matches. Under
-# set -euo pipefail this would abort the script before awk can print 0,
+# set -euo pipefail this would abort the script before we can report 0,
 # so we append || true to swallow the non-zero exit.
 WEAK_COUNT=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
-  | awk -F: '{count[$1]++} END {total=0; for(f in count) total+=count[f]; print total}' || true)
+  | sum_counts || true)
 WEAK_COUNT=${WEAK_COUNT:-0}
 
 # ─── Count total assertions (approximate: expect( calls) ────────────────
 TOTAL_ASSERTIONS=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "expect\(" "$REPO_ROOT" 2>/dev/null \
-  | awk -F: '{count[$1]++} END {total=0; for(f in count) total+=count[f]; print total}' || true)
+  | sum_counts || true)
 TOTAL_ASSERTIONS=${TOTAL_ASSERTIONS:-0}
 
 # ─── Compute ratio ──────────────────────────────────────────────────────
@@ -48,16 +62,22 @@ else
   RATIO="0.0"
 fi
 
-# ─── Per-file breakdown (top 10 offenders) ─────────────────────────────
+# ─── Per-file breakdown (top 15 offenders) ─────────────────────────────
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║              TEST QUALITY GATE                              ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Weak assertions:     $WEAK_COUNT / $TOTAL_ASSERTIONS total (${RATIO}%)"
-echo "║  Threshold:           220 (must decrease, never increase)"
+echo "║  Threshold:           220 (static ceiling — lower it as the count drops)"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Top offenders (weak assertion count per file):"
 "${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
-  | awk -F: '{count[$1]++} END {for(f in count) print count[f]":"f}' \
+  | awk -F: '{
+      n = $NF;
+      if (n !~ /^[0-9]+$/) next;
+      file = $0;
+      sub(/:[0-9]+$/, "", file);
+      print n":"file;
+    }' \
   | sort -t: -k1 -rn \
   | head -15 \
   | while IFS=: read -r count file; do

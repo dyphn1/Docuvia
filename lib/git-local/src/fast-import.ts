@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import pLimit from "p-limit";
-import { UTF8_ENCODING } from "@workspace/contracts";
+import { DocuviaError, ErrorCodes, UTF8_ENCODING } from "@workspace/contracts";
 import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX } from "./constants/git-refs.js";
 import { GIT_BIN } from "./constants/git-cli.js";
@@ -97,7 +97,17 @@ const COLLECT_FILES_READ_CONCURRENCY = os.cpus().length * 4;
 
 export async function collectDirectoryFiles(
   sourceDir: string,
+  allowedRoot?: string,
 ): Promise<Map<string, string>> {
+  const resolvedSource = path.resolve(sourceDir);
+  const root = allowedRoot ? path.resolve(allowedRoot) : resolvedSource;
+  if (!resolvedSource.startsWith(root + path.sep) && resolvedSource !== root) {
+    throw new DocuviaError(
+      ErrorCodes.FS_PATH_TRAVERSAL,
+      `sourceDir "${sourceDir}" escapes allowed root "${root}"`,
+    );
+  }
+
   const files = new Map<string, string>();
   const limit = pLimit(COLLECT_FILES_READ_CONCURRENCY);
 

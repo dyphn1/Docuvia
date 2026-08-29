@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/utils/safe-fs.unit.test.ts#anonymous@L58
+id: lib/core/src/utils/safe-fs.unit.test.ts#anonymous@L62
 type: symbol
 name: anonymous
 filePath: lib/core/src/utils/safe-fs.unit.test.ts

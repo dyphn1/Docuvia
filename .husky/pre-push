@@ -4,20 +4,38 @@
 # doctor). Let git rediscover the repo from cwd via core.hooksPath discovery.
 unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
 
-echo "Running lint and complexity budget checks (fail-fast)..."
-pnpm run lint
+# Skip the lint/typecheck/build/test/quality-gate below when every ref in this push is a
+# deletion (e.g. `git push origin --delete branch1 branch2`) -- there's no new code to verify,
+# and the ~3min suite only adds flake risk (e.g. hookTimeout-sensitive LSP preflight tests) for
+# zero benefit. Git feeds pre-push one line per ref on stdin: "<local ref> <local sha1> <remote
+# ref> <remote sha1>"; a delete is marked by local sha1 = all-zeros. A push that mixes commits
+# with deletions still runs the full gate below.
+zero_sha="0000000000000000000000000000000000000000"
+delete_only=1
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_sha" != "$zero_sha" ]; then
+    delete_only=0
+  fi
+done
 
-echo "Running full typecheck..."
-pnpm run typecheck
+if [ "$delete_only" = "1" ]; then
+  echo "Push is branch deletion(s) only -- skipping lint/typecheck/build/test/quality-gate."
+else
+  echo "Running lint and complexity budget checks (fail-fast)..."
+  pnpm run lint
 
-echo "Running full build..."
-pnpm run build
+  echo "Running full typecheck..."
+  pnpm run typecheck
 
-echo "Running full test suite and global coverage..."
-pnpm run test
+  echo "Running full build..."
+  pnpm run build
 
-echo "Running test quality gate..."
-bash scripts/test-quality-gate.sh
+  echo "Running full test suite and global coverage..."
+  pnpm run test
+
+  echo "Running test quality gate..."
+  bash scripts/test-quality-gate.sh
+fi
 #!/bin/bash
 # Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)
 # Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see

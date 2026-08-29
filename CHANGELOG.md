@@ -2,6 +2,16 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.1](https://github.com/dyphn1/Docuvia/compare/v1.4.0...v1.4.1) (2026-08-29)
+
+### Bug Fixes
+
+- **ast-core:** resolve tech debt [#227](https://github.com/dyphn1/Docuvia/issues/227) and [#228](https://github.com/dyphn1/Docuvia/issues/228) ([#251](https://github.com/dyphn1/Docuvia/issues/251)) ([11c57b5](https://github.com/dyphn1/Docuvia/commit/11c57b58422b2f2d149b8cef8942dec377907113))
+- **git-local:** add path traversal protection to collectDirectoryFiles (issue [#244](https://github.com/dyphn1/Docuvia/issues/244)) ([#249](https://github.com/dyphn1/Docuvia/issues/249)) ([e341b6d](https://github.com/dyphn1/Docuvia/commit/e341b6d98dc02320e68da20f09e60993d8fa4ec2))
+- **git-local:** wrap child.stdin.end() in try/catch to handle synchronous throws ([#258](https://github.com/dyphn1/Docuvia/issues/258)) ([c473087](https://github.com/dyphn1/Docuvia/commit/c4730870daa215605330257d45d28f235ab97c17))
+- **ui-core:** move isDiscoverableSourceFile to contracts (issue [#243](https://github.com/dyphn1/Docuvia/issues/243)) ([#250](https://github.com/dyphn1/Docuvia/issues/250)) ([16b93d4](https://github.com/dyphn1/Docuvia/commit/16b93d4e61069538ca55634d3f64d755ad995618))
+- **ui-core:** pass PAT directly to sync() instead of storing in memory ([#260](https://github.com/dyphn1/Docuvia/issues/260)) ([9ec0eb1](https://github.com/dyphn1/Docuvia/commit/9ec0eb11e83dca7e1e062826b54511c876470953))
+
 # [1.4.0](https://github.com/dyphn1/Docuvia/compare/v1.3.2...v1.4.0) (2026-08-27)
 
 ### Bug Fixes

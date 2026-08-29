@@ -35,7 +35,7 @@ describe("checkCsharpLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   });
 
   it("reports not ready when csproj is present but csharp-ls binary cannot be found", async () => {

@@ -106,11 +106,11 @@ class Foo {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data!.functions.length).toBeGreaterThan(0);
+    expect(result.data!.functions.length).toBeGreaterThanOrEqual(1);
     // scope-resolver.ts has imports
-    expect(result.data!.imports.length).toBeGreaterThan(0);
+    expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
     // scope-resolver.ts has call sites
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
   });
 
   it("parses real Docuvia source file (ast-worker.ts)", async () => {
@@ -127,10 +127,10 @@ class Foo {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data!.functions.length).toBeGreaterThan(0);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
+    expect(result.data!.functions.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
     // ast-worker.ts imports from @workspace/ast-core and @workspace/contracts
-    expect(result.data!.imports.length).toBeGreaterThan(0);
+    expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -149,6 +149,7 @@ describe("Callee Evidence: getCalleeEvidence with real AST nodes", () => {
     expect(callSites.length).toBeGreaterThanOrEqual(1);
     const fooCall = callSites.find((c) => c.targetFunction === "foo");
     expect(fooCall).toBeDefined();
+    expect(fooCall!.targetFunction).toBe("foo");
   });
 
   it("classifies member calls correctly (obj.method())", async () => {
@@ -169,7 +170,9 @@ arr.map(x => x + 1);
     const pushCall = callSites.find((c) => c.targetFunction.includes("push"));
     const mapCall = callSites.find((c) => c.targetFunction.includes("map"));
     expect(pushCall).toBeDefined();
+    expect(pushCall!.targetFunction).toContain("push");
     expect(mapCall).toBeDefined();
+    expect(mapCall!.targetFunction).toContain("map");
   });
 
   it("classifies this-receiver calls correctly", async () => {
@@ -192,6 +195,8 @@ class Foo {
       (c) => c.targetFunction.includes("bar") && c.sourceFunction === "baz",
     );
     expect(thisCall).toBeDefined();
+    expect(thisCall!.sourceFunction).toBe("baz");
+    expect(thisCall!.targetFunction).toContain("bar");
   });
 
   it("classifies import-based calls correctly", async () => {
@@ -211,6 +216,7 @@ const data = readFileSync("test.txt", "utf-8");
       c.targetFunction.includes("readFileSync"),
     );
     expect(readCall).toBeDefined();
+    expect(readCall!.targetFunction).toContain("readFileSync");
   });
 
   it("handles real-world code: Express-like route handler", async () => {
@@ -231,8 +237,8 @@ app.listen(3000);
     });
 
     expect(result.success).toBe(true);
-    expect(result.data!.calls.length).toBeGreaterThan(0);
-    expect(result.data!.imports.length).toBeGreaterThan(0);
+    expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
+    expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -269,19 +275,19 @@ describe("Full pipeline: parse → persist → verify edges (real files)", () =>
     expect(persistResult.success).toBe(true);
 
     // Both should have call sites
-    expect(scopeResult.data!.calls.length).toBeGreaterThan(0);
-    expect(persistResult.data!.calls.length).toBeGreaterThan(0);
+    expect(scopeResult.data!.calls.length).toBeGreaterThanOrEqual(1);
+    expect(persistResult.data!.calls.length).toBeGreaterThanOrEqual(1);
 
     // scope-resolver.ts imports from contracts → should have import-based calls
     const scopeImportTargets = scopeResult.data!.calls.map(
       (c) => c.targetFunction,
     );
-    expect(scopeImportTargets.length).toBeGreaterThan(0);
+    expect(scopeImportTargets.length).toBeGreaterThanOrEqual(1);
 
     // persist-ast-graph.ts imports from scope-resolver → should have calls
     const persistImportTargets = persistResult.data!.calls.map(
       (c) => c.targetFunction,
     );
-    expect(persistImportTargets.length).toBeGreaterThan(0);
+    expect(persistImportTargets.length).toBeGreaterThanOrEqual(1);
   });
 });

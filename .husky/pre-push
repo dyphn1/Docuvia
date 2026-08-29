@@ -15,6 +15,9 @@ pnpm run build
 
 echo "Running full test suite and global coverage..."
 pnpm run test
+
+echo "Running test quality gate..."
+bash scripts/test-quality-gate.sh
 #!/bin/bash
 # Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)
 # Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see

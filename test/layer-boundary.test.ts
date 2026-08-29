@@ -90,7 +90,9 @@ describe("layer-boundary eslint config", () => {
 
   it("allows allowlisted ui-core files to keep importing @workspace/core (documented narrow exceptions)", async () => {
     const allowlisted = [
-      "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
+      // run-delta-ingestion.ts was removed from this list (issue #243): its one reason for being
+      // here, isDiscoverableSourceFile, moved to @workspace/contracts, so it no longer imports
+      // @workspace/core at all and the layer-boundary lint protects it like any other file now.
       "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
     ];
     for (const filePath of allowlisted) {

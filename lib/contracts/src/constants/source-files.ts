@@ -1,6 +1,7 @@
 import path from "path";
 import { SUPPORTED_LANGUAGES } from "./languages.js";
 import type { SupportedLanguage } from "./languages.js";
+import { NODE_MODULES_DIR_NAME, DOCUVIA_DIR_NAME } from "./paths.js";
 
 // ---------------------------------------------------------------------------
 // Per-language extension arrays — the canonical definitions.  These were
@@ -105,5 +106,20 @@ export function isSupportedSourceFile(filePath: string): boolean {
 export function getSupportedGlobExtensions(): string[] {
   return Array.from(EXT_TO_LANGUAGE.keys()).map((ext) =>
     ext.replace(/^\./, ""),
+  );
+}
+
+/**
+ * `FileDiscoveryService.discoverFiles()`'s post-glob/post-git-list filter, extracted so
+ * `analyze` auto mode's delta ingestion (phase1-decision-integration.md §6b) can apply the exact
+ * same ignore rule to a git-diff-derived file list without duplicating it — "filtered by the
+ * SAME discovery ignore/oversize rules `init` uses" per the spec. `discoverFiles()` itself is
+ * refactored to call this too, so there is exactly one place this rule lives.
+ */
+export function isDiscoverableSourceFile(filePath: string): boolean {
+  return (
+    isSupportedSourceFile(filePath) &&
+    !filePath.includes(`${NODE_MODULES_DIR_NAME}/`) &&
+    !filePath.includes(`${DOCUVIA_DIR_NAME}/`)
   );
 }

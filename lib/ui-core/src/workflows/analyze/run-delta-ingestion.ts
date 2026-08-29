@@ -14,14 +14,13 @@ import {
   type ILogger,
   type ISemanticDiffAnalyzer,
   type SemanticDiffModifiedNode,
+  isDiscoverableSourceFile,
 } from "@workspace/contracts";
 import {
   aggregateCallResolution,
   GitConstants,
   MAX_FILE_SIZE_BYTES,
 } from "@workspace/contracts";
-// Narrow documented exception (lib/core/src/index.ts): registry-coupled, not movable to contracts.
-import { isDiscoverableSourceFile } from "@workspace/core";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { mergeDeltaCallResolution } from "./call-resolution-stats.js";

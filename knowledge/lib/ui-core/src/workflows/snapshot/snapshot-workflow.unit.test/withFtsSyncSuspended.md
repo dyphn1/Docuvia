@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.unit.test.ts#withFtsSyncSuspended@L346
+id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.unit.test.ts#withFtsSyncSuspended@L349
 type: symbol
 name: withFtsSyncSuspended
 filePath: lib/ui-core/src/workflows/snapshot/snapshot-workflow.unit.test.ts

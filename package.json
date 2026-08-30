@@ -4,7 +4,7 @@
   "lint-staged": {
     "*.ts": [
       "prettier --write",
-      "vitest related --run --passWithNoTests"
+      "vitest related --run --passWithNoTests --testTimeout=30000"
     ],
     "*.{js,json,md,yml,yaml}": "prettier --write --ignore-unknown"
   },

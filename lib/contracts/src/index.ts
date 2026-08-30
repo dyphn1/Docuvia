@@ -293,7 +293,10 @@ export {
 export { acquireProcessLock } from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
 export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
-export { aggregateCallResolution } from "./utils/call-resolution.js";
+export {
+  aggregateCallResolution,
+  callResolutionDenominator,
+} from "./utils/call-resolution.js";
 export type { INodeProcess } from "./interfaces/process.interfaces.js";
 export type {
   ProcessLockOptions,

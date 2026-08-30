@@ -569,6 +569,8 @@ describe("GraphPersisterService.persist()", () => {
       resolved: 2,
       selfDiscarded: 1,
       unresolvable: 1,
+      external: 0,
+      unknownReceiver: 0,
       unresolved: 1,
     });
     // Files with zero call sites produce no entry at all (not a zeroed one), so doctor's
@@ -579,6 +581,105 @@ describe("GraphPersisterService.persist()", () => {
       resolved: 2,
       selfDiscarded: 1,
       unresolvable: 1,
+      external: 0,
+      unknownReceiver: 0,
+      unresolved: 1,
+    });
+  });
+
+  it("charges provably-external and unknown-receiver sites to their own buckets, not to unresolved (issue #230)", async () => {
+    const parsedResults: ParsedAstFileResult[] = [
+      {
+        file: "src/a.ts",
+        hash: "hash-a",
+        data: {
+          imports: [
+            // A node builtin and an npm package: both provably leave the project.
+            {
+              localName: "readFileSync",
+              originalName: "readFileSync",
+              modulePath: "node:fs",
+            },
+            { localName: "vi", originalName: "vi", modulePath: "vitest" },
+            // A relative import that resolves nowhere — a real gap, must stay `unresolved`.
+            {
+              localName: "brokenHelper",
+              originalName: "brokenHelper",
+              modulePath: "./does-not-exist.js",
+            },
+          ],
+          exports: [],
+          functions: [{ name: "foo", startLine: 0, endLine: 1 }],
+          classes: [],
+          calls: [
+            // external: bare callee bound to a node builtin.
+            {
+              sourceFunction: "foo",
+              targetFunction: "readFileSync",
+              startLine: 1,
+              startColumn: 2,
+              calleeName: "readFileSync",
+              calleeKind: "bare",
+            },
+            // external: member call whose *receiver* is bound to an npm package.
+            {
+              sourceFunction: "foo",
+              targetFunction: "vi.fn",
+              startLine: 2,
+              startColumn: 2,
+              calleeName: "fn",
+              receiverText: "vi",
+              calleeKind: "member",
+            },
+            // external: bare callee with no binding and no local declaration -> ambient global.
+            {
+              sourceFunction: "foo",
+              targetFunction: "String",
+              startLine: 3,
+              startColumn: 2,
+              calleeName: "String",
+              calleeKind: "bare",
+            },
+            // unknownReceiver: receiver is a local const the extractor never indexed.
+            {
+              sourceFunction: "foo",
+              targetFunction: "rows.push",
+              startLine: 4,
+              startColumn: 2,
+              calleeName: "push",
+              receiverText: "rows",
+              calleeKind: "member",
+            },
+            // unresolved: a broken *relative* import is a resolver gap, never laundered into
+            // `external` — this assertion is the guard against the metric hiding real bugs.
+            {
+              sourceFunction: "foo",
+              targetFunction: "brokenHelper",
+              startLine: 5,
+              startColumn: 2,
+              calleeName: "brokenHelper",
+              calleeKind: "bare",
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
+
+    expect(result.callResolutionByFile?.["src/a.ts"]).toEqual({
+      total: 5,
+      resolved: 0,
+      selfDiscarded: 0,
+      unresolvable: 0,
+      external: 3,
+      unknownReceiver: 1,
       unresolved: 1,
     });
   });

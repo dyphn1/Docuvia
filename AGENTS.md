@@ -113,13 +113,17 @@ npx --no-install docuvia impact <symbolOrFile>
 npx --no-install docuvia review <baseRef>
 ```
 
-**After making a code change that reflects a real architectural decision, rule, or notable rationale**, stage it so the graph picks it up without a separate write step:
+**After making a code change that reflects a real architectural decision, rule, or notable rationale**, write it straight into the graph:
 
 ```bash
-npx --no-install docuvia analyze <file> --agent-authored --stage
+npx --no-install docuvia analyze <file> --agent-authored
 ```
 
-Pipe a JSON payload on stdin (default) or pass `--decisions-file=<path>` instead — either way the shape is `{"decisions":[{"title":string,"content":string,"nodeType":"change"|"rule"|"decision"|"context","confidence":number}]}`. Put `--agent-authored`/`--stage` **after** the positional `<file>`, not before — a flag preceding the path silently swallows it as the flag's own value, so `<file>` never reaches the positional argument. Staged decisions flush into `l3_nodes` automatically the next time you commit a change touching that file; nothing else to run.
+Pipe a JSON payload on stdin (default) or pass `--decisions-file=<path>` instead — either way the shape is `{"decisions":[{"title":string,"content":string,"nodeType":"change"|"rule"|"decision"|"context","confidence":number}]}`. Put `--agent-authored` **after** the positional `<file>`, not before — a flag preceding the path silently swallows it as the flag's own value, so `<file>` never reaches the positional argument.
+
+This lands in `l3_nodes` immediately, in one pass. It starts no LLM call and needs no scheduling: you are writing content you already hold, so the work is bounded and complete at the moment you run it. **This is the default — reach for it every time.**
+
+`--stage` is the conditional variant, not the normal one. It appends to `.docuvia/pending-l3-decisions.json` and defers the write until a later commit whose diff contains that exact file — so a decision about a file you do not touch again waits indefinitely, silently (`flushed: 0` is not an error and no diagnostic reports it). Use it only when the write genuinely cannot happen now, and never as the default path for content you already have.
 
 Only fall back to `Grep`/`Glob`/`Read` when:
 
@@ -142,9 +146,11 @@ Run: `npx --no-install docuvia impact <symbolOrFile>`
 
 Use the results to understand architectural boundaries, historical decisions, and potential blast radius before modifying code. Only fall back to Grep/Glob/Read when the graph returns nothing, the target is flagged `tier_b_status="unprocessed"` (unknown, not zero), you need exact source text/formatting a structural query can't capture, or `query` returns a non-`exact` `match_type` (keyword/neighbor) for what should be a well-known symbol or file.
 
-After making a code change that reflects a real architectural decision, rule, or notable rationale, stage it so the graph picks it up without a separate write step:
+After making a code change that reflects a real architectural decision, rule, or notable rationale, write it straight into the graph:
 
-Run: `npx --no-install docuvia analyze <file> --agent-authored --stage`
+Run: `npx --no-install docuvia analyze <file> --agent-authored`
 
-Pipe a JSON payload on stdin (default) — `{"decisions":[{"title":string,"content":string,"nodeType":"change"|"rule"|"decision"|"context","confidence":number}]}` — or pass `--decisions-file=<path>` instead. Put `--agent-authored`/`--stage` after the positional `<file>`, not before — a flag preceding the path silently swallows it as the flag's own value. Staged decisions flush into the knowledge graph automatically the next time you commit a change touching that file — nothing else to run.
+Pipe a JSON payload on stdin (default) — `{"decisions":[{"title":string,"content":string,"nodeType":"change"|"rule"|"decision"|"context","confidence":number}]}` — or pass `--decisions-file=<path>` instead. Put `--agent-authored` after the positional `<file>`, not before — a flag preceding the path silently swallows it as the flag's own value. The write lands immediately, in one pass, with no LLM call and no scheduling.
+
+`--stage` is a conditional variant, not the default: it defers the write until a later commit whose diff contains that exact file, so a decision about a file you do not touch again waits indefinitely and silently. Only use it when the write genuinely cannot happen now.
 <!-- docuvia:end -->

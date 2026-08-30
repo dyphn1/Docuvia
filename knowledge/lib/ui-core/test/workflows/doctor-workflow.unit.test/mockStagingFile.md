@@ -1,10 +1,9 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#mockStagingFile
 type: symbol
-name: registerGit
+name: mockStagingFile
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 ---
-# Symbol: registerGit
+# Symbol: mockStagingFile
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`
-t.ts`

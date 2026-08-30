@@ -19,16 +19,27 @@ export default defineConfig({
      * full suite's parallel load. Keep the two flags together wherever either appears (the `test`
      * script and lint-staged's `vitest related`).
      *
-     * CORRECTION: the CLI flags are NOT global either. A project that has its own
-     * `vitest.config.ts` ignores them exactly as it ignores this file's options -- measured with a
-     * 12s `beforeEach` probe under `lib/git-local`, which failed at "Hook timed out in 10000ms"
-     * (vitest's default) while `pnpm test` was passing `--hookTimeout=30000`, and passed once the
-     * budgets were restated in that project's own config. This is why the pre-push gate kept
-     * failing on a different random file per run even after `fileParallelism: false` landed:
-     * serializing removed the contention, but the three serialized projects were still running on
-     * the 10s default. `artifacts/cli`, `lib/core` and `lib/git-local` now each restate
-     * `testTimeout`/`hookTimeout`. Any NEW project config must do the same -- the root flags will
-     * not cover it.
+     * CORRECTION (supersedes the paragraph above, and the first version of this one). The two CLI
+     * flags do NOT behave the same way. Measured with probe tests, four cases:
+     *
+     *                     | project WITHOUT its own config | project WITH its own config
+     *   --testTimeout     | applies  (8s test passed,       | OVERRIDES the config (40s test died
+     *                     |           default is 5s)        | at 30000 despite config's 120000)
+     *   --hookTimeout     | inert    (12s hook died at      | inert (40s hook passed on the
+     *                     |           10000, the default)   | config's 120000)
+     *
+     * So `--hookTimeout` never reaches anything, while `--testTimeout` reaches everything and
+     * CLAMPS a project config that asks for more. That asymmetry is why the gate kept failing on a
+     * different random file per run even after `fileParallelism: false` and the per-project budgets
+     * landed: serializing removed the contention, the project configs fixed the hook budget, and
+     * `--testTimeout=30000` then silently held every *test* budget down to 30s regardless.
+     *
+     * Both flags are therefore pinned to the same value as
+     * `SUBPROCESS_TEST_TIMEOUT_MS` (`@workspace/contracts/testing/timeouts`), which the three
+     * project configs spread in. They are duplicated as literals in package.json only because a
+     * JSON script line cannot import a TS constant -- if that constant changes, change them too.
+     * Any NEW project config must still restate the budgets: the root flags cover `testTimeout`
+     * but never `hookTimeout`.
      */
     coverage: {
       provider: "v8",

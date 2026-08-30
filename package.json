@@ -4,7 +4,7 @@
   "lint-staged": {
     "*.ts": [
       "prettier --write",
-      "vitest related --run --passWithNoTests --testTimeout=30000 --hookTimeout=30000"
+      "vitest related --run --passWithNoTests --testTimeout=120000 --hookTimeout=120000"
     ],
     "*.{js,json,md,yml,yaml}": "prettier --write --ignore-unknown"
   },
@@ -15,7 +15,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck": "tsc --build",
     "lint": "eslint .",
-    "test": "rimraf coverage && vitest run --coverage --testTimeout=30000 --hookTimeout=30000",
+    "test": "rimraf coverage && vitest run --coverage --testTimeout=120000 --hookTimeout=120000",
     "eval:impact": "vitest run artifacts/cli/test/integration/commands/impact-eval.integration.test.ts",
     "format": "prettier --write .",
     "prepare": "husky"

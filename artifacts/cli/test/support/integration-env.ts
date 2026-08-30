@@ -14,13 +14,12 @@ import { rmSync } from "fs";
 /**
  * Per-test budget for a test that spawns real CLI subprocesses or runs a full `init`.
  *
- * Sized from measurement, not guesswork: under a full parallel `vitest run` on Windows,
- * `uninstall.test.ts`'s four tests took 45.8s wall-clock total and `init-cli-mcp-symmetry.ts`'s
- * two took 55.5s — individually blowing the 25s/30s budgets they used to carry, while each
- * passes in ~5s when run alone. The budget is deliberately generous rather than tuned to the
- * observed peak: a timeout here should mean "genuinely hung", never "the machine was busy".
+ * Re-exported, not redefined: this is the same fact as every other subprocess budget in the repo
+ * (including the ones in each project's `vitest.config.ts`), so it has exactly one definition —
+ * `SUBPROCESS_TEST_TIMEOUT_MS` in `@workspace/contracts/testing/timeouts`. The alias is kept
+ * because this name is already imported across this package's integration suite.
  */
-export const REAL_SUBPROCESS_TEST_TIMEOUT_MS = 120_000;
+export { SUBPROCESS_TEST_TIMEOUT_MS as REAL_SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Removes a test's temp directory, tolerating Windows' mandatory file locking.

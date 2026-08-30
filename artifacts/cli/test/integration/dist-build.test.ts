@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
 import { TestSandbox, buildDistCli } from "../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Regression suite for a class of bug that every *other* integration test in this project is
@@ -24,7 +25,7 @@ import { TestSandbox, buildDistCli } from "../support/sandbox.js";
 describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () => {
   beforeAll(async () => {
     await buildDistCli();
-  }, 60000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   let sandbox: TestSandbox;
 
@@ -46,89 +47,105 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
         ].join("\n"),
       },
     });
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it("boots and runs a basic command without crashing (regression: duplicated shebang / bundling made node dist/cli.js unrunnable)", async () => {
-    const result = await sandbox.runDistCli(["status"]);
+  it(
+    "boots and runs a basic command without crashing (regression: duplicated shebang / bundling made node dist/cli.js unrunnable)",
+    async () => {
+      const result = await sandbox.runDistCli(["status"]);
 
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Docuvia Status");
-  }, 25000);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Docuvia Status");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("init populates a real, non-empty knowledge graph via the compiled build (regression: AST worker crash-loop / missing wasm+migrations+grammar assets under bundling)", async () => {
-    const initResult = await sandbox.runDistCli(["init"]);
-    expect(initResult.exitCode).toBe(0);
+  it(
+    "init populates a real, non-empty knowledge graph via the compiled build (regression: AST worker crash-loop / missing wasm+migrations+grammar assets under bundling)",
+    async () => {
+      const initResult = await sandbox.runDistCli(["init"]);
+      expect(initResult.exitCode).toBe(0);
 
-    const db = sandbox.getDb();
-    try {
-      const { count: l2NodeCount } = db
-        .prepare("SELECT COUNT(*) as count FROM l2_nodes")
-        .get() as { count: number };
-      // 1 file node + 2 "anonymous" function nodes at minimum. If AST parsing silently failed
-      // (worker crash swallowed as a per-file failure, or a missing wasm/grammar asset made it
-      // fall back to regex-only extraction that finds no functions), this would be 0 or 1.
-      expect(l2NodeCount).toBeGreaterThanOrEqual(3);
+      const db = sandbox.getDb();
+      try {
+        const { count: l2NodeCount } = db
+          .prepare("SELECT COUNT(*) as count FROM l2_nodes")
+          .get() as { count: number };
+        // 1 file node + 2 "anonymous" function nodes at minimum. If AST parsing silently failed
+        // (worker crash swallowed as a per-file failure, or a missing wasm/grammar asset made it
+        // fall back to regex-only extraction that finds no functions), this would be 0 or 1.
+        expect(l2NodeCount).toBeGreaterThanOrEqual(3);
 
-      // Both "anonymous" callbacks must have landed under distinct node_keys — this is the
-      // dist-build-level counterpart to persist-ast-graph.unit.test.ts's collision regression
-      // test: the UNIQUE(project_id, node_key) constraint used to throw here and crash `init`.
-      const anonymousRows = db
-        .prepare("SELECT node_key FROM l2_nodes WHERE name = 'anonymous'")
-        .all() as { node_key: string }[];
-      expect(anonymousRows).toHaveLength(2);
-      expect(new Set(anonymousRows.map((r) => r.node_key)).size).toBe(2);
-    } finally {
-      db.close();
-    }
-  }, 30000);
-
-  it("regression: running status immediately after init does not wipe the graph init just built (ensureHydrated() used to force a destructive re-hydrate from the still-empty knowledge branch)", async () => {
-    await sandbox.runDistCli(["init"]);
-
-    const nodeCountBeforeStatus = (
-      sandbox
-        .getDb()
-        .prepare("SELECT COUNT(*) as count FROM l2_nodes")
-        .get() as {
-        count: number;
+        // Both "anonymous" callbacks must have landed under distinct node_keys — this is the
+        // dist-build-level counterpart to persist-ast-graph.unit.test.ts's collision regression
+        // test: the UNIQUE(project_id, node_key) constraint used to throw here and crash `init`.
+        const anonymousRows = db
+          .prepare("SELECT node_key FROM l2_nodes WHERE name = 'anonymous'")
+          .all() as { node_key: string }[];
+        expect(anonymousRows).toHaveLength(2);
+        expect(new Set(anonymousRows.map((r) => r.node_key)).size).toBe(2);
+      } finally {
+        db.close();
       }
-    ).count;
-    expect(nodeCountBeforeStatus).toBeGreaterThanOrEqual(1);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const statusResult = await sandbox.runDistCli(["status"]);
-    expect(statusResult.exitCode).toBe(0);
+  it(
+    "regression: running status immediately after init does not wipe the graph init just built (ensureHydrated() used to force a destructive re-hydrate from the still-empty knowledge branch)",
+    async () => {
+      await sandbox.runDistCli(["init"]);
 
-    const nodeCountAfterStatus = (
-      sandbox
-        .getDb()
-        .prepare("SELECT COUNT(*) as count FROM l2_nodes")
-        .get() as {
-        count: number;
-      }
-    ).count;
-    expect(nodeCountAfterStatus).toBe(nodeCountBeforeStatus);
-    // Status now renders a bordered "Metric | Value" table (not a "Metric: value" line), so match
-    // the row tolerant of column padding rather than an exact substring.
-    expect(statusResult.stdout).toMatch(
-      new RegExp(`L2 Nodes\\s*\\│\\s*${nodeCountBeforeStatus}\\s*\\│`),
-    );
-  }, 30000);
+      const nodeCountBeforeStatus = (
+        sandbox
+          .getDb()
+          .prepare("SELECT COUNT(*) as count FROM l2_nodes")
+          .get() as {
+          count: number;
+        }
+      ).count;
+      expect(nodeCountBeforeStatus).toBeGreaterThanOrEqual(1);
 
-  it("query and impact return real results against the compiled build's graph, not just an empty-graph no-op", async () => {
-    await sandbox.runDistCli(["init"]);
+      const statusResult = await sandbox.runDistCli(["status"]);
+      expect(statusResult.exitCode).toBe(0);
 
-    const queryResult = await sandbox.runDistCli(["query", "run"]);
-    expect(queryResult.exitCode).toBe(0);
-    expect(queryResult.stdout).not.toContain("No matching module found");
+      const nodeCountAfterStatus = (
+        sandbox
+          .getDb()
+          .prepare("SELECT COUNT(*) as count FROM l2_nodes")
+          .get() as {
+          count: number;
+        }
+      ).count;
+      expect(nodeCountAfterStatus).toBe(nodeCountBeforeStatus);
+      // Status now renders a bordered "Metric | Value" table (not a "Metric: value" line), so match
+      // the row tolerant of column padding rather than an exact substring.
+      expect(statusResult.stdout).toMatch(
+        new RegExp(`L2 Nodes\\s*\\│\\s*${nodeCountBeforeStatus}\\s*\\│`),
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const impactResult = await sandbox.runDistCli(["impact", "run"]);
-    expect(impactResult.exitCode).toBe(0);
-    expect(impactResult.stdout).not.toContain("No matching node found");
-  }, 30000);
+  it(
+    "query and impact return real results against the compiled build's graph, not just an empty-graph no-op",
+    async () => {
+      await sandbox.runDistCli(["init"]);
+
+      const queryResult = await sandbox.runDistCli(["query", "run"]);
+      expect(queryResult.exitCode).toBe(0);
+      expect(queryResult.stdout).not.toContain("No matching module found");
+
+      const impactResult = await sandbox.runDistCli(["impact", "run"]);
+      expect(impactResult.exitCode).toBe(0);
+      expect(impactResult.stdout).not.toContain("No matching node found");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   // Regression test for a crash reproduced manually by launching several `node dist/cli.js init`
   // processes at the same instant against the same workspace: all of them open GraphStore before

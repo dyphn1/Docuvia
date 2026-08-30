@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const ANALYZE_RUNS = 3;
 const SNAPSHOT_RUNS = 3;
@@ -54,53 +55,61 @@ describe("Command: docuvia analyze (delta) concurrent with docuvia snapshot (rea
     );
     await sandbox.runGit(["add", "-A"]);
     await sandbox.runGit(["commit", "-m", "change hello"]);
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it(`resolves ${ANALYZE_RUNS} concurrent delta analyze runs and ${SNAPSHOT_RUNS} concurrent snapshot runs without corrupting local.db or the knowledge branch, both with sane exit codes`, async () => {
-    const runs = [
-      ...Array.from({ length: ANALYZE_RUNS }, () =>
-        sandbox.runCli(["analyze"], { reject: false }),
-      ),
-      ...Array.from({ length: SNAPSHOT_RUNS }, () =>
-        sandbox.runCli(["snapshot"], { reject: false }),
-      ),
-    ];
-    const results = await Promise.all(runs);
+  it(
+    `resolves ${ANALYZE_RUNS} concurrent delta analyze runs and ${SNAPSHOT_RUNS} concurrent snapshot runs without corrupting local.db or the knowledge branch, both with sane exit codes`,
+    async () => {
+      const runs = [
+        ...Array.from({ length: ANALYZE_RUNS }, () =>
+          sandbox.runCli(["analyze"], { reject: false }),
+        ),
+        ...Array.from({ length: SNAPSHOT_RUNS }, () =>
+          sandbox.runCli(["snapshot"], { reject: false }),
+        ),
+      ];
+      const results = await Promise.all(runs);
 
-    for (const result of results) {
-      expect(result.exitCode).toBe(0);
-    }
+      for (const result of results) {
+        expect(result.exitCode).toBe(0);
+      }
 
-    // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
-    // consistency check (concurrent writers must not duplicate/corrupt the single project row).
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    expect(existsSync(dbPath)).toBe(true);
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const integrity = db.pragma("integrity_check", { simple: true });
-      expect(integrity).toBe("ok");
+      // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
+      // consistency check (concurrent writers must not duplicate/corrupt the single project row).
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      expect(existsSync(dbPath)).toBe(true);
+      const db = new Database(dbPath, { readonly: true });
+      try {
+        const integrity = db.pragma("integrity_check", { simple: true });
+        expect(integrity).toBe("ok");
 
-      const { count } = db
-        .prepare("SELECT COUNT(*) as count FROM projects")
-        .get() as { count: number };
-      expect(count).toBe(1);
-    } finally {
-      db.close();
-    }
+        const { count } = db
+          .prepare("SELECT COUNT(*) as count FROM projects")
+          .get() as { count: number };
+        expect(count).toBe(1);
+      } finally {
+        db.close();
+      }
 
-    // Knowledge-branch lock honored: the branch's history is well-formed (no
-    // interleaved/corrupted `fast-import` from a concurrent `snapshot`/`analyze` delta persist
-    // racing the lock) -- both `git log` (ref walk) and `git fsck` (object-graph integrity) must
-    // succeed cleanly.
-    const log = await sandbox.runGit(["log", "docuvia-knowledge", "--oneline"]);
-    expect(log.exitCode).toBe(0);
-    expect(log.stdout.trim().length).toBeGreaterThanOrEqual(1);
+      // Knowledge-branch lock honored: the branch's history is well-formed (no
+      // interleaved/corrupted `fast-import` from a concurrent `snapshot`/`analyze` delta persist
+      // racing the lock) -- both `git log` (ref walk) and `git fsck` (object-graph integrity) must
+      // succeed cleanly.
+      const log = await sandbox.runGit([
+        "log",
+        "docuvia-knowledge",
+        "--oneline",
+      ]);
+      expect(log.exitCode).toBe(0);
+      expect(log.stdout.trim().length).toBeGreaterThanOrEqual(1);
 
-    const fsck = await sandbox.runGit(["fsck", "--full"]);
-    expect(fsck.exitCode).toBe(0);
-  }, 120000);
+      const fsck = await sandbox.runGit(["fsck", "--full"]);
+      expect(fsck.exitCode).toBe(0);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

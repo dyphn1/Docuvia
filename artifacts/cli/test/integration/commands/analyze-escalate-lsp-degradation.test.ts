@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Gating tests 3 and 4 (docs/gitbook/analysis/phase1-decision-integration.md §8j):
@@ -50,62 +51,66 @@ describe("Command: docuvia analyze --escalate-to-lsp (real filesystem, no LSP in
     } finally {
       db.close();
     }
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it("exits 0, logs the language-skip and degradation events, and leaves the graph's node_links untouched", async () => {
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    const countLinks = () => {
-      const db = new Database(dbPath, { readonly: true });
-      try {
-        return (
-          db.prepare("SELECT COUNT(*) as c FROM node_links").get() as {
-            c: number;
-          }
-        ).c;
-      } finally {
-        db.close();
-      }
-    };
-    const linksBefore = countLinks();
+  it(
+    "exits 0, logs the language-skip and degradation events, and leaves the graph's node_links untouched",
+    async () => {
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      const countLinks = () => {
+        const db = new Database(dbPath, { readonly: true });
+        try {
+          return (
+            db.prepare("SELECT COUNT(*) as c FROM node_links").get() as {
+              c: number;
+            }
+          ).c;
+        } finally {
+          db.close();
+        }
+      };
+      const linksBefore = countLinks();
 
-    const result = await sandbox.runCli(
-      ["analyze", "--escalate-to-lsp", "--fallback-ast"],
-      { reject: false },
-    );
+      const result = await sandbox.runCli(
+        ["analyze", "--escalate-to-lsp", "--fallback-ast"],
+        { reject: false },
+      );
 
-    expect(result.exitCode).toBe(0);
-    expect(countLinks()).toBe(linksBefore);
+      expect(result.exitCode).toBe(0);
+      expect(countLinks()).toBe(linksBefore);
 
-    const logPath = resolve(sandbox.dir, ".docuvia/logs/analyze.log");
-    expect(existsSync(logPath)).toBe(true);
-    const lines = readFileSync(logPath, "utf8")
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
+      const logPath = resolve(sandbox.dir, ".docuvia/logs/analyze.log");
+      expect(existsSync(logPath)).toBe(true);
+      const lines = readFileSync(logPath, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line));
 
-    const languageSkip = lines.find(
-      (l) =>
-        l.event === "analyze.tierB.file_skipped_language" &&
-        l.file === "README.md",
-    );
-    expect(languageSkip).toBeDefined();
-    expect(languageSkip!.event).toBe("analyze.tierB.file_skipped_language");
-    expect(languageSkip!.file).toBe("README.md");
+      const languageSkip = lines.find(
+        (l) =>
+          l.event === "analyze.tierB.file_skipped_language" &&
+          l.file === "README.md",
+      );
+      expect(languageSkip).toBeDefined();
+      expect(languageSkip!.event).toBe("analyze.tierB.file_skipped_language");
+      expect(languageSkip!.file).toBe("README.md");
 
-    const degraded = lines.find((l) => l.event === "analyze.tierB.degraded");
-    expect(degraded).toBeDefined();
-    expect(typeof degraded!.reason).toBe("string");
-    expect(degraded!.reason.length).toBeGreaterThanOrEqual(1);
+      const degraded = lines.find((l) => l.event === "analyze.tierB.degraded");
+      expect(degraded).toBeDefined();
+      expect(typeof degraded!.reason).toBe("string");
+      expect(degraded!.reason.length).toBeGreaterThanOrEqual(1);
 
-    const summary = lines.find((l) => l.event === "analyze.tierB.summary");
-    expect(summary).toBeDefined();
-    expect(summary!.event).toBe("analyze.tierB.summary");
-    expect(summary.degraded).toBe(true);
-    expect(summary.edgesApplied).toBe(0);
-    expect(summary.filesSkippedLanguage).toBe(1);
-  }, 60000);
+      const summary = lines.find((l) => l.event === "analyze.tierB.summary");
+      expect(summary).toBeDefined();
+      expect(summary!.event).toBe("analyze.tierB.summary");
+      expect(summary.degraded).toBe(true);
+      expect(summary.edgesApplied).toBe(0);
+      expect(summary.filesSkippedLanguage).toBe(1);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

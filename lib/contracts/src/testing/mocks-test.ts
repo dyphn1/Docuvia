@@ -163,3 +163,8 @@ export function makeMockKnowledgeGit(
     ...overrides,
   };
 }
+
+export {
+  SUBPROCESS_TEST_TIMEOUT_MS,
+  SUBPROCESS_PROJECT_TIMEOUTS,
+} from "./timeouts.js";

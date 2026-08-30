@@ -11,6 +11,10 @@
     "./testing": {
       "types": "./dist/testing/mocks-test.d.ts",
       "default": "./src/testing/mocks-test.ts"
+    },
+    "./testing/timeouts": {
+      "types": "./dist/testing/timeouts.d.ts",
+      "default": "./src/testing/timeouts.ts"
     }
   },
   "main": "./src/index.ts",

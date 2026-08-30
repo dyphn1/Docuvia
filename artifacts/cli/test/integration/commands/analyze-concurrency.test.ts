@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const CONCURRENT_RUNS = 5;
 
@@ -28,11 +29,11 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
         "package.json": JSON.stringify({ name: "fixture-project" }),
       },
     });
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   it(`resolves all ${CONCURRENT_RUNS} concurrent analyze runs without throwing, writes well-formed JSONL log lines, and never duplicates the project row`, async () => {
     const runs = Array.from({ length: CONCURRENT_RUNS }, () =>

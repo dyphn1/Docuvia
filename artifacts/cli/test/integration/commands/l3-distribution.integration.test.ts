@@ -7,6 +7,7 @@ import * as path from "path";
 import Database from "better-sqlite3";
 import { GraphStore } from "@workspace/schema";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const execFileAsync = promisify(execFile);
 
@@ -93,75 +94,79 @@ describe("L3 distribution (phase2-l3-distribution.md): git-branch round trip", (
     }
   });
 
-  it("fresh single-developer round trip: a locally-written L3 decision survives snapshot -> real git clone -> hydrate", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
-    const { stdout: headSha } = await sandbox.runGit(["rev-parse", "HEAD"]);
+  it(
+    "fresh single-developer round trip: a locally-written L3 decision survives snapshot -> real git clone -> hydrate",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
+      const { stdout: headSha } = await sandbox.runGit(["rev-parse", "HEAD"]);
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const { contentHash } = await insertDecision(dbPath, {
-      title: "Uses named exports throughout",
-      content: "This module exports functions by name, not default.",
-      commitSha: headSha.trim(),
-    });
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const { contentHash } = await insertDecision(dbPath, {
+        title: "Uses named exports throughout",
+        content: "This module exports functions by name, not default.",
+        commitSha: headSha.trim(),
+      });
 
-    const snapshotResult = await sandbox.runCli(["snapshot"], {
-      reject: false,
-    });
-    expect(snapshotResult.exitCode).toBe(0);
+      const snapshotResult = await sandbox.runCli(["snapshot"], {
+        reject: false,
+      });
+      expect(snapshotResult.exitCode).toBe(0);
 
-    // The card landed on the knowledge branch under knowledge/_l3/<content_hash>.md.
-    const cardPaths = await listL3CardPaths(sandbox.dir);
-    expect(cardPaths).toEqual([`knowledge/_l3/${contentHash}.md`]);
-    const { stdout: cardContent } = await git(sandbox.dir, [
-      "show",
-      `docuvia-knowledge:knowledge/_l3/${contentHash}.md`,
-    ]);
-    expect(cardContent).toContain('"l2_path": "knowledge/src/index.ts.md"');
-    expect(cardContent).toContain(
-      "This module exports functions by name, not default.",
-    );
+      // The card landed on the knowledge branch under knowledge/_l3/<content_hash>.md.
+      const cardPaths = await listL3CardPaths(sandbox.dir);
+      expect(cardPaths).toEqual([`knowledge/_l3/${contentHash}.md`]);
+      const { stdout: cardContent } = await git(sandbox.dir, [
+        "show",
+        `docuvia-knowledge:knowledge/_l3/${contentHash}.md`,
+      ]);
+      expect(cardContent).toContain('"l2_path": "knowledge/src/index.ts.md"');
+      expect(cardContent).toContain(
+        "This module exports functions by name, not default.",
+      );
 
-    // Real `git clone` -- a genuinely fresh clone with no local.db of its own yet. `git clone`
-    // only materializes a local branch for the checked-out default branch; docuvia-knowledge
-    // lands as a remote-tracking ref only (`refs/remotes/origin/docuvia-knowledge`), so a
-    // real developer's next step is `sync-knowledge` (which adopts it as a local branch, per
-    // KnowledgeGitService's "no local copy existed" fast-forward case) before `hydrate` has
-    // anything under `refs/heads/docuvia-knowledge` to resolve against -- this is pre-existing
-    // STOR-002 behavior, not specific to L3.
-    const cloneDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-l3dist-clone-"),
-    );
-    tempDirs.push(cloneDir);
-    await execFileAsync("git", ["clone", sandbox.dir, cloneDir]);
+      // Real `git clone` -- a genuinely fresh clone with no local.db of its own yet. `git clone`
+      // only materializes a local branch for the checked-out default branch; docuvia-knowledge
+      // lands as a remote-tracking ref only (`refs/remotes/origin/docuvia-knowledge`), so a
+      // real developer's next step is `sync-knowledge` (which adopts it as a local branch, per
+      // KnowledgeGitService's "no local copy existed" fast-forward case) before `hydrate` has
+      // anything under `refs/heads/docuvia-knowledge` to resolve against -- this is pre-existing
+      // STOR-002 behavior, not specific to L3.
+      const cloneDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-l3dist-clone-"),
+      );
+      tempDirs.push(cloneDir);
+      await execFileAsync("git", ["clone", sandbox.dir, cloneDir]);
 
-    const cloneSandbox = new TestSandbox();
-    cloneSandbox.dir = cloneDir;
+      const cloneSandbox = new TestSandbox();
+      cloneSandbox.dir = cloneDir;
 
-    expect(
-      (await cloneSandbox.runCli(["sync-knowledge"], { reject: false }))
-        .exitCode,
-    ).toBe(0);
+      expect(
+        (await cloneSandbox.runCli(["sync-knowledge"], { reject: false }))
+          .exitCode,
+      ).toBe(0);
 
-    const hydrateResult = await cloneSandbox.runCli(["hydrate"], {
-      reject: false,
-    });
-    expect(hydrateResult.exitCode).toBe(0);
+      const hydrateResult = await cloneSandbox.runCli(["hydrate"], {
+        reject: false,
+      });
+      expect(hydrateResult.exitCode).toBe(0);
 
-    // hydrate() bulk-loads L2 into l2_nodes and, in the very same write-locked step, imports
-    // the L3 card that resolves against those freshly-hydrated node_key rows (L3DIST-007) --
-    // no separate step the clone has to know about beyond the standard sync-knowledge/hydrate
-    // pair.
-    const cloneDbPath = path.resolve(cloneDir, ".docuvia/local.db");
-    const titles = queryL3Titles(cloneDbPath);
-    expect(titles).toEqual(["Uses named exports throughout"]);
-  }, 120000);
+      // hydrate() bulk-loads L2 into l2_nodes and, in the very same write-locked step, imports
+      // the L3 card that resolves against those freshly-hydrated node_key rows (L3DIST-007) --
+      // no separate step the clone has to know about beyond the standard sync-knowledge/hydrate
+      // pair.
+      const cloneDbPath = path.resolve(cloneDir, ".docuvia/local.db");
+      const titles = queryL3Titles(cloneDbPath);
+      expect(titles).toEqual(["Uses named exports throughout"]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });
 
 describe("L3 distribution: two-diverged-branches merge (Tree-Adoption) survives L3 from both sides", () => {

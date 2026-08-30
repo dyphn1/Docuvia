@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 
+import { SUBPROCESS_PROJECT_TIMEOUTS } from "@workspace/contracts/testing/timeouts";
+
 /**
  * Issue #230 follow-up — the `docuvia` CLI project runs its files **one at a time**.
  *
@@ -21,5 +23,6 @@ export default defineConfig({
   test: {
     name: "docuvia",
     fileParallelism: false,
+    ...SUBPROCESS_PROJECT_TIMEOUTS,
   },
 });

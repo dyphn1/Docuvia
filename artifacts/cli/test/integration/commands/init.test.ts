@@ -3,6 +3,7 @@ import { TestSandbox } from "../../support/sandbox.js";
 import Database from "better-sqlite3";
 import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 describe("Command: docuvia init", () => {
   let sandbox: TestSandbox;
@@ -17,7 +18,7 @@ describe("Command: docuvia init", () => {
           "export function hello(): string {\n  return 'world';\n}\n",
       },
     });
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   /** Commits the fixture source file so a real HEAD sha exists -- both for deterministic file
    *  discovery (nothing depends on the working tree being dirty either way here) and so
@@ -29,80 +30,84 @@ describe("Command: docuvia init", () => {
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it("should successfully initialize the project and create the local SQLite database with correct schema", async () => {
-    // Act: Run the actual init command
-    const result = await sandbox.runCli(["init"]);
+  it(
+    "should successfully initialize the project and create the local SQLite database with correct schema",
+    async () => {
+      // Act: Run the actual init command
+      const result = await sandbox.runCli(["init"]);
 
-    // Assert: Execution success
-    expect(result.exitCode).toBe(0);
+      // Assert: Execution success
+      expect(result.exitCode).toBe(0);
 
-    // Assert: Side-effect - the database file must physically exist
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    expect(existsSync(dbPath), "Local database file should be created").toBe(
-      true,
-    );
+      // Assert: Side-effect - the database file must physically exist
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      expect(existsSync(dbPath), "Local database file should be created").toBe(
+        true,
+      );
 
-    // Assert: Deep Data Integrity - open the database and verify the schema
-    const db = new Database(dbPath, { readonly: true });
+      // Assert: Deep Data Integrity - open the database and verify the schema
+      const db = new Database(dbPath, { readonly: true });
 
-    try {
-      // Query the sqlite_master table to get all created tables
-      const tables = db
-        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-        .all() as {
-        name: string;
-      }[];
-      const tableNames = tables.map((t) => t.name);
+      try {
+        // Query the sqlite_master table to get all created tables
+        const tables = db
+          .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+          .all() as {
+          name: string;
+        }[];
+        const tableNames = tables.map((t) => t.name);
 
-      // Verify core knowledge graph tables exist (based on Docuvia schema expectations)
-      const expectedCoreTables = [
-        "l1_tags",
-        "l2_nodes",
-        "project_files",
-        "node_links",
-        "l2_node_l1_tags",
-      ];
+        // Verify core knowledge graph tables exist (based on Docuvia schema expectations)
+        const expectedCoreTables = [
+          "l1_tags",
+          "l2_nodes",
+          "project_files",
+          "node_links",
+          "l2_node_l1_tags",
+        ];
 
-      for (const expectedTable of expectedCoreTables) {
-        expect(tableNames).toContain(expectedTable);
+        for (const expectedTable of expectedCoreTables) {
+          expect(tableNames).toContain(expectedTable);
+        }
+
+        // Cognitive Snapshot: a single project row and at least one proposed L1 tag.
+        const { count: projectCount } = db
+          .prepare("SELECT COUNT(*) as count FROM projects")
+          .get() as { count: number };
+        expect(projectCount).toBe(1);
+
+        const { count: tagCount } = db
+          .prepare("SELECT COUNT(*) as count FROM l1_tags")
+          .get() as {
+          count: number;
+        };
+        expect(tagCount).toBeGreaterThanOrEqual(1);
+      } finally {
+        db.close();
       }
 
-      // Cognitive Snapshot: a single project row and at least one proposed L1 tag.
-      const { count: projectCount } = db
-        .prepare("SELECT COUNT(*) as count FROM projects")
-        .get() as { count: number };
-      expect(projectCount).toBe(1);
+      // Assert: the hidden knowledge-graph branch was created.
+      const branchOut = await sandbox.runGit([
+        "branch",
+        "--list",
+        "docuvia-knowledge",
+      ]);
+      expect(branchOut.stdout).toContain("docuvia-knowledge");
 
-      const { count: tagCount } = db
-        .prepare("SELECT COUNT(*) as count FROM l1_tags")
-        .get() as {
-        count: number;
-      };
-      expect(tagCount).toBeGreaterThanOrEqual(1);
-    } finally {
-      db.close();
-    }
-
-    // Assert: the hidden knowledge-graph branch was created.
-    const branchOut = await sandbox.runGit([
-      "branch",
-      "--list",
-      "docuvia-knowledge",
-    ]);
-    expect(branchOut.stdout).toContain("docuvia-knowledge");
-
-    // Assert: a JSONL run log was written, bracketed by init.start/init.summary.
-    const logPath = resolve(sandbox.dir, ".docuvia/logs/init.log");
-    expect(existsSync(logPath)).toBe(true);
-    const lines = readFileSync(logPath, "utf8")
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l));
-    expect(lines[0].event).toBe("init.start");
-    expect(lines[lines.length - 1].event).toBe("init.summary");
-  }, 25000);
+      // Assert: a JSONL run log was written, bracketed by init.start/init.summary.
+      const logPath = resolve(sandbox.dir, ".docuvia/logs/init.log");
+      expect(existsSync(logPath)).toBe(true);
+      const lines = readFileSync(logPath, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l));
+      expect(lines[0].event).toBe("init.start");
+      expect(lines[lines.length - 1].event).toBe("init.summary");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   // NOTE: the concurrent-init race regression test lives in dist-build.test.ts, not here — see
   // that file's comment for why: this test file's `sandbox.runCli()` drives the CLI via `tsx`,

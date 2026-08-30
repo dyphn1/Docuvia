@@ -9,6 +9,7 @@ import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import { PY_LSP_MESSAGES } from "./python-lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Mirrors `typescript-lsp-edge-provider.unit.test.ts`'s shape exactly (fake `LspJsonRpcClient`,
@@ -341,34 +342,42 @@ describe("PythonLspEdgeProvider.resolveEdges()", () => {
 });
 
 describe("PythonLspEdgeProvider.checkAvailability()", () => {
-  it("reports unavailable with a reason when no pyproject.toml/requirements.txt marker is present", async () => {
-    const dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-pylsp-avail-test-"),
-    );
-    try {
-      const provider = new PythonLspEdgeProvider(createMockLogger());
-      const availability = await provider.checkAvailability(dir);
+  it(
+    "reports unavailable with a reason when no pyproject.toml/requirements.txt marker is present",
+    async () => {
+      const dir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-pylsp-avail-test-"),
+      );
+      try {
+        const provider = new PythonLspEdgeProvider(createMockLogger());
+        const availability = await provider.checkAvailability(dir);
 
-      expect(availability.available).toBe(false);
-      expect(availability.reason!.length).toBeGreaterThanOrEqual(1);
-    } finally {
-      await rmSyncRetrying(dir);
-    }
-  }, 30_000);
+        expect(availability.available).toBe(false);
+        expect(availability.reason!.length).toBeGreaterThanOrEqual(1);
+      } finally {
+        await rmSyncRetrying(dir);
+      }
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("reports the pyright binary as unresolvable once a marker file is present but pyright is not", async () => {
-    const dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-pylsp-avail-test-"),
-    );
-    try {
-      fs.writeFileSync(path.join(dir, "pyproject.toml"), "[project]\n");
-      const provider = new PythonLspEdgeProvider(createMockLogger());
-      const availability = await provider.checkAvailability(dir);
+  it(
+    "reports the pyright binary as unresolvable once a marker file is present but pyright is not",
+    async () => {
+      const dir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-pylsp-avail-test-"),
+      );
+      try {
+        fs.writeFileSync(path.join(dir, "pyproject.toml"), "[project]\n");
+        const provider = new PythonLspEdgeProvider(createMockLogger());
+        const availability = await provider.checkAvailability(dir);
 
-      expect(availability.available).toBe(false);
-      expect(availability.reason).toMatch(/not resolvable/);
-    } finally {
-      await rmSyncRetrying(dir);
-    }
-  }, 30_000);
+        expect(availability.available).toBe(false);
+        expect(availability.reason).toMatch(/not resolvable/);
+      } finally {
+        await rmSyncRetrying(dir);
+      }
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

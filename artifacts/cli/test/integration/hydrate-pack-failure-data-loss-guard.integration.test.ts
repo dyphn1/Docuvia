@@ -17,6 +17,7 @@ import { GraphStore } from "@workspace/schema";
 import { GitLocalProvider } from "@workspace/git-local";
 import { GitConstants } from "@workspace/contracts";
 import "../../src/registration.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const execFileAsync = promisify(execFile);
 
@@ -104,96 +105,109 @@ async function readL2NodeCount(dbPath: string): Promise<number> {
 // real GraphStore, and a real GitLocalProvider (only packDirectoryToBranch is spied for the one
 // simulated failure), exactly as the plan's section 5.3 calls for.
 describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failure repro", () => {
-  it("refuses to wipe local.db when this workspace's own last knowledge-branch pack attempt failed to land", async () => {
-    const tmpDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-pack-failure-guard-"),
-    );
-    const scopeId = "pack-failure-guard-test";
+  it(
+    "refuses to wipe local.db when this workspace's own last knowledge-branch pack attempt failed to land",
+    async () => {
+      const tmpDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-pack-failure-guard-"),
+      );
+      const scopeId = "pack-failure-guard-test";
 
-    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
-    fs.writeFileSync(
-      path.join(tmpDir, "package.json"),
-      JSON.stringify({ name: "fixture-project" }),
-      "utf8",
-    );
-    fs.writeFileSync(
-      path.join(tmpDir, "src", "index.ts"),
-      'export function hello(): string {\n  return "world";\n}\n',
-      "utf8",
-    );
-
-    await runGit(tmpDir, ["init"]);
-    await runGit(tmpDir, ["config", "user.name", "Test User"]);
-    await runGit(tmpDir, ["config", "user.email", "test@example.com"]);
-    await runGit(tmpDir, ["add", "-A"]);
-    await runGit(tmpDir, ["commit", "-m", "initial"]);
-
-    docuviaMemory.createScope(scopeId);
-    docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, tmpDir);
-
-    const logger = createMockLogger();
-    const dbPath = resolveDbPath(tmpDir);
-    try {
-      // Step 1: a real init -- creates the knowledge branch, parses+persists the fixture, packs
-      // the initial graph onto the branch, and (per this plan's own reordering fix) marks synced
-      // only after that pack succeeds. Establishes a baseline where git and local.db agree.
-      const initResult = await docuviaApi.init(scopeId, logger);
-      expect(initResult.success).toBe(true);
-
-      const baselineNodes = await readL2NodeCount(dbPath);
-      expect(baselineNodes).toBeGreaterThanOrEqual(1);
-
-      // Step 2: a subsequent local write (simulating a later analyze run) that has NOT yet been
-      // packed onto the knowledge branch.
-      const EXTRA_NODES = 10;
-      await insertExtraNodes(dbPath, EXTRA_NODES);
-      const totalNodes = await readL2NodeCount(dbPath);
-      expect(totalNodes).toBe(baselineNodes + EXTRA_NODES);
-
-      // Force the next pack attempt to fail exactly like the reported Windows git fast-import
-      // crash: the branch ref still advances (to a valid-but-empty-tree commit) before the
-      // failure surfaces to Docuvia's own code.
-      docuviaFactory.register(TOKENS.GitProvider, () =>
-        makeBreakingGitProvider(new GitLocalProvider()),
+      fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, "package.json"),
+        JSON.stringify({ name: "fixture-project" }),
+        "utf8",
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, "src", "index.ts"),
+        'export function hello(): string {\n  return "world";\n}\n',
+        "utf8",
       );
 
-      await expect(docuviaApi.snapshot(scopeId, logger)).rejects.toThrow(
-        "simulated git fast-import crash",
-      );
-      // The pack attempt failed -- the pending-write flag must be left "true" (pack-current-graph.ts
-      // sets it before attempting the pack and only clears it on success).
-      expect(
-        await readMeta(dbPath, GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING),
-      ).toBe("true");
+      await runGit(tmpDir, ["init"]);
+      await runGit(tmpDir, ["config", "user.name", "Test User"]);
+      await runGit(tmpDir, ["config", "user.email", "test@example.com"]);
+      await runGit(tmpDir, ["add", "-A"]);
+      await runGit(tmpDir, ["commit", "-m", "initial"]);
 
-      // Restore the real (working) git provider -- a subsequent read-path command (e.g. the next
-      // status/query) would not know anything about the broken one above.
-      docuviaFactory.register(TOKENS.GitProvider, () => new GitLocalProvider());
+      docuviaMemory.createScope(scopeId);
+      docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, tmpDir);
 
-      // Step 3: exactly what ensureHydrated() does on every read-path command -- isStale() then,
-      // if true, hydrate().
-      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
-        logger,
-      });
-
-      const store = await GraphStore.open({ dbPath, readonly: false });
+      const logger = createMockLogger();
+      const dbPath = resolveDbPath(tmpDir);
       try {
-        expect(await hydrationService.isStale(tmpDir, store)).toBe(true);
+        // Step 1: a real init -- creates the knowledge branch, parses+persists the fixture, packs
+        // the initial graph onto the branch, and (per this plan's own reordering fix) marks synced
+        // only after that pack succeeds. Establishes a baseline where git and local.db agree.
+        const initResult = await docuviaApi.init(scopeId, logger);
+        expect(initResult.success).toBe(true);
 
-        const hydrateResult = await hydrationService.hydrate(tmpDir, store);
+        const baselineNodes = await readL2NodeCount(dbPath);
+        expect(baselineNodes).toBeGreaterThanOrEqual(1);
 
-        expect(hydrateResult.refused).toBe(true);
-        expect(hydrateResult.refusalReason).toBe("pending-local-write");
+        // Step 2: a subsequent local write (simulating a later analyze run) that has NOT yet been
+        // packed onto the knowledge branch.
+        const EXTRA_NODES = 10;
+        await insertExtraNodes(dbPath, EXTRA_NODES);
+        const totalNodes = await readL2NodeCount(dbPath);
+        expect(totalNodes).toBe(baselineNodes + EXTRA_NODES);
+
+        // Force the next pack attempt to fail exactly like the reported Windows git fast-import
+        // crash: the branch ref still advances (to a valid-but-empty-tree commit) before the
+        // failure surfaces to Docuvia's own code.
+        docuviaFactory.register(TOKENS.GitProvider, () =>
+          makeBreakingGitProvider(new GitLocalProvider()),
+        );
+
+        await expect(docuviaApi.snapshot(scopeId, logger)).rejects.toThrow(
+          "simulated git fast-import crash",
+        );
+        // The pack attempt failed -- the pending-write flag must be left "true" (pack-current-graph.ts
+        // sets it before attempting the pack and only clears it on success).
+        expect(
+          await readMeta(dbPath, GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING),
+        ).toBe("true");
+
+        // Restore the real (working) git provider -- a subsequent read-path command (e.g. the next
+        // status/query) would not know anything about the broken one above.
+        docuviaFactory.register(
+          TOKENS.GitProvider,
+          () => new GitLocalProvider(),
+        );
+
+        // Step 3: exactly what ensureHydrated() does on every read-path command -- isStale() then,
+        // if true, hydrate().
+        const hydrationService = docuviaFactory.resolve(
+          TOKENS.HydrationService,
+          {
+            logger,
+          },
+        );
+
+        const store = await GraphStore.open({ dbPath, readonly: false });
+        try {
+          expect(await hydrationService.isStale(tmpDir, store)).toBe(true);
+
+          const hydrateResult = await hydrationService.hydrate(tmpDir, store);
+
+          expect(hydrateResult.refused).toBe(true);
+          expect(hydrateResult.refusalReason).toBe("pending-local-write");
+        } finally {
+          await store.close();
+        }
+
+        // The regression is pinned: local.db's node count is unchanged, not wiped to 0.
+        expect(await readL2NodeCount(dbPath)).toBe(totalNodes);
       } finally {
-        await store.close();
+        docuviaFactory.register(
+          TOKENS.GitProvider,
+          () => new GitLocalProvider(),
+        );
+        docuviaMemory.deleteScope(scopeId);
+        fs.rmSync(tmpDir, { recursive: true, force: true });
       }
-
-      // The regression is pinned: local.db's node count is unchanged, not wiped to 0.
-      expect(await readL2NodeCount(dbPath)).toBe(totalNodes);
-    } finally {
-      docuviaFactory.register(TOKENS.GitProvider, () => new GitLocalProvider());
-      docuviaMemory.deleteScope(scopeId);
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
-  }, 30000);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

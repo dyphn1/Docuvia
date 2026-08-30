@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { checkPhpLspPreflight } from "./php-lsp-preflight.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 describe("checkPhpLspPreflight()", () => {
   let workspaceRoot: string;
@@ -18,13 +19,17 @@ describe("checkPhpLspPreflight()", () => {
     await rmSyncRetrying(workspaceRoot);
   });
 
-  it("reports not ready with a reason when no composer.json is present", async () => {
-    const result = await checkPhpLspPreflight(workspaceRoot);
+  it(
+    "reports not ready with a reason when no composer.json is present",
+    async () => {
+      const result = await checkPhpLspPreflight(workspaceRoot);
 
-    expect(result.markerFileResolvable).toBe(false);
-    expect(result.ready).toBe(false);
-    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
-  }, 15000);
+      expect(result.markerFileResolvable).toBe(false);
+      expect(result.ready).toBe(false);
+      expect(result.reason!.length).toBeGreaterThanOrEqual(1);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it("is ready when composer.json is present and binary override resolves successfully", async () => {
     fs.writeFileSync(path.join(workspaceRoot, "composer.json"), "{}\n");
@@ -38,13 +43,17 @@ describe("checkPhpLspPreflight()", () => {
     expect(result.ready).toBe(true);
   });
 
-  it("reports the LSP binary as unresolvable when neither a local copy nor npx can find intelephense", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "composer.json"), "{}\n");
+  it(
+    "reports the LSP binary as unresolvable when neither a local copy nor npx can find intelephense",
+    async () => {
+      fs.writeFileSync(path.join(workspaceRoot, "composer.json"), "{}\n");
 
-    const result = await checkPhpLspPreflight(workspaceRoot);
+      const result = await checkPhpLspPreflight(workspaceRoot);
 
-    expect(result.lspBinaryResolvable).toBe(false);
-    expect(result.ready).toBe(false);
-    expect(result.reason).toMatch(/not resolvable/);
-  }, 15000);
+      expect(result.lspBinaryResolvable).toBe(false);
+      expect(result.ready).toBe(false);
+      expect(result.reason).toMatch(/not resolvable/);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

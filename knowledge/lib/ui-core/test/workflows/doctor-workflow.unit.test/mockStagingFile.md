@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#python@L2002
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#mockStagingFile
 type: symbol
-name: python
+name: mockStagingFile
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 ---
-# Symbol: python
+# Symbol: mockStagingFile
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`

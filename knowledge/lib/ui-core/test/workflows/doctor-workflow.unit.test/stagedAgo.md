@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#python@L2002
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#stagedAgo
 type: symbol
-name: python
+name: stagedAgo
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 ---
-# Symbol: python
+# Symbol: stagedAgo
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`

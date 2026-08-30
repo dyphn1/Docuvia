@@ -7,3 +7,4 @@ filePath: lib/core/src/lsp/windows-shell-spawn.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/windows-shell-spawn.ts`
+ts`

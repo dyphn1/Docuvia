@@ -439,7 +439,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         expect([...p2.filesProcessed].sort()).toEqual(
           [...p1.filesProcessed].sort(),
         );
-        expect(p2.edges.length).toBeGreaterThan(0);
+        expect(p2.edges.length).toBeGreaterThanOrEqual(1);
       } finally {
         fs.rmSync(workspaceRoot, { recursive: true, force: true });
       }

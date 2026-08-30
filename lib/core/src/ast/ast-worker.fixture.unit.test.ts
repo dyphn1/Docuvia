@@ -564,10 +564,8 @@ describe("typescript fixture: call-site position (issue #11 plan A, Finding C)",
     const bareCall = response.data!.calls.find(
       (c) => c.targetFunction === "foo",
     );
-    expect(bareCall).toBeDefined();
     // `foo()` is on line 1 (0-based) -- "  foo();" -- callee starts at column 2.
-    expect(bareCall!.startLine).toBe(1);
-    expect(bareCall!.startColumn).toBe(2);
+    expect(bareCall).toMatchObject({ startLine: 1, startColumn: 2 });
   });
 
   it("seeds a member call's position on the callee (doSomething), not the receiver (service)", async () => {
@@ -581,12 +579,10 @@ describe("typescript fixture: call-site position (issue #11 plan A, Finding C)",
     const memberCall = response.data!.calls.find((c) =>
       c.targetFunction.includes("doSomething"),
     );
-    expect(memberCall).toBeDefined();
     // "  service.doSomething();" -- "service." is 8 chars, so the callee ("doSomething")
     // starts at column 10 on line 2 (0-based). The receiver ("service") starts at column 2 --
     // asserting column 10 (not 2) is the actual regression check.
-    expect(memberCall!.startLine).toBe(2);
-    expect(memberCall!.startColumn).toBe(10);
+    expect(memberCall).toMatchObject({ startLine: 2, startColumn: 10 });
   });
 });
 
@@ -685,7 +681,6 @@ describe("typescript fixture: callee evidence decomposition (issue #192)", () =>
 
   it("decomposes a member call into calleeName + receiverText", () => {
     const member = calls.find((c) => c.calleeName === "doSomething");
-    expect(member).toBeDefined();
     expect(member).toMatchObject({
       receiverText: "service",
       calleeKind: "member",
@@ -714,7 +709,6 @@ describe("typescript fixture: callee evidence decomposition (issue #192)", () =>
 
   it("normalizes a multi-line member chain's raw text and still decomposes the callee", () => {
     const multi = calls.find((c) => c.calleeName === "fn");
-    expect(multi).toBeDefined();
     expect(multi).toMatchObject({
       targetFunction: "vi.fn",
       receiverText: "vi",

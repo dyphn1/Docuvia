@@ -2,6 +2,75 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.2](https://github.com/dyphn1/Docuvia/compare/v1.4.1...v1.4.2) (2026-08-29)
+
+### Bug Fixes
+
+- **husky:** skip pre-push verification suite for delete-only pushes ([b504976](https://github.com/dyphn1/Docuvia/commit/b504976803e0e2ea863f3b895b8d61d860205e5b))
+
+## [1.4.1](https://github.com/dyphn1/Docuvia/compare/v1.4.0...v1.4.1) (2026-08-29)
+
+### Bug Fixes
+
+- **ast-core:** resolve tech debt [#227](https://github.com/dyphn1/Docuvia/issues/227) and [#228](https://github.com/dyphn1/Docuvia/issues/228) ([#251](https://github.com/dyphn1/Docuvia/issues/251)) ([11c57b5](https://github.com/dyphn1/Docuvia/commit/11c57b58422b2f2d149b8cef8942dec377907113))
+- **git-local:** add path traversal protection to collectDirectoryFiles (issue [#244](https://github.com/dyphn1/Docuvia/issues/244)) ([#249](https://github.com/dyphn1/Docuvia/issues/249)) ([e341b6d](https://github.com/dyphn1/Docuvia/commit/e341b6d98dc02320e68da20f09e60993d8fa4ec2))
+- **git-local:** wrap child.stdin.end() in try/catch to handle synchronous throws ([#258](https://github.com/dyphn1/Docuvia/issues/258)) ([c473087](https://github.com/dyphn1/Docuvia/commit/c4730870daa215605330257d45d28f235ab97c17))
+- **ui-core:** move isDiscoverableSourceFile to contracts (issue [#243](https://github.com/dyphn1/Docuvia/issues/243)) ([#250](https://github.com/dyphn1/Docuvia/issues/250)) ([16b93d4](https://github.com/dyphn1/Docuvia/commit/16b93d4e61069538ca55634d3f64d755ad995618))
+- **ui-core:** pass PAT directly to sync() instead of storing in memory ([#260](https://github.com/dyphn1/Docuvia/issues/260)) ([9ec0eb1](https://github.com/dyphn1/Docuvia/commit/9ec0eb11e83dca7e1e062826b54511c876470953))
+
+# [1.4.0](https://github.com/dyphn1/Docuvia/compare/v1.3.2...v1.4.0) (2026-08-27)
+
+### Bug Fixes
+
+- **core,schema,contracts:** decompose callee evidence + member-call resolution (issue [#192](https://github.com/dyphn1/Docuvia/issues/192) root cause) ([359243b](https://github.com/dyphn1/Docuvia/commit/359243b57076dd0fdbf5ac433cc14b4c3d4f2082))
+- **hooks:** improve post-commit logging + pre-push tier-b check ([b251fcc](https://github.com/dyphn1/Docuvia/commit/b251fcc2e89ab20481d7d6d156ed3a5bc752f57a))
+- **schema:** add Windows-safe cleanup retry for temp SQLite dirs ([3ccdbfc](https://github.com/dyphn1/Docuvia/commit/3ccdbfc398986ada7f002e4b09c6c6eed1008169))
+
+### Features
+
+- **doctor:** call-graph resolution counters + call_graph_resolution diagnostic (issue [#221](https://github.com/dyphn1/Docuvia/issues/221) P1) ([2c16b26](https://github.com/dyphn1/Docuvia/commit/2c16b2667d1ba4ed7873b3f7922543e49e42a9e5))
+- **impact,doctor:** low-resolution empty-result note + canary self-test (issue [#221](https://github.com/dyphn1/Docuvia/issues/221) P2'+P3) ([84b8c3c](https://github.com/dyphn1/Docuvia/commit/84b8c3ccd5f21fcc979cc8b3c103c2f6e56ca142))
+
+## [1.3.2](https://github.com/dyphn1/Docuvia/compare/v1.3.1...v1.3.2) (2026-08-25)
+
+### Bug Fixes
+
+- **lsp:** basename-allowlist the --version spawn probe (issue [#207](https://github.com/dyphn1/Docuvia/issues/207)) ([8fc0a7f](https://github.com/dyphn1/Docuvia/commit/8fc0a7f7014df29c885962be6341632015e3e765))
+
+## [1.3.1](https://github.com/dyphn1/Docuvia/compare/v1.3.0...v1.3.1) (2026-08-25)
+
+### Bug Fixes
+
+- **ast-core:** surface query-compile failures instead of silently falling back ([8e4b6d1](https://github.com/dyphn1/Docuvia/commit/8e4b6d198fc0c6dbbd9dfe4a3fbdf651b09990f0))
+- **ci:** stop swallowing the eval summary's PR-comment failures ([b1592d0](https://github.com/dyphn1/Docuvia/commit/b1592d02c5ccbd917eb698fdacca1a6a19cbab14))
+
+# [1.3.0](https://github.com/dyphn1/Docuvia/compare/v1.2.0...v1.3.0) (2026-08-25)
+
+### Features
+
+- **impact:** ast_call_sites reverse lookup as blast-radius fallback (issue [#217](https://github.com/dyphn1/Docuvia/issues/217)) ([3f6a06a](https://github.com/dyphn1/Docuvia/commit/3f6a06a39284d0e5a506714158f8c5de04423687)), closes [#218](https://github.com/dyphn1/Docuvia/issues/218) [#192](https://github.com/dyphn1/Docuvia/issues/192)
+
+# [1.2.0](https://github.com/dyphn1/Docuvia/compare/v1.1.0...v1.2.0) (2026-08-25)
+
+### Features
+
+- **ast:** index exported consts + resolve barrel re-export chains ([#192](https://github.com/dyphn1/Docuvia/issues/192) gaps 1+2) ([5b2369b](https://github.com/dyphn1/Docuvia/commit/5b2369b0bffd596ca6938bf5108428fe47bde212)), closes [#217](https://github.com/dyphn1/Docuvia/issues/217)
+- **impact:** UNKNOWN risk for empty results + impact-accuracy eval corpus/harness ([#192](https://github.com/dyphn1/Docuvia/issues/192)) ([f42e0d8](https://github.com/dyphn1/Docuvia/commit/f42e0d843bb84faa369145a66497fb0aae90e1ae)), closes [#217](https://github.com/dyphn1/Docuvia/issues/217)
+
+# [1.1.0](https://github.com/dyphn1/Docuvia/compare/v1.0.0...v1.1.0) (2026-08-24)
+
+### Bug Fixes
+
+- **core:** contain workspace-relative fs access behind safe-fs helpers (issue [#208](https://github.com/dyphn1/Docuvia/issues/208)) ([f50ec93](https://github.com/dyphn1/Docuvia/commit/f50ec939c0a7fa5141efcae5f341f8dc4687cf86))
+- **git-local:** surface fast-import stdin write errors instead of discarding them (issue [#186](https://github.com/dyphn1/Docuvia/issues/186)) ([a30e4a2](https://github.com/dyphn1/Docuvia/commit/a30e4a27da1f8c994795f910bb625a4988588f36))
+
+### Features
+
+- **core,cli:** surface l3 write-path provenance in the query read path ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([1114924](https://github.com/dyphn1/Docuvia/commit/1114924151c61a5a74250f0abc391fc1695f6101)), closes [190/#199](https://github.com/dyphn1/Docuvia/issues/199)
+- **git-local,schema,ui-core:** blame-based L3 validity pass at sync-knowledge ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([c5a0fa5](https://github.com/dyphn1/Docuvia/commit/c5a0fa5cda2742d9d268e4c9b1a2161b0fd4ccf8))
+- **schema,ui-core:** capture region anchors from diff hunks at L3 write time ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([f7ccc53](https://github.com/dyphn1/Docuvia/commit/f7ccc530b71ac4aedcb855de25d1f0c4fa234aec))
+- **ui-core:** flush-time writer-side L3 contradiction warning ([#68](https://github.com/dyphn1/Docuvia/issues/68)) ([9973c42](https://github.com/dyphn1/Docuvia/commit/9973c42c9d716d9173c3d1b4eb4cec8890cecfe5))
+
 # 1.0.0 (2026-08-23)
 
 ### Bug Fixes

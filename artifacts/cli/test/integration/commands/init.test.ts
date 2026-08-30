@@ -162,7 +162,7 @@ describe("Command: docuvia init", () => {
     const firstResult = await sandbox.runCli(["init"]);
     expect(firstResult.exitCode).toBe(0);
     const l2NodesAfterFirst = countL2Nodes();
-    expect(l2NodesAfterFirst).toBeGreaterThan(0);
+    expect(l2NodesAfterFirst).toBeGreaterThanOrEqual(1);
 
     // Second run: the light "already initialized" path -- no re-parse, so the graph's row
     // count must be exactly unchanged (not just "still greater than 0", which a silent

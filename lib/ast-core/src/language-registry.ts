@@ -108,18 +108,20 @@ export class LanguageRegistry {
   ): Promise<LanguageRegistry> {
     const base = baseConfig || { languages: {} };
     try {
-      const _process =
-        typeof globalThis !== "undefined"
-          ? (globalThis as any).process
-          : undefined;
-      if (_process && _process.versions && _process.versions.node) {
+      const processLike = LanguageRegistry.getProcessLike();
+      if (
+        processLike &&
+        processLike.versions &&
+        processLike.versions.node &&
+        processLike.cwd
+      ) {
         // @ts-ignore
         const fs = await import("fs/promises");
         // @ts-ignore
         const path = await import("path");
         const targetPath = projectRoot
           ? path.resolve(projectRoot, DEFAULT_LANGUAGES_CONFIG_FILENAME)
-          : path.resolve(_process.cwd(), DEFAULT_LANGUAGES_CONFIG_FILENAME);
+          : path.resolve(processLike.cwd(), DEFAULT_LANGUAGES_CONFIG_FILENAME);
         try {
           await fs.access(targetPath);
           const content = await fs.readFile(targetPath, UTF8_ENCODING);
@@ -132,6 +134,15 @@ export class LanguageRegistry {
       // Gracefully fall back to defaults on loading errors
     }
     return new LanguageRegistry(base);
+  }
+
+  private static getProcessLike():
+    { versions?: { node?: string }; cwd?: () => string } | undefined {
+    if (typeof globalThis === "undefined") return undefined;
+    const g = globalThis as Record<string, unknown>;
+    const processLike = g.process;
+    if (!processLike || typeof processLike !== "object") return undefined;
+    return processLike as { versions?: { node?: string }; cwd?: () => string };
   }
 
   public getProviderForExtension(ext: string): LanguageProvider | undefined {

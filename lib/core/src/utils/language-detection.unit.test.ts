@@ -56,7 +56,7 @@ describe("language-detection", () => {
 
   it("getSupportedGlobExtensions returns a non-empty, dot-free extension list matching DEFAULT_REGISTRY", () => {
     const exts = getSupportedGlobExtensions();
-    expect(exts.length).toBeGreaterThan(0);
+    expect(exts.length).toBeGreaterThanOrEqual(1);
     expect(exts.every((ext) => !ext.startsWith("."))).toBe(true);
 
     const allRegistryExtensions = new Set(

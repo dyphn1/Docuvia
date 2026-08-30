@@ -122,7 +122,7 @@ describe("collectDirectoryFiles", () => {
       "export const y = 2;\n",
     );
 
-    const files = await collectDirectoryFiles(tmpDir);
+    const files = await collectDirectoryFiles(tmpDir, tmpDir);
 
     expect(files.size).toBe(3);
     expect(files.has("readme.md")).toBe(true);
@@ -136,8 +136,37 @@ describe("collectDirectoryFiles", () => {
   });
 
   it("returns an empty map for an empty directory", async () => {
-    const files = await collectDirectoryFiles(tmpDir);
+    const files = await collectDirectoryFiles(tmpDir, tmpDir);
     expect(files.size).toBe(0);
+  });
+
+  it("throws FS_PATH_TRAVERSAL when sourceDir escapes allowed root", async () => {
+    const outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-fast-import-outside-"),
+    );
+    fs.writeFileSync(path.join(outsideDir, "secret.txt"), "secret\n");
+
+    await expect(collectDirectoryFiles(outsideDir, tmpDir)).rejects.toThrow(
+      /escapes allowed root/,
+    );
+    await expect(
+      collectDirectoryFiles(outsideDir, tmpDir),
+    ).rejects.toMatchObject({
+      code: "FS_PATH_TRAVERSAL",
+    });
+
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  });
+
+  it("throws FS_PATH_TRAVERSAL for relative path traversal attempts", async () => {
+    const subDir = path.join(tmpDir, "sub");
+    fs.mkdirSync(subDir, { recursive: true });
+    fs.writeFileSync(path.join(subDir, "file.txt"), "content\n");
+
+    // Try to escape using relative path
+    await expect(
+      collectDirectoryFiles(path.join(subDir, "..", ".."), tmpDir),
+    ).rejects.toThrow(/escapes allowed root/);
   });
 });
 
@@ -176,7 +205,7 @@ describe("runFastImport — git tree structure verification", () => {
     fs.writeFileSync(path.join(sourceDir, "graph.md"), "card a\n");
     fs.writeFileSync(path.join(sourceDir, "readme.md"), "# Project\n");
 
-    const files = await collectDirectoryFiles(sourceDir);
+    const files = await collectDirectoryFiles(sourceDir, sourceDir);
     const stream = buildFastImportData(
       "docuvia-knowledge",
       files,
@@ -285,7 +314,7 @@ describe("runFastImport — git tree structure verification", () => {
       "card b\n",
     );
 
-    const files = await collectDirectoryFiles(sourceDir);
+    const files = await collectDirectoryFiles(sourceDir, sourceDir);
     const stream = buildFastImportData(
       "docuvia-knowledge",
       files,

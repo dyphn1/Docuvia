@@ -446,6 +446,8 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
         sourceDir,
         KNOWLEDGE_BRANCH,
         "Snapshot [0000000]",
+        undefined,
+        true,
       );
 
       expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(true);
@@ -508,6 +510,8 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
           sourceDir,
           KNOWLEDGE_BRANCH,
           "Snapshot [0000000]",
+          undefined,
+          true,
         ),
       ).rejects.toMatchObject({ code: "GIT_FAST_IMPORT_FAILED" });
 
@@ -607,6 +611,8 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
         firstSourceDir,
         KNOWLEDGE_BRANCH,
         "Snapshot [1111111]",
+        undefined,
+        true,
       );
       const firstSha = await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH);
 
@@ -616,6 +622,8 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
         secondSourceDir,
         KNOWLEDGE_BRANCH,
         "Snapshot [2222222]",
+        undefined,
+        true,
       );
 
       // Tree is wholesale replaced (old.md is gone) ...
@@ -691,6 +699,8 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
         sourceDir,
         KNOWLEDGE_BRANCH,
         "Snapshot [aaa]",
+        undefined,
+        true,
       );
       const localSha = await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH);
 
@@ -736,6 +746,8 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
         sourceDir,
         KNOWLEDGE_BRANCH,
         "Snapshot [aaa]",
+        undefined,
+        true,
       );
 
       await expect(
@@ -801,6 +813,8 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
         sourceDirA,
         KNOWLEDGE_BRANCH,
         "Snapshot [aaa]",
+        undefined,
+        true,
       );
       const shaA = (await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH))!;
 
@@ -813,6 +827,8 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
         sourceDirB,
         KNOWLEDGE_BRANCH,
         "Snapshot [bbb]",
+        undefined,
+        true,
       );
       const shaB = (await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH))!;
 
@@ -820,7 +836,7 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
       expect(await provider.isAncestor(tmpDir, shaB, shaA)).toBe(false);
 
       const timestampA = await provider.getCommitTimestamp(tmpDir, shaA);
-      expect(timestampA).toBeGreaterThan(0);
+      expect(timestampA).toBeGreaterThanOrEqual(1);
 
       const winningTree = await provider.getTreeSha(tmpDir, shaB); // adopt B's tree wholesale
       const mergeSha = await provider.createMergeCommit(

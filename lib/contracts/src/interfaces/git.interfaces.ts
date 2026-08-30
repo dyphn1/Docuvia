@@ -164,6 +164,8 @@ export interface IGitProvider {
     branchName: string,
     commitMessage: string,
     timestamp?: number,
+    /** When true (internal operations like snapshot), allows sourceDir outside workspace root. */
+    allowOutsideWorkspace?: boolean,
   ): Promise<void>;
 
   /** `git fetch <remote> <ref>` — updates `refs/remotes/<remote>/<ref>` from the remote. Used for cross-clone reconciliation (STOR-001 point 3). Throws on network/remote failure — callers decide whether that's fatal. `timeoutMs` bounds the shell-out (`undefined` — the default — waits for the transfer to finish, however long that takes; config-tunable, see `GitLocalProvider`'s doc comment on why the old hardcoded bound was removed). */

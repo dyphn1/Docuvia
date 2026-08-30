@@ -23,6 +23,11 @@ export const AstMessages = {
   PARSE_FAILURE_RESULT: "AST parse returned failure result",
   PARSE_THREW: "AST parse threw (worker crash or rejection)",
   WORKER_UNCAUGHT_EXCEPTION: "AST worker uncaughtException",
+  /** A query pattern the language config declares failed to compile against the installed
+   *  grammar. Extraction still succeeds via that field's descendantsOfType fallback, so this
+   *  is the ONLY place the degradation becomes visible -- without it the run looks clean and
+   *  the symbols/edges that query would have produced just quietly go missing. */
+  QUERY_COMPILE_FAILED: "AST language query failed to compile; using fallback",
   WORKER_UNHANDLED_REJECTION: "AST worker unhandledRejection",
   WORKER_EXITED_DURING_SHUTDOWN:
     "AST worker exited during pool shutdown (expected)",

@@ -141,7 +141,7 @@ describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failur
       expect(initResult.success).toBe(true);
 
       const baselineNodes = await readL2NodeCount(dbPath);
-      expect(baselineNodes).toBeGreaterThan(0);
+      expect(baselineNodes).toBeGreaterThanOrEqual(1);
 
       // Step 2: a subsequent local write (simulating a later analyze run) that has NOT yet been
       // packed onto the knowledge branch.

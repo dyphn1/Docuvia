@@ -43,7 +43,7 @@ describe("checkRustLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   });
 
   it("reports not ready when Cargo.toml is present but rust-analyzer binary cannot be found", async () => {
@@ -77,9 +77,11 @@ describe("checkRustLspPreflight()", () => {
     expect(result.lspBinaryResolvable).toBe(true);
     expect(result.lspBinarySpawnable).toBe(true);
     expect(result.ready).toBe(true);
+    // User override: probed WITHOUT a basename allowlist (the user consented to that command).
     expect(probeBinaryVersionSpawnable).toHaveBeenCalledWith(
       "/fake/path/to/rust-analyzer",
       expect.any(Number),
+      undefined,
     );
   });
 
@@ -102,9 +104,32 @@ describe("checkRustLspPreflight()", () => {
     expect(result.lspBinarySpawnable).toBe(false);
     expect(result.ready).toBe(false);
     expect(result.reason).toMatch(/cannot be spawned/);
+    // Auto-resolved (not an override): probed under the rust-analyzer basename allowlist.
     expect(probeBinaryVersionSpawnable).toHaveBeenCalledWith(
       "/home/runner/.cargo/bin/rust-analyzer",
       expect.any(Number),
+      ["rust-analyzer"],
     );
+  });
+
+  it("passes the basename allowlist to the probe for auto-resolved commands so a decoyed resolution never spawns (issue #207)", async () => {
+    fs.writeFileSync(path.join(workspaceRoot, "Cargo.toml"), "[package]\n");
+
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "/tmp/decoy/not-rust-analyzer",
+      args: [],
+      locallyResolved: true,
+    });
+    vi.mocked(probeBinaryVersionSpawnable).mockResolvedValue(false);
+
+    const result = await checkRustLspPreflight(workspaceRoot);
+
+    expect(probeBinaryVersionSpawnable).toHaveBeenCalledWith(
+      "/tmp/decoy/not-rust-analyzer",
+      expect.any(Number),
+      ["rust-analyzer"],
+    );
+    expect(result.lspBinarySpawnable).toBe(false);
+    expect(result.ready).toBe(false);
   });
 });

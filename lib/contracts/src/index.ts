@@ -279,6 +279,7 @@ export {
   isSupportedSourceFile,
   detectLanguageForFile,
   getSupportedGlobExtensions,
+  isDiscoverableSourceFile,
 } from "./constants/source-files.js";
 export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
 export {

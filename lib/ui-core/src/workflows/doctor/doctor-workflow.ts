@@ -14,6 +14,7 @@ import {
   type IGitProvider,
   type DiagnosticResult,
   DiagnosticStatus,
+  callResolutionDenominator,
 } from "@workspace/contracts";
 import {
   GitConstants,
@@ -1376,11 +1377,10 @@ export class DoctorWorkflow {
         return true;
       }
 
-      // Self-calls resolve to their own node by design (persisted nowhere), and #192's
-      // 'arg-chain'/'computed' shapes have no statically nameable callee at all -- both are
-      // excluded from the denominator rather than counted as failures.
-      const applicable =
-        total.total - total.selfDiscarded - (total.unresolvable ?? 0);
+      // Every structural exclusion (self-calls, #192's unnameable shapes, #230's provably
+      // external and unknown-receiver sites) lives in one shared helper so this diagnostic and
+      // the persister's own rollup can never disagree about what the rate means.
+      const applicable = callResolutionDenominator(total);
       const rate = applicable > 0 ? total.resolved / applicable : 1;
       const belowThreshold =
         rate < GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD;

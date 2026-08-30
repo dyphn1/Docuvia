@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 import Database from "better-sqlite3";
 import { resolve } from "path";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * The other `init` integration tests only ever seed a single TypeScript file, so a parser
@@ -27,58 +28,62 @@ describe("Command: docuvia init — multi-language AST parsing", () => {
           'public class Main {\n  public static String greetJava() {\n    return "java";\n  }\n}\n',
       },
     });
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it("parses every seeded language into project_files and produces a named l2_node for each", async () => {
-    const result = await sandbox.runCli(["init"]);
-    expect(result.exitCode).toBe(0);
+  it(
+    "parses every seeded language into project_files and produces a named l2_node for each",
+    async () => {
+      const result = await sandbox.runCli(["init"]);
+      expect(result.exitCode).toBe(0);
 
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const filePaths = (
-        db.prepare("SELECT file_path FROM project_files").all() as {
-          file_path: string;
-        }[]
-      ).map((r) => r.file_path.replace(/\\/g, "/"));
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      const db = new Database(dbPath, { readonly: true });
+      try {
+        const filePaths = (
+          db.prepare("SELECT file_path FROM project_files").all() as {
+            file_path: string;
+          }[]
+        ).map((r) => r.file_path.replace(/\\/g, "/"));
 
-      for (const expected of [
-        "src/index.ts",
-        "src/main.py",
-        "src/main.go",
-        "src/Main.java",
-      ]) {
-        expect(
-          filePaths.some((p) => p.endsWith(expected)),
-          `expected project_files to contain ${expected}, got: ${JSON.stringify(filePaths)}`,
-        ).toBe(true);
+        for (const expected of [
+          "src/index.ts",
+          "src/main.py",
+          "src/main.go",
+          "src/Main.java",
+        ]) {
+          expect(
+            filePaths.some((p) => p.endsWith(expected)),
+            `expected project_files to contain ${expected}, got: ${JSON.stringify(filePaths)}`,
+          ).toBe(true);
+        }
+
+        const nodeNames = (
+          db.prepare("SELECT name FROM l2_nodes").all() as { name: string }[]
+        ).map((r) => r.name);
+
+        // Each language-specific function/class name must show up as a real parsed symbol. If a
+        // parser silently failed (missing wasm/grammar asset, worker crash swallowed as a per-file
+        // failure), the file would still be recorded in project_files but no symbol would appear
+        // here for that language.
+        for (const expectedSymbol of [
+          "greetTs",
+          "greet_py",
+          "GreetGo",
+          "greetJava",
+        ]) {
+          expect(
+            nodeNames,
+            `expected l2_nodes to contain a node named "${expectedSymbol}", got: ${JSON.stringify(nodeNames)}`,
+          ).toContain(expectedSymbol);
+        }
+      } finally {
+        db.close();
       }
-
-      const nodeNames = (
-        db.prepare("SELECT name FROM l2_nodes").all() as { name: string }[]
-      ).map((r) => r.name);
-
-      // Each language-specific function/class name must show up as a real parsed symbol. If a
-      // parser silently failed (missing wasm/grammar asset, worker crash swallowed as a per-file
-      // failure), the file would still be recorded in project_files but no symbol would appear
-      // here for that language.
-      for (const expectedSymbol of [
-        "greetTs",
-        "greet_py",
-        "GreetGo",
-        "greetJava",
-      ]) {
-        expect(
-          nodeNames,
-          `expected l2_nodes to contain a node named "${expectedSymbol}", got: ${JSON.stringify(nodeNames)}`,
-        ).toContain(expectedSymbol);
-      }
-    } finally {
-      db.close();
-    }
-  }, 30000);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

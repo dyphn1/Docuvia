@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const QUERY_RUNS = 3;
 const ANALYZE_RUNS = 3;
@@ -60,62 +61,66 @@ describe("Command: docuvia query (foreground read) concurrent with docuvia analy
     );
     await sandbox.runGit(["add", "-A"]);
     await sandbox.runGit(["commit", "-m", "change hello"]);
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it(`resolves ${QUERY_RUNS} concurrent query reads and ${ANALYZE_RUNS} concurrent analyze writes without corrupting local.db, both with sane exit codes and well-formed query output`, async () => {
-    const runs = [
-      // `--format=prompt` skips the spinner UI entirely (query.ts's `startQuerySpinner` returns
-      // undefined for prompt format) so stdout is exactly the `<docuvia_context>` block written
-      // by `ui.log(formatPromptOutput(result))` -- the cleanest structural well-formedness check
-      // available for "did this read ever observe/emit a torn or corrupt state".
-      ...Array.from({ length: QUERY_RUNS }, () =>
-        sandbox.runCli(["query", "hello", "--format=prompt"], {
-          reject: false,
-        }),
-      ),
-      ...Array.from({ length: ANALYZE_RUNS }, () =>
-        sandbox.runCli(["analyze"], { reject: false }),
-      ),
-    ];
-    const results = await Promise.all(runs);
+  it(
+    `resolves ${QUERY_RUNS} concurrent query reads and ${ANALYZE_RUNS} concurrent analyze writes without corrupting local.db, both with sane exit codes and well-formed query output`,
+    async () => {
+      const runs = [
+        // `--format=prompt` skips the spinner UI entirely (query.ts's `startQuerySpinner` returns
+        // undefined for prompt format) so stdout is exactly the `<docuvia_context>` block written
+        // by `ui.log(formatPromptOutput(result))` -- the cleanest structural well-formedness check
+        // available for "did this read ever observe/emit a torn or corrupt state".
+        ...Array.from({ length: QUERY_RUNS }, () =>
+          sandbox.runCli(["query", "hello", "--format=prompt"], {
+            reject: false,
+          }),
+        ),
+        ...Array.from({ length: ANALYZE_RUNS }, () =>
+          sandbox.runCli(["analyze"], { reject: false }),
+        ),
+      ];
+      const results = await Promise.all(runs);
 
-    for (const result of results) {
-      expect(result.exitCode).toBe(0);
-    }
+      for (const result of results) {
+        expect(result.exitCode).toBe(0);
+      }
 
-    const queryResults = results.slice(0, QUERY_RUNS);
-    for (const result of queryResults) {
-      const stdout = result.stdout.trim();
+      const queryResults = results.slice(0, QUERY_RUNS);
+      for (const result of queryResults) {
+        const stdout = result.stdout.trim();
 
-      // Well-formed, non-torn, non-garbled: exactly one root `<docuvia_context>` open/close pair,
-      // in order, with nothing racing a concurrent `analyze` write left dangling or duplicated in
-      // between.
-      expect(stdout.startsWith("<docuvia_context>")).toBe(true);
-      expect(stdout.endsWith("</docuvia_context>")).toBe(true);
-      expect(stdout.split("<docuvia_context>").length - 1).toBe(1);
-      expect(stdout.split("</docuvia_context>").length - 1).toBe(1);
-    }
+        // Well-formed, non-torn, non-garbled: exactly one root `<docuvia_context>` open/close pair,
+        // in order, with nothing racing a concurrent `analyze` write left dangling or duplicated in
+        // between.
+        expect(stdout.startsWith("<docuvia_context>")).toBe(true);
+        expect(stdout.endsWith("</docuvia_context>")).toBe(true);
+        expect(stdout.split("<docuvia_context>").length - 1).toBe(1);
+        expect(stdout.split("</docuvia_context>").length - 1).toBe(1);
+      }
 
-    // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
-    // consistency check (concurrent readers/writers must not duplicate/corrupt the single
-    // project row).
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    expect(existsSync(dbPath)).toBe(true);
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const integrity = db.pragma("integrity_check", { simple: true });
-      expect(integrity).toBe("ok");
+      // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
+      // consistency check (concurrent readers/writers must not duplicate/corrupt the single
+      // project row).
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      expect(existsSync(dbPath)).toBe(true);
+      const db = new Database(dbPath, { readonly: true });
+      try {
+        const integrity = db.pragma("integrity_check", { simple: true });
+        expect(integrity).toBe("ok");
 
-      const { count } = db
-        .prepare("SELECT COUNT(*) as count FROM projects")
-        .get() as { count: number };
-      expect(count).toBe(1);
-    } finally {
-      db.close();
-    }
-  }, 120000);
+        const { count } = db
+          .prepare("SELECT COUNT(*) as count FROM projects")
+          .get() as { count: number };
+        expect(count).toBe(1);
+      } finally {
+        db.close();
+      }
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

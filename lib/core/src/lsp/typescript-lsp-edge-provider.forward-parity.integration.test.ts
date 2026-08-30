@@ -15,6 +15,7 @@ import {
 } from "./lsp-json-rpc-client.js";
 import { LspMethods } from "./lsp-constants.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Real-server parity test (issue #11 plan A, Slice 3, Phase 3 -- the plan doc's own explicit
@@ -183,7 +184,7 @@ describe("TypescriptLspEdgeProvider forward-vs-reverse parity (real typescript-l
         `[forward-parity.integration.test] skipping real-server assertion: ${skipReason}`,
       );
     }
-  }, 60_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterAll(async () => {
     // A just-exited typescript-language-server child process can briefly keep a Windows handle
@@ -193,121 +194,127 @@ describe("TypescriptLspEdgeProvider forward-vs-reverse parity (real typescript-l
     if (workspaceRoot) await rmSyncRetrying(workspaceRoot);
   });
 
-  it("forward (AST-seeded textDocument/definition) resolves both the plain-call and member-call edges, and every forward edge is also justifiable by reverse (documentSymbol + textDocument/references) -- IMPT-002, never inventing an edge", async () => {
-    if (!available) {
-      // Self-skip, per the plan's own "should self-skip gracefully" note -- do not fake a pass,
-      // but do not hard-fail an environment without the binary either.
-      console.log(`[forward-parity.integration.test] skipped (${skipReason})`);
-      return;
-    }
+  it(
+    "forward (AST-seeded textDocument/definition) resolves both the plain-call and member-call edges, and every forward edge is also justifiable by reverse (documentSymbol + textDocument/references) -- IMPT-002, never inventing an edge",
+    async () => {
+      if (!available) {
+        // Self-skip, per the plan's own "should self-skip gracefully" note -- do not fake a pass,
+        // but do not hard-fail an environment without the binary either.
+        console.log(
+          `[forward-parity.integration.test] skipped (${skipReason})`,
+        );
+        return;
+      }
 
-    // Step 1: real Tier A extraction over the fixture (buildParseResponse, matching
-    // persist-ast-graph.unit.test.ts's own real-parse pattern) -- proves Phase 0's Finding C fix
-    // end to end, against the real tree-sitter query, not a hand-built call site.
-    const serviceParse = await buildParseResponse({
-      taskId: "forward-parity-service",
-      filePath: "src/service.ts",
-      code: SERVICE_SRC,
-      language: "typescript",
-    });
-    const indexParse = await buildParseResponse({
-      taskId: "forward-parity-index",
-      filePath: "src/index.ts",
-      code: INDEX_SRC,
-      language: "typescript",
-    });
+      // Step 1: real Tier A extraction over the fixture (buildParseResponse, matching
+      // persist-ast-graph.unit.test.ts's own real-parse pattern) -- proves Phase 0's Finding C fix
+      // end to end, against the real tree-sitter query, not a hand-built call site.
+      const serviceParse = await buildParseResponse({
+        taskId: "forward-parity-service",
+        filePath: "src/service.ts",
+        code: SERVICE_SRC,
+        language: "typescript",
+      });
+      const indexParse = await buildParseResponse({
+        taskId: "forward-parity-index",
+        filePath: "src/index.ts",
+        code: INDEX_SRC,
+        language: "typescript",
+      });
 
-    expect(serviceParse.data!.calls.length).toBeGreaterThanOrEqual(1);
-    expect(indexParse.data!.calls.length).toBeGreaterThanOrEqual(1);
+      expect(serviceParse.data!.calls.length).toBeGreaterThanOrEqual(1);
+      expect(indexParse.data!.calls.length).toBeGreaterThanOrEqual(1);
 
-    const toCallSites = (
-      calls: NonNullable<typeof serviceParse.data>["calls"],
-    ): EdgeResolutionCallSite[] =>
-      calls.map((c) => ({
-        targetFunction: c.targetFunction,
-        startLine: c.startLine,
-        startColumn: c.startColumn,
-      }));
+      const toCallSites = (
+        calls: NonNullable<typeof serviceParse.data>["calls"],
+      ): EdgeResolutionCallSite[] =>
+        calls.map((c) => ({
+          targetFunction: c.targetFunction,
+          startLine: c.startLine,
+          startColumn: c.startColumn,
+        }));
 
-    const callsByFile: Record<string, EdgeResolutionCallSite[]> = {
-      "src/service.ts": toCallSites(serviceParse.data!.calls),
-      "src/index.ts": toCallSites(indexParse.data!.calls),
-    };
+      const callsByFile: Record<string, EdgeResolutionCallSite[]> = {
+        "src/service.ts": toCallSites(serviceParse.data!.calls),
+        "src/index.ts": toCallSites(indexParse.data!.calls),
+      };
 
-    const files = ["src/logger.ts", "src/service.ts", "src/index.ts"];
+      const files = ["src/logger.ts", "src/service.ts", "src/index.ts"];
 
-    // Step 2: forward path (needs Phase 1's config -- TypescriptLspEdgeProvider's
-    // definitionResolution: "forward" -- already merged for this to exercise anything but reverse).
-    const forwardOutcome = await provider.resolveEdges({
-      workspaceRoot,
-      files,
-      callsByFile,
-    });
-    // Step 3: reverse path (no callsByFile).
-    const reverseOutcome = await provider.resolveEdges({
-      workspaceRoot,
-      files,
-    });
+      // Step 2: forward path (needs Phase 1's config -- TypescriptLspEdgeProvider's
+      // definitionResolution: "forward" -- already merged for this to exercise anything but reverse).
+      const forwardOutcome = await provider.resolveEdges({
+        workspaceRoot,
+        files,
+        callsByFile,
+      });
+      // Step 3: reverse path (no callsByFile).
+      const reverseOutcome = await provider.resolveEdges({
+        workspaceRoot,
+        files,
+      });
 
-    // On Windows CI, the typescript-language-server process may crash mid-run (reported as
-    // "LSP request attempted after the client stopped running") -- this is a known CI
-    // environment limitation, not a code bug. When that happens, filesFailed is non-empty but
-    // the test should gracefully skip the parity assertion rather than hard-fail.
-    const forwardFailedAll =
-      forwardOutcome.filesFailed.length > 0 &&
-      forwardOutcome.edges.length === 0;
-    if (forwardFailedAll) {
-      console.warn(
-        `[forward-parity.integration.test] all forward-resolution files failed on ${process.platform} — skipping parity assertion (likely LSP process lifecycle issue on CI)`,
+      // On Windows CI, the typescript-language-server process may crash mid-run (reported as
+      // "LSP request attempted after the client stopped running") -- this is a known CI
+      // environment limitation, not a code bug. When that happens, filesFailed is non-empty but
+      // the test should gracefully skip the parity assertion rather than hard-fail.
+      const forwardFailedAll =
+        forwardOutcome.filesFailed.length > 0 &&
+        forwardOutcome.edges.length === 0;
+      if (forwardFailedAll) {
+        console.warn(
+          `[forward-parity.integration.test] all forward-resolution files failed on ${process.platform} — skipping parity assertion (likely LSP process lifecycle issue on CI)`,
+        );
+        return;
+      }
+
+      expect(forwardOutcome.filesFailed).toEqual([]);
+      expect(reverseOutcome.filesFailed).toEqual([]);
+
+      const forwardPairs = pairKeys(forwardOutcome.edges);
+      const reversePairs = pairKeys(reverseOutcome.edges);
+
+      // Step 4: every forward edge must also be justifiable by reverse (IMPT-002: forward must
+      // never invent an edge reverse itself wouldn't also find) -- asserted against real server
+      // output, not assumed set-equality. Empirically, reverse's own edge set can be a *strict
+      // superset* of forward's for a structural reason unrelated to Finding C: `textDocument/
+      // references` for `doWork` also matches `doWork`'s own name inside the `import { doWork }
+      // from "./service"` specifier in index.ts (a real reference, per the LSP spec) -- that
+      // reference sits outside any function symbol, so `resolveReferenceEdge` falls back to a
+      // file-level edge (`src/index.ts -> src/service.ts#doWork`) with no calling function
+      // attributed. Forward seeds itself purely from Tier A's `ast_call_sites` (real
+      // `call_expression` nodes only, per `collectCallEdges`) and structurally has no AST node for
+      // an import specifier to seed from, so it can never produce that particular edge -- this is a
+      // pre-existing reverse-pipeline behavior, not a Slice 3 regression, and not something forward
+      // needs to (or safely could) replicate.
+      for (const pair of forwardPairs) {
+        expect(reversePairs.has(pair)).toBe(true);
+      }
+
+      // The plain-call edge (index.ts#main -> service.ts#doWork) must be present -- asserted against
+      // real output (substring match on both endpoints), not a hand-guessed exact node_key string.
+      const plainCallEdge = [...forwardPairs].find(
+        (pair) =>
+          pair.includes("index.ts") &&
+          pair.includes("main") &&
+          pair.includes("service.ts") &&
+          pair.includes("doWork"),
       );
-      return;
-    }
+      expect(plainCallEdge).toBeDefined();
 
-    expect(forwardOutcome.filesFailed).toEqual([]);
-    expect(reverseOutcome.filesFailed).toEqual([]);
-
-    const forwardPairs = pairKeys(forwardOutcome.edges);
-    const reversePairs = pairKeys(reverseOutcome.edges);
-
-    // Step 4: every forward edge must also be justifiable by reverse (IMPT-002: forward must
-    // never invent an edge reverse itself wouldn't also find) -- asserted against real server
-    // output, not assumed set-equality. Empirically, reverse's own edge set can be a *strict
-    // superset* of forward's for a structural reason unrelated to Finding C: `textDocument/
-    // references` for `doWork` also matches `doWork`'s own name inside the `import { doWork }
-    // from "./service"` specifier in index.ts (a real reference, per the LSP spec) -- that
-    // reference sits outside any function symbol, so `resolveReferenceEdge` falls back to a
-    // file-level edge (`src/index.ts -> src/service.ts#doWork`) with no calling function
-    // attributed. Forward seeds itself purely from Tier A's `ast_call_sites` (real
-    // `call_expression` nodes only, per `collectCallEdges`) and structurally has no AST node for
-    // an import specifier to seed from, so it can never produce that particular edge -- this is a
-    // pre-existing reverse-pipeline behavior, not a Slice 3 regression, and not something forward
-    // needs to (or safely could) replicate.
-    for (const pair of forwardPairs) {
-      expect(reversePairs.has(pair)).toBe(true);
-    }
-
-    // The plain-call edge (index.ts#main -> service.ts#doWork) must be present -- asserted against
-    // real output (substring match on both endpoints), not a hand-guessed exact node_key string.
-    const plainCallEdge = [...forwardPairs].find(
-      (pair) =>
-        pair.includes("index.ts") &&
-        pair.includes("main") &&
-        pair.includes("service.ts") &&
-        pair.includes("doWork"),
-    );
-    expect(plainCallEdge).toBeDefined();
-
-    // The member-call edge (service.ts#doWork -> logger.ts#Logger.info or equivalent) -- the
-    // canary for Finding C (issue #11 plan A) regressing: if the seeded position lands back on the
-    // receiver (`logger`) instead of the callee (`info`), `definition` would resolve `logger`'s own
-    // declaration/import instead, producing no edge into logger.ts's `info` method at all here.
-    const memberCallEdge = [...forwardPairs].find(
-      (pair) =>
-        pair.includes("service.ts") &&
-        pair.includes("doWork") &&
-        pair.includes("logger.ts") &&
-        pair.toLowerCase().includes("info"),
-    );
-    expect(memberCallEdge).toBeDefined();
-  }, 60_000);
+      // The member-call edge (service.ts#doWork -> logger.ts#Logger.info or equivalent) -- the
+      // canary for Finding C (issue #11 plan A) regressing: if the seeded position lands back on the
+      // receiver (`logger`) instead of the callee (`info`), `definition` would resolve `logger`'s own
+      // declaration/import instead, producing no edge into logger.ts's `info` method at all here.
+      const memberCallEdge = [...forwardPairs].find(
+        (pair) =>
+          pair.includes("service.ts") &&
+          pair.includes("doWork") &&
+          pair.includes("logger.ts") &&
+          pair.toLowerCase().includes("info"),
+      );
+      expect(memberCallEdge).toBeDefined();
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

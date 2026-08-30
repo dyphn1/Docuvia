@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const FIXTURE_FILES = {
   "package.json": JSON.stringify({ name: "fixture-project" }),
@@ -69,174 +70,198 @@ describe("analyze --agent-authored --stage / --flush-staged-l3 (issue #42 §8): 
     }
   });
 
-  it("flushes a staged decision once its file is part of the triggering commit, tagged with that commit's real sha, and empties the staging file", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+  it(
+    "flushes a staged decision once its file is part of the triggering commit, tagged with that commit's real sha, and empties the staging file",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
-    removePostCommitHook(sandbox.dir);
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
+      removePostCommitHook(sandbox.dir);
 
-    const payload = JSON.stringify({
-      decisions: [
+      const payload = JSON.stringify({
+        decisions: [
+          {
+            title: "Staged via --stage",
+            content: "Staged before commit, flushed after.",
+            nodeType: "decision",
+            confidence: 0.8,
+          },
+        ],
+      });
+      const stageResult = await sandbox.runCli(
+        ["analyze", "src/index.ts", "--agent-authored", "--stage"],
+        { reject: false, input: payload },
+      );
+      expect(stageResult.exitCode).toBe(0);
+      expect(readPendingDecisions(sandbox.dir)).toHaveLength(1);
+
+      // Second commit that touches src/index.ts -- the same file the decision was staged against.
+      fs.appendFileSync(
+        path.resolve(sandbox.dir, "src/index.ts"),
+        "\nexport const extra = 1;\n",
+      );
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "touch index.ts"]);
+      const { stdout: headShaRaw } = await sandbox.runGit([
+        "rev-parse",
+        "HEAD",
+      ]);
+      const headSha = headShaRaw.trim();
+
+      const flushResult = await sandbox.runCli(
+        ["analyze", "--flush-staged-l3"],
         {
-          title: "Staged via --stage",
-          content: "Staged before commit, flushed after.",
-          nodeType: "decision",
-          confidence: 0.8,
+          reject: false,
         },
-      ],
-    });
-    const stageResult = await sandbox.runCli(
-      ["analyze", "src/index.ts", "--agent-authored", "--stage"],
-      { reject: false, input: payload },
-    );
-    expect(stageResult.exitCode).toBe(0);
-    expect(readPendingDecisions(sandbox.dir)).toHaveLength(1);
+      );
+      expect(flushResult.exitCode).toBe(0);
 
-    // Second commit that touches src/index.ts -- the same file the decision was staged against.
-    fs.appendFileSync(
-      path.resolve(sandbox.dir, "src/index.ts"),
-      "\nexport const extra = 1;\n",
-    );
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "touch index.ts"]);
-    const { stdout: headShaRaw } = await sandbox.runGit(["rev-parse", "HEAD"]);
-    const headSha = headShaRaw.trim();
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const rows = queryL3Rows(dbPath);
+      const staged = rows.find((r) => r.title === "Staged via --stage");
+      expect(staged).toBeDefined();
+      expect(staged?.source).toBe("agent-authored");
+      expect(staged?.commit_hash).toBe(headSha);
 
-    const flushResult = await sandbox.runCli(["analyze", "--flush-staged-l3"], {
-      reject: false,
-    });
-    expect(flushResult.exitCode).toBe(0);
+      expect(readPendingDecisions(sandbox.dir)).toEqual([]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const rows = queryL3Rows(dbPath);
-    const staged = rows.find((r) => r.title === "Staged via --stage");
-    expect(staged).toBeDefined();
-    expect(staged?.source).toBe("agent-authored");
-    expect(staged?.commit_hash).toBe(headSha);
+  it(
+    "leaves a staged decision untouched in the staging file when its file isn't part of the triggering commit",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    expect(readPendingDecisions(sandbox.dir)).toEqual([]);
-  }, 120000);
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
+      removePostCommitHook(sandbox.dir);
 
-  it("leaves a staged decision untouched in the staging file when its file isn't part of the triggering commit", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+      const payload = JSON.stringify({
+        decisions: [
+          {
+            title: "Staged for index.ts, never committed again",
+            content: "content",
+            nodeType: "context",
+            confidence: 0.6,
+          },
+        ],
+      });
+      const stageResult = await sandbox.runCli(
+        ["analyze", "src/index.ts", "--agent-authored", "--stage"],
+        { reject: false, input: payload },
+      );
+      expect(stageResult.exitCode).toBe(0);
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
-    removePostCommitHook(sandbox.dir);
+      // This commit touches a DIFFERENT file -- src/index.ts is not in its diff.
+      fs.appendFileSync(
+        path.resolve(sandbox.dir, "src/other.ts"),
+        "\nexport const extraOther = 1;\n",
+      );
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "touch other.ts"]);
 
-    const payload = JSON.stringify({
-      decisions: [
+      const flushResult = await sandbox.runCli(
+        ["analyze", "--flush-staged-l3"],
         {
-          title: "Staged for index.ts, never committed again",
-          content: "content",
-          nodeType: "context",
-          confidence: 0.6,
+          reject: false,
         },
-      ],
-    });
-    const stageResult = await sandbox.runCli(
-      ["analyze", "src/index.ts", "--agent-authored", "--stage"],
-      { reject: false, input: payload },
-    );
-    expect(stageResult.exitCode).toBe(0);
+      );
+      expect(flushResult.exitCode).toBe(0);
 
-    // This commit touches a DIFFERENT file -- src/index.ts is not in its diff.
-    fs.appendFileSync(
-      path.resolve(sandbox.dir, "src/other.ts"),
-      "\nexport const extraOther = 1;\n",
-    );
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "touch other.ts"]);
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const rows = queryL3Rows(dbPath);
+      expect(
+        rows.find(
+          (r) => r.title === "Staged for index.ts, never committed again",
+        ),
+      ).toBeUndefined();
 
-    const flushResult = await sandbox.runCli(["analyze", "--flush-staged-l3"], {
-      reject: false,
-    });
-    expect(flushResult.exitCode).toBe(0);
+      const stillStaged = readPendingDecisions(sandbox.dir);
+      expect(stillStaged).toHaveLength(1);
+      expect(stillStaged[0]).toMatchObject({
+        filePath: "src/index.ts",
+        title: "Staged for index.ts, never committed again",
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const rows = queryL3Rows(dbPath);
-    expect(
-      rows.find(
-        (r) => r.title === "Staged for index.ts, never committed again",
-      ),
-    ).toBeUndefined();
+  it(
+    "docuvia hooks disable commit-l3-write makes --flush-staged-l3 a genuine no-op: nothing written to l3_nodes, staging file byte-identical",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const stillStaged = readPendingDecisions(sandbox.dir);
-    expect(stillStaged).toHaveLength(1);
-    expect(stillStaged[0]).toMatchObject({
-      filePath: "src/index.ts",
-      title: "Staged for index.ts, never committed again",
-    });
-  }, 120000);
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
+      removePostCommitHook(sandbox.dir);
 
-  it("docuvia hooks disable commit-l3-write makes --flush-staged-l3 a genuine no-op: nothing written to l3_nodes, staging file byte-identical", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+      const disableResult = await sandbox.runCli(
+        ["hooks", "disable", "commit-l3-write"],
+        { reject: false },
+      );
+      expect(disableResult.exitCode).toBe(0);
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
-    removePostCommitHook(sandbox.dir);
+      const payload = JSON.stringify({
+        decisions: [
+          {
+            title: "Should never land while disabled",
+            content: "content",
+            nodeType: "decision",
+            confidence: 0.5,
+          },
+        ],
+      });
+      await sandbox.runCli(
+        ["analyze", "src/index.ts", "--agent-authored", "--stage"],
+        { reject: false, input: payload },
+      );
 
-    const disableResult = await sandbox.runCli(
-      ["hooks", "disable", "commit-l3-write"],
-      { reject: false },
-    );
-    expect(disableResult.exitCode).toBe(0);
+      fs.appendFileSync(
+        path.resolve(sandbox.dir, "src/index.ts"),
+        "\nexport const extra = 1;\n",
+      );
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "touch index.ts"]);
 
-    const payload = JSON.stringify({
-      decisions: [
+      const beforeFlushRaw = fs.readFileSync(
+        pendingFilePath(sandbox.dir),
+        "utf-8",
+      );
+
+      const flushResult = await sandbox.runCli(
+        ["analyze", "--flush-staged-l3"],
         {
-          title: "Should never land while disabled",
-          content: "content",
-          nodeType: "decision",
-          confidence: 0.5,
+          reject: false,
         },
-      ],
-    });
-    await sandbox.runCli(
-      ["analyze", "src/index.ts", "--agent-authored", "--stage"],
-      { reject: false, input: payload },
-    );
+      );
+      expect(flushResult.exitCode).toBe(0);
 
-    fs.appendFileSync(
-      path.resolve(sandbox.dir, "src/index.ts"),
-      "\nexport const extra = 1;\n",
-    );
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "touch index.ts"]);
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const rows = queryL3Rows(dbPath);
+      expect(
+        rows.find((r) => r.title === "Should never land while disabled"),
+      ).toBeUndefined();
 
-    const beforeFlushRaw = fs.readFileSync(
-      pendingFilePath(sandbox.dir),
-      "utf-8",
-    );
-
-    const flushResult = await sandbox.runCli(["analyze", "--flush-staged-l3"], {
-      reject: false,
-    });
-    expect(flushResult.exitCode).toBe(0);
-
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const rows = queryL3Rows(dbPath);
-    expect(
-      rows.find((r) => r.title === "Should never land while disabled"),
-    ).toBeUndefined();
-
-    const afterFlushRaw = fs.readFileSync(
-      pendingFilePath(sandbox.dir),
-      "utf-8",
-    );
-    expect(afterFlushRaw).toBe(beforeFlushRaw);
-  }, 120000);
+      const afterFlushRaw = fs.readFileSync(
+        pendingFilePath(sandbox.dir),
+        "utf-8",
+      );
+      expect(afterFlushRaw).toBe(beforeFlushRaw);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

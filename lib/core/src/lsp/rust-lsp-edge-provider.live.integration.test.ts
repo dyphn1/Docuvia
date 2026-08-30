@@ -8,6 +8,7 @@ import { RustLspEdgeProvider } from "./rust-lsp-edge-provider.js";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Live rust-analyzer integration test (issue #31). Mirrors
@@ -125,128 +126,136 @@ describe("RustLspEdgeProvider live rust-analyzer (issue #31: Object-kind impl co
         `[rust-lsp-edge-provider.live.integration.test] skipping real-server assertion: ${skipReason}`,
       );
     }
-  }, 60_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterAll(async () => {
     if (workspaceRoot) await rmSyncRetrying(workspaceRoot);
   });
 
-  it("real rust-analyzer documentSymbol nests an impl block's associated fn AND &self method under a kind-Object(19) parent named 'impl <Type>' -- the shape supportsQualifiedContainment now assumes", async () => {
-    if (!available) {
-      console.log(
-        `[rust-lsp-edge-provider.live.integration.test] skipped (${skipReason})`,
-      );
-      return;
-    }
+  it(
+    "real rust-analyzer documentSymbol nests an impl block's associated fn AND &self method under a kind-Object(19) parent named 'impl <Type>' -- the shape supportsQualifiedContainment now assumes",
+    async () => {
+      if (!available) {
+        console.log(
+          `[rust-lsp-edge-provider.live.integration.test] skipped (${skipReason})`,
+        );
+        return;
+      }
 
-    const client = new LspJsonRpcClient();
-    const libUri = pathToFileURL(
-      path.join(workspaceRoot, "src", "lib.rs"),
-    ).toString();
-    try {
-      await client.start({
-        command: "rust-analyzer",
-        args: [],
-        cwd: workspaceRoot,
-      });
-      await client.request(
-        LspMethods.INITIALIZE,
-        {
-          processId: process.pid,
-          rootUri: pathToFileURL(workspaceRoot).toString(),
-          capabilities: {
-            textDocument: {
-              documentSymbol: { hierarchicalDocumentSymbolSupport: true },
+      const client = new LspJsonRpcClient();
+      const libUri = pathToFileURL(
+        path.join(workspaceRoot, "src", "lib.rs"),
+      ).toString();
+      try {
+        await client.start({
+          command: "rust-analyzer",
+          args: [],
+          cwd: workspaceRoot,
+        });
+        await client.request(
+          LspMethods.INITIALIZE,
+          {
+            processId: process.pid,
+            rootUri: pathToFileURL(workspaceRoot).toString(),
+            capabilities: {
+              textDocument: {
+                documentSymbol: { hierarchicalDocumentSymbolSupport: true },
+              },
             },
           },
-        },
-        30_000,
-      );
-      client.notify(LspMethods.INITIALIZED, {});
-      client.notify(LspMethods.DID_OPEN, {
-        textDocument: {
-          uri: libUri,
-          languageId: "rust",
-          version: 1,
-          text: LIB_SRC,
-        },
-      });
-      // Poll instead of a fixed sleep -- see pollImplSymbols (issue #187).
-      const symbols = await pollImplSymbols(client, libUri);
-
-      // A null here after the poll budget means rust-analyzer never finished loading the
-      // workspace -- a real environment failure, not a shape assertion, so fail with context.
-      expect(
-        symbols,
-        "rust-analyzer never returned a non-null documentSymbol within the 30s poll budget",
-      ).not.toBeNull();
-      const implParent = symbols!.find(
-        (s) =>
-          s.kind === LspSymbolKinds.OBJECT &&
-          s.name.startsWith("impl ") &&
-          s.name.includes("Greeter"),
-      );
-      expect(implParent).toBeDefined();
-      expect(implParent!.name).toBe("impl Greeter");
-      const children = implParent!.children ?? [];
-      expect(children.find((c) => c.name === "new")?.kind).toBe(
-        LspSymbolKinds.FUNCTION,
-      );
-      expect(children.find((c) => c.name === "hello")?.kind).toBe(
-        LspSymbolKinds.METHOD,
-      );
-    } finally {
-      try {
-        await client.request(LspMethods.SHUTDOWN, null, 5_000);
-        client.notify(LspMethods.EXIT, {});
-      } catch {
-        // best-effort teardown
-      }
-      await client.stop();
-    }
-  }, 60_000);
-
-  it("a real references round-trip resolves a cross-file impl-block method call onto Tier A's qualified 'src/lib.rs#Greeter.hello' node_key (not the flat key that silently dropped every rust edge)", async () => {
-    if (!available) {
-      console.log(
-        `[rust-lsp-edge-provider.live.integration.test] skipped (${skipReason})`,
-      );
-      return;
-    } // Retry up to 3 times -- rust-analyzer's file watcher can race with the
-    // previous test's shutdown, causing transient "content modified" errors.
-    let outcome;
-    let lastError: unknown;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        outcome = await provider.resolveEdges({
-          workspaceRoot,
-          files: ["src/lib.rs", "src/main.rs"],
+          30_000,
+        );
+        client.notify(LspMethods.INITIALIZED, {});
+        client.notify(LspMethods.DID_OPEN, {
+          textDocument: {
+            uri: libUri,
+            languageId: "rust",
+            version: 1,
+            text: LIB_SRC,
+          },
         });
-        break;
-      } catch (err: unknown) {
-        lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("content modified") && attempt < 2) {
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
+        // Poll instead of a fixed sleep -- see pollImplSymbols (issue #187).
+        const symbols = await pollImplSymbols(client, libUri);
+
+        // A null here after the poll budget means rust-analyzer never finished loading the
+        // workspace -- a real environment failure, not a shape assertion, so fail with context.
+        expect(
+          symbols,
+          "rust-analyzer never returned a non-null documentSymbol within the 30s poll budget",
+        ).not.toBeNull();
+        const implParent = symbols!.find(
+          (s) =>
+            s.kind === LspSymbolKinds.OBJECT &&
+            s.name.startsWith("impl ") &&
+            s.name.includes("Greeter"),
+        );
+        expect(implParent).toBeDefined();
+        expect(implParent!.name).toBe("impl Greeter");
+        const children = implParent!.children ?? [];
+        expect(children.find((c) => c.name === "new")?.kind).toBe(
+          LspSymbolKinds.FUNCTION,
+        );
+        expect(children.find((c) => c.name === "hello")?.kind).toBe(
+          LspSymbolKinds.METHOD,
+        );
+      } finally {
+        try {
+          await client.request(LspMethods.SHUTDOWN, null, 5_000);
+          client.notify(LspMethods.EXIT, {});
+        } catch {
+          // best-effort teardown
         }
-        throw err;
+        await client.stop();
       }
-    }
-    if (!outcome) throw lastError;
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    expect(outcome.filesFailed).toEqual([]);
+  it(
+    "a real references round-trip resolves a cross-file impl-block method call onto Tier A's qualified 'src/lib.rs#Greeter.hello' node_key (not the flat key that silently dropped every rust edge)",
+    async () => {
+      if (!available) {
+        console.log(
+          `[rust-lsp-edge-provider.live.integration.test] skipped (${skipReason})`,
+        );
+        return;
+      } // Retry up to 3 times -- rust-analyzer's file watcher can race with the
+      // previous test's shutdown, causing transient "content modified" errors.
+      let outcome;
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          outcome = await provider.resolveEdges({
+            workspaceRoot,
+            files: ["src/lib.rs", "src/main.rs"],
+          });
+          break;
+        } catch (err: unknown) {
+          lastError = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes("content modified") && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+          throw err;
+        }
+      }
+      if (!outcome) throw lastError;
 
-    const pairs = pairKeys(outcome.edges);
-    const qualifiedEdge = [...pairs].find(
-      (pair) =>
-        pair.includes("src/lib.rs") &&
-        pair.includes("Greeter") &&
-        pair.includes("hello") &&
-        pair.includes("src/main.rs") &&
-        pair.includes("main"),
-    );
-    expect(qualifiedEdge).toBeDefined();
-    expect(qualifiedEdge).toContain("src/lib.rs#Greeter.hello");
-  }, 60_000);
+      expect(outcome.filesFailed).toEqual([]);
+
+      const pairs = pairKeys(outcome.edges);
+      const qualifiedEdge = [...pairs].find(
+        (pair) =>
+          pair.includes("src/lib.rs") &&
+          pair.includes("Greeter") &&
+          pair.includes("hello") &&
+          pair.includes("src/main.rs") &&
+          pair.includes("main"),
+      );
+      expect(qualifiedEdge).toBeDefined();
+      expect(qualifiedEdge).toContain("src/lib.rs#Greeter.hello");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

@@ -10,6 +10,7 @@ import {
   collectDirectoryFiles,
   runFastImport,
 } from "../src/fast-import.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const execFileAsync = promisify(execFile);
 
@@ -184,7 +185,7 @@ describe("runFastImport — git tree structure verification", () => {
     await git(repoDir, ["init"]);
     await git(repoDir, ["config", "user.name", "Test User"]);
     await git(repoDir, ["config", "user.email", "test@example.com"]);
-  }, 30_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await fs.promises.rm(repoDir, {

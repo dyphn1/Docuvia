@@ -18,6 +18,17 @@ export default defineConfig({
      * already in place, because its `beforeEach` shells out to real `git` and exceeds 10s under the
      * full suite's parallel load. Keep the two flags together wherever either appears (the `test`
      * script and lint-staged's `vitest related`).
+     *
+     * CORRECTION: the CLI flags are NOT global either. A project that has its own
+     * `vitest.config.ts` ignores them exactly as it ignores this file's options -- measured with a
+     * 12s `beforeEach` probe under `lib/git-local`, which failed at "Hook timed out in 10000ms"
+     * (vitest's default) while `pnpm test` was passing `--hookTimeout=30000`, and passed once the
+     * budgets were restated in that project's own config. This is why the pre-push gate kept
+     * failing on a different random file per run even after `fileParallelism: false` landed:
+     * serializing removed the contention, but the three serialized projects were still running on
+     * the 10s default. `artifacts/cli`, `lib/core` and `lib/git-local` now each restate
+     * `testTimeout`/`hookTimeout`. Any NEW project config must do the same -- the root flags will
+     * not cover it.
      */
     coverage: {
       provider: "v8",

@@ -7,6 +7,7 @@ import fs from "node:fs";
 import { TypescriptLspEdgeProvider } from "./typescript-lsp-edge-provider.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 type RequestHandler = (method: string, params: any) => unknown;
 
@@ -278,47 +279,51 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
   });
 
   describe("Overlap proof", () => {
-    it("processes 8 files measurably faster at maxConcurrentFiles: 4 than at the K=1 default, with real overlap observed", async () => {
-      const fileNames = Array.from({ length: 8 }, (_, i) => "f" + i + ".ts");
-      const workspaceRoot = makeWorkspace(
-        Object.fromEntries(fileNames.map((f) => [f, "// no symbols\n"])),
-      );
-      try {
-        const handler: RequestHandler = (method) => {
-          if (method === LspMethods.INITIALIZE) return {};
-          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
-          if (method === LspMethods.SHUTDOWN) return null;
-          return undefined;
-        };
-        const latencyMs = (method: string) =>
-          method === LspMethods.DOCUMENT_SYMBOL ? 20 : 0;
+    it(
+      "processes 8 files measurably faster at maxConcurrentFiles: 4 than at the K=1 default, with real overlap observed",
+      async () => {
+        const fileNames = Array.from({ length: 8 }, (_, i) => "f" + i + ".ts");
+        const workspaceRoot = makeWorkspace(
+          Object.fromEntries(fileNames.map((f) => [f, "// no symbols\n"])),
+        );
+        try {
+          const handler: RequestHandler = (method) => {
+            if (method === LspMethods.INITIALIZE) return {};
+            if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+            if (method === LspMethods.SHUTDOWN) return null;
+            return undefined;
+          };
+          const latencyMs = (method: string) =>
+            method === LspMethods.DOCUMENT_SYMBOL ? 20 : 0;
 
-        const runAt = async (maxConcurrentFiles: number) => {
-          const fake = new FakeLspClient(handler, latencyMs);
-          const provider = new TypescriptLspEdgeProvider(
-            createMockLogger(),
-            () => asClient(fake),
-          );
-          provider.configure({ maxConcurrentFiles });
-          const start = Date.now();
-          const outcome = await provider.resolveEdges({
-            workspaceRoot,
-            files: fileNames,
-          });
-          return { outcome, fake, elapsedMs: Date.now() - start };
-        };
+          const runAt = async (maxConcurrentFiles: number) => {
+            const fake = new FakeLspClient(handler, latencyMs);
+            const provider = new TypescriptLspEdgeProvider(
+              createMockLogger(),
+              () => asClient(fake),
+            );
+            provider.configure({ maxConcurrentFiles });
+            const start = Date.now();
+            const outcome = await provider.resolveEdges({
+              workspaceRoot,
+              files: fileNames,
+            });
+            return { outcome, fake, elapsedMs: Date.now() - start };
+          };
 
-        const k1 = await runAt(1);
-        const k4 = await runAt(4);
+          const k1 = await runAt(1);
+          const k4 = await runAt(4);
 
-        expect(k1.outcome.filesFailed).toEqual([]);
-        expect(k4.outcome.filesFailed).toEqual([]);
-        expect(k4.fake.maxInFlight).toBeGreaterThan(1);
-        expect(k4.elapsedMs).toBeLessThan(k1.elapsedMs * 0.7);
-      } finally {
-        fs.rmSync(workspaceRoot, { recursive: true, force: true });
-      }
-    }, 15000);
+          expect(k1.outcome.filesFailed).toEqual([]);
+          expect(k4.outcome.filesFailed).toEqual([]);
+          expect(k4.fake.maxInFlight).toBeGreaterThan(1);
+          expect(k4.elapsedMs).toBeLessThan(k1.elapsedMs * 0.7);
+        } finally {
+          fs.rmSync(workspaceRoot, { recursive: true, force: true });
+        }
+      },
+      SUBPROCESS_TEST_TIMEOUT_MS,
+    );
   });
 
   describe("Stampede (Phase 3, D5)", () => {
@@ -403,258 +408,274 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
   });
 
   describe("In-flight-aware cap (Phase 3, D6)", () => {
-    it("never lets the LSP server hold more than maxOpenFiles documents open at once, even while concurrent target opens are still in flight (not yet settled)", async () => {
-      const workspaceRoot = makeWorkspace({
-        "fileA.ts": "function fnA1(){} function fnA2(){}\n",
-        "fileB.ts": "function fnB1(){} function fnB2(){}\n",
-        "targetA1.ts": "// target A1\n",
-        "targetA2.ts": "// target A2\n",
-        "targetB1.ts": "// target B1\n",
-        "targetB2.ts": "// target B2\n",
-      });
-      try {
-        const uris = {
-          fileA: uriFor(workspaceRoot, "fileA.ts"),
-          fileB: uriFor(workspaceRoot, "fileB.ts"),
-          targetA1: uriFor(workspaceRoot, "targetA1.ts"),
-          targetA2: uriFor(workspaceRoot, "targetA2.ts"),
-          targetB1: uriFor(workspaceRoot, "targetB1.ts"),
-          targetB2: uriFor(workspaceRoot, "targetB2.ts"),
-        };
-        const fnA1Sel = range(0, 9, 0, 13);
-        const fnA2Sel = range(0, 28, 0, 32);
-        const fnB1Sel = range(0, 9, 0, 13);
-        const fnB2Sel = range(0, 28, 0, 32);
-
-        const documentSymbolFor = (uri: string) => {
-          if (uri === uris.fileA) {
-            return [
-              {
-                name: "fnA1",
-                kind: LspSymbolKinds.FUNCTION,
-                range: range(0, 0, 0, 18),
-                selectionRange: fnA1Sel,
-              },
-              {
-                name: "fnA2",
-                kind: LspSymbolKinds.FUNCTION,
-                range: range(0, 19, 0, 37),
-                selectionRange: fnA2Sel,
-              },
-            ];
-          }
-          if (uri === uris.fileB) {
-            return [
-              {
-                name: "fnB1",
-                kind: LspSymbolKinds.FUNCTION,
-                range: range(0, 0, 0, 18),
-                selectionRange: fnB1Sel,
-              },
-              {
-                name: "fnB2",
-                kind: LspSymbolKinds.FUNCTION,
-                range: range(0, 19, 0, 37),
-                selectionRange: fnB2Sel,
-              },
-            ];
-          }
-          return [];
-        };
-
-        const referencesFor = (
-          uri: string,
-          position: { line: number; character: number },
-        ) => {
-          if (uri === uris.fileA) {
-            if (
-              position.line === fnA1Sel.start.line &&
-              position.character === fnA1Sel.start.character
-            ) {
-              return [{ uri: uris.targetA1, range: range(0, 0, 0, 3) }];
-            }
-            return [{ uri: uris.targetA2, range: range(0, 0, 0, 3) }];
-          }
-          if (uri === uris.fileB) {
-            if (
-              position.line === fnB1Sel.start.line &&
-              position.character === fnB1Sel.start.character
-            ) {
-              return [{ uri: uris.targetB1, range: range(0, 0, 0, 3) }];
-            }
-            return [{ uri: uris.targetB2, range: range(0, 0, 0, 3) }];
-          }
-          return [];
-        };
-
-        const handler: RequestHandler = (method, params) => {
-          if (method === LspMethods.INITIALIZE) return {};
-          if (method === LspMethods.DOCUMENT_SYMBOL) {
-            return documentSymbolFor(params.textDocument.uri);
-          }
-          if (method === LspMethods.REFERENCES) {
-            return referencesFor(params.textDocument.uri, params.position);
-          }
-          if (method === LspMethods.SHUTDOWN) return null;
-          return undefined;
-        };
-        const latencyMs = (method: string) =>
-          method === LspMethods.DOCUMENT_SYMBOL ||
-          method === LspMethods.REFERENCES
-            ? 15
-            : 0;
-
-        const fake = new FakeLspClient(handler, latencyMs);
-        const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
-          asClient(fake),
-        );
-        provider.configure({ maxOpenFiles: 5, maxConcurrentFiles: 2 });
-
-        const outcome = await provider.resolveEdges({
-          workspaceRoot,
-          files: ["fileA.ts", "fileB.ts"],
+    it(
+      "never lets the LSP server hold more than maxOpenFiles documents open at once, even while concurrent target opens are still in flight (not yet settled)",
+      async () => {
+        const workspaceRoot = makeWorkspace({
+          "fileA.ts": "function fnA1(){} function fnA2(){}\n",
+          "fileB.ts": "function fnB1(){} function fnB2(){}\n",
+          "targetA1.ts": "// target A1\n",
+          "targetA2.ts": "// target A2\n",
+          "targetB1.ts": "// target B1\n",
+          "targetB2.ts": "// target B2\n",
         });
+        try {
+          const uris = {
+            fileA: uriFor(workspaceRoot, "fileA.ts"),
+            fileB: uriFor(workspaceRoot, "fileB.ts"),
+            targetA1: uriFor(workspaceRoot, "targetA1.ts"),
+            targetA2: uriFor(workspaceRoot, "targetA2.ts"),
+            targetB1: uriFor(workspaceRoot, "targetB1.ts"),
+            targetB2: uriFor(workspaceRoot, "targetB2.ts"),
+          };
+          const fnA1Sel = range(0, 9, 0, 13);
+          const fnA2Sel = range(0, 28, 0, 32);
+          const fnB1Sel = range(0, 9, 0, 13);
+          const fnB2Sel = range(0, 28, 0, 32);
 
-        expect(outcome.filesFailed).toEqual([]);
-
-        const openSet = new Set<string>();
-        let maxConcurrentlyOpen = 0;
-        for (const n of fake.notifications) {
-          if (n.method === LspMethods.DID_OPEN) {
-            openSet.add((n.params as any).textDocument.uri);
-          } else if (n.method === LspMethods.DID_CLOSE) {
-            openSet.delete((n.params as any).textDocument.uri);
-          }
-          maxConcurrentlyOpen = Math.max(maxConcurrentlyOpen, openSet.size);
-        }
-
-        expect(maxConcurrentlyOpen).toBeLessThanOrEqual(5);
-      } finally {
-        fs.rmSync(workspaceRoot, { recursive: true, force: true });
-      }
-    }, 15000);
-  });
-
-  describe("Pinning (Phase 4, D7)", () => {
-    it("never re-opens a worker's own file mid-turn, even under heavy eviction pressure from its own 5-target fan-out", async () => {
-      const targetNames = Array.from({ length: 5 }, (_, i) => "T" + i + ".ts");
-      const workspaceRoot = makeWorkspace({
-        "A.ts": "// 5 call sites\n",
-        "B.ts": "// 1 call site\n",
-        ...Object.fromEntries(targetNames.map((t) => [t, "// target\n"])),
-      });
-      try {
-        const aUri = uriFor(workspaceRoot, "A.ts");
-        const bUri = uriFor(workspaceRoot, "B.ts");
-        const targetUris = targetNames.map((t) => uriFor(workspaceRoot, t));
-        const aSymbolSelections = Array.from({ length: 5 }, (_, i) =>
-          range(0, i * 4, 0, i * 4 + 2),
-        );
-        const bSymbolSelection = range(0, 0, 0, 2);
-
-        const handler: RequestHandler = (method, params) => {
-          if (method === LspMethods.INITIALIZE) return {};
-          if (method === LspMethods.DOCUMENT_SYMBOL) {
-            const uri = params.textDocument.uri;
-            if (uri === aUri) {
-              return aSymbolSelections.map((sel, i) => ({
-                name: "s" + i,
-                kind: LspSymbolKinds.FUNCTION,
-                range: range(
-                  0,
-                  sel.start.character,
-                  0,
-                  sel.start.character + 2,
-                ),
-                selectionRange: sel,
-              }));
-            }
-            if (uri === bUri) {
+          const documentSymbolFor = (uri: string) => {
+            if (uri === uris.fileA) {
               return [
                 {
-                  name: "sb",
+                  name: "fnA1",
                   kind: LspSymbolKinds.FUNCTION,
-                  range: range(0, 0, 0, 2),
-                  selectionRange: bSymbolSelection,
+                  range: range(0, 0, 0, 18),
+                  selectionRange: fnA1Sel,
+                },
+                {
+                  name: "fnA2",
+                  kind: LspSymbolKinds.FUNCTION,
+                  range: range(0, 19, 0, 37),
+                  selectionRange: fnA2Sel,
+                },
+              ];
+            }
+            if (uri === uris.fileB) {
+              return [
+                {
+                  name: "fnB1",
+                  kind: LspSymbolKinds.FUNCTION,
+                  range: range(0, 0, 0, 18),
+                  selectionRange: fnB1Sel,
+                },
+                {
+                  name: "fnB2",
+                  kind: LspSymbolKinds.FUNCTION,
+                  range: range(0, 19, 0, 37),
+                  selectionRange: fnB2Sel,
                 },
               ];
             }
             return [];
+          };
+
+          const referencesFor = (
+            uri: string,
+            position: { line: number; character: number },
+          ) => {
+            if (uri === uris.fileA) {
+              if (
+                position.line === fnA1Sel.start.line &&
+                position.character === fnA1Sel.start.character
+              ) {
+                return [{ uri: uris.targetA1, range: range(0, 0, 0, 3) }];
+              }
+              return [{ uri: uris.targetA2, range: range(0, 0, 0, 3) }];
+            }
+            if (uri === uris.fileB) {
+              if (
+                position.line === fnB1Sel.start.line &&
+                position.character === fnB1Sel.start.character
+              ) {
+                return [{ uri: uris.targetB1, range: range(0, 0, 0, 3) }];
+              }
+              return [{ uri: uris.targetB2, range: range(0, 0, 0, 3) }];
+            }
+            return [];
+          };
+
+          const handler: RequestHandler = (method, params) => {
+            if (method === LspMethods.INITIALIZE) return {};
+            if (method === LspMethods.DOCUMENT_SYMBOL) {
+              return documentSymbolFor(params.textDocument.uri);
+            }
+            if (method === LspMethods.REFERENCES) {
+              return referencesFor(params.textDocument.uri, params.position);
+            }
+            if (method === LspMethods.SHUTDOWN) return null;
+            return undefined;
+          };
+          const latencyMs = (method: string) =>
+            method === LspMethods.DOCUMENT_SYMBOL ||
+            method === LspMethods.REFERENCES
+              ? 15
+              : 0;
+
+          const fake = new FakeLspClient(handler, latencyMs);
+          const provider = new TypescriptLspEdgeProvider(
+            createMockLogger(),
+            () => asClient(fake),
+          );
+          provider.configure({ maxOpenFiles: 5, maxConcurrentFiles: 2 });
+
+          const outcome = await provider.resolveEdges({
+            workspaceRoot,
+            files: ["fileA.ts", "fileB.ts"],
+          });
+
+          expect(outcome.filesFailed).toEqual([]);
+
+          const openSet = new Set<string>();
+          let maxConcurrentlyOpen = 0;
+          for (const n of fake.notifications) {
+            if (n.method === LspMethods.DID_OPEN) {
+              openSet.add((n.params as any).textDocument.uri);
+            } else if (n.method === LspMethods.DID_CLOSE) {
+              openSet.delete((n.params as any).textDocument.uri);
+            }
+            maxConcurrentlyOpen = Math.max(maxConcurrentlyOpen, openSet.size);
           }
-          if (method === LspMethods.REFERENCES) {
-            const uri = params.textDocument.uri;
-            if (uri === aUri) {
-              const i = aSymbolSelections.findIndex(
-                (sel) => sel.start.character === params.position.character,
-              );
-              if (i >= 0) {
-                return [{ uri: targetUris[i], range: range(0, 0, 0, 3) }];
+
+          expect(maxConcurrentlyOpen).toBeLessThanOrEqual(5);
+        } finally {
+          fs.rmSync(workspaceRoot, { recursive: true, force: true });
+        }
+      },
+      SUBPROCESS_TEST_TIMEOUT_MS,
+    );
+  });
+
+  describe("Pinning (Phase 4, D7)", () => {
+    it(
+      "never re-opens a worker's own file mid-turn, even under heavy eviction pressure from its own 5-target fan-out",
+      async () => {
+        const targetNames = Array.from(
+          { length: 5 },
+          (_, i) => "T" + i + ".ts",
+        );
+        const workspaceRoot = makeWorkspace({
+          "A.ts": "// 5 call sites\n",
+          "B.ts": "// 1 call site\n",
+          ...Object.fromEntries(targetNames.map((t) => [t, "// target\n"])),
+        });
+        try {
+          const aUri = uriFor(workspaceRoot, "A.ts");
+          const bUri = uriFor(workspaceRoot, "B.ts");
+          const targetUris = targetNames.map((t) => uriFor(workspaceRoot, t));
+          const aSymbolSelections = Array.from({ length: 5 }, (_, i) =>
+            range(0, i * 4, 0, i * 4 + 2),
+          );
+          const bSymbolSelection = range(0, 0, 0, 2);
+
+          const handler: RequestHandler = (method, params) => {
+            if (method === LspMethods.INITIALIZE) return {};
+            if (method === LspMethods.DOCUMENT_SYMBOL) {
+              const uri = params.textDocument.uri;
+              if (uri === aUri) {
+                return aSymbolSelections.map((sel, i) => ({
+                  name: "s" + i,
+                  kind: LspSymbolKinds.FUNCTION,
+                  range: range(
+                    0,
+                    sel.start.character,
+                    0,
+                    sel.start.character + 2,
+                  ),
+                  selectionRange: sel,
+                }));
+              }
+              if (uri === bUri) {
+                return [
+                  {
+                    name: "sb",
+                    kind: LspSymbolKinds.FUNCTION,
+                    range: range(0, 0, 0, 2),
+                    selectionRange: bSymbolSelection,
+                  },
+                ];
               }
               return [];
             }
-            if (uri === bUri) {
-              return [{ uri: targetUris[0], range: range(0, 0, 0, 3) }];
+            if (method === LspMethods.REFERENCES) {
+              const uri = params.textDocument.uri;
+              if (uri === aUri) {
+                const i = aSymbolSelections.findIndex(
+                  (sel) => sel.start.character === params.position.character,
+                );
+                if (i >= 0) {
+                  return [{ uri: targetUris[i], range: range(0, 0, 0, 3) }];
+                }
+                return [];
+              }
+              if (uri === bUri) {
+                return [{ uri: targetUris[0], range: range(0, 0, 0, 3) }];
+              }
+              return [];
             }
-            return [];
-          }
-          if (method === LspMethods.SHUTDOWN) return null;
-          return undefined;
-        };
+            if (method === LspMethods.SHUTDOWN) return null;
+            return undefined;
+          };
 
-        const fake = new FakeLspClient(handler);
-        const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
-          asClient(fake),
-        );
-        provider.configure({ maxOpenFiles: 2, maxConcurrentFiles: 2 });
+          const fake = new FakeLspClient(handler);
+          const provider = new TypescriptLspEdgeProvider(
+            createMockLogger(),
+            () => asClient(fake),
+          );
+          provider.configure({ maxOpenFiles: 2, maxConcurrentFiles: 2 });
 
-        const outcome = await provider.resolveEdges({
-          workspaceRoot,
-          files: ["A.ts", "B.ts"],
-        });
+          const outcome = await provider.resolveEdges({
+            workspaceRoot,
+            files: ["A.ts", "B.ts"],
+          });
 
-        expect(outcome.filesFailed).toEqual([]);
-        expect(outcome.filesProcessed.slice().sort()).toEqual(["A.ts", "B.ts"]);
+          expect(outcome.filesFailed).toEqual([]);
+          expect(outcome.filesProcessed.slice().sort()).toEqual([
+            "A.ts",
+            "B.ts",
+          ]);
 
-        const aOpens = fake.notifications.filter(
-          (n) =>
-            n.method === LspMethods.DID_OPEN &&
-            (n.params as any).textDocument.uri === aUri,
-        );
-        const bOpens = fake.notifications.filter(
-          (n) =>
-            n.method === LspMethods.DID_OPEN &&
-            (n.params as any).textDocument.uri === bUri,
-        );
-        expect(aOpens).toHaveLength(1);
-        expect(bOpens).toHaveLength(1);
+          const aOpens = fake.notifications.filter(
+            (n) =>
+              n.method === LspMethods.DID_OPEN &&
+              (n.params as any).textDocument.uri === aUri,
+          );
+          const bOpens = fake.notifications.filter(
+            (n) =>
+              n.method === LspMethods.DID_OPEN &&
+              (n.params as any).textDocument.uri === bUri,
+          );
+          expect(aOpens).toHaveLength(1);
+          expect(bOpens).toHaveLength(1);
 
-        // The real D7 canary (aOpens/bOpens counts alone would pass identically even with
-        // pinning deleted, since `processOneFileReverse` captures `callee.uri` locally once and
-        // never re-touches the cache for its own file -- a premature eviction would just silently
-        // no-op the later `closeAndEvict` lookup without changing the open count or dropping
-        // edges). T4 (targetUris[4]) is only ever opened by A's own turn, serially last among its
-        // 5 targets -- if A.ts's own cache entry were evicted at any point before then (the exact
-        // hazard D7 exists to prevent), it would have to have been closed while still needed.
-        const lastTargetOpenIndex = fake.notifications.findIndex(
-          (n) =>
-            n.method === LspMethods.DID_OPEN &&
-            (n.params as any).textDocument.uri === targetUris[4],
-        );
-        expect(lastTargetOpenIndex).toBeGreaterThanOrEqual(0);
-        const aCloseIndex = fake.notifications.findIndex(
-          (n) =>
-            n.method === LspMethods.DID_CLOSE &&
-            (n.params as any).textDocument.uri === aUri,
-        );
-        expect(aCloseIndex === -1 || aCloseIndex > lastTargetOpenIndex).toBe(
-          true,
-        );
+          // The real D7 canary (aOpens/bOpens counts alone would pass identically even with
+          // pinning deleted, since `processOneFileReverse` captures `callee.uri` locally once and
+          // never re-touches the cache for its own file -- a premature eviction would just silently
+          // no-op the later `closeAndEvict` lookup without changing the open count or dropping
+          // edges). T4 (targetUris[4]) is only ever opened by A's own turn, serially last among its
+          // 5 targets -- if A.ts's own cache entry were evicted at any point before then (the exact
+          // hazard D7 exists to prevent), it would have to have been closed while still needed.
+          const lastTargetOpenIndex = fake.notifications.findIndex(
+            (n) =>
+              n.method === LspMethods.DID_OPEN &&
+              (n.params as any).textDocument.uri === targetUris[4],
+          );
+          expect(lastTargetOpenIndex).toBeGreaterThanOrEqual(0);
+          const aCloseIndex = fake.notifications.findIndex(
+            (n) =>
+              n.method === LspMethods.DID_CLOSE &&
+              (n.params as any).textDocument.uri === aUri,
+          );
+          expect(aCloseIndex === -1 || aCloseIndex > lastTargetOpenIndex).toBe(
+            true,
+          );
 
-        expect(outcome.edges.length).toBeGreaterThanOrEqual(5);
-      } finally {
-        fs.rmSync(workspaceRoot, { recursive: true, force: true });
-      }
-    }, 15000);
+          expect(outcome.edges.length).toBeGreaterThanOrEqual(5);
+        } finally {
+          fs.rmSync(workspaceRoot, { recursive: true, force: true });
+        }
+      },
+      SUBPROCESS_TEST_TIMEOUT_MS,
+    );
   });
 
   describe("Deadline mid-flight, K>1 (Phase 6, D9)", () => {
@@ -720,52 +741,56 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
   });
 
   describe("Clamp (D4)", () => {
-    it("clamps maxConcurrentFiles to maxOpenFiles - 1 and logs once", async () => {
-      const fileNames = Array.from({ length: 10 }, (_, i) => "f" + i + ".ts");
-      const workspaceRoot = makeWorkspace(
-        Object.fromEntries(fileNames.map((f) => [f, "// no symbols\n"])),
-      );
-      try {
-        const handler: RequestHandler = (method) => {
-          if (method === LspMethods.INITIALIZE) return {};
-          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
-          if (method === LspMethods.SHUTDOWN) return null;
-          return undefined;
-        };
-        const latencyMs = (method: string) =>
-          method === LspMethods.DOCUMENT_SYMBOL ? 15 : 0;
-        const fake = new FakeLspClient(handler, latencyMs);
-        const logger = createMockLogger();
-        const provider = new TypescriptLspEdgeProvider(logger, () =>
-          asClient(fake),
+    it(
+      "clamps maxConcurrentFiles to maxOpenFiles - 1 and logs once",
+      async () => {
+        const fileNames = Array.from({ length: 10 }, (_, i) => "f" + i + ".ts");
+        const workspaceRoot = makeWorkspace(
+          Object.fromEntries(fileNames.map((f) => [f, "// no symbols\n"])),
         );
-        provider.configure({ maxConcurrentFiles: 50, maxOpenFiles: 10 });
+        try {
+          const handler: RequestHandler = (method) => {
+            if (method === LspMethods.INITIALIZE) return {};
+            if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+            if (method === LspMethods.SHUTDOWN) return null;
+            return undefined;
+          };
+          const latencyMs = (method: string) =>
+            method === LspMethods.DOCUMENT_SYMBOL ? 15 : 0;
+          const fake = new FakeLspClient(handler, latencyMs);
+          const logger = createMockLogger();
+          const provider = new TypescriptLspEdgeProvider(logger, () =>
+            asClient(fake),
+          );
+          provider.configure({ maxConcurrentFiles: 50, maxOpenFiles: 10 });
 
-        const outcome = await provider.resolveEdges({
-          workspaceRoot,
-          files: fileNames,
-        });
+          const outcome = await provider.resolveEdges({
+            workspaceRoot,
+            files: fileNames,
+          });
 
-        expect(outcome.filesFailed).toEqual([]);
-        // effectiveConcurrency = min(50, 10 files, maxOpenFiles(10) - 1) = 9 -- assert the bound
-        // (never more than 9 concurrent file-level requests, proving the clamp held) and that
-        // real overlap actually happened (not silently serialized). Not an exact-equality
-        // assertion against 9: real `fs.readFile` I/O timing (unmocked) can occasionally let one
-        // of the 9 initial requests settle before all 9 have registered, so the observed peak can
-        // land anywhere in (1, 9] without indicating a bug.
-        expect(fake.maxInFlight).toBeGreaterThan(1);
-        expect(fake.maxInFlight).toBeLessThanOrEqual(9);
+          expect(outcome.filesFailed).toEqual([]);
+          // effectiveConcurrency = min(50, 10 files, maxOpenFiles(10) - 1) = 9 -- assert the bound
+          // (never more than 9 concurrent file-level requests, proving the clamp held) and that
+          // real overlap actually happened (not silently serialized). Not an exact-equality
+          // assertion against 9: real `fs.readFile` I/O timing (unmocked) can occasionally let one
+          // of the 9 initial requests settle before all 9 have registered, so the observed peak can
+          // land anywhere in (1, 9] without indicating a bug.
+          expect(fake.maxInFlight).toBeGreaterThan(1);
+          expect(fake.maxInFlight).toBeLessThanOrEqual(9);
 
-        const clampLogs = logger.events.filter(
-          (e) => e.level === "debug" && e.message.includes("clamped"),
-        );
-        expect(clampLogs).toHaveLength(1);
-        expect(clampLogs[0].message).toMatch(
-          /maxConcurrentFiles=50 clamped to 9/,
-        );
-      } finally {
-        fs.rmSync(workspaceRoot, { recursive: true, force: true });
-      }
-    }, 15000);
+          const clampLogs = logger.events.filter(
+            (e) => e.level === "debug" && e.message.includes("clamped"),
+          );
+          expect(clampLogs).toHaveLength(1);
+          expect(clampLogs[0].message).toMatch(
+            /maxConcurrentFiles=50 clamped to 9/,
+          );
+        } finally {
+          fs.rmSync(workspaceRoot, { recursive: true, force: true });
+        }
+      },
+      SUBPROCESS_TEST_TIMEOUT_MS,
+    );
   });
 });

@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { existsSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const DOCTOR_RUNS = 3;
 const HYDRATE_RUNS = 3;
@@ -56,64 +57,68 @@ describe("Command: docuvia doctor concurrent with docuvia hydrate (real filesyst
     } finally {
       setupDb.close();
     }
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  it(`resolves ${DOCTOR_RUNS} concurrent doctor runs and ${HYDRATE_RUNS} concurrent hydrate runs without corrupting local.db, both with sane exit codes`, async () => {
-    const runs = [
-      // `--skip-git` avoids `doctor`'s git-remote-reachability check, which fails in any sandbox
-      // without a configured remote (the same pre-existing flakiness `doctor.test.ts` documents)
-      // and is orthogonal to the db-concurrency behavior this test targets; `--skip-lsp` avoids
-      // `doctor`'s LSP-binary-readiness check (now FAIL-capable) for the same reason -- this
-      // fixture never installs `typescript-language-server` on purpose, since it's irrelevant to
-      // the SQLite WAL/busy_timeout behavior under test. `--skip-llm` avoids the Tier C LLM
-      // reachability probe -- a real network call that timed out when DOCTOR_RUNS processes fired
-      // it simultaneously against this environment's real endpoint (dogfooding-findings-fixes.md
-      // follow-up: live-reproduced, unrelated to the tier_b_coverage diagnostic added alongside
-      // it). The env scrub forces issue #135's `l2_semantic_coverage` to the structural-only
-      // PASS (Tier C "not configured"): this fixture never runs Tier C, so its AST-only graph is
-      // legitimately 0%-described, and the test must not depend on whatever LLM env vars the host
-      // happens to carry. `sqlite_integrity` (the check that matters here) still runs.
-      ...Array.from({ length: DOCTOR_RUNS }, () =>
-        sandbox.runCli(["doctor", "--skip-git", "--skip-lsp", "--skip-llm"], {
-          reject: false,
-          env: {
-            AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL: "",
-            AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY: "",
-            AI_DOCUVIA_MODEL: "",
-            AI_DOCUVIA_FAST_MODEL: "",
-          },
-        }),
-      ),
-      ...Array.from({ length: HYDRATE_RUNS }, () =>
-        sandbox.runCli(["hydrate"], { reject: false }),
-      ),
-    ];
-    const results = await Promise.all(runs);
+  it(
+    `resolves ${DOCTOR_RUNS} concurrent doctor runs and ${HYDRATE_RUNS} concurrent hydrate runs without corrupting local.db, both with sane exit codes`,
+    async () => {
+      const runs = [
+        // `--skip-git` avoids `doctor`'s git-remote-reachability check, which fails in any sandbox
+        // without a configured remote (the same pre-existing flakiness `doctor.test.ts` documents)
+        // and is orthogonal to the db-concurrency behavior this test targets; `--skip-lsp` avoids
+        // `doctor`'s LSP-binary-readiness check (now FAIL-capable) for the same reason -- this
+        // fixture never installs `typescript-language-server` on purpose, since it's irrelevant to
+        // the SQLite WAL/busy_timeout behavior under test. `--skip-llm` avoids the Tier C LLM
+        // reachability probe -- a real network call that timed out when DOCTOR_RUNS processes fired
+        // it simultaneously against this environment's real endpoint (dogfooding-findings-fixes.md
+        // follow-up: live-reproduced, unrelated to the tier_b_coverage diagnostic added alongside
+        // it). The env scrub forces issue #135's `l2_semantic_coverage` to the structural-only
+        // PASS (Tier C "not configured"): this fixture never runs Tier C, so its AST-only graph is
+        // legitimately 0%-described, and the test must not depend on whatever LLM env vars the host
+        // happens to carry. `sqlite_integrity` (the check that matters here) still runs.
+        ...Array.from({ length: DOCTOR_RUNS }, () =>
+          sandbox.runCli(["doctor", "--skip-git", "--skip-lsp", "--skip-llm"], {
+            reject: false,
+            env: {
+              AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL: "",
+              AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY: "",
+              AI_DOCUVIA_MODEL: "",
+              AI_DOCUVIA_FAST_MODEL: "",
+            },
+          }),
+        ),
+        ...Array.from({ length: HYDRATE_RUNS }, () =>
+          sandbox.runCli(["hydrate"], { reject: false }),
+        ),
+      ];
+      const results = await Promise.all(runs);
 
-    for (const result of results) {
-      expect(result.exitCode).toBe(0);
-    }
+      for (const result of results) {
+        expect(result.exitCode).toBe(0);
+      }
 
-    // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
-    // consistency check (`hydrate`'s wholesale-replace write must not duplicate/corrupt the
-    // single project row a concurrent `doctor` read might observe mid-write).
-    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    expect(existsSync(dbPath)).toBe(true);
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const integrity = db.pragma("integrity_check", { simple: true });
-      expect(integrity).toBe("ok");
+      // No DB corruption: a real SQLite integrity check against local.db, plus a project-row
+      // consistency check (`hydrate`'s wholesale-replace write must not duplicate/corrupt the
+      // single project row a concurrent `doctor` read might observe mid-write).
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      expect(existsSync(dbPath)).toBe(true);
+      const db = new Database(dbPath, { readonly: true });
+      try {
+        const integrity = db.pragma("integrity_check", { simple: true });
+        expect(integrity).toBe("ok");
 
-      const { count } = db
-        .prepare("SELECT COUNT(*) as count FROM projects")
-        .get() as { count: number };
-      expect(count).toBe(1);
-    } finally {
-      db.close();
-    }
-  }, 120000);
+        const { count } = db
+          .prepare("SELECT COUNT(*) as count FROM projects")
+          .get() as { count: number };
+        expect(count).toBe(1);
+      } finally {
+        db.close();
+      }
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

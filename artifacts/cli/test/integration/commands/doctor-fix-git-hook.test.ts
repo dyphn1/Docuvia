@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { mkdirSync, writeFileSync, readFileSync, chmodSync } from "fs";
 import { GitConstants } from "@workspace/contracts";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Real end-to-end (real `IGitProvider`/`GitLocalProvider`, real filesystem, real CLI subprocess --
@@ -65,11 +66,11 @@ describe("Command: docuvia doctor --fix repairs a duplicate-block post-commit ho
         GitConstants.POST_COMMIT_HOOK_CONTENT +
         `echo "after"\n`,
     );
-  }, 60000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   it("reports FAIL for the duplicate-block condition, leaves the hook untouched without --fix, repairs it with --fix, and reports clean on re-run", async () => {
     // 1. `doctor` (no --fix) reports the duplicate-block FAIL and does not mutate the file.

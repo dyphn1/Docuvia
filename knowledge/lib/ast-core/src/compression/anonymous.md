@@ -7,4 +7,3 @@ filePath: lib/ast-core/src/compression.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/src/compression.ts`
-

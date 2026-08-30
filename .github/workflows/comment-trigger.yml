@@ -13,157 +13,213 @@ concurrency:
   group: docuvia-comment-${{ github.event.issue.number }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: "24"
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # Parse the command, authorize the commenter, and resolve the PR head SHA.
+  #
+  # Every value this job hands downstream MUST be declared in `outputs:` below.
+  # `core.setOutput` alone only sets a *step* output; `needs.dispatch.outputs.*`
+  # reads the *job* outputs, and a missing mapping silently yields "" -- which
+  # evaluates every downstream `if:` to false and turns the whole workflow into a
+  # no-op that still posts its "running..." acknowledgement.
+  # ---------------------------------------------------------------------------
   dispatch:
-    name: Parse & dispatch
+    name: Parse & authorize
     runs-on: ubuntu-latest
-    # Only run on PR comments (not issue comments) and only for comments matching /docuvia
     if: >
       github.event.issue.pull_request &&
-      github.event.comment.author_association != 'NONE' &&
       startsWith(github.event.comment.body, '/docuvia')
+    outputs:
+      authorized: ${{ steps.authorize.outputs.authorized }}
+      command: ${{ steps.parse.outputs.command }}
+      args: ${{ steps.parse.outputs.args }}
+      head_sha: ${{ steps.authorize.outputs.head_sha }}
+      base_ref: ${{ steps.authorize.outputs.base_ref }}
+
     steps:
       - name: Parse command
-        id: cmd
+        id: parse
         uses: actions/github-script@v7
         with:
           script: |
-            const body = context.payload.comment.body.trim();
-            // Match: /docuvia <command> [args...]
-            const match = body.match(/^\/docuvia\s+(\S+)\s*(.*)?$/s);
-            if (!match) {
-              core.setOutput('valid', 'false');
-              return;
-            }
-            const command = match[1].toLowerCase();
-            const rawArgs = (match[2] || '').trim();
-            const validCommands = ['analyze', 'review', 'impact', 'query', 'status'];
-            if (!validCommands.includes(command)) {
-              core.setOutput('valid', 'false');
-              return;
-            }
-            core.setOutput('valid', 'true');
-            core.setOutput('command', command);
-            core.setOutput('args', rawArgs);
+            const VALID = ['analyze', 'review', 'impact', 'query', 'status'];
+            const NEEDS_ARG = new Set(['impact', 'query']);
+            // Argument charset is deliberately narrow: symbols and file paths need
+            // none of the shell metacharacters, so rejecting them here removes the
+            // injection surface before the value ever reaches a `run:` block.
+            const SAFE_ARG = /^[A-Za-z0-9 _.\/#@:-]{1,200}$/;
 
-      - name: Validate permissions
-        if: steps.cmd.outputs.valid == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const assoc = context.payload.comment.author_association;
-            const allowed = ['OWNER', 'MEMBER', 'COLLABORATOR'];
-            if (!allowed.includes(assoc)) {
+            // Read the body off the payload at runtime. Interpolating it as
+            // ${{ github.event.comment.body }} would splice attacker-controlled
+            // text into this script itself.
+            const body = String(context.payload.comment.body || '').trim();
+            const match = body.match(/^\/docuvia[ \t]+([A-Za-z-]+)[ \t]*([^\r\n]*)/);
+
+            const usage = [
+              '**Usage:** `/docuvia <command> [args]`',
+              '',
+              '| Command | Argument |',
+              '|---|---|',
+              '| `/docuvia analyze` | — |',
+              '| `/docuvia review` | — |',
+              '| `/docuvia impact <symbolOrFile>` | required |',
+              '| `/docuvia query <concept>` | required |',
+              '| `/docuvia status` | — |',
+            ].join('\n');
+
+            const reject = async (reason) => {
+              core.setOutput('command', '');
+              core.setOutput('args', '');
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `🚫 @${context.actor} — you need **write access** to run \`/docuvia\` commands.\n\nYour association: \`${assoc}\`. Required: ${allowed.join(', ')}.`,
+                body: `${reason}\n\n${usage}`,
               });
-              core.setFailed('Insufficient permissions');
+            };
+
+            if (!match) {
+              await reject('❌ Could not parse that command.');
               return;
             }
 
-      - name: Acknowledge command
-        if: steps.cmd.outputs.valid == 'true'
+            const command = match[1].toLowerCase();
+            const args = (match[2] || '').trim();
+
+            if (!VALID.includes(command)) {
+              await reject(`❌ Unknown command \`${command}\`.`);
+              return;
+            }
+            if (NEEDS_ARG.has(command) && args === '') {
+              await reject(`❌ \`/docuvia ${command}\` needs an argument.`);
+              return;
+            }
+            if (args !== '' && !SAFE_ARG.test(args)) {
+              await reject(
+                '❌ That argument contains characters this command does not accept. ' +
+                  'Allowed: letters, digits, space, and `_ . / # @ : -`',
+              );
+              return;
+            }
+
+            core.setOutput('command', command);
+            core.setOutput('args', args);
+
+      - name: Authorize & resolve PR head
+        id: authorize
+        if: steps.parse.outputs.command != ''
         uses: actions/github-script@v7
         with:
           script: |
-            const cmd = context.payload.comment.body.trim();
-            await github.rest.issues.createComment({
+            core.setOutput('authorized', 'false');
+
+            const deny = async (body) => {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            };
+
+            // Gate 1: the commenter must have write access.
+            const WRITERS = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+            const assoc = context.payload.comment.author_association;
+            if (!WRITERS.includes(assoc)) {
+              await deny(
+                `🚫 @${context.actor} — \`/docuvia\` commands need write access on this repository.\n\n` +
+                  `Your association: \`${assoc}\`. Required: ${WRITERS.join(', ')}.`,
+              );
+              return;
+            }
+
+            const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `⏳ Running \`${cmd}\` — analysis started by @${context.actor}.`,
+              pull_number: context.issue.number,
             });
 
-  analyze:
-    name: "Command: analyze"
-    needs: dispatch
-    if: needs.dispatch.outputs.command == 'analyze'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout PR head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.head.sha }}
-          fetch-depth: 0
+            // Gate 2: refuse pull requests from forks.
+            //
+            // This job runs in the *base* repository's context, so the token it holds
+            // carries this workflow's `pull-requests: write` scope. The `run` job below
+            // checks out the PR head and executes its code (`pnpm install` lifecycle
+            // scripts, `pnpm run build`). For a same-repo branch that is safe -- only
+            // someone with push access can create one. For a fork it is not: any
+            // outsider could open a PR carrying a malicious `postinstall`, wait for a
+            // collaborator to type `/docuvia review`, and have it run against that
+            // token. Gate 1 checks who *commented*, never who *authored* -- so this
+            // second gate is what actually closes the hole.
+            const headRepo = pr.data.head.repo && pr.data.head.repo.full_name;
+            const baseRepo = pr.data.base.repo.full_name;
+            if (!headRepo || headRepo !== baseRepo) {
+              await deny(
+                '🚫 `/docuvia` commands are disabled on pull requests from forks.\n\n' +
+                  'These commands build and execute the pull request\'s own code, which is only ' +
+                  'safe for branches in this repository. Push the branch here and reopen the PR ' +
+                  'to use them.',
+              );
+              return;
+            }
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+            if (pr.data.state !== 'open') {
+              await deny('🚫 This pull request is closed — nothing to analyze.');
+              return;
+            }
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
+            core.setOutput('head_sha', pr.data.head.sha);
+            core.setOutput('base_ref', pr.data.base.ref);
+            core.setOutput('authorized', 'true');
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Relink CLI bin
-        run: pnpm install --force
-
-      - name: Initialize knowledge graph
-        run: npx --no-install docuvia init --platform=
-
-      - name: Run analyze
-        id: analyze
-        run: |
-          npx --no-install docuvia analyze --fallback-ast \
-            > /tmp/analyze-result.json 2>/tmp/analyze-stderr.log \
-            || echo "analyze_exit=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Post result
-        if: always()
+      - name: Acknowledge
+        if: steps.authorize.outputs.authorized == 'true'
         uses: actions/github-script@v7
         env:
-          ANALYZE_EXIT: ${{ steps.analyze.outputs.analyze_exit }}
+          COMMAND: ${{ steps.parse.outputs.command }}
+          ARGS: ${{ steps.parse.outputs.args }}
+          HEAD_SHA: ${{ steps.authorize.outputs.head_sha }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            const exitCode = process.env.ANALYZE_EXIT || '0';
-            const stderr = fs.existsSync('/tmp/analyze-stderr.log')
-              ? fs.readFileSync('/tmp/analyze-stderr.log', 'utf8').trim()
-              : '';
-            const result = fs.existsSync('/tmp/analyze-result.json')
-              ? fs.readFileSync('/tmp/analyze-result.json', 'utf8').trim()
-              : '';
-
-            let body;
-            if (exitCode !== '0') {
-              body = `❌ **docuvia analyze** failed (exit ${exitCode}).\n\n\`\`\`\n${(stderr || 'no stderr').slice(0, 6000)}\n\`\`\``;
-            } else {
-              body = `✅ **docuvia analyze** completed successfully.\n\n` +
-                `<details><summary>Analysis output</summary>\n\n` +
-                `\`\`\`json\n${(result || '(empty)').slice(0, 6000)}\n\`\`\`\n\n</details>`;
-              if (stderr) {
-                body += `\n\n<details><summary>Warnings</summary>\n\n\`\`\`\n${stderr.slice(0, 2000)}\n\`\`\`\n\n</details>`;
-              }
-            }
+            const { COMMAND, ARGS, HEAD_SHA } = process.env;
+            const shown = ARGS ? `${COMMAND} ${ARGS}` : COMMAND;
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body,
+              body:
+                `⏳ Running \`docuvia ${shown}\` against \`${HEAD_SHA.slice(0, 7)}\` ` +
+                `— started by @${context.actor}. [Watch the run](${runUrl}).`,
             });
 
-  review:
-    name: "Command: review"
+  # ---------------------------------------------------------------------------
+  # One job for every command. The five original per-command jobs were ~95%
+  # identical checkout/setup/install/build boilerplate; the only real differences
+  # are the CLI invocation and how its output is rendered, both of which switch
+  # on `command` below.
+  # ---------------------------------------------------------------------------
+  run:
+    name: Run /docuvia ${{ needs.dispatch.outputs.command }}
     needs: dispatch
-    if: needs.dispatch.outputs.command == 'review'
+    if: needs.dispatch.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - name: Checkout PR head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.issue.pull_request.head.sha }}
+          # Resolved via the pulls API in `dispatch`. The `issue_comment` payload's
+          # `issue.pull_request` object carries only {url, html_url, diff_url,
+          # patch_url, merged_at} -- there is no `head.sha` on it, so the obvious
+          # `github.event.issue.pull_request.head.sha` silently evaluates to "" and
+          # checks out the default branch instead of the PR.
+          ref: ${{ needs.dispatch.outputs.head_sha }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -172,7 +228,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: Install dependencies
@@ -184,414 +240,211 @@ jobs:
       - name: Relink CLI bin
         run: pnpm install --force
 
-      - name: Resolve base ref
-        run: |
-          echo "BASE_REF=origin/${{ github.event.issue.pull_request.base.ref }}" >> "$GITHUB_ENV"
-
       - name: Initialize knowledge graph
+        # `--platform=` with an empty value selects no agent platforms -- CI wants the
+        # local graph, not Claude/Cursor/Copilot hook files written into the runner.
         run: npx --no-install docuvia init --platform=
 
-      - name: Ingest diff
+      - name: Ingest the working tree
+        if: needs.dispatch.outputs.command != 'analyze'
         run: npx --no-install docuvia analyze --fallback-ast
 
-      - name: Run review
-        id: review
+      - name: Fetch base ref
+        if: needs.dispatch.outputs.command == 'review'
+        env:
+          BASE_REF: ${{ needs.dispatch.outputs.base_ref }}
+        run: git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+
+      - name: Run command
+        id: run
+        env:
+          # Every user-controlled value crosses into the shell as an environment
+          # variable, never as a ${{ }} expression inside `run:`. GitHub substitutes
+          # ${{ }} into the script *before* bash parses it, so quoting cannot contain
+          # a hostile value; $VAR is expanded by bash itself and stays one argument.
+          COMMAND: ${{ needs.dispatch.outputs.command }}
+          ARGS: ${{ needs.dispatch.outputs.args }}
+          BASE_REF: ${{ needs.dispatch.outputs.base_ref }}
         run: |
-          npx --no-install docuvia review "$BASE_REF" --format=json \
-            > /tmp/review-result.json 2>/tmp/review-stderr.log \
-            || echo "review_exit=$?" >> "$GITHUB_OUTPUT"
+          set -uo pipefail
+          out=/tmp/docuvia-out.txt
+          err=/tmp/docuvia-err.txt
+
+          # `status` and `analyze` have no --format flag (verified against
+          # `docuvia <cmd> --help`): their stdout is a rendered table for humans, so
+          # they are reported as text. Only review/impact/query emit JSON.
+          case "$COMMAND" in
+            analyze)
+              npx --no-install docuvia analyze --fallback-ast >"$out" 2>"$err"
+              code=$?
+              format=text
+              ;;
+            status)
+              npx --no-install docuvia status >"$out" 2>"$err"
+              code=$?
+              format=text
+              ;;
+            review)
+              npx --no-install docuvia review "origin/$BASE_REF" --format=json >"$out" 2>"$err"
+              code=$?
+              format=json
+              ;;
+            impact)
+              npx --no-install docuvia impact "$ARGS" --format=json >"$out" 2>"$err"
+              code=$?
+              format=json
+              ;;
+            query)
+              npx --no-install docuvia query "$ARGS" --format=json >"$out" 2>"$err"
+              code=$?
+              format=json
+              ;;
+            *)
+              echo "unreachable: dispatch validated the command" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "exit_code=$code" >>"$GITHUB_OUTPUT"
+          echo "format=$format" >>"$GITHUB_OUTPUT"
+          # Never fail the job on a non-zero CLI exit -- the reporting step below turns
+          # it into a PR comment, which is the whole point of the workflow.
+          exit 0
 
       - name: Post result
-        if: always()
+        # Not `always()`: a cancelled run (the concurrency group superseding this one
+        # when a second command arrives) would otherwise post a misleading result for
+        # work that never finished.
+        if: ${{ !cancelled() }}
         uses: actions/github-script@v7
         env:
-          REVIEW_EXIT: ${{ steps.review.outputs.review_exit }}
+          COMMAND: ${{ needs.dispatch.outputs.command }}
+          ARGS: ${{ needs.dispatch.outputs.args }}
+          BASE_REF: ${{ needs.dispatch.outputs.base_ref }}
+          HEAD_SHA: ${{ needs.dispatch.outputs.head_sha }}
+          EXIT_CODE: ${{ steps.run.outputs.exit_code }}
+          FORMAT: ${{ steps.run.outputs.format }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const exitCode = process.env.REVIEW_EXIT || '0';
-            const stderr = fs.existsSync('/tmp/review-stderr.log')
-              ? fs.readFileSync('/tmp/review-stderr.log', 'utf8').trim()
-              : '';
+            const { COMMAND, ARGS, BASE_REF, HEAD_SHA, FORMAT } = process.env;
 
-            if (exitCode !== '0') {
-              await github.rest.issues.createComment({
+            const read = (p) => (fs.existsSync(p) ? fs.readFileSync(p, 'utf8').trim() : '');
+            const stdout = read('/tmp/docuvia-out.txt');
+            const stderr = read('/tmp/docuvia-err.txt');
+            const shortSha = (HEAD_SHA || '').slice(0, 7);
+            const fence = (text, lang = '') =>
+              '```' + lang + '\n' + (text || '(empty)').slice(0, 6000) + '\n```';
+
+            const post = (body) =>
+              github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: `❌ **docuvia review** failed (exit ${exitCode}).\n\n\`\`\`\n${(stderr || 'no stderr').slice(0, 6000)}\n\`\`\``,
+                body,
               });
+
+            // An empty FORMAT means the run step never reached its `echo ... >>$GITHUB_OUTPUT`
+            // lines -- it died on setup, not on the CLI. Reporting that as exit 0 would
+            // claim success for work that never ran.
+            if (!FORMAT) {
+              await post(
+                `❌ **docuvia ${COMMAND}** did not run on \`${shortSha}\` — the job failed before ` +
+                  `the command started (install, build, or graph init). See the workflow logs.`,
+              );
               return;
             }
 
-            const result = JSON.parse(fs.readFileSync('/tmp/review-result.json', 'utf8'));
-            const RISK_EMOJI = { LOW: '🟢', MEDIUM: '🟡', HIGH: '🟠', CRITICAL: '🔴' };
-            const risk = result.riskLevel || 'UNKNOWN';
-            const emoji = RISK_EMOJI[risk] || '⚪️';
-            const fileCount = (result.filesChanged || []).length;
-
-            const changedFiles = (result.filesChanged || [])
-              .map((f) => `- \`${f.file}\` (${f.status})`)
-              .join('\n') || '- (none)';
-
-            const rankedNodes = [...(result.affectedNodes || [])]
-              .filter((n) => n && n.file)
-              .sort((a, b) => (b.impactedBy || []).length - (a.impactedBy || []).length);
-            const impactRows = rankedNodes
-              .slice(0, 10)
-              .map((n) => {
-                const deps = (n.impactedBy || [])
-                  .slice(0, 4)
-                  .map((e) => `\`${e.name}\``)
-                  .join(', ');
-                return `| \`${n.file}\` | ${(n.impactedBy || []).length} | ${deps}${(n.impactedBy || []).length > 4 ? ', …' : ''} |`;
-              });
-            const impactSection = rankedNodes.length === 0
-              ? '**No local graph impact detected** for the changed files.'
-              : `### Graph impact\n\n| Affected file | Dependents | Top dependents |\n|---|---|---|\n${impactRows.join('\n')}`;
-
-            const body =
-              `## 🗺️ Knowledge Graph review (requested by @${context.actor})\n\n` +
-              `**Verdict:** ${emoji} **${risk}** · ${fileCount} file(s) vs \`${result.baseRef || 'base'}\`\n\n` +
-              `${impactSection}\n\n` +
-              `### Changed files\n${changedFiles}`;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-  impact:
-    name: "Command: impact"
-    needs: dispatch
-    if: needs.dispatch.outputs.command == 'impact'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Validate args
-        id: validate
-        run: |
-          if [ -z "${{ needs.dispatch.outputs.args }}" ]; then
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-            echo "symbol=${{ needs.dispatch.outputs.args }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Comment missing arg
-        if: steps.validate.outputs.valid == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❌ Usage: \`/docuvia impact <symbolOrFile>\`\n\nExample: \`/docuvia impact calculateBlastRadius\``,
-            });
-
-      - name: Checkout PR head
-        if: steps.validate.outputs.valid == 'true'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        if: steps.validate.outputs.valid == 'true'
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        if: steps.validate.outputs.valid == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm run build
-
-      - name: Relink CLI bin
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm install --force
-
-      - name: Initialize knowledge graph
-        if: steps.validate.outputs.valid == 'true'
-        run: npx --no-install docuvia init --platform=
-
-      - name: Run impact
-        if: steps.validate.outputs.valid == 'true'
-        id: impact
-        run: |
-          npx --no-install docuvia impact "${{ steps.validate.outputs.symbol }}" --format=json \
-            > /tmp/impact-result.json 2>/tmp/impact-stderr.log \
-            || echo "impact_exit=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Post result
-        if: always() && steps.validate.outputs.valid == 'true'
-        uses: actions/github-script@v7
-        env:
-          IMPACT_EXIT: ${{ steps.impact.outputs.impact_exit }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const exitCode = process.env.IMPACT_EXIT || '0';
-            const stderr = fs.existsSync('/tmp/impact-stderr.log')
-              ? fs.readFileSync('/tmp/impact-stderr.log', 'utf8').trim()
-              : '';
-
+            const exitCode = process.env.EXIT_CODE || '0';
             if (exitCode !== '0') {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `❌ **docuvia impact** failed (exit ${exitCode}).\n\n\`\`\`\n${(stderr || 'no stderr').slice(0, 6000)}\n\`\`\``,
-              });
+              await post(
+                `❌ **docuvia ${COMMAND}** failed (exit ${exitCode}) on \`${shortSha}\`.\n\n` +
+                  fence(stderr || stdout || 'no output'),
+              );
               return;
             }
 
-            const result = JSON.parse(fs.readFileSync('/tmp/impact-result.json', 'utf8'));
-            const symbol = result.symbol || '${{ steps.validate.outputs.symbol }}';
-            const dependents = result.dependents || [];
-
-            let body = `## 🎯 Impact: \`${symbol}\`\n\n`;
-            if (dependents.length === 0) {
-              body += `**No dependents found** — this symbol is not referenced by other code in the graph.`;
-            } else {
-              body += `**${dependents.length} dependent(s)** found:\n\n`;
-              body += `| File | Edge type | Confidence |\n|---|---|---|\n`;
-              for (const d of dependents.slice(0, 20)) {
-                body += `| \`${d.file || d.name}\` | ${d.edgeType || 'unknown'} | ${d.confidence || 'n/a'} |\n`;
+            // Text-mode commands: report stdout verbatim rather than mislabelling a
+            // rendered table as JSON.
+            if (FORMAT !== 'json') {
+              let body = `✅ **docuvia ${COMMAND}** on \`${shortSha}\`\n\n${fence(stdout)}`;
+              if (stderr) {
+                body += `\n\n<details><summary>Warnings</summary>\n\n${fence(stderr)}\n\n</details>`;
               }
-              if (dependents.length > 20) {
-                body += `\n_… and ${dependents.length - 20} more._`;
-              }
-            }
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-  query:
-    name: "Command: query"
-    needs: dispatch
-    if: needs.dispatch.outputs.command == 'query'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Validate args
-        id: validate
-        run: |
-          if [ -z "${{ needs.dispatch.outputs.args }}" ]; then
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Comment missing arg
-        if: steps.validate.outputs.valid == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❌ Usage: \`/docuvia query <conceptOrFile>\`\n\nExample: \`/docuvia query blast-radius\``,
-            });
-
-      - name: Checkout PR head
-        if: steps.validate.outputs.valid == 'true'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        if: steps.validate.outputs.valid == 'true'
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        if: steps.validate.outputs.valid == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm run build
-
-      - name: Relink CLI bin
-        if: steps.validate.outputs.valid == 'true'
-        run: pnpm install --force
-
-      - name: Initialize knowledge graph
-        if: steps.validate.outputs.valid == 'true'
-        run: npx --no-install docuvia init --platform=
-
-      - name: Run query
-        if: steps.validate.outputs.valid == 'true'
-        id: query
-        run: |
-          npx --no-install docuvia query "${{ needs.dispatch.outputs.args }}" --format=json \
-            > /tmp/query-result.json 2>/tmp/query-stderr.log \
-            || echo "query_exit=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Post result
-        if: always() && steps.validate.outputs.valid == 'true'
-        uses: actions/github-script@v7
-        env:
-          QUERY_EXIT: ${{ steps.query.outputs.query_exit }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const exitCode = process.env.QUERY_EXIT || '0';
-            const stderr = fs.existsSync('/tmp/query-stderr.log')
-              ? fs.readFileSync('/tmp/query-stderr.log', 'utf8').trim()
-              : '';
-
-            if (exitCode !== '0') {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `❌ **docuvia query** failed (exit ${exitCode}).\n\n\`\`\`\n${(stderr || 'no stderr').slice(0, 6000)}\n\`\`\``,
-              });
+              await post(body);
               return;
             }
 
-            const result = JSON.parse(fs.readFileSync('/tmp/query-result.json', 'utf8'));
+            let result;
+            try {
+              result = JSON.parse(stdout);
+            } catch {
+              await post(
+                `⚠️ **docuvia ${COMMAND}** finished on \`${shortSha}\` but its output was not valid JSON.\n\n` +
+                  fence(stdout),
+              );
+              return;
+            }
+
+            if (COMMAND === 'review') {
+              const RISK = { LOW: '🟢', MEDIUM: '🟡', HIGH: '🟠', CRITICAL: '🔴' };
+              const risk = result.riskLevel || 'UNKNOWN';
+              const changed = result.filesChanged || [];
+              const ranked = [...(result.affectedNodes || [])]
+                .filter((n) => n && n.file)
+                .sort((a, b) => (b.impactedBy || []).length - (a.impactedBy || []).length);
+
+              const impact = ranked.length === 0
+                ? '**No local graph impact detected** for the changed files.'
+                : '### Graph impact\n\n| Affected file | Dependents | Top dependents |\n|---|---|---|\n' +
+                  ranked.slice(0, 10).map((n) => {
+                    const by = n.impactedBy || [];
+                    const top = by.slice(0, 4).map((e) => `\`${e.name}\``).join(', ');
+                    return `| \`${n.file}\` | ${by.length} | ${top}${by.length > 4 ? ', …' : ''} |`;
+                  }).join('\n');
+
+              const files = changed.length
+                ? changed.map((f) => `- \`${f.file}\` (${f.status})`).join('\n')
+                : '- (none)';
+
+              await post(
+                `## 🗺️ Knowledge Graph review — \`${shortSha}\`\n\n` +
+                  `**Verdict:** ${RISK[risk] || '⚪️'} **${risk}** · ${changed.length} file(s) vs \`${result.baseRef || BASE_REF}\`\n\n` +
+                  `${impact}\n\n### Changed files\n${files}`,
+              );
+              return;
+            }
+
+            if (COMMAND === 'impact') {
+              const deps = result.dependents || [];
+              let body = `## 🎯 Impact: \`${result.symbol || ARGS}\` — \`${shortSha}\`\n\n`;
+              if (deps.length === 0) {
+                body += '**No dependents found** — nothing in the graph references this symbol.';
+              } else {
+                body += `**${deps.length} dependent(s)**:\n\n| File | Edge type | Confidence |\n|---|---|---|\n`;
+                body += deps.slice(0, 20)
+                  .map((d) => `| \`${d.file || d.name}\` | ${d.edgeType || 'unknown'} | ${d.confidence || 'n/a'} |`)
+                  .join('\n');
+                if (deps.length > 20) body += `\n\n_… and ${deps.length - 20} more._`;
+              }
+              await post(body);
+              return;
+            }
+
+            // query
             const matches = result.results || result.matches || [];
-
-            let body = `## 🔍 Query: \`${result.query || '${{ needs.dispatch.outputs.args }}'}\`\n\n`;
+            let body = `## 🔍 Query: \`${result.query || ARGS}\` — \`${shortSha}\`\n\n`;
             body += `**Match type:** ${result.matchType || result.match_type || 'unknown'}\n\n`;
-
             if (matches.length === 0) {
-              body += `**No results found.**`;
+              body += '**No results found.**';
             } else {
               body += `**${matches.length} result(s)**:\n\n`;
-              for (const m of matches.slice(0, 10)) {
-                body += `- **${m.name || m.title || '(untitled)'}** — ${m.type || m.nodeType || 'node'}`;
-                if (m.file) body += ` in \`${m.file}\``;
-                if (m.summary) body += `\n  ${m.summary.slice(0, 200)}`;
-                body += '\n';
-              }
-              if (matches.length > 10) {
-                body += `\n_… and ${matches.length - 10} more._`;
-              }
+              body += matches.slice(0, 10).map((m) => {
+                let line = `- **${m.name || m.title || '(untitled)'}** — ${m.type || m.nodeType || 'node'}`;
+                if (m.file) line += ` in \`${m.file}\``;
+                if (m.summary) line += `\n  ${String(m.summary).slice(0, 200)}`;
+                return line;
+              }).join('\n');
+              if (matches.length > 10) body += `\n\n_… and ${matches.length - 10} more._`;
             }
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-  status:
-    name: "Command: status"
-    needs: dispatch
-    if: needs.dispatch.outputs.command == 'status'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout PR head
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.head.sha }}
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Relink CLI bin
-        run: pnpm install --force
-
-      - name: Run status
-        id: status
-        run: |
-          npx --no-install docuvia status --format=json \
-            > /tmp/status-result.json 2>/tmp/status-stderr.log \
-            || echo "status_exit=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Post result
-        if: always()
-        uses: actions/github-script@v7
-        env:
-          STATUS_EXIT: ${{ steps.status.outputs.status_exit }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const exitCode = process.env.STATUS_EXIT || '0';
-            const stderr = fs.existsSync('/tmp/status-stderr.log')
-              ? fs.readFileSync('/tmp/status-stderr.log', 'utf8').trim()
-              : '';
-
-            if (exitCode !== '0') {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `❌ **docuvia status** failed (exit ${exitCode}).\n\n\`\`\`\n${(stderr || 'no stderr').slice(0, 6000)}\n\`\`\``,
-              });
-              return;
-            }
-
-            const result = JSON.parse(fs.readFileSync('/tmp/status-result.json', 'utf8'));
-            let body = `## 📊 Knowledge Graph Status (requested by @${context.actor})\n\n`;
-            body += `\`\`\`json\n${JSON.stringify(result, null, 2).slice(0, 6000)}\n\`\`\``;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-
-  unknown:
-    name: "Unknown command"
-    needs: dispatch
-    if: needs.dispatch.outputs.valid == 'false'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post usage help
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `❓ Unknown or invalid \`/docuvia\` command.\n\n### Available commands\n\n| Command | Description | Example |\n|---------|-------------|--------|\n| \`/docuvia analyze\` | Run full analysis on the PR diff | \`/docuvia analyze\` |\n| \`/docuvia review\` | Run blast-radius review against base branch | \`/docuvia review\` |\n| \`/docuvia impact <symbol>\` | Run impact analysis for a specific symbol | \`/docuvia impact calculateBlastRadius\` |\n| \`/docuvia query <concept>\` | Query the knowledge graph | \`/docuvia query blast-radius\` |\n| \`/docuvia status\` | Show current knowledge graph status | \`/docuvia status\` |\n\n> **Note:** Only users with write access (OWNER, MEMBER, COLLABORATOR) can trigger analysis.`,
-            });
+            await post(body);

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/mcp/tools/query-tool.unit.test.ts#anonymous@L82
+id: artifacts/cli/test/unit/mcp/tools/query-tool.unit.test.ts#anonymous@L53
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/mcp/tools/query-tool.unit.test.ts

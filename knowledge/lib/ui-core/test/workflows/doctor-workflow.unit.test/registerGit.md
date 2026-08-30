@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit@L2499
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit@L2393
 type: symbol
 name: registerGit
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts

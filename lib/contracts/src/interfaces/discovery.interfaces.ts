@@ -35,3 +35,7 @@ export interface IConfigScanner {
 export interface IVcsScanner {
   extractHotspotTags(workspaceRoot: string): Promise<string[]>;
 }
+
+export interface IDiscoverableSourceFileProvider {
+  isDiscoverableSourceFile(filePath: string): boolean;
+}

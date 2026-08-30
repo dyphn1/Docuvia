@@ -8,7 +8,6 @@ import { ErrorCodes } from "../errors/error-codes.js";
 export const MemoryKeys = {
   WORKSPACE_ROOT: "workspaceRoot",
   API_URL: "apiUrl",
-  PAT: "pat",
   PROJECT_ID: "projectId",
   COMMIT_SHA: "commitSha",
   TARGET_PATH: "targetPath",

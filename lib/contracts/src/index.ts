@@ -69,6 +69,7 @@ export type {
   IConfigScanner,
   IVcsScanner,
 } from "./interfaces/discovery.interfaces.js";
+export type { IDiscoverableSourceFileProvider } from "./interfaces/discovery.interfaces.js";
 export type {
   AstExportKind,
   AstImportDescriptor,
@@ -119,7 +120,10 @@ export type {
   HydrationResult,
   IHydrationService,
 } from "./interfaces/hydration.interfaces.js";
-export type { IGraphPersister } from "./interfaces/graph-persister.interfaces.js";
+export type {
+  IGraphPersister,
+  CallResolutionStats,
+} from "./interfaces/graph-persister.interfaces.js";
 export type {
   RemoteL2NodeSummary,
   CreateL3EventPayload,
@@ -275,6 +279,7 @@ export {
   isSupportedSourceFile,
   detectLanguageForFile,
   getSupportedGlobExtensions,
+  isDiscoverableSourceFile,
 } from "./constants/source-files.js";
 export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
 export {
@@ -288,6 +293,11 @@ export {
 export { acquireProcessLock } from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
 export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
+export {
+  aggregateCallResolution,
+  callResolutionDenominator,
+} from "./utils/call-resolution.js";
+export type { INodeProcess } from "./interfaces/process.interfaces.js";
 export type {
   ProcessLockOptions,
   ProcessLockHandle,

@@ -81,6 +81,76 @@ describe("resolveImpactEpistemic()", () => {
     });
   });
 
+  describe("low own-file call resolution sharpens the empty-result note (issue #221 P2')", () => {
+    const LOW_RESOLUTION = { resolved: 1, applicable: 10 };
+
+    it("replaces the generic static-edges-only caveat when the target's own file resolved few of its call sites", () => {
+      const result = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        ...FULL_COVERAGE,
+        registryMediated: false,
+        targetFileResolution: LOW_RESOLUTION,
+      });
+
+      expect(result.riskNote).toBe(
+        IMPACT_MESSAGES.RISK_NOTE_EMPTY_LOW_RESOLUTION(1, 10),
+      );
+    });
+
+    it("never overrides the partial-coverage or registry-mediated rungs (byte-stable existing wording)", () => {
+      const partial = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        workspaceFilesProcessed: 3,
+        workspaceFilesTotal: 10,
+        registryMediated: false,
+        targetFileResolution: LOW_RESOLUTION,
+      });
+      expect(partial.riskNote).toBe(
+        IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(3, 10),
+      );
+
+      const registry = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        ...FULL_COVERAGE,
+        registryMediated: true,
+        targetFileResolution: LOW_RESOLUTION,
+      });
+      expect(registry.riskNote).toBe(
+        IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE,
+      );
+    });
+
+    it("ignores a below-min-sample file so one or two unresolved calls can't flip the verdict", () => {
+      const result = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        ...FULL_COVERAGE,
+        registryMediated: false,
+        targetFileResolution: { resolved: 0, applicable: 2 },
+      });
+
+      expect(result.riskNote).toBe(
+        IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      );
+    });
+
+    it("degrades to the generic caveat when no resolution stats exist (absent = not sharper)", () => {
+      const result = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        ...FULL_COVERAGE,
+        registryMediated: false,
+      });
+
+      expect(result.riskNote).toBe(
+        IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      );
+    });
+  });
+
   describe("non-empty blast radius on a partially-ingested graph", () => {
     it("keeps the earned risk band but flags lower-bound with the partial-coverage note", () => {
       const result = resolveImpactEpistemic({

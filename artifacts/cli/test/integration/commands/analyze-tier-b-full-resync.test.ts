@@ -100,7 +100,8 @@ describe("Command: docuvia analyze --escalate-to-lsp --full + docuvia query's Ti
     const fullResyncLine = lines.find(
       (l) => l.event === "analyze.tierB.full_resync_queued",
     );
-    expect(fullResyncLine).toBeTruthy();
+    expect(fullResyncLine).toBeDefined();
+    expect(fullResyncLine!.event).toBe("analyze.tierB.full_resync_queued");
     expect(fullResyncLine.filesQueued).toBe(totalTrackedFiles);
 
     // 3. Simulate a --full run that *did* have a real LSP available (this sandbox has none --

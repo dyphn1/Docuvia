@@ -17,6 +17,14 @@ export const IMPACT_MESSAGES = {
    *  edge no matter how complete ingestion was (AGENTS.md's documented impact blind spots). */
   RISK_NOTE_EMPTY_STATIC_EDGES_ONLY:
     "No static dependents found. The edge graph models calls/extends/implements only -- runtime-variable imports, computed import() specifiers, and child_process spawns are invisible, so absence of edges is not evidence of no dependents.",
+  /** Issue #221 P2': attached to an empty blast radius when the target's own file's Tier A
+   *  call-site resolution rate is low -- unresolved call sites in that file are exactly the
+   *  edges that would have pointed at this target, so "no dependents" is even less trustworthy
+   *  than the generic static-edges-only caveat. Fires only at complete Tier B coverage,
+   *  non-registry targets, and a statistically meaningful sample
+   *  (`DEFAULT_CALL_RESOLUTION_MIN_SAMPLE`). */
+  RISK_NOTE_EMPTY_LOW_RESOLUTION: (resolved: number, applicable: number) =>
+    `No static dependents found, but only ${resolved} of ${applicable} call sites in this symbol's own file resolved into edges during ingestion -- dependents calling it from here may be missing from the graph. Run "docuvia analyze --escalate-to-lsp --full" to recover them.`,
   /** Issue #192: attached to a NON-EMPTY blast radius when workspace Tier B coverage is
    *  incomplete -- a partially-populated graph must never read as a complete answer
    *  (self-verification 2026-08-05's "confidently wrong non-empty result" failure mode). */

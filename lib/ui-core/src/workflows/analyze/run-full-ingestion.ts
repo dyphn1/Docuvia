@@ -1,4 +1,5 @@
 import {
+  aggregateCallResolution,
   docuviaFactory,
   TOKENS,
   type IGitProvider,
@@ -11,6 +12,7 @@ import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "../init/stamp-full-ingestion-for-tier-b.js";
 import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
+import { stampFullCallResolution } from "./call-resolution-stats.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
 
@@ -64,21 +66,34 @@ export async function runFullIngestion(deps: {
     workspaceRoot,
   });
 
-  const { parsedResults, failures } = await runParseAndPersist({
-    astProcessor,
-    graphPersister,
-    store,
-    workspaceRoot,
-    projectId: project.id,
-    filesToParse: discoveryResult.filesToParse,
-    skippedOversized: discoveryResult.skippedOversized,
-    tags: discoveryResult.tags,
-    appendLogLine: appendAnalyzeLogLine,
-    logEvents: {
-      parseFailure: ANALYZE_EVENTS.FULL_PARSE_FAILURE,
-      fileSkippedOversized: ANALYZE_EVENTS.FULL_FILE_SKIPPED_OVERSIZED,
-    },
-  });
+  const { parsedResults, failures, callResolutionByFile } =
+    await runParseAndPersist({
+      astProcessor,
+      graphPersister,
+      store,
+      workspaceRoot,
+      projectId: project.id,
+      filesToParse: discoveryResult.filesToParse,
+      skippedOversized: discoveryResult.skippedOversized,
+      tags: discoveryResult.tags,
+      appendLogLine: appendAnalyzeLogLine,
+      logEvents: {
+        parseFailure: ANALYZE_EVENTS.FULL_PARSE_FAILURE,
+        fileSkippedOversized: ANALYZE_EVENTS.FULL_FILE_SKIPPED_OVERSIZED,
+      },
+    });
+
+  // Issue #221: a full run reparses everything, so its per-file call-resolution counters
+  // replace the stored map wholesale (no merge -- stale entries cannot survive a full pass).
+  if (Object.keys(callResolutionByFile ?? {}).length > 0) {
+    stampFullCallResolution(store, callResolutionByFile ?? {});
+    const totals = aggregateCallResolution(callResolutionByFile ?? {});
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.FULL_CALL_RESOLUTION,
+      ...totals,
+      files: Object.keys(callResolutionByFile ?? {}).length,
+    });
+  }
 
   // First-ever ingestion has no prior commit to diff against -- mirrors semantic-diff.ts's
   // resolvePruningLevel's "no matching old node" -> CONTRACT_CHANGED treatment, extended to

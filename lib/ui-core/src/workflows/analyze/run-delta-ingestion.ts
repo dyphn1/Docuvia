@@ -5,6 +5,7 @@ import {
   ChangedFileStatuses,
   UTF8_ENCODING,
   type AstParseFailure,
+  type CallResolutionStats,
   type ChangedFileEntry,
   type DiscoveredFile,
   type IGitProvider,
@@ -13,12 +14,16 @@ import {
   type ILogger,
   type ISemanticDiffAnalyzer,
   type SemanticDiffModifiedNode,
+  isDiscoverableSourceFile,
 } from "@workspace/contracts";
-import { GitConstants, MAX_FILE_SIZE_BYTES } from "@workspace/contracts";
-// Narrow documented exception (lib/core/src/index.ts): registry-coupled, not movable to contracts.
-import { isDiscoverableSourceFile } from "@workspace/core";
+import {
+  aggregateCallResolution,
+  GitConstants,
+  MAX_FILE_SIZE_BYTES,
+} from "@workspace/contracts";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
+import { mergeDeltaCallResolution } from "./call-resolution-stats.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
@@ -358,6 +363,7 @@ async function persistDelta(
   }
 
   let failures: AstParseFailure[] = [];
+  let callResolutionByFile: Record<string, CallResolutionStats> | undefined;
   if (filesToParse.length > 0) {
     const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
       logger,
@@ -382,6 +388,19 @@ async function persistDelta(
       },
     });
     failures = result.failures;
+    callResolutionByFile = result.callResolutionByFile;
+  }
+
+  // Issue #221: upsert this run's per-file call-resolution counters and drop deleted files'
+  // entries, so the stored map never accumulates rows for files that left the worktree.
+  if (callResolutionByFile && Object.keys(callResolutionByFile).length > 0) {
+    mergeDeltaCallResolution(store, callResolutionByFile, toDelete);
+    const totals = aggregateCallResolution(callResolutionByFile);
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.DELTA_CALL_RESOLUTION,
+      ...totals,
+      files: Object.keys(callResolutionByFile).length,
+    });
   }
 
   await store.withWriteLock(() => {

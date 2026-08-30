@@ -11,6 +11,10 @@ import {
 } from "@workspace/contracts";
 import { initCommand } from "../../src/commands/init.js";
 import { initTool } from "../../src/mcp/tools/init.js";
+import {
+  REAL_SUBPROCESS_TEST_TIMEOUT_MS,
+  removeTempDir,
+} from "../support/integration-env.js";
 
 /**
  * New test per the migration plan's step 9: asserts the MCP path (`docuvia_init` tool
@@ -87,7 +91,7 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
       value: false,
       configurable: true,
     });
-  }, 30_000);
+  }, REAL_SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -95,39 +99,45 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
       value: originalIsTTY,
       configurable: true,
     });
-    fs.rmSync(workspaceA, { recursive: true, force: true });
-    fs.rmSync(workspaceB, { recursive: true, force: true });
+    // Windows-safe: `init` leaves git/SQLite handles that can outlive the test by milliseconds,
+    // and a plain rmSync would throw EPERM *after* the assertions already passed.
+    removeTempDir(workspaceA);
+    removeTempDir(workspaceB);
   });
 
-  it("populates the same tables with equal row counts via both paths", async () => {
-    // CLI path — non-interactive (isTTY=false).
-    await initCommand(workspaceA);
+  it(
+    "populates the same tables with equal row counts via both paths",
+    async () => {
+      // CLI path — non-interactive (isTTY=false).
+      await initCommand(workspaceA);
 
-    // MCP path — the tool handler resolves workspaceRoot from process.cwd() internally
-    // (mirroring how the real MCP stdio server would run it). `process.chdir()` isn't
-    // supported inside Vitest's worker threads, so stub `process.cwd()` instead of
-    // actually changing directory — same effect for the handler's one `process.cwd()`
-    // read, no need for a real stdio transport either.
-    vi.spyOn(process, "cwd").mockReturnValue(workspaceB);
-    const mcpResult = await initTool.handler({});
-    expect(mcpResult.isError).toBeFalsy();
+      // MCP path — the tool handler resolves workspaceRoot from process.cwd() internally
+      // (mirroring how the real MCP stdio server would run it). `process.chdir()` isn't
+      // supported inside Vitest's worker threads, so stub `process.cwd()` instead of
+      // actually changing directory — same effect for the handler's one `process.cwd()`
+      // read, no need for a real stdio transport either.
+      vi.spyOn(process, "cwd").mockReturnValue(workspaceB);
+      const mcpResult = await initTool.handler({});
+      expect(mcpResult.isError).toBeUndefined();
 
-    const dbPathA = path.join(workspaceA, ".docuvia", "local.db");
-    const dbPathB = path.join(workspaceB, ".docuvia", "local.db");
-    expect(fs.existsSync(dbPathA)).toBe(true);
-    expect(fs.existsSync(dbPathB)).toBe(true);
+      const dbPathA = path.join(workspaceA, ".docuvia", "local.db");
+      const dbPathB = path.join(workspaceB, ".docuvia", "local.db");
+      expect(fs.existsSync(dbPathA)).toBe(true);
+      expect(fs.existsSync(dbPathB)).toBe(true);
 
-    const countsA = tableRowCounts(dbPathA);
-    const countsB = tableRowCounts(dbPathB);
+      const countsA = tableRowCounts(dbPathA);
+      const countsB = tableRowCounts(dbPathB);
 
-    expect(Object.keys(countsA).sort()).toEqual(Object.keys(countsB).sort());
-    expect(countsA).toEqual(countsB);
+      expect(Object.keys(countsA).sort()).toEqual(Object.keys(countsB).sort());
+      expect(countsA).toEqual(countsB);
 
-    // Sanity: both actually ingested the fixture (not just empty tables matching each other).
-    expect(countsA.projects).toBe(1);
-    expect(countsA.project_files).toBeGreaterThanOrEqual(2);
-    expect(countsA.l2_nodes).toBeGreaterThanOrEqual(1);
-  }, 60_000);
+      // Sanity: both actually ingested the fixture (not just empty tables matching each other).
+      expect(countsA.projects).toBe(1);
+      expect(countsA.project_files).toBeGreaterThanOrEqual(2);
+      expect(countsA.l2_nodes).toBeGreaterThanOrEqual(1);
+    },
+    REAL_SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   /**
    * Regression test for a gap found 2026-07-18 (ADR audit against PLAT-006): the MCP `docuvia_init`
@@ -148,49 +158,53 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
    * it would silently stop guarding this regression. Manually holding the lock and observing that
    * the MCP call blocks until it's released is deterministic and actually exercises the fix.
    */
-  it("MCP docuvia_init waits for the init-command lock instead of bypassing it", async () => {
-    vi.spyOn(process, "cwd").mockReturnValue(workspaceA);
+  it(
+    "MCP docuvia_init waits for the init-command lock instead of bypassing it",
+    async () => {
+      vi.spyOn(process, "cwd").mockReturnValue(workspaceA);
 
-    const lockPath = path.join(
-      workspaceA,
-      DOCUVIA_DIR_NAME,
-      INIT_COMMAND_LOCK_FILE_NAME,
-    );
-    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
-    const heldLock = await acquireProcessLock(lockPath, {
-      maxWaitMs: 5_000,
-      heartbeatIntervalMs: 500,
-      staleAfterMs: 60_000,
-    });
+      const lockPath = path.join(
+        workspaceA,
+        DOCUVIA_DIR_NAME,
+        INIT_COMMAND_LOCK_FILE_NAME,
+      );
+      fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+      const heldLock = await acquireProcessLock(lockPath, {
+        maxWaitMs: 5_000,
+        heartbeatIntervalMs: 500,
+        staleAfterMs: 60_000,
+      });
 
-    let mcpSettled = false;
-    const mcpPromise = initTool.handler({}).then((result) => {
-      mcpSettled = true;
-      return result;
-    });
+      let mcpSettled = false;
+      const mcpPromise = initTool.handler({}).then((result) => {
+        mcpSettled = true;
+        return result;
+      });
 
-    // An *unwrapped* docuviaApi.init() on this fixture reliably finishes in well under 1s (a
-    // bare-minimum project, no LSP/LLM work) -- so a wait comfortably longer than that, still
-    // observing mcpSettled === false while the lock is held, can only mean the MCP call is
-    // actually blocked on the lock, not just "still doing real work." (A short ~300ms check was
-    // tried first and false-negatived: unwrapped init took long enough on its own to still be
-    // mid-flight at 300ms regardless of locking, making that window useless as a discriminator.)
-    await new Promise((resolve) => setTimeout(resolve, 1_500));
-    expect(
-      mcpSettled,
-      "MCP docuvia_init resolved while the init-command lock was still held by another " +
-        "caller -- it isn't actually waiting on the lock (the PLAT-006 gap this test guards).",
-    ).toBe(false);
+      // An *unwrapped* docuviaApi.init() on this fixture reliably finishes in well under 1s (a
+      // bare-minimum project, no LSP/LLM work) -- so a wait comfortably longer than that, still
+      // observing mcpSettled === false while the lock is held, can only mean the MCP call is
+      // actually blocked on the lock, not just "still doing real work." (A short ~300ms check was
+      // tried first and false-negatived: unwrapped init took long enough on its own to still be
+      // mid-flight at 300ms regardless of locking, making that window useless as a discriminator.)
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      expect(
+        mcpSettled,
+        "MCP docuvia_init resolved while the init-command lock was still held by another " +
+          "caller -- it isn't actually waiting on the lock (the PLAT-006 gap this test guards).",
+      ).toBe(false);
 
-    await heldLock.release();
+      await heldLock.release();
 
-    const mcpResult = await mcpPromise;
-    expect(mcpSettled).toBe(true);
-    expect(mcpResult.isError).toBeFalsy();
+      const mcpResult = await mcpPromise;
+      expect(mcpSettled).toBe(true);
+      expect(mcpResult.isError).toBeUndefined();
 
-    const dbPath = path.join(workspaceA, ".docuvia", "local.db");
-    expect(fs.existsSync(dbPath)).toBe(true);
-    const counts = tableRowCounts(dbPath);
-    expect(counts.projects).toBe(1);
-  }, 30_000);
+      const dbPath = path.join(workspaceA, ".docuvia", "local.db");
+      expect(fs.existsSync(dbPath)).toBe(true);
+      const counts = tableRowCounts(dbPath);
+      expect(counts.projects).toBe(1);
+    },
+    REAL_SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

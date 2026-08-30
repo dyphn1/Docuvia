@@ -93,10 +93,12 @@ export default tseslint.config(
   // Documented narrow exceptions (lib/core/src/index.ts): pure, side-effect-free domain helpers
   // that are not DI-registered behind a token and cannot move to contracts (they're coupled to
   // the language registry or to git/store IO). Keep this list as small as possible.
+  //
+  // isDiscoverableSourceFile moved to @workspace/contracts (issue #243), so
+  // run-delta-ingestion.ts no longer needs this exception -- removed to restore the layer-
+  // boundary lint here.
   {
     files: [
-      // isDiscoverableSourceFile (language registry)
-      "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       // renderL3Card / computeL2GitPathsByNodeId (L3 renderers)
       "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
     ],

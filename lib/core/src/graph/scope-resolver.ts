@@ -81,6 +81,14 @@ const ScopeResolverMessages = {
  */
 const WILDCARD_IMPORT_MARKER = "*";
 
+/** Node's explicit builtin-module protocol (`import { readFile } from "node:fs"`) — an
+ *  unambiguous "this leaves the project" marker for `isExternalBinding` (issue #230). */
+const NODE_BUILTIN_PROTOCOL_PREFIX = "node:";
+
+/** Leading `@scope/name` (or bare `name`) segment of a module specifier, used to test a
+ *  subpath import (`@workspace/contracts/testing`) against the workspace package list. */
+const PACKAGE_NAME_PATTERN = /^(@[^/]+\/[^/]+|[^/]+)/;
+
 export class ScopeResolver {
   private exportsByFile: Map<string, Set<string>> = new Map();
   private importsByFile: Map<string, ImportDescriptor[]> = new Map();
@@ -216,8 +224,8 @@ export class ScopeResolver {
   }
 
   /** Resolves one matched import descriptor to its defining file: module-path resolution
-   *  followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
-   *  file itself -- the prior behavior floor -- when the chain dead-ends. */
+   * followed by barrel re-export chaining (issue #192 gap 2), falling back to the resolved
+   * file itself -- the prior behavior floor -- when the chain dead-ends. */
   private resolveImportedBinding(
     normalizedSource: string,
     imp: ImportDescriptor,
@@ -240,6 +248,216 @@ export class ScopeResolver {
         targetFile: resolvedPath,
         targetSymbol,
       }
+    );
+  }
+
+  /**
+   * Issue #192 root-cause fix -- member-call resolution (`obj.method()`, `this.method()`).
+   * `resolveCall` only ever saw bare names, so every OOP-style call was structurally
+   * unresolvable (~43% of this repo's own unresolved sites were member/this receivers).
+   * Precision-first ladder, same "unique-or-refuse" discipline as CRG's scoped_resolver:
+   *
+   * 1. **this/super receiver** -> the callee must be a same-file symbol (a method of an
+   *    enclosing/derived class). Same-file scoping keeps a wrong match cheap.
+   * 2. **import-binding receiver** -> the receiver identifier is a known import local name
+   *    (e.g. `import { docuviaFactory } ...; docuviaFactory.register(...)`): resolve the
+   *    binding's defining module, then look the callee up as a local/exported symbol there,
+   *    following barrel re-export chains exactly like a bare import would.
+   * 3. **same-file static/local-object fallback** -> `ClassName.staticFn()` or a helper
+   *    object calling into its own file's symbols. Only consulted for receivers that are
+   *    neither this/super nor imports, and only within the caller's own file.
+   *
+   * Deliberately NOT covered (stays unresolved rather than guessed): receivers bound to local
+   * variables whose type comes from another module's exports without a direct import binding
+   * (`const s = makeStore(); s.commit()`) -- that needs real type inference. Unknown-receiver
+   * calls are never matched project-wide (the `Add`/`Close` false-match hazard is why
+   * `useNameFallback` is implements/extends-only).
+   */
+  public resolveMemberCall(
+    sourceFilePath: string,
+    receiverText: string,
+    calleeName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const normalizedSource = sourceFilePath.replace(/\\/g, "/");
+
+    // 1. this/super -> same-file method.
+    if (receiverText === "this" || receiverText === "super") {
+      if (this.localsByFile.get(normalizedSource)?.has(calleeName)) {
+        return { targetFile: normalizedSource, targetSymbol: calleeName };
+      }
+      return null;
+    }
+
+    // 2. Receiver is an imported binding -> method lives in the binding's defining module.
+    const viaImport = this.resolveImportReceiverMethod(
+      normalizedSource,
+      receiverText,
+      calleeName,
+    );
+    if (viaImport) return viaImport;
+
+    // 3. Same-file static/local-object heuristic.
+    if (this.localsByFile.get(normalizedSource)?.has(calleeName)) {
+      return { targetFile: normalizedSource, targetSymbol: calleeName };
+    }
+
+    return null;
+  }
+
+  /** Ladder step 2 of `resolveMemberCall`: when the receiver identifier is a known import
+   *  local name, resolve the binding's module and look the callee up there (following barrel
+   *  re-export chains like a bare import would). */
+  private resolveImportReceiverMethod(
+    normalizedSource: string,
+    receiverText: string,
+    calleeName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const imports = this.importsByFile.get(normalizedSource) || [];
+    for (const imp of imports) {
+      if (imp.localName !== receiverText) continue;
+      const bindingFile = this.resolveModulePath(
+        normalizedSource,
+        imp.modulePath,
+      );
+      if (!bindingFile) continue;
+      const viaReexport = this.resolveReexportTarget(
+        normalizedSource,
+        bindingFile,
+        calleeName,
+      );
+      if (viaReexport) return viaReexport;
+      if (this.localsByFile.get(bindingFile)?.has(calleeName)) {
+        return { targetFile: bindingFile, targetSymbol: calleeName };
+      }
+      const viaReceiverDecl = this.resolveMethodAtReceiverDeclaration(
+        normalizedSource,
+        imp,
+        receiverText,
+        calleeName,
+        bindingFile,
+      );
+      if (viaReceiverDecl) return viaReceiverDecl;
+      // The binding resolved but doesn't declare the callee (e.g. namespace object holding
+      // re-exported members): keep scanning other same-named bindings, else fall through.
+    }
+    return null;
+  }
+
+  /**
+   * Issue #230's real-recall half. The two lookups above resolve the receiver's *module* and
+   * then hunt the callee inside it — which structurally cannot work when the module is a barrel:
+   * `import { docuviaFactory } from "@workspace/contracts"` resolves to
+   * `lib/contracts/src/index.ts`, and `register` is declared nowhere near it. The receiver
+   * *symbol* was never chased, so all 379 `docuviaFactory.register(...)` sites (30 files) plus
+   * `docuviaFactory.lock/resolve` and `docuviaMemory.set/get/createScope` silently dropped.
+   *
+   * So: follow the receiver binding itself down the re-export chain to the file that actually
+   * declares it (`lib/contracts/src/factory/docuvia-factory.ts`, `export const docuviaFactory =
+   * new DocuviaFactory()`), then look the callee up as a local there — class methods are
+   * registered as locals (`persist-ast-graph.ts`'s `registerResolverFiles` pushes every
+   * `functions` entry, methods included), so `register` hits its own method node.
+   *
+   * Same unique-or-refuse discipline as the rest of the ladder: the callee must be declared in
+   * the receiver's own declaring file. A receiver that resolves to a file not declaring the
+   * callee stays unresolved rather than falling back to the file node — an instance method that
+   * lives on a base class in a third file is left to Tier B, not guessed at.
+   */
+  private resolveMethodAtReceiverDeclaration(
+    normalizedSource: string,
+    imp: ImportDescriptor,
+    receiverText: string,
+    calleeName: string,
+    bindingFile: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const receiverSymbol =
+      imp.originalName === WILDCARD_IMPORT_MARKER
+        ? receiverText
+        : imp.originalName;
+    const declaration = this.resolveReexportTarget(
+      normalizedSource,
+      bindingFile,
+      receiverSymbol,
+    );
+    if (!declaration) return null;
+    if (!this.localsByFile.get(declaration.targetFile)?.has(calleeName)) {
+      return null;
+    }
+    return { targetFile: declaration.targetFile, targetSymbol: calleeName };
+  }
+
+  /**
+   * Issue #230: does this file's binding for `bindingName` provably leave the analyzed project?
+   * Drives `GraphPersisterService`'s `external` counter — see `CallResolutionStats.external` for
+   * why those sites are excluded from health denominators instead of counted as failures.
+   *
+   * Returns false (i.e. "not provably external", so a still-unresolved site stays a real gap)
+   * for every in-project shape: a relative specifier, a workspace sibling package, and a
+   * tsconfig-path alias. A workspace-package *subpath* that fails to resolve
+   * (`@workspace/contracts/testing`, 20 sites here) is deliberately kept as a resolver gap
+   * rather than laundered into `external`.
+   */
+  public isExternalBinding(
+    sourceFilePath: string,
+    bindingName: string,
+  ): boolean {
+    const normalizedSource = sourceFilePath.replace(/\\/g, "/");
+    const imports = this.importsByFile.get(normalizedSource) || [];
+    return imports.some(
+      (imp) =>
+        imp.localName === bindingName &&
+        this.isExternalSpecifier(normalizedSource, imp.modulePath),
+    );
+  }
+
+  /** Whether `sourceFilePath` has any import binding under this local name (issue #230) —
+   *  distinguishes "callee is an ambient global" from "callee is an unresolved import". */
+  public hasBinding(sourceFilePath: string, bindingName: string): boolean {
+    return (
+      this.importsByFile.get(sourceFilePath.replace(/\\/g, "/")) ?? []
+    ).some((imp) => imp.localName === bindingName);
+  }
+
+  /** Whether `name` is a symbol declared in `sourceFilePath` itself (issue #230) — the same
+   *  `localsByFile` view `resolveCall` step 1 consults, exposed for call-origin classification. */
+  public declaresLocal(sourceFilePath: string, name: string): boolean {
+    return (
+      this.localsByFile.get(sourceFilePath.replace(/\\/g, "/"))?.has(name) ??
+      false
+    );
+  }
+
+  /** Core of `isExternalBinding`: classifies one module specifier as inside/outside the project.
+   *  Note there is no hardcoded builtin list — a bare specifier that is neither a workspace
+   *  package nor a tsconfig alias nor a real `node_modules` directory (`"fs"`, `"path"`) falls
+   *  through to the final `return true`, which is exactly the right answer for it. */
+  private isExternalSpecifier(
+    normalizedSource: string,
+    modulePath: string,
+  ): boolean {
+    if (modulePath.startsWith(NODE_BUILTIN_PROTOCOL_PREFIX)) return true;
+    // A relative specifier always names a file inside the analyzed tree; failing to resolve one
+    // is a resolver bug, never evidence of externality.
+    if (modulePath.startsWith(RELATIVE_IMPORT_PREFIX)) return false;
+
+    const packageName = PACKAGE_NAME_PATTERN.exec(modulePath)?.[1];
+    if (packageName && this.getWorkspacePackageDirs().has(packageName)) {
+      return false;
+    }
+    if (this.matchesTsConfigAlias(modulePath)) return false;
+
+    const resolved = this.resolveModulePath(normalizedSource, modulePath);
+    if (!resolved) return true;
+    return (
+      resolved.startsWith(`${NODE_MODULES_DIR_NAME}/`) ||
+      resolved.includes(`/${NODE_MODULES_DIR_NAME}/`)
+    );
+  }
+
+  /** Whether `modulePath` is covered by a tsconfig `compilerOptions.paths` alias — an
+   *  in-project mapping, so never `external` even when it fails to resolve. */
+  private matchesTsConfigAlias(modulePath: string): boolean {
+    return Object.keys(this.tsConfigPaths).some((alias) =>
+      modulePath.startsWith(alias.replace(PATH_WILDCARD_TOKEN, "")),
     );
   }
 

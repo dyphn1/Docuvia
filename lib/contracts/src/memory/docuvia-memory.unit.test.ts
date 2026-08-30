@@ -18,7 +18,7 @@ describe("DocuviaMemory", () => {
 
   it("get() returns undefined for a key that was never set", () => {
     memory.createScope("scope-1");
-    expect(memory.get("scope-1", "commitSha")).toBeUndefined();
+    expect(memory.get("scope-1", "commitSha")).toBe(undefined);
   });
 
   it("createScope() is idempotent — calling it twice does not wipe existing values", () => {
@@ -52,7 +52,7 @@ describe("DocuviaMemory", () => {
     memory.deleteScope("scope-1");
 
     expect(memory.hasScope("scope-1")).toBe(false);
-    expect(memory.get("scope-1", "apiUrl")).toBeUndefined();
+    expect(memory.get("scope-1", "apiUrl")).toBe(undefined);
   });
 
   it("hasScope() reflects scope lifecycle", () => {

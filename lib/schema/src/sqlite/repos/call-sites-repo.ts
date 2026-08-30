@@ -23,8 +23,9 @@ export class CallSitesRepo implements ICallSitesRepo {
   }
 
   /** Bulk-inserts one file's call sites via one prepared statement in a loop (matches
-   *  `GraphPersisterService.insertFunctionNodes`'s existing bulk-insert idiom). No-op on an
-   *  empty array. */
+   *  GraphPersisterService.insertFunctionNodes' existing bulk-insert idiom). No-op on an
+   *  empty array. The issue #192 decomposition fields insert NULL when absent, matching
+   *  pre-0012 rows so old/new rows are shape-compatible. */
   insertMany(
     projectId: number,
     filePath: string,
@@ -32,13 +33,16 @@ export class CallSitesRepo implements ICallSitesRepo {
       targetFunction: string;
       startLine: number;
       startColumn: number;
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: string;
     }>,
   ): void {
     if (callSites.length === 0) return;
 
     const insert = this.db.prepare(
-      `INSERT INTO ${SchemaTables.AST_CALL_SITES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN})
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO ${SchemaTables.AST_CALL_SITES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME}, ${SchemaColumns.RECEIVER_TEXT}, ${SchemaColumns.CALLEE_KIND})
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     for (const callSite of callSites) {
       insert.run(
@@ -47,6 +51,9 @@ export class CallSitesRepo implements ICallSitesRepo {
         callSite.targetFunction,
         callSite.startLine,
         callSite.startColumn,
+        callSite.calleeName ?? null,
+        callSite.receiverText ?? null,
+        callSite.calleeKind ?? null,
       );
     }
   }
@@ -111,13 +118,16 @@ export class CallSitesRepo implements ICallSitesRepo {
     if (targetFunctions.length === 0) return result;
 
     const placeholders = targetFunctions.map(() => "?").join(",");
+    // Issue #192: match the terminal callee_name too -- member calls persisted with a raw
+    // `receiver.method` target_function were invisible to this lookup before 0012 even though
+    // the callee identifier matched exactly.
     const rows = this.db
       .prepare(
         `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}
          FROM ${SchemaTables.AST_CALL_SITES}
-         WHERE ${SchemaColumns.PROJECT_ID} = ? AND ${SchemaColumns.TARGET_FUNCTION} IN (${placeholders})`,
+         WHERE ${SchemaColumns.PROJECT_ID} = ? AND (${SchemaColumns.TARGET_FUNCTION} IN (${placeholders}) OR ${SchemaColumns.CALLEE_NAME} IN (${placeholders}))`,
       )
-      .all(projectId, ...targetFunctions) as Pick<
+      .all(projectId, ...targetFunctions, ...targetFunctions) as Pick<
       AstCallSiteRow,
       "file_path" | "start_line" | "start_column"
     >[];

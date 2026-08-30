@@ -35,7 +35,7 @@ describe("checkCppLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   });
 
   it("reports not ready when markers are present but clangd binary cannot be found", async () => {

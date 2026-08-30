@@ -29,7 +29,7 @@ describe("checkPythonLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(false);
     expect(result.ready).toBe(false);
-    expect(result.reason).toBeTruthy();
+    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   }, 15000);
 
   it("accepts requirements.txt as an alternative marker to pyproject.toml", async () => {

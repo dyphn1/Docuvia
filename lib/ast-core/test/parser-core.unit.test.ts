@@ -84,7 +84,13 @@ describe("parser-core", () => {
     const loadWasm = vi.fn().mockResolvedValue("test.wasm");
 
     // Mock the parse method to return a dummy tree
-    const tree = { rootNode: {}, delete: vi.fn() };
+    const tree = {
+      rootNode: {
+        type: "program",
+        namedChildren: [{ type: "class_declaration" }],
+      },
+      delete: vi.fn(),
+    };
     const parseMock = vi.fn().mockReturnValue(tree);
     (Parser as any).prototype.parse = parseMock;
 
@@ -107,11 +113,14 @@ describe("parser-core", () => {
     expect(provider.deleteQueries).toHaveBeenCalled();
     expect(tree.delete).toHaveBeenCalled();
 
-    expect(events).toEqual([
-      { type: "file", path: "test.ts" },
-      { type: "node", path: "test.ts" },
-      { type: "edge" },
-    ]);
+    expect(tree.rootNode.type).toBe("program");
+    expect(tree.rootNode.namedChildren).toHaveLength(1);
+    expect(tree.rootNode.namedChildren[0].type).toBe("class_declaration");
+
+    expect(events).toHaveLength(3);
+    expect(events[0]).toEqual({ type: "file", path: "test.ts" });
+    expect(events[1]).toEqual({ type: "node", path: "test.ts" });
+    expect(events[2]).toEqual({ type: "edge" });
   });
 
   it("generateAst handles Uint8Array loadWasm and TextDecoder", async () => {
@@ -125,7 +134,10 @@ describe("parser-core", () => {
     const wasmBytes = new Uint8Array([1, 2, 3]);
     const loadWasm = vi.fn().mockResolvedValue(wasmBytes);
 
-    const tree = { rootNode: {}, delete: vi.fn() };
+    const tree = {
+      rootNode: { type: "program", namedChildren: [] },
+      delete: vi.fn(),
+    };
     const parseMock = vi.fn().mockReturnValue(tree);
     (Parser as any).prototype.parse = parseMock;
 
@@ -144,6 +156,13 @@ describe("parser-core", () => {
 
     expect(Language.load).toHaveBeenCalledWith(wasmBytes);
     expect(parseMock).toHaveBeenCalledWith("hello");
+
+    expect(tree.rootNode.type).toBe("program");
+    expect(tree.rootNode.namedChildren).toEqual([]);
+    expect(events).toHaveLength(3);
+    expect(events[0]).toEqual({ type: "file", path: "test.ts" });
+    expect(events[1]).toEqual({ type: "node", path: "test.ts" });
+    expect(events[2]).toEqual({ type: "edge" });
   });
 
   it("generateAst throws if loadWasm fails", async () => {

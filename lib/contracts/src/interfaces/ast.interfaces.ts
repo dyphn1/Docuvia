@@ -48,12 +48,25 @@ export interface ParsedAstFileData {
   /** One static call site. `startLine`/`startColumn` are the 0-based source position of the
    *  callee expression's start (Tier A's own `startPosition` convention) -- the seed Tier B
    *  forward resolution (issue #11 plan A) issues `textDocument/definition` at this position per
-   *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1. */
+   *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1.
+   *
+   *  `targetFunction` is the raw callee expression text (e.g. `"service.doSomething"`), kept
+   *  verbatim for Tier B seeding and #217's impact fallback. The optional decomposition fields
+   *  (issue #192 root-cause fix) carry what name-based resolution actually needs:
+   *  `calleeName` is the terminal callee identifier (`"doSomething"`), `receiverText` the
+   *  receiver expression (`"service"`, `"this.logger"`), and `calleeKind` the shape classifier
+   *  -- `'arg-chain'` (receiver is itself an invocation, e.g. `expect(x).toEqual`) and
+   *  `'computed'` (`obj[expr]()`) are structurally unresolvable by name matching and excluded
+   *  from resolution-rate denominators rather than counted as failures. All three may be
+   *  undefined for pre-#192 producers. */
   calls: Array<{
     sourceFunction: string;
     targetFunction: string;
     startLine: number;
     startColumn: number;
+    calleeName?: string;
+    receiverText?: string;
+    calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
   }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;

@@ -133,7 +133,7 @@ describe("DefaultProvider", () => {
       const failures = provider.drainQueryCompileFailures();
       expect(failures).toHaveLength(1);
       expect(failures[0]?.message).toContain("Invalid node type");
-      expect(failures[0]?.pattern).toBeTruthy();
+      expect(failures[0]!.pattern!.length).toBeGreaterThanOrEqual(1);
 
       provider.deleteQueries();
     });

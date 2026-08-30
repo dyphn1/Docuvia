@@ -514,9 +514,16 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     cwd: string,
     sourceDir: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
+    /** When true (internal operations like snapshot), allows sourceDir outside workspace root. */
+    allowOutsideWorkspace = true,
   ): Promise<void> {
     await withKnowledgeBranchLock(this.git, cwd, () =>
-      this.packSnapshotToKnowledgeBranchLocked(cwd, sourceDir, branchName),
+      this.packSnapshotToKnowledgeBranchLocked(
+        cwd,
+        sourceDir,
+        branchName,
+        allowOutsideWorkspace,
+      ),
     );
   }
 
@@ -527,6 +534,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     cwd: string,
     sourceDir: string,
     branchName: string,
+    allowOutsideWorkspace = true,
   ): Promise<void> {
     const commitMessage = await this.buildSnapshotCommitMessage(cwd);
     const sourceSha = await this.git.getHeadSha(cwd);
@@ -544,6 +552,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       branchName,
       commitMessage,
       timestamp,
+      allowOutsideWorkspace,
     );
     this.logger.info(GitMessages.PACKED_SNAPSHOT_ONTO_BRANCH, { branchName });
   }

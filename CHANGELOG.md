@@ -2,6 +2,35 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.2](https://github.com/dyphn1/Docuvia/compare/v1.4.1...v1.4.2) (2026-08-29)
+
+### Bug Fixes
+
+- **husky:** skip pre-push verification suite for delete-only pushes ([b504976](https://github.com/dyphn1/Docuvia/commit/b504976803e0e2ea863f3b895b8d61d860205e5b))
+
+## [1.4.1](https://github.com/dyphn1/Docuvia/compare/v1.4.0...v1.4.1) (2026-08-29)
+
+### Bug Fixes
+
+- **ast-core:** resolve tech debt [#227](https://github.com/dyphn1/Docuvia/issues/227) and [#228](https://github.com/dyphn1/Docuvia/issues/228) ([#251](https://github.com/dyphn1/Docuvia/issues/251)) ([11c57b5](https://github.com/dyphn1/Docuvia/commit/11c57b58422b2f2d149b8cef8942dec377907113))
+- **git-local:** add path traversal protection to collectDirectoryFiles (issue [#244](https://github.com/dyphn1/Docuvia/issues/244)) ([#249](https://github.com/dyphn1/Docuvia/issues/249)) ([e341b6d](https://github.com/dyphn1/Docuvia/commit/e341b6d98dc02320e68da20f09e60993d8fa4ec2))
+- **git-local:** wrap child.stdin.end() in try/catch to handle synchronous throws ([#258](https://github.com/dyphn1/Docuvia/issues/258)) ([c473087](https://github.com/dyphn1/Docuvia/commit/c4730870daa215605330257d45d28f235ab97c17))
+- **ui-core:** move isDiscoverableSourceFile to contracts (issue [#243](https://github.com/dyphn1/Docuvia/issues/243)) ([#250](https://github.com/dyphn1/Docuvia/issues/250)) ([16b93d4](https://github.com/dyphn1/Docuvia/commit/16b93d4e61069538ca55634d3f64d755ad995618))
+- **ui-core:** pass PAT directly to sync() instead of storing in memory ([#260](https://github.com/dyphn1/Docuvia/issues/260)) ([9ec0eb1](https://github.com/dyphn1/Docuvia/commit/9ec0eb11e83dca7e1e062826b54511c876470953))
+
+# [1.4.0](https://github.com/dyphn1/Docuvia/compare/v1.3.2...v1.4.0) (2026-08-27)
+
+### Bug Fixes
+
+- **core,schema,contracts:** decompose callee evidence + member-call resolution (issue [#192](https://github.com/dyphn1/Docuvia/issues/192) root cause) ([359243b](https://github.com/dyphn1/Docuvia/commit/359243b57076dd0fdbf5ac433cc14b4c3d4f2082))
+- **hooks:** improve post-commit logging + pre-push tier-b check ([b251fcc](https://github.com/dyphn1/Docuvia/commit/b251fcc2e89ab20481d7d6d156ed3a5bc752f57a))
+- **schema:** add Windows-safe cleanup retry for temp SQLite dirs ([3ccdbfc](https://github.com/dyphn1/Docuvia/commit/3ccdbfc398986ada7f002e4b09c6c6eed1008169))
+
+### Features
+
+- **doctor:** call-graph resolution counters + call_graph_resolution diagnostic (issue [#221](https://github.com/dyphn1/Docuvia/issues/221) P1) ([2c16b26](https://github.com/dyphn1/Docuvia/commit/2c16b2667d1ba4ed7873b3f7922543e49e42a9e5))
+- **impact,doctor:** low-resolution empty-result note + canary self-test (issue [#221](https://github.com/dyphn1/Docuvia/issues/221) P2'+P3) ([84b8c3c](https://github.com/dyphn1/Docuvia/commit/84b8c3ccd5f21fcc979cc8b3c103c2f6e56ca142))
+
 ## [1.3.2](https://github.com/dyphn1/Docuvia/compare/v1.3.1...v1.3.2) (2026-08-25)
 
 ### Bug Fixes

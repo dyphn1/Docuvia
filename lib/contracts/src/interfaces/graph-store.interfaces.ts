@@ -344,6 +344,13 @@ export interface IGraphNodesRepo {
    * issue #135 documents.
    */
   getSemanticCoverage(): { totalNodes: number; describedNodes: number };
+  /**
+   * Issue #221 P3: a small deterministic sample of non-empty `l2_nodes` names (`ORDER BY id`,
+   * primary-key ordered, so no full scan) feeding `doctor`'s canary self-test — the exact-name
+   * lookup and FTS-sync assertions need real, known-present names without materializing every
+   * row of a 100k+-node graph (`getAllNodes()`'s job, too heavy here).
+   */
+  getCanarySample(limit: number): Array<{ name: string }>;
   getIncomingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;
@@ -508,6 +515,13 @@ export interface AstCallSiteRow {
   start_line: number;
   start_column: number;
   created_at: string;
+  /** Terminal callee identifier (`"doSomething"` of `"service.doSomething"`), issue #192's
+   *  name-based-resolution evidence column. NULL on pre-0012 rows. */
+  callee_name: string | null;
+  /** Receiver expression text (`"service"`, `"this.logger"`). NULL for bare calls. */
+  receiver_text: string | null;
+  /** Shape classifier: 'bare' | 'member' | 'this' | 'arg-chain' | 'computed'. NULL = unknown. */
+  callee_kind: string | null;
 }
 
 export interface ICallSitesRepo {
@@ -517,7 +531,8 @@ export interface ICallSitesRepo {
   deleteForFile(projectId: number, filePath: string): void;
   /** Bulk-inserts one file's call sites in one prepared-statement loop (same rationale as
    *  GraphPersisterService's insertFunctionNodes/insertClassNodes -- avoid per-row overhead
-   *  at vscode/nest scale). No-op on an empty array. */
+   *  at vscode/nest scale). No-op on an empty array. The decomposition fields (issue #192) are
+   *  optional evidence columns -- absent/undefined inserts NULL, matching pre-0012 rows. */
   insertMany(
     projectId: number,
     filePath: string,
@@ -525,6 +540,9 @@ export interface ICallSitesRepo {
       targetFunction: string;
       startLine: number;
       startColumn: number;
+      calleeName?: string;
+      receiverText?: string;
+      calleeKind?: string;
     }>,
   ): void;
   /** Tier B's read-back (issue #11 plan A, Slice 3): every persisted call site for the given
@@ -541,12 +559,13 @@ export interface ICallSitesRepo {
     Array<{ targetFunction: string; startLine: number; startColumn: number }>
   >;
   /** Issue #217's impact fallback read-back -- the reverse of `getForFiles`: every persisted
-   *  call site whose `target_function` is one of `targetFunctions`, keyed by the calling
-   *  file's exact relativePath (same no-normalization/no-empty-array convention as
-   *  `getForFiles`). This is what surfaces dependents ScopeResolver could never resolve into a
-   *  `node_links` edge (runtime-variable plugin paths, computed `import()` specifiers, ...):
-   *  the call site row exists even though the edge doesn't. Returns an empty map without
-   *  touching the database when `targetFunctions` is empty. */
+   *  call site whose `target_function` OR (issue #192) `callee_name` is one of
+   *  `targetFunctions`, keyed by the calling file's exact relativePath (same
+   *  no-normalization/no-empty-array convention as `getForFiles`). This is what surfaces
+   *  dependents ScopeResolver could never resolve into a `node_links` edge (runtime-variable
+   *  plugin paths, computed `import()` specifiers, member calls whose receiver defeated bare-name
+   *  matching, ...): the call site row exists even though the edge doesn't. Returns an empty map
+   *  without touching the database when `targetFunctions` is empty. */
   getByTargetFunctions(
     projectId: number,
     targetFunctions: string[],

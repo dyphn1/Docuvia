@@ -564,10 +564,8 @@ describe("typescript fixture: call-site position (issue #11 plan A, Finding C)",
     const bareCall = response.data!.calls.find(
       (c) => c.targetFunction === "foo",
     );
-    expect(bareCall).toBeDefined();
     // `foo()` is on line 1 (0-based) -- "  foo();" -- callee starts at column 2.
-    expect(bareCall!.startLine).toBe(1);
-    expect(bareCall!.startColumn).toBe(2);
+    expect(bareCall).toMatchObject({ startLine: 1, startColumn: 2 });
   });
 
   it("seeds a member call's position on the callee (doSomething), not the receiver (service)", async () => {
@@ -581,12 +579,10 @@ describe("typescript fixture: call-site position (issue #11 plan A, Finding C)",
     const memberCall = response.data!.calls.find((c) =>
       c.targetFunction.includes("doSomething"),
     );
-    expect(memberCall).toBeDefined();
     // "  service.doSomething();" -- "service." is 8 chars, so the callee ("doSomething")
     // starts at column 10 on line 2 (0-based). The receiver ("service") starts at column 2 --
     // asserting column 10 (not 2) is the actual regression check.
-    expect(memberCall!.startLine).toBe(2);
-    expect(memberCall!.startColumn).toBe(10);
+    expect(memberCall).toMatchObject({ startLine: 2, startColumn: 10 });
   });
 });
 
@@ -648,5 +644,75 @@ describe("typescript fixture: exported consts and barrel re-exports (issue #192)
         viaReexport: true,
       },
     ]);
+  });
+});
+
+// ── Issue #192 root-cause fix: callee evidence decomposition ──────────────
+
+const CALLEE_EVIDENCE_SRC = `function main() {
+  foo();
+  service.doSomething();
+  this.refresh();
+  expect(result).toEqual(3);
+  obj[expr]();
+}
+const multi = vi
+  .fn();
+`;
+
+describe("typescript fixture: callee evidence decomposition (issue #192)", () => {
+  let calls: Array<Record<string, unknown>>;
+
+  beforeAll(async () => {
+    const response = await buildParseResponse({
+      taskId: "callee-evidence",
+      filePath: "callee-evidence.ts",
+      code: CALLEE_EVIDENCE_SRC,
+      language: "typescript",
+    });
+    calls = response.data!.calls as unknown as Array<Record<string, unknown>>;
+  });
+
+  it("classifies a bare identifier call", () => {
+    const bare = calls.find((c) => c.calleeKind === "bare");
+    expect(bare).toMatchObject({ calleeName: "foo" });
+    expect(bare!.receiverText).toBeUndefined();
+  });
+
+  it("decomposes a member call into calleeName + receiverText", () => {
+    const member = calls.find((c) => c.calleeName === "doSomething");
+    expect(member).toMatchObject({
+      receiverText: "service",
+      calleeKind: "member",
+      targetFunction: "service.doSomething",
+    });
+  });
+
+  it("classifies a this-receiver call", () => {
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        calleeName: "refresh",
+        receiverText: "this",
+        calleeKind: "this",
+      }),
+    );
+  });
+
+  it("classifies an invocation-result receiver as arg-chain (excluded from resolution denominators)", () => {
+    expect(calls).toContainEqual(
+      expect.objectContaining({
+        calleeName: "toEqual",
+        calleeKind: "arg-chain",
+      }),
+    );
+  });
+
+  it("normalizes a multi-line member chain's raw text and still decomposes the callee", () => {
+    const multi = calls.find((c) => c.calleeName === "fn");
+    expect(multi).toMatchObject({
+      targetFunction: "vi.fn",
+      receiverText: "vi",
+      calleeKind: "member",
+    });
   });
 });

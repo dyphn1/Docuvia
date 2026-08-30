@@ -278,6 +278,44 @@ export const GitConstants = {
    */
   DEFAULT_POST_COMMIT_INGESTION_GRACE_MS: 600_000,
 
+  /**
+   * `docuvia_meta` key holding a JSON `Record<filePath, CallResolutionStats>` map (issue #221) —
+   * the Tier A call-site resolution counters `GraphPersisterService.persist()` now returns,
+   * accumulated by the orchestration layer after every full/delta/init parse+persist run. Full
+   * ingestion replaces the whole map (it reparses everything); delta upserts just the re-parsed
+   * files' entries and removes deleted files' entries, so the map never accumulates rows for
+   * files that left the worktree. Read by `doctor`'s `call_graph_resolution` diagnostic.
+   */
+  META_KEY_CALL_RESOLUTION_STATS: "callResolutionStats",
+  /**
+   * Default call-graph resolution note threshold (issue #221) -- a fraction (not a percentage):
+   * `doctor`'s `call_graph_resolution` diagnostic notes when `resolved / (total -
+   * selfDiscarded)` from `META_KEY_CALL_RESOLUTION_STATS` falls below this. Informational-only
+   * for now (always PASS): member-expression call sites (`obj.method()`) are structurally
+   * unresolvable under the current same-file/import resolution model and constructor calls
+   * aren't even extracted yet (#192), so the "right" healthy baseline is unknown until both land.
+   * Placeholder value, not derived from any prior measurement -- tune once #192 fixes the
+   * extractor blind spot.
+   */
+  DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD: 0.5,
+
+  /**
+   * Minimum applicable call sites (total minus self-discarded) a file needs before its
+   * resolution rate is statistically meaningful for issue #221's consumers (`doctor`'s note
+   * and `impact`'s empty-result why-note): below this, one or two unresolved calls would flip
+   * the verdict on an otherwise-fine file. Placeholder value -- tune if real usage shows it's
+   * off.
+   */
+  DEFAULT_CALL_RESOLUTION_MIN_SAMPLE: 5,
+
+  /**
+   * Issue #221 P3: how many `l2_nodes` names `doctor`'s canary self-test samples
+   * (`IGraphNodesRepo.getCanarySample`). Large enough that a lookup/FTS regression is very
+   * likely to hit at least one sampled row, small enough to stay free even at 100k+ nodes.
+   * Placeholder value -- tune if real usage shows it's off.
+   */
+  DEFAULT_CANARY_SAMPLE_SIZE: 20,
+
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**
    * Fires the Tier B batch on push (phase1-decision-integration.md §8h, D7) — synchronous, with

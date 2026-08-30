@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.debugBinding
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.declaresLocal
 type: symbol
-name: debugBinding
+name: declaresLocal
 filePath: lib/core/src/graph/scope-resolver.ts
 ---
-# Symbol: debugBinding
+# Symbol: declaresLocal
 
 File: `lib/core/src/graph/scope-resolver.ts`

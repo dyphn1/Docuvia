@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.6.0](https://github.com/dyphn1/Docuvia/compare/v1.5.1...v1.6.0) (2026-08-30)
+
+### Features
+
+- **doctor:** surface agent-authored decisions stranded in the staging file ([#275](https://github.com/dyphn1/Docuvia/issues/275)) ([25bf06d](https://github.com/dyphn1/Docuvia/commit/25bf06d535732f2ed22175568166da181de05fa3)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134)
+
 ## [1.5.1](https://github.com/dyphn1/Docuvia/compare/v1.5.0...v1.5.1) (2026-08-30)
 
 ### Bug Fixes

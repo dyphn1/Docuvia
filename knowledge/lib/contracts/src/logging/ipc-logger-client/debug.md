@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#debug
+id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.debug
 type: symbol
 name: debug
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

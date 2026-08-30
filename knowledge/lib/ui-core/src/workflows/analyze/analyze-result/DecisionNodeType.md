@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType
+id: lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType@L1
 type: symbol
 name: DecisionNodeType
 filePath: lib/ui-core/src/workflows/analyze/analyze-result.ts

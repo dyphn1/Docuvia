@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/arg-parser.ts#hasFlag
+id: artifacts/cli/src/utils/arg-parser.ts#ArgParser.hasFlag
 type: symbol
 name: hasFlag
 filePath: artifacts/cli/src/utils/arg-parser.ts

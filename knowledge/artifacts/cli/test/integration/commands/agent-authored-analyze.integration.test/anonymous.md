@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/agent-authored-analyze.integration.test.ts#anonymous@L86
+id: artifacts/cli/test/integration/commands/agent-authored-analyze.integration.test.ts#anonymous@L40
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/agent-authored-analyze.integration.test.ts

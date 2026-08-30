@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.anonymous@L210
+id: lib/core/src/graph/persist-ast-graph.ts#__dvProbe
 type: symbol
-name: anonymous
+name: __dvProbe
 filePath: lib/core/src/graph/persist-ast-graph.ts
 ---
-# Symbol: anonymous
+# Symbol: __dvProbe
 
 File: `lib/core/src/graph/persist-ast-graph.ts`

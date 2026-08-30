@@ -2158,6 +2158,7 @@
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#LoggerParams","type":"contains"}
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#Token","type":"contains"}
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#TOKENS","type":"contains"}
+{"source":"lib/contracts/src/index.ts","target":"l2:124346","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts","type":"depends_on"}
@@ -2338,7 +2339,6 @@
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/llm-client.interfaces.ts#ILlmClient","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/llm-client.interfaces.ts#LlmClientAvailability","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/llm-client.interfaces.ts#LlmClientConfig","type":"depends_on"}
-{"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/process.interfaces.ts#INodeProcess","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/query.interfaces.ts#GraphContext","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/query.interfaces.ts#GraphEdgeRef","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/interfaces/query.interfaces.ts#IQueryService","type":"depends_on"}
@@ -5836,7 +5836,7 @@
 {"source":"lib/core/src/process/process-provider.ts","target":"lib/core/src/process/process-provider.ts#NodeProcessProvider.env","type":"contains"}
 {"source":"lib/core/src/process/process-provider.ts","target":"lib/core/src/process/process-provider.ts#NodeProcessProvider.platform","type":"contains"}
 {"source":"lib/core/src/process/process-provider.ts","target":"lib/core/src/process/process-provider.ts#NodeProcessProvider.version","type":"contains"}
-{"source":"lib/core/src/process/process-provider.ts#NodeProcessProvider","target":"lib/contracts/src/interfaces/process.interfaces.ts#INodeProcess","type":"implements"}
+{"source":"lib/core/src/process/process-provider.ts#NodeProcessProvider","target":"lib/contracts/src/index.ts","type":"implements"}
 {"source":"lib/core/src/query/query.service.ts","target":"lib/core/src/query/query.service.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/query/query.service.ts","target":"lib/core/src/query/query.service.ts#anonymous@L112","type":"contains"}
 {"source":"lib/core/src/query/query.service.ts","target":"lib/core/src/query/query.service.ts#anonymous@L116","type":"contains"}

@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.5.1](https://github.com/dyphn1/Docuvia/compare/v1.5.0...v1.5.1) (2026-08-30)
+
+### Bug Fixes
+
+- **test:** stop --testTimeout=30000 clamping the per-project budgets ([#274](https://github.com/dyphn1/Docuvia/issues/274)) ([25684c5](https://github.com/dyphn1/Docuvia/commit/25684c58b8380c102b4a3dc1d1d3ed3adacecd8b)), closes [#272](https://github.com/dyphn1/Docuvia/issues/272)
+
 # [1.5.0](https://github.com/dyphn1/Docuvia/compare/v1.4.4...v1.5.0) (2026-08-30)
 
 ### Features

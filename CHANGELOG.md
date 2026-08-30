@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.4](https://github.com/dyphn1/Docuvia/compare/v1.4.3...v1.4.4) (2026-08-30)
+
+### Bug Fixes
+
+- **test:** one constant for every real-subprocess timeout ([#272](https://github.com/dyphn1/Docuvia/issues/272)) ([1868cb0](https://github.com/dyphn1/Docuvia/commit/1868cb0bba49d204ef9a16cb54cdc1dcfeb9c4b7))
+
 ## [1.4.3](https://github.com/dyphn1/Docuvia/compare/v1.4.2...v1.4.3) (2026-08-30)
 
 ### Bug Fixes

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts#anonymous@L110
+id: lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts#anonymous@L89
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts`
+

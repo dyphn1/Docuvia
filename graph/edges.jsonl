@@ -1437,8 +1437,6 @@
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts#tableRowCounts","type":"calls"}
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts#tableRowCounts","type":"calls"}
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts#tableRowCounts","type":"contains"}
-{"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"l2:16441","type":"calls"}
-{"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"l2:16441","type":"calls"}
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"artifacts/cli/test/support/impact-corpus.ts","target":"artifacts/cli/test/support/impact-corpus.ts#CORPUS_FILES","type":"contains"}
 {"source":"artifacts/cli/test/support/impact-corpus.ts","target":"artifacts/cli/test/support/impact-corpus.ts#GOLDEN_CASES","type":"contains"}

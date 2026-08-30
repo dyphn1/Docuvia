@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.anonymous@L679
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.debugBinding
 type: symbol
-name: anonymous
+name: debugBinding
 filePath: lib/core/src/graph/scope-resolver.ts
 ---
-# Symbol: anonymous
+# Symbol: debugBinding
 
 File: `lib/core/src/graph/scope-resolver.ts`

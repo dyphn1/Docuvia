@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/analyze-result.ts
 # Symbol: DecisionNodeType
 
 File: `lib/ui-core/src/workflows/analyze/analyze-result.ts`
+s`

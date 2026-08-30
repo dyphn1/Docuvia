@@ -21,6 +21,7 @@
 import { describe, it, expect } from "vitest";
 import { ESLint } from "eslint";
 import config from "../eslint.config.mjs";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "../lib/contracts/src/testing/timeouts.js";
 
 /** Every implementation-layer package that upper layers must not import. */
 const FORBIDDEN_PACKAGES = [
@@ -225,24 +226,28 @@ describe("layer-boundary eslint config", () => {
 
   // Linting 9 source globs through the real eslint config exceeds vitest's 5s default
   // under CI CPU contention (cold cache, parallel workers) — generous budget here.
-  it("has zero layer-boundary violations across the actual repo source (regression guard)", async () => {
-    const eslint = makeEslint();
-    const results = await eslint.lintFiles([
-      "lib/ui-core/**/*.ts",
-      "artifacts/cli/src/**/*.ts",
-      "lib/core/**/*.ts",
-      "lib/ast-core/**/*.ts",
-      "lib/plugins-ast/**/*.ts",
-      "lib/schema/**/*.ts",
-      "lib/git-local/**/*.ts",
-      "lib/llm-api/**/*.ts",
-      "lib/remote-api/**/*.ts",
-    ]);
-    const violations = results.flatMap((r) =>
-      r.messages
-        .filter((m) => m.ruleId === "no-restricted-imports")
-        .map((m) => `${r.filePath}:${m.line}`),
-    );
-    expect(violations).toEqual([]);
-  }, 60_000);
+  it(
+    "has zero layer-boundary violations across the actual repo source (regression guard)",
+    async () => {
+      const eslint = makeEslint();
+      const results = await eslint.lintFiles([
+        "lib/ui-core/**/*.ts",
+        "artifacts/cli/src/**/*.ts",
+        "lib/core/**/*.ts",
+        "lib/ast-core/**/*.ts",
+        "lib/plugins-ast/**/*.ts",
+        "lib/schema/**/*.ts",
+        "lib/git-local/**/*.ts",
+        "lib/llm-api/**/*.ts",
+        "lib/remote-api/**/*.ts",
+      ]);
+      const violations = results.flatMap((r) =>
+        r.messages
+          .filter((m) => m.ruleId === "no-restricted-imports")
+          .map((m) => `${r.filePath}:${m.line}`),
+      );
+      expect(violations).toEqual([]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

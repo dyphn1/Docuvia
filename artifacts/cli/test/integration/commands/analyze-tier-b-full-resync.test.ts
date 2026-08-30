@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * End-to-end scenario for the Tier B full-resync + "not yet processed" coverage hint
@@ -48,11 +49,11 @@ describe("Command: docuvia analyze --escalate-to-lsp --full + docuvia query's Ti
 
     const initResult = await sandbox.runCli(["init"], { reject: false });
     expect(initResult.exitCode).toBe(0);
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   it("shows the unprocessed hint before any Tier B batch has succeeded, queues every tracked file on --full, then the hint disappears once every file is (simulated as) Tier B-processed", async () => {
     const dbPath = resolve(sandbox.dir, ".docuvia/local.db");

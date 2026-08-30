@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 
+import { SUBPROCESS_PROJECT_TIMEOUTS } from "@workspace/contracts/testing/timeouts";
+
 /**
  * Issue #230 follow-up — `@workspace/git-local` runs its files **one at a time**.
  *
@@ -13,5 +15,6 @@ export default defineConfig({
   test: {
     name: "@workspace/git-local",
     fileParallelism: false,
+    ...SUBPROCESS_PROJECT_TIMEOUTS,
   },
 });

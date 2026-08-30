@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const FIXTURE_FILES = {
   "package.json": JSON.stringify({ name: "fixture-project" }),
@@ -35,165 +36,181 @@ describe("analyze <targetPath> --agent-authored (issue #42): real end-to-end wri
     }
   });
 
-  it("persists a valid stdin payload with source='agent-authored' and prints the standard decisionExtraction summary", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+  it(
+    "persists a valid stdin payload with source='agent-authored' and prints the standard decisionExtraction summary",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
 
-    const payload = JSON.stringify({
-      decisions: [
-        {
-          title: "Uses named exports throughout",
-          content: "This module exports functions by name, not default.",
-          nodeType: "decision",
-          confidence: 0.9,
+      const payload = JSON.stringify({
+        decisions: [
+          {
+            title: "Uses named exports throughout",
+            content: "This module exports functions by name, not default.",
+            nodeType: "decision",
+            confidence: 0.9,
+          },
+        ],
+      });
+
+      const analyzeResult = await sandbox.runCli(
+        ["analyze", "src/index.ts", "--agent-authored"],
+        { reject: false, input: payload },
+      );
+
+      expect(analyzeResult.exitCode).toBe(0);
+      // ora's spinner.succeed() writes to stderr by default -- printFocusedResult()'s per-decision
+      // lines (ui.info/ui.log -> console.log) land on stdout.
+      expect(analyzeResult.stderr).toContain("Decision extraction complete.");
+      expect(analyzeResult.stdout).toContain(
+        "Uses named exports throughout (decision, confidence: 0.9)",
+      );
+      expect(analyzeResult.stdout).toContain("1 persisted, 0 deduplicated");
+
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const rows = queryL3Rows(dbPath);
+      expect(rows).toEqual([
+        { source: "agent-authored", title: "Uses named exports throughout" },
+      ]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "persists a valid --decisions-file payload with source='agent-authored'",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({
+        initGit: true,
+        files: {
+          ...FIXTURE_FILES,
+          "decisions.json": JSON.stringify({
+            decisions: [
+              {
+                title: "From a file, not stdin",
+                content: "content",
+                nodeType: "rule",
+                confidence: 0.5,
+              },
+            ],
+          }),
         },
-      ],
-    });
+      });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const analyzeResult = await sandbox.runCli(
-      ["analyze", "src/index.ts", "--agent-authored"],
-      { reject: false, input: payload },
-    );
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
 
-    expect(analyzeResult.exitCode).toBe(0);
-    // ora's spinner.succeed() writes to stderr by default -- printFocusedResult()'s per-decision
-    // lines (ui.info/ui.log -> console.log) land on stdout.
-    expect(analyzeResult.stderr).toContain("Decision extraction complete.");
-    expect(analyzeResult.stdout).toContain(
-      "Uses named exports throughout (decision, confidence: 0.9)",
-    );
-    expect(analyzeResult.stdout).toContain("1 persisted, 0 deduplicated");
+      const analyzeResult = await sandbox.runCli(
+        [
+          "analyze",
+          "src/index.ts",
+          "--agent-authored",
+          "--decisions-file=decisions.json",
+        ],
+        { reject: false },
+      );
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const rows = queryL3Rows(dbPath);
-    expect(rows).toEqual([
-      { source: "agent-authored", title: "Uses named exports throughout" },
-    ]);
-  }, 120000);
+      expect(analyzeResult.exitCode).toBe(0);
 
-  it("persists a valid --decisions-file payload with source='agent-authored'", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({
-      initGit: true,
-      files: {
-        ...FIXTURE_FILES,
-        "decisions.json": JSON.stringify({
-          decisions: [
-            {
-              title: "From a file, not stdin",
-              content: "content",
-              nodeType: "rule",
-              confidence: 0.5,
-            },
-          ],
-        }),
-      },
-    });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      const rows = queryL3Rows(dbPath);
+      expect(rows).toEqual([
+        { source: "agent-authored", title: "From a file, not stdin" },
+      ]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
+  it(
+    "hard-fails (non-zero exit, clear error) on an invalid nodeType instead of silently coercing it, and persists nothing",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const analyzeResult = await sandbox.runCli(
-      [
-        "analyze",
-        "src/index.ts",
-        "--agent-authored",
-        "--decisions-file=decisions.json",
-      ],
-      { reject: false },
-    );
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
 
-    expect(analyzeResult.exitCode).toBe(0);
+      const badPayload = JSON.stringify({
+        decisions: [
+          {
+            title: "Bad decision",
+            content: "content",
+            nodeType: "not-a-real-type",
+            confidence: 0.9,
+          },
+        ],
+      });
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    const rows = queryL3Rows(dbPath);
-    expect(rows).toEqual([
-      { source: "agent-authored", title: "From a file, not stdin" },
-    ]);
-  }, 120000);
+      const analyzeResult = await sandbox.runCli(
+        ["analyze", "src/index.ts", "--agent-authored"],
+        { reject: false, input: badPayload },
+      );
 
-  it("hard-fails (non-zero exit, clear error) on an invalid nodeType instead of silently coercing it, and persists nothing", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({ initGit: true, files: FIXTURE_FILES });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
+      expect(analyzeResult.exitCode).not.toBe(0);
+      expect(analyzeResult.stderr + analyzeResult.stdout).toContain(
+        "does not match the expected shape",
+      );
 
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
+      const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
+      expect(queryL3Rows(dbPath)).toEqual([]);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-    const badPayload = JSON.stringify({
-      decisions: [
-        {
-          title: "Bad decision",
-          content: "content",
-          nodeType: "not-a-real-type",
-          confidence: 0.9,
-        },
-      ],
-    });
+  it(
+    "refuses to stage on a non-source file (cannot anchor, roadmap item 37): non-zero exit, clear error, nothing staged",
+    async () => {
+      const sandbox = new TestSandbox();
+      await sandbox.setup({
+        initGit: true,
+        files: { ...FIXTURE_FILES, "README.md": "# fixture\n" },
+      });
+      tempDirs.push(sandbox.dir);
+      await sandbox.runGit(["add", "-A"]);
+      await sandbox.runGit(["commit", "-m", "initial"]);
 
-    const analyzeResult = await sandbox.runCli(
-      ["analyze", "src/index.ts", "--agent-authored"],
-      { reject: false, input: badPayload },
-    );
+      const initResult = await sandbox.runCli(["init"], { reject: false });
+      expect(initResult.exitCode).toBe(0);
 
-    expect(analyzeResult.exitCode).not.toBe(0);
-    expect(analyzeResult.stderr + analyzeResult.stdout).toContain(
-      "does not match the expected shape",
-    );
+      const payload = JSON.stringify({
+        decisions: [
+          {
+            title: "README decision",
+            content: "should never be staggable",
+            nodeType: "decision",
+            confidence: 0.9,
+          },
+        ],
+      });
 
-    const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
-    expect(queryL3Rows(dbPath)).toEqual([]);
-  }, 120000);
+      const analyzeResult = await sandbox.runCli(
+        ["analyze", "README.md", "--agent-authored", "--stage"],
+        { reject: false, input: payload },
+      );
 
-  it("refuses to stage on a non-source file (cannot anchor, roadmap item 37): non-zero exit, clear error, nothing staged", async () => {
-    const sandbox = new TestSandbox();
-    await sandbox.setup({
-      initGit: true,
-      files: { ...FIXTURE_FILES, "README.md": "# fixture\n" },
-    });
-    tempDirs.push(sandbox.dir);
-    await sandbox.runGit(["add", "-A"]);
-    await sandbox.runGit(["commit", "-m", "initial"]);
-
-    const initResult = await sandbox.runCli(["init"], { reject: false });
-    expect(initResult.exitCode).toBe(0);
-
-    const payload = JSON.stringify({
-      decisions: [
-        {
-          title: "README decision",
-          content: "should never be staggable",
-          nodeType: "decision",
-          confidence: 0.9,
-        },
-      ],
-    });
-
-    const analyzeResult = await sandbox.runCli(
-      ["analyze", "README.md", "--agent-authored", "--stage"],
-      { reject: false, input: payload },
-    );
-
-    expect(analyzeResult.exitCode).not.toBe(0);
-    expect(analyzeResult.stderr + analyzeResult.stdout).toContain(
-      "cannot anchor a decision to README.md",
-    );
-    // Nothing was staged: the refusal happens before the staging file is ever touched.
-    expect(
-      fs.existsSync(
-        path.resolve(sandbox.dir, ".docuvia/pending-l3-decisions.json"),
-      ),
-    ).toBe(false);
-  }, 120000);
+      expect(analyzeResult.exitCode).not.toBe(0);
+      expect(analyzeResult.stderr + analyzeResult.stdout).toContain(
+        "cannot anchor a decision to README.md",
+      );
+      // Nothing was staged: the refusal happens before the staging file is ever touched.
+      expect(
+        fs.existsSync(
+          path.resolve(sandbox.dir, ".docuvia/pending-l3-decisions.json"),
+        ),
+      ).toBe(false);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

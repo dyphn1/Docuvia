@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { checkTypeScriptLspPreflight } from "./typescript-lsp-preflight.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * `checkTypeScriptLspPreflight()`'s `npx --no-install typescript-language-server --version` probe
@@ -55,44 +56,60 @@ describe("checkTypeScriptLspPreflight()", () => {
     await rmSyncRetrying(workspaceRoot);
   });
 
-  it("reports not ready with a reason when node_modules is missing", async () => {
-    const result = await checkTypeScriptLspPreflight(workspaceRoot);
+  it(
+    "reports not ready with a reason when node_modules is missing",
+    async () => {
+      const result = await checkTypeScriptLspPreflight(workspaceRoot);
 
-    expect(result.nodeModulesPresent).toBe(false);
-    expect(result.ready).toBe(false);
-    expect(result.reason!.length).toBeGreaterThanOrEqual(1);
-  }, 15000);
+      expect(result.nodeModulesPresent).toBe(false);
+      expect(result.ready).toBe(false);
+      expect(result.reason!.length).toBeGreaterThanOrEqual(1);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("reports not ready when node_modules exists but no tsconfig/jsconfig does", async () => {
-    fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
+  it(
+    "reports not ready when node_modules exists but no tsconfig/jsconfig does",
+    async () => {
+      fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
 
-    const result = await checkTypeScriptLspPreflight(workspaceRoot);
+      const result = await checkTypeScriptLspPreflight(workspaceRoot);
 
-    expect(result.nodeModulesPresent).toBe(true);
-    expect(result.tsconfigResolvable).toBe(false);
-    expect(result.ready).toBe(false);
-  }, 15000);
+      expect(result.nodeModulesPresent).toBe(true);
+      expect(result.tsconfigResolvable).toBe(false);
+      expect(result.ready).toBe(false);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("is ready when an explicit binary override always resolves, regardless of npx", async () => {
-    fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
-    fs.writeFileSync(path.join(workspaceRoot, "tsconfig.json"), "{}");
+  it(
+    "is ready when an explicit binary override always resolves, regardless of npx",
+    async () => {
+      fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
+      fs.writeFileSync(path.join(workspaceRoot, "tsconfig.json"), "{}");
 
-    const result = await checkTypeScriptLspPreflight(workspaceRoot, {
-      binary: "/fake/but/overridden",
-    });
+      const result = await checkTypeScriptLspPreflight(workspaceRoot, {
+        binary: "/fake/but/overridden",
+      });
 
-    expect(result.lspBinaryResolvable).toBe(true);
-    expect(result.ready).toBe(true);
-  }, 15000);
+      expect(result.lspBinaryResolvable).toBe(true);
+      expect(result.ready).toBe(true);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("reports the LSP binary as unresolvable when neither a local copy nor npx can find it", async () => {
-    fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
-    fs.writeFileSync(path.join(workspaceRoot, "tsconfig.json"), "{}");
+  it(
+    "reports the LSP binary as unresolvable when neither a local copy nor npx can find it",
+    async () => {
+      fs.mkdirSync(path.join(workspaceRoot, "node_modules"));
+      fs.writeFileSync(path.join(workspaceRoot, "tsconfig.json"), "{}");
 
-    const result = await checkTypeScriptLspPreflight(workspaceRoot);
+      const result = await checkTypeScriptLspPreflight(workspaceRoot);
 
-    expect(result.lspBinaryResolvable).toBe(false);
-    expect(result.ready).toBe(false);
-    expect(result.reason).toMatch(/not resolvable/);
-  }, 15000);
+      expect(result.lspBinaryResolvable).toBe(false);
+      expect(result.ready).toBe(false);
+      expect(result.reason).toMatch(/not resolvable/);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

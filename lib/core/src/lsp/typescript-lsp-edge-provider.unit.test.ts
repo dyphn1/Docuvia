@@ -9,6 +9,7 @@ import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import { TS_LSP_MESSAGES } from "./typescript-lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 type RequestHandler = (method: string, params: any) => unknown;
 
@@ -1389,18 +1390,22 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
 });
 
 describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
-  it("reports unavailable with a reason when node_modules is missing", async () => {
-    const dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-lsp-avail-test-"),
-    );
-    try {
-      const provider = new TypescriptLspEdgeProvider(createMockLogger());
-      const availability = await provider.checkAvailability(dir);
+  it(
+    "reports unavailable with a reason when node_modules is missing",
+    async () => {
+      const dir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-lsp-avail-test-"),
+      );
+      try {
+        const provider = new TypescriptLspEdgeProvider(createMockLogger());
+        const availability = await provider.checkAvailability(dir);
 
-      expect(availability.available).toBe(false);
-      expect(availability.reason!.length).toBeGreaterThanOrEqual(1);
-    } finally {
-      await rmSyncRetrying(dir);
-    }
-  }, 30_000);
+        expect(availability.available).toBe(false);
+        expect(availability.reason!.length).toBeGreaterThanOrEqual(1);
+      } finally {
+        await rmSyncRetrying(dir);
+      }
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

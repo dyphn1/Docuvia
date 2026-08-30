@@ -18,6 +18,7 @@ import {
   retryTransientFsRace,
   type TempGitRepo,
 } from "./git-local-fixtures.test-support.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 describe("GitLocalProvider (integration, real git shell-outs)", () => {
   let repo: TempGitRepo;
@@ -28,7 +29,7 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     repo = await createTempGitRepo("docuvia-git-local-test-");
     tmpDir = repo.dir;
     provider = repo.provider;
-  }, 60_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     // A timed-out runFastImport's killed fast-import child can still hold .git handles for a
@@ -85,52 +86,60 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     ).rejects.toThrow();
   });
 
-  it("hooksDirExists / readHookFile / appendHookFile / makeHookExecutable install a working hook", async () => {
-    // Every step here shells out (resolveHooksDir) or touches the freshly-written hook file --
-    // both are exactly what windows CI trips on under load (issue #188), so route through the
-    // shared transient-fs-race retry instead of failing intermittently.
-    await retryTransientFsRace(async () => {
-      expect(await provider.hooksDirExists(tmpDir)).toBe(true);
-      expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toBeUndefined();
+  it(
+    "hooksDirExists / readHookFile / appendHookFile / makeHookExecutable install a working hook",
+    async () => {
+      // Every step here shells out (resolveHooksDir) or touches the freshly-written hook file --
+      // both are exactly what windows CI trips on under load (issue #188), so route through the
+      // shared transient-fs-race retry instead of failing intermittently.
+      await retryTransientFsRace(async () => {
+        expect(await provider.hooksDirExists(tmpDir)).toBe(true);
+        expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toBeUndefined();
 
-      await provider.appendHookFile(
-        tmpDir,
-        HOOK_NAME,
-        `#!/bin/bash\n# ${HOOK_MARKER}\n`,
-      );
-      // Must not throw — the POSIX executable bit itself isn't portably assertable here
-      // (chmod is a no-op on Windows filesystems).
-      await provider.makeHookExecutable(tmpDir, HOOK_NAME);
+        await provider.appendHookFile(
+          tmpDir,
+          HOOK_NAME,
+          `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+        );
+        // Must not throw — the POSIX executable bit itself isn't portably assertable here
+        // (chmod is a no-op on Windows filesystems).
+        await provider.makeHookExecutable(tmpDir, HOOK_NAME);
 
-      const content = await provider.readHookFile(tmpDir, HOOK_NAME);
-      expect(content).toContain(HOOK_MARKER);
-    });
-  }, 60_000);
+        const content = await provider.readHookFile(tmpDir, HOOK_NAME);
+        expect(content).toContain(HOOK_MARKER);
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
-  it("writeHookFile wholesale-overwrites the hook file's content (unlike appendHookFile)", async () => {
-    await retryTransientFsRace(async () => {
-      await provider.appendHookFile(
-        tmpDir,
-        HOOK_NAME,
-        `#!/bin/bash\n# ${HOOK_MARKER}\n`,
-      );
-      expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toContain(
-        HOOK_MARKER,
-      );
-    });
+  it(
+    "writeHookFile wholesale-overwrites the hook file's content (unlike appendHookFile)",
+    async () => {
+      await retryTransientFsRace(async () => {
+        await provider.appendHookFile(
+          tmpDir,
+          HOOK_NAME,
+          `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+        );
+        expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toContain(
+          HOOK_MARKER,
+        );
+      });
 
-    await retryTransientFsRace(async () => {
-      await provider.writeHookFile(
-        tmpDir,
-        HOOK_NAME,
-        "#!/bin/bash\n# docuvia analyze\n",
-      );
+      await retryTransientFsRace(async () => {
+        await provider.writeHookFile(
+          tmpDir,
+          HOOK_NAME,
+          "#!/bin/bash\n# docuvia analyze\n",
+        );
 
-      const content = await provider.readHookFile(tmpDir, HOOK_NAME);
-      expect(content).toBe("#!/bin/bash\n# docuvia analyze\n");
-      expect(content).not.toContain(HOOK_MARKER);
-    });
-  }, 60_000);
+        const content = await provider.readHookFile(tmpDir, HOOK_NAME);
+        expect(content).toBe("#!/bin/bash\n# docuvia analyze\n");
+        expect(content).not.toContain(HOOK_MARKER);
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it("resolveHooksDir/appendHookFile honor a plain custom core.hooksPath (not the default .git/hooks)", async () => {
     fs.mkdirSync(path.join(tmpDir, "customhooks"), { recursive: true });
@@ -681,7 +690,7 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
     await git(remoteDir, ["commit", "-m", "init"]);
 
     await git(tmpDir, ["remote", "add", "origin", remoteDir]);
-  }, 60_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await removeTempDir(tmpDir);
@@ -994,7 +1003,7 @@ describe("GitLocalProvider — git worktree support (roadmap item #10)", () => {
         worktreeDir,
       ]);
     });
-  }, 60_000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await git(mainDir, ["worktree", "remove", "--force", worktreeDir]).catch(
@@ -1009,26 +1018,30 @@ describe("GitLocalProvider — git worktree support (roadmap item #10)", () => {
     expect(fs.statSync(gitPath).isFile()).toBe(true);
   });
 
-  it("hooksDirExists / appendHookFile / readHookFile resolve through the main repo's common .git/hooks instead of failing on the worktree's .git file", async () => {
-    // Same windows AV/spawn race as the plain-repo hook test (issue #188).
-    await retryTransientFsRace(async () => {
-      expect(await provider.hooksDirExists(worktreeDir)).toBe(true);
+  it(
+    "hooksDirExists / appendHookFile / readHookFile resolve through the main repo's common .git/hooks instead of failing on the worktree's .git file",
+    async () => {
+      // Same windows AV/spawn race as the plain-repo hook test (issue #188).
+      await retryTransientFsRace(async () => {
+        expect(await provider.hooksDirExists(worktreeDir)).toBe(true);
 
-      await provider.appendHookFile(
-        worktreeDir,
-        HOOK_NAME,
-        `#!/bin/bash\n# ${HOOK_MARKER}\n`,
-      );
-      expect(await provider.readHookFile(worktreeDir, HOOK_NAME)).toContain(
-        HOOK_MARKER,
-      );
-    });
+        await provider.appendHookFile(
+          worktreeDir,
+          HOOK_NAME,
+          `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+        );
+        expect(await provider.readHookFile(worktreeDir, HOOK_NAME)).toContain(
+          HOOK_MARKER,
+        );
+      });
 
-    // Hooks are shared across all worktrees — the file must land under the MAIN repo's real .git/hooks.
-    const mainHookPath = path.join(mainDir, ".git", "hooks", HOOK_NAME);
-    expect(fs.existsSync(mainHookPath)).toBe(true);
-    expect(fs.readFileSync(mainHookPath, "utf8")).toContain(HOOK_MARKER);
-  }, 60_000);
+      // Hooks are shared across all worktrees — the file must land under the MAIN repo's real .git/hooks.
+      const mainHookPath = path.join(mainDir, ".git", "hooks", HOOK_NAME);
+      expect(fs.existsSync(mainHookPath)).toBe(true);
+      expect(fs.readFileSync(mainHookPath, "utf8")).toContain(HOOK_MARKER);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it("acquireKnowledgeLock / releaseKnowledgeLock work from inside a linked worktree instead of throwing ENOENT", async () => {
     await expect(

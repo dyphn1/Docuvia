@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import { writeFile } from "fs/promises";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 const BATCH_RUNS = 3;
 const ANALYZE_RUNS = 2;
@@ -60,11 +61,11 @@ describe("Command: docuvia analyze --escalate-to-lsp (batch) concurrent with ana
     } finally {
       db.close();
     }
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   it(`resolves ${BATCH_RUNS} concurrent Tier B batch runs, ${ANALYZE_RUNS} concurrent delta analyze runs, and ${SNAPSHOT_RUNS} concurrent snapshot runs without corrupting local.db or the knowledge branch, all with sane exit codes`, async () => {
     const runs = [

@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
 /**
  * Closes the real-filesystem half of docs/cli-test-analysis/analyze.md claim 5, retargeted for
@@ -29,11 +30,11 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
         }),
       },
     });
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
     await sandbox.teardown();
-  }, 30000);
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   it("runs the real discovery/config-scan/persist pipeline end-to-end and prints the fused projectType/tags", async () => {
     const result = await sandbox.runCli(["analyze"]);

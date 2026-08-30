@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.4.3](https://github.com/dyphn1/Docuvia/compare/v1.4.2...v1.4.3) (2026-08-30)
+
+### Bug Fixes
+
+- **#230:** honest call-resolution metric + barrel-receiver method resolution ([#245](https://github.com/dyphn1/Docuvia/issues/245)) ([e30746b](https://github.com/dyphn1/Docuvia/commit/e30746b6aac09644987e69bdc24cdfb95b91c582)), closes [#230](https://github.com/dyphn1/Docuvia/issues/230)
+
 ## [1.4.2](https://github.com/dyphn1/Docuvia/compare/v1.4.1...v1.4.2) (2026-08-29)
 
 ### Bug Fixes

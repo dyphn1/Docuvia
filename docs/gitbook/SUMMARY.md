@@ -38,6 +38,7 @@
   - [uninstall](user-guide/cli/uninstall.md)
   - [doctor](user-guide/cli/doctor.md)
   - [hooks](user-guide/cli/hooks.md)
+- [Comment-Triggered Analysis](user-guide/comment-trigger.md)
 
 ## 📋 Architecture Decision Records
 

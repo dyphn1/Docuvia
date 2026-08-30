@@ -202,6 +202,10 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipDb, () =>
         this.runL2SemanticCoverageDiagnostic(diagnostics, llmBaseUrl),
       ),
+      // Issue #134/#42: agent-authored decisions stranded in the staging file. Reads one JSON
+      // file -- no db, no git, no LLM -- so it is gated on nothing and still reports when the
+      // graph is unopenable, which is exactly when a stranded write matters most.
+      await this.runStagedL3Diagnostic(diagnostics),
       // Issue #137: per-worktree knowledge-graph fragmentation -- git-only, gated on skipGit.
       await this.runOrSkip(skipGit, () =>
         this.runWorktreeDivergenceDiagnostic(diagnostics),
@@ -1110,6 +1114,68 @@ export class DoctorWorkflow {
     } finally {
       await store?.close();
     }
+  }
+
+  /**
+   * Issue #134/#42: agent-authored decisions stranded in `.docuvia/pending-l3-decisions.json`.
+   *
+   * `--stage` defers a deterministic write until a later commit whose diff contains that exact
+   * file (`run-flush-staged-l3.ts`'s `changedFiles.has(entry.filePath)` gate), so a decision about
+   * a file nobody touches again waits forever. Nothing reported that before this check: a flush
+   * matching nothing logs `flushed: 0`, which is not an error and which no diagnostic read.
+   *
+   * FAILs on the oldest entry's age rather than on the count -- a fresh staged entry is in flight,
+   * an old one is stranded, and the distinction is the whole point.
+   */
+  private async runStagedL3Diagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    let pending: { filePath: string; stagedAt: string }[];
+    try {
+      pending = await readPendingDecisions(this.workspaceRoot, this.logger);
+    } catch {
+      // Unreadable/corrupt staging file -- `analyze --flush-staged-l3` owns that error path; a
+      // diagnostic must never crash the whole doctor run over it.
+      return true;
+    }
+
+    const now = Date.now();
+    const stranded = pending.filter((entry) => {
+      const stagedAt = Date.parse(entry.stagedAt);
+      // A malformed/absent timestamp can't be aged, so it is never counted as stranded --
+      // reporting an unknown age as "waited 0 days" would be a fabricated number.
+      return (
+        Number.isFinite(stagedAt) &&
+        now - stagedAt >= GitConstants.DEFAULT_STAGED_L3_STRANDED_AFTER_MS
+      );
+    });
+
+    if (stranded.length === 0) {
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.STAGED_L3_DECISIONS] = {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.STAGED_L3_OK(pending.length),
+      };
+      return true;
+    }
+
+    const oldest = stranded.reduce((a, b) =>
+      Date.parse(a.stagedAt) <= Date.parse(b.stagedAt) ? a : b,
+    );
+    const ageDays = Math.floor(
+      (now - Date.parse(oldest.stagedAt)) /
+        GitConstants.DEFAULT_STAGED_L3_STRANDED_AFTER_MS,
+    );
+
+    diagnostics[DOCTOR_DIAGNOSTIC_KEYS.STAGED_L3_DECISIONS] = {
+      status: DiagnosticStatus.FAIL,
+      message: DOCTOR_MESSAGES.STAGED_L3_STRANDED(
+        stranded.length,
+        ageDays,
+        oldest.filePath,
+      ),
+      suggestion: DOCTOR_MESSAGES.STAGED_L3_STRANDED_SUGGESTION,
+    };
+    return false;
   }
 
   /** The last completed Tier C drain's outcome, parsed from `.docuvia/logs/analyze.log`: the most

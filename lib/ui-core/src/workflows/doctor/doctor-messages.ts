@@ -38,6 +38,11 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
    *  -- non-empty queue + a last drain that processed nothing = the bridge path analyze dials is
    *  dead, even when the bare-baseUrl GET succeeds. */
   TIER_C_QUEUE: "tier_c_queue",
+  /** Issue #134/#42: agent-authored decisions stranded in `.docuvia/pending-l3-decisions.json`.
+   *  `tier_c_queue` watches the LLM queue; this watches the *deterministic* write path, whose
+   *  failure mode is the opposite kind of silent -- not "the bridge is down" but "the flush
+   *  condition never became true and nothing said so". */
+  STAGED_L3_DECISIONS: "staged_l3_decisions",
   /** Issue #135: L2 semantic coverage -- % of `l2_nodes` rows carrying a non-empty `description`.
    *  Tier C (the LLM enrichment pass) is the writer; 0/6285 is the "structurally correct but
    *  semantically empty" state issue #135 documents, which `graph_empty` (count-only) can't see. */
@@ -218,6 +223,23 @@ export const DOCTOR_MESSAGES = {
     `Tier C queue has ${queued} pending item(s) but no drain has ever completed -- either never enqueued-to-drained or permanently stuck from the start.`,
   TIER_C_QUEUE_NEVER_DRAINED_SUGGESTION:
     "Run `docuvia analyze --escalate-to-lsp` once so the drain path actually executes, and check `.docuvia/logs/analyze.log` for tierC events",
+
+  /** Issue #134/#42: agent-authored decisions stranded in the `--stage` staging file.
+   *
+   *  `--stage` defers a write until a later commit whose diff contains that exact file, so a
+   *  decision about a file nobody touches again waits forever. Nothing reported that: a flush
+   *  that matches nothing logs `flushed: 0`, which is not an error. Two real decisions sat
+   *  staged for 5 days across twelve flushes while the graph held one agent-authored row.
+   *  Staging is meant to last until the *next* commit, so outliving the threshold means
+   *  stranded, not "in flight". */
+  STAGED_L3_OK: (pending: number) =>
+    pending === 0
+      ? "No agent-authored decisions waiting in the staging file."
+      : `${pending} staged agent-authored decision(s) waiting, none older than the staging window.`,
+  STAGED_L3_STRANDED: (stranded: number, ageDays: number, oldestFile: string) =>
+    `${stranded} agent-authored decision(s) stranded in the staging file -- the oldest has waited ${ageDays} day(s), anchored to \`${oldestFile}\`. \`--stage\` only flushes when a later commit's diff contains that exact file, so these will never land on their own.`,
+  STAGED_L3_STRANDED_SUGGESTION:
+    "Write them directly with `docuvia analyze <file> --agent-authored` (the default path -- it lands in one pass, no LLM call, no scheduling), then clear `.docuvia/pending-l3-decisions.json`",
 
   /** Issue #135: L2 semantic coverage (see `L2_SEMANTIC_COVERAGE`'s key doc comment). */
   L2_SEMANTIC_COVERAGE_OK: (described: number, total: number) =>

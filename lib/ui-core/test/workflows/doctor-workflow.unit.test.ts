@@ -40,7 +40,7 @@ describe("DoctorWorkflow", () => {
     docuviaFactory.reset();
   });
 
-  it("skips all skippable checks when options are passed -- the LLM reachability and agent-hooks checks have no bearing on skipDb/skipGit/skipLogs and always evaluate", async () => {
+  it("skips all skippable checks when options are passed -- the LLM reachability, agent-hooks and staged-L3 checks have no bearing on skipDb/skipGit/skipLogs and always evaluate", async () => {
     vi.mocked(fs.stat).mockRejectedValue(new Error("ENOENT"));
 
     const wf = new DoctorWorkflow("/test", logger);
@@ -63,6 +63,12 @@ describe("DoctorWorkflow", () => {
       agent_hooks_cursor: {
         status: DiagnosticStatus.PASS,
         message: "Cursor hooks not found (run `docuvia init` to install).",
+      },
+      // Reads one JSON file -- no db, no git, no logs -- so none of the three skip flags apply
+      // to it (issue #134/#42). Absent staging file reads as nothing staged.
+      staged_l3_decisions: {
+        status: DiagnosticStatus.PASS,
+        message: "No agent-authored decisions waiting in the staging file.",
       },
     });
   });
@@ -2698,6 +2704,160 @@ describe("DoctorWorkflow", () => {
 
       expect(result.diagnostics).not.toHaveProperty("agent_authored_adoption");
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+  /** Issue #134/#42: `staged_l3_decisions` -- agent-authored decisions stranded in
+   *  `.docuvia/pending-l3-decisions.json`. `--stage` only flushes when a later commit's diff
+   *  contains that exact file, so an entry anchored to a file nobody touches again waits forever
+   *  while every flush logs a perfectly innocent `flushed: 0`. */
+  describe("staged_l3_decisions", () => {
+    const DAY_MS = GitConstants.DEFAULT_STAGED_L3_STRANDED_AFTER_MS;
+
+    function stagedAgo(ms: number): string {
+      return new Date(Date.now() - ms).toISOString();
+    }
+
+    /** Routes only pending-l3-decisions.json; everything else is absent. */
+    function mockStagingFile(decisions: unknown[]) {
+      vi.mocked(fs.readFile).mockImplementation((p) => {
+        if (String(p).includes("pending-l3-decisions.json")) {
+          return Promise.resolve(JSON.stringify({ decisions }));
+        }
+        return Promise.reject(new Error("ENOENT"));
+      });
+    }
+
+    it("FAILs naming how many are stranded, the oldest entry's age in days, and the file it is anchored to", async () => {
+      mockStagingFile([
+        {
+          filePath: "lib/ast-core/src/language-provider.ts",
+          title: "t1",
+          content: "c1",
+          nodeType: "rule",
+          confidence: 0.9,
+          stagedAt: stagedAgo(5 * DAY_MS),
+        },
+        {
+          filePath: "eslint.config.mjs",
+          title: "t2",
+          content: "c2",
+          nodeType: "decision",
+          confidence: 0.9,
+          stagedAt: stagedAgo(2 * DAY_MS),
+        },
+      ]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      const check = result.diagnostics["staged_l3_decisions"];
+      expect(check.status).toBe(DiagnosticStatus.FAIL);
+      // Both are past the window, and the *oldest* is the one reported -- 5 days, not 2.
+      expect(check.message).toContain("2 agent-authored decision(s) stranded");
+      expect(check.message).toContain("5 day(s)");
+      expect(check.message).toContain("lib/ast-core/src/language-provider.ts");
+      expect(check.message).not.toContain("eslint.config.mjs");
+      expect(check.suggestion).toContain("--agent-authored");
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("PASSes an entry staged moments ago -- in flight is not stranded", async () => {
+      mockStagingFile([
+        {
+          filePath: "lib/core/src/x.ts",
+          title: "t",
+          content: "c",
+          nodeType: "rule",
+          confidence: 0.9,
+          stagedAt: stagedAgo(60_000),
+        },
+      ]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      const check = result.diagnostics["staged_l3_decisions"];
+      expect(check.status).toBe(DiagnosticStatus.PASS);
+      expect(check.message).toContain(
+        "1 staged agent-authored decision(s) waiting",
+      );
+    });
+
+    it("PASSes with the empty-staging wording when nothing is staged at all", async () => {
+      mockStagingFile([]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      const check = result.diagnostics["staged_l3_decisions"];
+      expect(check.status).toBe(DiagnosticStatus.PASS);
+      expect(check.message).toBe(
+        "No agent-authored decisions waiting in the staging file.",
+      );
+    });
+
+    it("never reports an unparseable stagedAt as stranded -- an unknown age must not be rendered as a fabricated day count", async () => {
+      mockStagingFile([
+        {
+          filePath: "lib/core/src/y.ts",
+          title: "t",
+          content: "c",
+          nodeType: "rule",
+          confidence: 0.9,
+          stagedAt: "not-a-timestamp",
+        },
+      ]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      const check = result.diagnostics["staged_l3_decisions"];
+      expect(check.status).toBe(DiagnosticStatus.PASS);
+      expect(check.message).not.toContain("NaN");
+      expect(check.message).not.toContain("day(s)");
+    });
+
+    it("still reports when the database is unopenable -- a stranded write matters most exactly then", async () => {
+      mockStagingFile([
+        {
+          filePath: "lib/core/src/z.ts",
+          title: "t",
+          content: "c",
+          nodeType: "rule",
+          confidence: 0.9,
+          stagedAt: stagedAgo(3 * DAY_MS),
+        },
+      ]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["staged_l3_decisions"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["staged_l3_decisions"].message).toContain(
+        "3 day(s)",
+      );
     });
   });
 });

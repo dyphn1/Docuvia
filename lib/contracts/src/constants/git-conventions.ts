@@ -245,6 +245,19 @@ export const GitConstants = {
   DEFAULT_L2_SEMANTIC_COVERAGE_FAIL_THRESHOLD: 0.1,
 
   /**
+   * How long an entry may sit in `.docuvia/pending-l3-decisions.json` before `doctor`'s
+   * `staged_l3_decisions` check calls it stranded (issue #134/#42).
+   *
+   * `--stage`'s contract is "flushes at the next commit whose diff contains this file". A day is
+   * therefore already well past that contract on any active repo, while still tolerating a
+   * stage-tonight/commit-tomorrow flow -- it is a "this condition is never going to become true"
+   * line, not a latency budget. Deliberately not zero: an entry staged minutes ago is in flight,
+   * not stranded. Measured motivation: two entries sat for 5 days across twelve flushes, each
+   * logging `flushed: 0`, which is not an error and which nothing surfaced.
+   */
+  DEFAULT_STAGED_L3_STRANDED_AFTER_MS: 24 * 60 * 60 * 1000,
+
+  /**
    * `docuvia_meta` key holding the count of *consecutive* Tier B batches that drained an
    * attemptable set and produced zero progress (0 files processed AND 0 edges applied) -- the
    * zero-progress watchdog's cross-batch accumulator (2026-08 moby benchmark follow-up, issue #22

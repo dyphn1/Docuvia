@@ -7699,4 +7699,6 @@
 {"id":"test/layer-boundary.test.ts#makeEslint","type":"symbol","name":"makeEslint","filePath":"test/layer-boundary.test.ts"}
 {"id":"test/vitest.config.ts","type":"file","name":"test/vitest.config.ts","filePath":"test/vitest.config.ts"}
 {"id":"vitest.config.ts","type":"file","name":"vitest.config.ts","filePath":"vitest.config.ts"}
+{"id":"vitest.timeouts.ts","type":"file","name":"vitest.timeouts.ts","filePath":"vitest.timeouts.ts"}
+{"id":"vitest.timeouts.ts#SUBPROCESS_PROJECT_TIMEOUTS","type":"symbol","name":"SUBPROCESS_PROJECT_TIMEOUTS","filePath":"vitest.timeouts.ts"}
 {"id":"vitest.workspace.ts","type":"file","name":"vitest.workspace.ts","filePath":"vitest.workspace.ts"}

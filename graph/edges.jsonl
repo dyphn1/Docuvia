@@ -13483,3 +13483,4 @@
 {"source":"test/layer-boundary.test.ts","target":"test/layer-boundary.test.ts#makeEslint","type":"calls"}
 {"source":"test/layer-boundary.test.ts","target":"test/layer-boundary.test.ts#makeEslint","type":"contains"}
 {"source":"test/layer-boundary.test.ts#layerViolations","target":"test/layer-boundary.test.ts#makeEslint","type":"calls"}
+{"source":"vitest.timeouts.ts","target":"vitest.timeouts.ts#SUBPROCESS_PROJECT_TIMEOUTS","type":"contains"}

@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts`
+

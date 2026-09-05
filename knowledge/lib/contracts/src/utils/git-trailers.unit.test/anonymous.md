@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/utils/git-trailers.unit.test.ts#anonymous@L26
+id: lib/contracts/src/utils/git-trailers.unit.test.ts#anonymous@L17
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/utils/git-trailers.unit.test.ts

@@ -7,4 +7,3 @@ filePath: lib/core/src/utils/language-detection.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/utils/language-detection.unit.test.ts`
-ts`

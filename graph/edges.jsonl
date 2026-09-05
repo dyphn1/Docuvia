@@ -2663,8 +2663,6 @@
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#LoggerParams","type":"contains"}
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#Token","type":"contains"}
 {"source":"lib/contracts/src/factory/tokens.ts","target":"lib/contracts/src/factory/tokens.ts#TOKENS","type":"contains"}
-{"source":"lib/contracts/src/index.ts","target":"l2:30824","type":"depends_on"}
-{"source":"lib/contracts/src/index.ts","target":"l2:30825","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts#ConfigDetectionTags","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts#ConfigTags","type":"depends_on"}
 {"source":"lib/contracts/src/index.ts","target":"lib/contracts/src/constants/discovery-tags.ts#GENERAL_TAG","type":"depends_on"}

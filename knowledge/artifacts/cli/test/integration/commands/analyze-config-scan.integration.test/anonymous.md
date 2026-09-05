@@ -1,0 +1,9 @@
+---
+id: artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts#anonymous@L74
+type: symbol
+name: anonymous
+filePath: artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts
+---
+# Symbol: anonymous
+
+File: `artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts`

@@ -1861,6 +1861,132 @@ describe("GraphStore.open DB classification", () => {
   });
 });
 
+describe("node link endpoint round-trip (issue #232)", () => {
+  let tempDir: string;
+  let dbPath: string;
+  let store: GraphStore;
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-link-check-"));
+    dbPath = path.join(tempDir, ".docuvia", "local.db");
+    store = await GraphStore.open({ dbPath });
+  });
+
+  afterEach(async () => {
+    await store.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("inserted link endpoints resolve back to the exact source/target nodes", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const callerId = store.graph.insertNode({
+      projectId: project.id,
+      name: "caller",
+      type: "function",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts#caller",
+    });
+    const calleeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "callee",
+      type: "function",
+      pathPatterns: ["src/b.ts"],
+      nodeKey: "src/b.ts#callee",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
+
+    const links = store.graph.getAllLinks();
+    expect(links).toHaveLength(1);
+    const sourceId = store.graph.findNodeIdByNodeKey("src/a.ts#caller");
+    const targetId = store.graph.findNodeIdByNodeKey("src/b.ts#callee");
+    expect(sourceId).toBe(callerId);
+    expect(targetId).toBe(calleeId);
+    expect(links[0].source_node_id).toBe(callerId);
+    expect(links[0].target_node_id).toBe(calleeId);
+  });
+
+  it("node_key is unique per project (duplicate insert fails on the UNIQUE constraint)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "dup",
+      type: "function",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts#dup",
+    });
+    expect(() =>
+      store.graph.insertNode({
+        projectId: project.id,
+        name: "dup",
+        type: "function",
+        pathPatterns: ["src/a.ts"],
+        nodeKey: "src/a.ts#dup",
+      }),
+    ).toThrow(/UNIQUE constraint failed/i);
+  });
+
+  it("node_key uniqueness is scoped to (project_id, node_key) — same key in another project is allowed", () => {
+    const projectA = store.projects.insert({
+      name: "demo-a",
+      repoUrl: "file:///demo-a",
+    });
+    const projectB = store.projects.insert({
+      name: "demo-b",
+      repoUrl: "file:///demo-b",
+    });
+    store.graph.insertNode({
+      projectId: projectA.id,
+      name: "shared",
+      type: "function",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts#shared",
+    });
+    expect(() =>
+      store.graph.insertNode({
+        projectId: projectB.id,
+        name: "shared",
+        type: "function",
+        pathPatterns: ["src/a.ts"],
+        nodeKey: "src/a.ts#shared",
+      }),
+    ).not.toThrow();
+  });
+
+  it("documents that node_links has no FK guard — dangling endpoints persist until pruneOrphanedLinks hygiene", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "lonely",
+      type: "function",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts#lonely",
+    });
+    // No FK on node_links (0001_init.sql): the insert succeeds; cleanup is the
+    // application layer's job (see pruneOrphanedLinks test below).
+    store.graph.insertLink({
+      sourceNodeId: nodeId,
+      targetNodeId: 999_999,
+      linkType: "calls",
+    });
+    expect(store.graph.getAllLinks()).toHaveLength(1);
+    expect(store.graph.pruneOrphanedLinks()).toBe(1);
+    expect(store.graph.getAllLinks()).toHaveLength(0);
+  });
+});
+
 describe("callSites repo: callee evidence columns (issue #192, migration 0012)", () => {
   let tempDir: string;
   let dbPath: string;

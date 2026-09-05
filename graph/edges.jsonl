@@ -8367,7 +8367,6 @@
 {"source":"lib/ui-core/src/docuvia-api.ts#listHooks","target":"lib/ui-core/src/workflows/hooks/hooks-workflow.ts#listHooks","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#query","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#query","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
-{"source":"lib/ui-core/src/docuvia-api.ts#removeDocuviaDir","target":"l2:30132","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#removeDocuviaDir","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#review","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#setHookEnabled","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
@@ -11921,8 +11920,6 @@
 {"source":"lib/ui-core/src/workflows/sync/sync-messages.ts","target":"lib/ui-core/src/workflows/sync/sync-messages.ts#SYNC_MESSAGES","type":"contains"}
 {"source":"lib/ui-core/src/workflows/sync/sync-messages.ts","target":"lib/ui-core/src/workflows/sync/sync-messages.ts#SYNCED","type":"contains"}
 {"source":"lib/ui-core/src/workflows/sync/sync-result.ts","target":"lib/ui-core/src/workflows/sync/sync-result.ts#SyncResult","type":"contains"}
-{"source":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","target":"l2:33690","type":"calls"}
-{"source":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","target":"l2:33690","type":"calls"}
 {"source":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L15","type":"contains"}
 {"source":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L18","type":"contains"}
@@ -12041,8 +12038,6 @@
 {"source":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#withWriteLock","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","target":"lib/ui-core/src/utils/is-path-within-workspace.ts#isPathWithinWorkspace","type":"calls"}
-{"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"l2:30132","type":"calls"}
-{"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"l2:30132","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous","type":"contains"}

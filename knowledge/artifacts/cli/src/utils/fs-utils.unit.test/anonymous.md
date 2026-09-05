@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/fs-utils.unit.test.ts#anonymous@L35
+id: artifacts/cli/src/utils/fs-utils.unit.test.ts#anonymous@L71
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/utils/fs-utils.unit.test.ts

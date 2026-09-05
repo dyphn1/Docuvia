@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/compression.unit.test.ts#anonymous@L4
+id: lib/ast-core/test/compression.unit.test.ts#anonymous@L27
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/compression.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/ast-core/test/compression.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/test/compression.unit.test.ts`
-

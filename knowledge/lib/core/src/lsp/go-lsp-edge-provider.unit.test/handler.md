@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts#handler@L255
+id: lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts#handler@L196
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts

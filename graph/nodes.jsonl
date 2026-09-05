@@ -4934,9 +4934,11 @@
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L386","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L400","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L405","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
-{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L411","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
-{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L416","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
-{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L417","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
+{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L410","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
+{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L415","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
+{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L420","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
+{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L425","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
+{"id":"lib/plugins-ast/test/languages.unit.test.ts#anonymous@L426","type":"symbol","name":"anonymous","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#findEnclosingBindingName","type":"symbol","name":"findEnclosingBindingName","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#findRepoRoot","type":"symbol","name":"findRepoRoot","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}
 {"id":"lib/plugins-ast/test/languages.unit.test.ts#LanguageFixture","type":"symbol","name":"LanguageFixture","filePath":"lib/plugins-ast/test/languages.unit.test.ts"}

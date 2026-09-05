@@ -7,11 +7,7 @@ import {
   UTF8_ENCODING,
   DocuviaError,
   ErrorCodes,
-  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
-  ERRNO_EEXIST,
-  ERRNO_EPERM,
-  ERRNO_EACCES,
-  ERRNO_EBUSY,
+  acquireProcessLock,
 } from "@workspace/contracts";
 
 export interface SyncStateFile {
@@ -44,49 +40,28 @@ const SYNC_STATE_LOCK_MESSAGES = {
  * `saveSyncState()` are a plain, unguarded read-modify-write: two concurrent `docuvia publish` runs
  * can both load the same dedup state and the second writer's save silently clobbers the first's
  * update, losing a `syncedContentHashes` entry with no error at all.
+ *
+ * Delegates to the canonical `acquireProcessLock` helper in contracts (issue #268) instead of a
+ * bespoke loop — same `wx`-create semantics, plus PID + heartbeat so a crashed holder's stale
+ * lock is only reclaimed once its PID is confirmed dead (mtime alone can't tell a crash from a
+ * slow holder under load).
  */
-async function acquireSyncStateLock(statePath: string): Promise<string> {
+async function acquireSyncStateLock(statePath: string) {
   const lockPath = `${statePath}${SYNC_STATE_LOCK_FILE_SUFFIX}`;
-  const deadline = Date.now() + SYNC_STATE_LOCK_MAX_WAIT_MS;
-
-  for (;;) {
-    try {
-      await fs.mkdir(path.dirname(lockPath), { recursive: true });
-      const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
-      await handle.close();
-      return lockPath;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (
-        code !== ERRNO_EEXIST &&
-        code !== ERRNO_EPERM &&
-        code !== ERRNO_EACCES &&
-        code !== ERRNO_EBUSY
-      ) {
-        throw err;
-      }
-
-      const stat = await fs.stat(lockPath).catch(() => undefined);
-      if (stat && Date.now() - stat.mtimeMs > SYNC_STATE_LOCK_STALE_MS) {
-        await fs.rm(lockPath, { force: true });
-        continue;
-      }
-
-      if (Date.now() > deadline) {
-        throw new DocuviaError(
-          ErrorCodes.DB_LOCKED,
-          SYNC_STATE_LOCK_MESSAGES.TIMED_OUT_WAITING(lockPath),
-        );
-      }
-      await new Promise((resolve) =>
-        setTimeout(resolve, SYNC_STATE_LOCK_RETRY_INTERVAL_MS),
-      );
-    }
+  await fs.mkdir(path.dirname(lockPath), { recursive: true });
+  try {
+    return await acquireProcessLock(lockPath, {
+      maxWaitMs: SYNC_STATE_LOCK_MAX_WAIT_MS,
+      retryIntervalMs: SYNC_STATE_LOCK_RETRY_INTERVAL_MS,
+      staleAfterMs: SYNC_STATE_LOCK_STALE_MS,
+    });
+  } catch (err) {
+    throw DocuviaError.wrap(
+      ErrorCodes.DB_LOCKED,
+      SYNC_STATE_LOCK_MESSAGES.TIMED_OUT_WAITING(lockPath),
+      err,
+    );
   }
-}
-
-async function releaseSyncStateLock(lockPath: string): Promise<void> {
-  await fs.rm(lockPath, { force: true });
 }
 
 /** Wraps a load→mutate→save `sync-state.json` cycle in the cross-process mutex above. */
@@ -94,13 +69,13 @@ export async function withSyncStateLock<T>(
   workspaceRoot: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const lockPath = await acquireSyncStateLock(
+  const handle = await acquireSyncStateLock(
     resolveSyncStatePath(workspaceRoot),
   );
   try {
     return await fn();
   } finally {
-    await releaseSyncStateLock(lockPath);
+    await handle.release();
   }
 }
 

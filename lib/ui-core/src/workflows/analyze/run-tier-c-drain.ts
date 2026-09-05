@@ -55,6 +55,12 @@ const TierCSkipReasons = {
 const TierCFailReasons = {
   NO_ANCHOR: "no-anchor",
   BRIDGE_UNREACHABLE: "bridge-unreachable",
+  /** Issue #134: HTTP 429 from the LLM endpoint -- a transient rate-limit rejection
+   *  that should be retried with backoff, not treated as a permanent bridge failure. */
+  RATE_LIMITED: "rate-limited",
+  /** Issue #134: HTTP 401/403 from the LLM endpoint -- an auth failure that will not
+   *  resolve on retry. */
+  AUTH_FAILED: "auth-failed",
   LLM_NON_JSON_OUTPUT: "llm-non-json-output",
   MISSING_FILE: "missing-file",
   FILE_UNREADABLE: "file-unreadable",
@@ -466,11 +472,47 @@ async function handleTierCItemOutcome(
   return false;
 }
 
+/** Issue #134: a genuine bridge-unreachable error (network-level failure: connection refused,
+ *  DNS failure, timeout) -- distinct from HTTP 429 rate-limit rejections and 401/403 auth
+ *  failures, which have their own classification. Only `LLM_CHAT_COMPLETION_FAILED` when the
+ *  cause is a network-level error (wrapped via `DocuviaError.wrap`) qualifies; HTTP-level
+ *  errors thrown by `chatCompletion()` now carry specific error codes (`LLM_RATE_LIMITED`,
+ *  `LLM_AUTH_FAILED`) that this function intentionally does NOT match. */
 function isBridgeUnreachable(err: unknown): boolean {
   return (
     err instanceof DocuviaError &&
     err.code === ErrorCodes.LLM_CHAT_COMPLETION_FAILED
   );
+}
+
+/** Issue #134: a transient HTTP 429 rate-limit rejection -- retry-worthy, not a permanent
+ *  bridge failure. */
+function isRateLimited(err: unknown): boolean {
+  return (
+    err instanceof DocuviaError && err.code === ErrorCodes.LLM_RATE_LIMITED
+  );
+}
+
+/** Issue #134: an HTTP 401/403 auth failure -- will not resolve on retry. */
+function isAuthFailed(err: unknown): boolean {
+  return err instanceof DocuviaError && err.code === ErrorCodes.LLM_AUTH_FAILED;
+}
+
+/** Issue #134: classifies an LLM call failure into a Tier C drain failure reason,
+ *  replacing the old blanket `isBridgeUnreachable` check that misclassified rate-limit
+ *  rejections and auth failures as "bridge-unreachable."
+ *
+ *  Classification priority:
+ *  1. `LLM_RATE_LIMITED` (HTTP 429) -> `rate-limited` (transient, retry-worthy)
+ *  2. `LLM_AUTH_FAILED` (HTTP 401/403) -> `auth-failed` (permanent, key issue)
+ *  3. `LLM_CHAT_COMPLETION_FAILED` with a network-level cause -> `bridge-unreachable`
+ *     (the original meaning: the bridge endpoint is genuinely down)
+ *  4. Any other error -> the error message string (fallback, backward-compatible) */
+function classifyTierCFailure(err: unknown): string {
+  if (isRateLimited(err)) return TierCFailReasons.RATE_LIMITED;
+  if (isAuthFailed(err)) return TierCFailReasons.AUTH_FAILED;
+  if (isBridgeUnreachable(err)) return TierCFailReasons.BRIDGE_UNREACHABLE;
+  return errMessage(err);
 }
 
 function errMessage(err: unknown): string {
@@ -600,11 +642,7 @@ async function processCommitMessageEntry(
     );
   } catch (err) {
     return {
-      ...failOutcome(
-        isBridgeUnreachable(err)
-          ? TierCFailReasons.BRIDGE_UNREACHABLE
-          : errMessage(err),
-      ),
+      ...failOutcome(classifyTierCFailure(err)),
       callsUsed: 1,
     };
   }
@@ -672,11 +710,7 @@ async function processContractSymbolEntry(
     );
   } catch (err) {
     return {
-      ...failOutcome(
-        isBridgeUnreachable(err)
-          ? TierCFailReasons.BRIDGE_UNREACHABLE
-          : errMessage(err),
-      ),
+      ...failOutcome(classifyTierCFailure(err)),
       callsUsed: 1,
     };
   }

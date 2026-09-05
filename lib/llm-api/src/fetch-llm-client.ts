@@ -326,6 +326,21 @@ export class FetchLlmClient implements ILlmClient {
 
     if (!res.ok) {
       const message = await this.parseErrorBody(res);
+      // Issue #134: classify HTTP errors specifically so Tier C drain can distinguish
+      // transient rate-limit rejections (retry-worthy) from permanent auth failures
+      // or genuine bridge unreachability.
+      if (res.status === 429) {
+        throw new DocuviaError(
+          ErrorCodes.LLM_RATE_LIMITED,
+          LlmApiMessages.chatCompletionFailedWithReason(message),
+        );
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new DocuviaError(
+          ErrorCodes.LLM_AUTH_FAILED,
+          LlmApiMessages.chatCompletionFailedWithReason(message),
+        );
+      }
       throw new DocuviaError(
         ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
         LlmApiMessages.chatCompletionFailedWithReason(message),

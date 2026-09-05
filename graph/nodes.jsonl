@@ -1423,7 +1423,7 @@
 {"id":"lib/ast-core/src/ast-core.test.js#anonymous@L9","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/ast-core.test.js"}
 {"id":"lib/ast-core/src/bridge-provider.ts","type":"file","name":"lib/ast-core/src/bridge-provider.ts","filePath":"lib/ast-core/src/bridge-provider.ts"}
 {"id":"lib/ast-core/src/bridge-provider.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/bridge-provider.ts"}
-{"id":"lib/ast-core/src/bridge-provider.ts#anonymous@L262","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/bridge-provider.ts"}
+{"id":"lib/ast-core/src/bridge-provider.ts#anonymous@L251","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/bridge-provider.ts"}
 {"id":"lib/ast-core/src/bridge-provider.ts#BridgeParseResult","type":"symbol","name":"BridgeParseResult","filePath":"lib/ast-core/src/bridge-provider.ts"}
 {"id":"lib/ast-core/src/bridge-provider.ts#buildContractSummaryEvent","type":"symbol","name":"buildContractSummaryEvent","filePath":"lib/ast-core/src/bridge-provider.ts"}
 {"id":"lib/ast-core/src/bridge-provider.ts#buildEndpointEvent","type":"symbol","name":"buildEndpointEvent","filePath":"lib/ast-core/src/bridge-provider.ts"}
@@ -1684,7 +1684,6 @@
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L132","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L139","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L146","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
-{"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L155","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L42","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L75","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}
 {"id":"lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L88","type":"symbol","name":"anonymous","filePath":"lib/ast-core/test/bridge-provider.unit.test.ts"}

@@ -236,6 +236,34 @@ describe("applyMigrations", () => {
     }
   });
 
+  it("enforces identity constraints at the DDL level (issue #232)", () => {
+    applyMigrations(db, MIGRATIONS_DIR);
+
+    // (project_id, node_key) uniqueness — the invariant the graph layer relies on
+    // instead of application-level dedup.
+    const uniqueIdx = db
+      .prepare(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'l2_nodes_project_id_node_key_idx'",
+      )
+      .get() as { sql: string } | undefined;
+    expect(uniqueIdx).toBeDefined();
+    expect(uniqueIdx!.sql).toMatch(/UNIQUE/i);
+
+    // Link endpoint lookup indexes — without these, blast-radius traversals scan.
+    for (const [idx, column] of [
+      ["node_links_source_node_idx", "source_node_id"],
+      ["node_links_target_node_idx", "target_node_id"],
+    ] as const) {
+      const row = db
+        .prepare(
+          "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?",
+        )
+        .get(idx) as { sql: string } | undefined;
+      expect(row, `expected index "${idx}" to exist`).toBeDefined();
+      expect(row!.sql).toContain(column);
+    }
+  });
+
   it("records applied migrations in schema_migrations", () => {
     applyMigrations(db, MIGRATIONS_DIR);
 

@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/register.ts#anonymous
+id: lib/llm-api/src/register.ts#anonymous@L10
 type: symbol
 name: anonymous
 filePath: lib/llm-api/src/register.ts

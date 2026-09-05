@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerStore@L2580
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerStore@L2551
 type: symbol
 name: registerStore
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts

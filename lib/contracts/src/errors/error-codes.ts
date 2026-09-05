@@ -39,6 +39,12 @@ export const ErrorCodes = {
   // LLM client (lib/llm-api)
   LLM_NOT_INITIALIZED: "LLM_NOT_INITIALIZED",
   LLM_CHAT_COMPLETION_FAILED: "LLM_CHAT_COMPLETION_FAILED",
+  /** HTTP 429 from the LLM endpoint — a transient rate-limit rejection that should be
+   *  retried with backoff, not treated as a permanent bridge failure. */
+  LLM_RATE_LIMITED: "LLM_RATE_LIMITED",
+  /** HTTP 401/403 from the LLM endpoint — an authentication/authorization failure that
+   *  will not resolve on retry (wrong API key, revoked token). */
+  LLM_AUTH_FAILED: "LLM_AUTH_FAILED",
   LLM_STREAM_FAILED: "LLM_STREAM_FAILED",
   LLM_INVALID_RESPONSE: "LLM_INVALID_RESPONSE",
 

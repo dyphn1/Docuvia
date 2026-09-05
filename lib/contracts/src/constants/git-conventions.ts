@@ -367,6 +367,13 @@ export const GitConstants = {
    */
   PRE_PUSH_HOOKS_CHECK_MARKER: "docuvia hooks check",
   /**
+   * Issue #196: marker for the Tier B/sync failure hint. A hook carrying the
+   * `hooks check` gate but predating this hint swallows Tier B/C failures with
+   * zero push-time visibility (PLAT-007's `exit 0` design); `hasCurrentPrePushHook`
+   * and doctor's pre-push diagnostic treat its absence as a stale tier.
+   */
+  PRE_PUSH_FAILURE_HINT_MARKER: "tier-b/sync failed",
+  /**
    * Phase 2 sync-knowledge-scheduling.md SKSCHED-001: composes `sync-knowledge` onto the same
    * pre-push batch Tier B already occupies, after `snapshot` — reconciliation only makes sense
    * once a fresh local snapshot commit exists to reconcile. Wired here (not post-commit) so the
@@ -383,7 +390,33 @@ export const GitConstants = {
    *  push` itself is never blocked either way. The toggle gates the automatic trigger, never the
    *  underlying CLI capability -- a developer can still run `docuvia analyze --escalate-to-lsp`
    *  manually at any time regardless of whether `tier-b-c-prepush` is disabled. */
+  /**
+   * Issue #196: the current pre-push hook. Same chain as before, but the Tier B/
+   * snapshot/sync-knowledge steps run grouped so a failure prints a one-line
+   * hint to the pushing developer (`|| echo ...`); the hook's own trailing
+   * `exit 0` is unchanged, so PLAT-007 (never block a push) still holds.
+   * `{ ... || echo; }` grouping keeps the `hooks check` gate semantics: a
+   * disabled toggle short-circuits before the group, printing no hint.
+   */
   PRE_PUSH_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
+    `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
+    `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +
+    `# docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
+    `  npx --no-install docuvia hooks check tier-b-c-prepush && { npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge || echo "docuvia: tier-b/sync failed for this push -- run 'docuvia doctor' for details"; }\n` +
+    `fi\n` +
+    `# Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability\n` +
+    `# requirement (failures surface as a one-line push-time hint plus JSONL logs / doctor,\n` +
+    `# never as a blocked push).\n` +
+    `exit 0\n`,
+  /**
+   * The pre-issue-#196 hook's exact content (with the `hooks check` gate, before the
+   * failure-hint grouping was added) -- retained verbatim so `installPrePushHook` can
+   * recognize a hook installed before that hint and replace it in place, same technique
+   * as the older tiers below.
+   */
+  HOOKS_CHECK_PRE_PUSH_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
     `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
     `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +

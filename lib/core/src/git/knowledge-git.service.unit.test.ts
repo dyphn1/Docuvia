@@ -470,12 +470,12 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     expect(git.appendHookFile).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: does not duplicate the hook when the Tier B, sync-knowledge, env-gate, and hooks-check markers are all already present", async () => {
+  it("is idempotent: does not duplicate the hook when the Tier B, sync-knowledge, env-gate, hooks-check, and failure-hint markers are all already present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi
         .fn()
         .mockResolvedValue(
-          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n`,
+          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n${GitConstants.PRE_PUSH_FAILURE_HINT_MARKER}\n`,
         ),
     });
     const service = new KnowledgeGitService(git);
@@ -485,6 +485,31 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     expect(result).toEqual({ installed: false });
     expect(git.appendHookFile).not.toHaveBeenCalled();
     expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("upgrades a hooks-check-era hook (issue #196 tier): old block gone, failure-hint block present, user content preserved", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user pre-push content"\n` +
+      GitConstants.HOOKS_CHECK_PRE_PUSH_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.installPrePushHook("/workspace");
+
+    expect(result).toEqual({ installed: true });
+    expect(git.appendHookFile).not.toHaveBeenCalled();
+    expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(
+      GitConstants.HOOKS_CHECK_PRE_PUSH_HOOK_CONTENT,
+    );
+    expect(writtenContent).toContain(GitConstants.PRE_PUSH_HOOK_CONTENT);
+    expect(writtenContent).toContain(GitConstants.PRE_PUSH_FAILURE_HINT_MARKER);
+    expect(writtenContent).toContain('echo "user pre-push content"');
+    expect(git.makeHookExecutable).toHaveBeenCalled();
   });
 
   it("does not throw when writing the hook fails — logs a warning and reports installed:false instead", async () => {
@@ -505,7 +530,7 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(
-        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n`,
+        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n${GitConstants.PRE_PUSH_FAILURE_HINT_MARKER}\n`,
       );
     const git = makeMockGitProvider({ readHookFile });
     const logger = createMockLogger();

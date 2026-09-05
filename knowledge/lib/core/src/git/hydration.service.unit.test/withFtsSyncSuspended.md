@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.unit.test.ts#withFtsSyncSuspended@L605
+id: lib/core/src/git/hydration.service.unit.test.ts#withFtsSyncSuspended@L512
 type: symbol
 name: withFtsSyncSuspended
 filePath: lib/core/src/git/hydration.service.unit.test.ts

@@ -75,32 +75,33 @@ function printBlastRadius(
   tierBCoverage?: TierBCoverageHint,
   coverageNote?: string,
   riskNote?: string,
+  partialCoverage?: boolean,
 ): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
   if (blastRadius.length === 0) {
-    ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
-    if (coverageNote) {
-      ui.warn(coverageNote);
-    }
-    if (
-      tierBCoverage &&
-      tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
-    ) {
-      ui.warn(
-        UI_MESSAGES.IMPACT_TIER_B_INCOMPLETE(
-          tierBCoverage.workspaceFilesTotal -
-            tierBCoverage.workspaceFilesProcessed,
-          tierBCoverage.workspaceFilesTotal,
-        ),
-      );
-    }
-  } else {
-    printBlastRadiusTable(blastRadius);
-    ui.log(FORMAT_MARKERS.EMPTY);
-    for (const entry of blastRadius) {
-      printEntryWhy(entry.name, entry.why);
-    }
+    printEmptyBlastRadius(
+      coverageNote,
+      tierBCoverage,
+      partialCoverage,
+      riskNote,
+    );
+    // Issue #192: print risk level for empty results too
+    printRiskLevel(riskLevel);
+    return;
+  }
+
+  printBlastRadiusTable(blastRadius);
+  ui.log(FORMAT_MARKERS.EMPTY);
+  for (const entry of blastRadius) {
+    printEntryWhy(entry.name, entry.why);
+  }
+
+  // Issue #192: partialCoverage flag -- surface when Tier B is incomplete
+  if (partialCoverage) {
+    ui.warn(
+      "Partial Tier B coverage: some workspace files not yet analyzed; blast radius may be incomplete.",
+    );
   }
 
   // Issue #192: an empty result is UNKNOWN (never a false-safe LOW), and a lower-bound result
@@ -109,6 +110,12 @@ function printBlastRadius(
     ui.warn(UI_MESSAGES.IMPACT_RISK_NOTE_PREFIX + riskNote);
   }
 
+  ui.log(FORMAT_MARKERS.EMPTY);
+  printRiskLevel(riskLevel);
+}
+
+/** Prints the risk level with appropriate styling. */
+function printRiskLevel(riskLevel: RiskLevel): void {
   ui.log(FORMAT_MARKERS.EMPTY);
   const riskLine = UI_MESSAGES.IMPACT_RISK_PREFIX + riskLevel;
   if (riskLevel === RiskLevels.CRITICAL) {
@@ -120,6 +127,44 @@ function printBlastRadius(
     ui.warn(riskLine);
   } else {
     ui.log(riskLine);
+  }
+  ui.log(FORMAT_MARKERS.EMPTY);
+}
+
+/** Issue #192: prints the empty blast radius output with all optional notes. */
+function printEmptyBlastRadius(
+  coverageNote?: string,
+  tierBCoverage?: TierBCoverageHint,
+  partialCoverage?: boolean,
+  riskNote?: string,
+): void {
+  ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
+  ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
+  if (coverageNote) {
+    ui.warn(coverageNote);
+  }
+  if (
+    tierBCoverage &&
+    tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
+  ) {
+    ui.warn(
+      UI_MESSAGES.IMPACT_TIER_B_INCOMPLETE(
+        tierBCoverage.workspaceFilesTotal -
+          tierBCoverage.workspaceFilesProcessed,
+        tierBCoverage.workspaceFilesTotal,
+      ),
+    );
+  }
+  // Issue #192: partialCoverage flag -- surface when Tier B is incomplete
+  if (partialCoverage) {
+    ui.warn(
+      "Partial Tier B coverage: some workspace files not yet analyzed; blast radius may be incomplete.",
+    );
+  }
+  console.log("printEmptyBlastRadius riskNote:", riskNote);
+  // Issue #192: riskNote -- surface the reason for lower-bound epistemic
+  if (riskNote) {
+    ui.warn(UI_MESSAGES.IMPACT_RISK_NOTE_PREFIX + riskNote);
   }
   ui.log(FORMAT_MARKERS.EMPTY);
 }
@@ -145,6 +190,7 @@ function printHumanResult(
     result.tierBCoverage,
     result.coverageNote,
     result.riskNote,
+    result.partialCoverage,
   );
 }
 

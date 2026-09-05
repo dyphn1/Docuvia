@@ -142,6 +142,23 @@ export const CORPUS_FILES: Record<string, string> = {
     "}",
     "",
   ].join("\n"),
+
+  // ── Case 8 (blind spot #5): unresolved method call (obj.method()) ───────────
+  "src/renderer.ts": [
+    "export class Renderer {",
+    '  render() { return "rendered"; }',
+    "}",
+    "",
+  ].join("\n"),
+  "src/render-host.ts": [
+    'import { Renderer } from "./renderer";',
+    "",
+    "export function renderHost(): void {",
+    "  const r = new Renderer();",
+    "  r.render();",
+    "}",
+    "",
+  ].join("\n"),
 };
 
 export interface GoldenCase {
@@ -153,7 +170,8 @@ export interface GoldenCase {
     | "runtime-variable-import"
     | "computed-import-specifier"
     | "child-process-spawn"
-    | "unresolved-receiver-call";
+    | "unresolved-receiver-call"
+    | "unresolved-method-call";
   /** Impact target resolved via `findNodeByName` (exact match by design). */
   target: string;
   /** Human-labeled ground truth: workspace-relative files that genuinely depend on `target`. */
@@ -207,6 +225,15 @@ export const GOLDEN_CASES: GoldenCase[] = [
     // render-host.ts genuinely depends on evalRenderTemplate -- deleting renderer.ts breaks it.
     // Expected to fail today (see the fixture comment above for the dotted-vs-bare mismatch);
     // this row is the regression signal that will flip to 1.000 when that lookup is fixed.
+    expectedDependentFiles: ["src/render-host.ts"],
+  },
+  {
+    scenario: "unresolved-method-call",
+    target: "render",
+    // render-host.ts calls r.render() -- the method call is stored as "Renderer.render" but
+    // the call site is "r.render" (receiver stripped), so the static resolver cannot link it.
+    // This is a documented blind spot (AGENTS.md: method calls written obj.method() are not
+    // recovered today). Expected to fail until the call-site fallback matches method calls.
     expectedDependentFiles: ["src/render-host.ts"],
   },
 ];

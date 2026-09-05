@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts#anonymous@L109
+id: artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts#anonymous@L95
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts`
+

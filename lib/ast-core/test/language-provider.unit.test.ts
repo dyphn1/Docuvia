@@ -106,14 +106,22 @@ describe("DefaultProvider", () => {
     it("does nothing if no queries config", () => {
       provider = new DefaultProvider(mockConfig);
       provider.initQueries({} as Language);
+      const rootNode = {
+        descendantsOfType: vi.fn().mockReturnValue([]),
+      } as unknown as Node;
+      expect(provider.extractClasses(rootNode)).toEqual([]);
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
       provider.deleteQueries();
-      expect(true).toBe(true);
     });
 
     it("deleteQueries gracefully handles missing queries", () => {
       provider = new DefaultProvider(mockQueryConfig);
       provider.deleteQueries(); // no init
-      expect(true).toBe(true);
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
+      // Still usable afterwards — delete without init must not poison state.
+      provider.initQueries({} as Language);
+      expect(provider.drainQueryCompileFailures()).toEqual([]);
+      provider.deleteQueries();
     });
 
     // A declared pattern that fails to compile and a language that declares no such pattern

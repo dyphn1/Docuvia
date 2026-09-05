@@ -96,7 +96,7 @@ async function parseSpecContent(
       return yaml.load(content);
     }
     return JSON.parse(content);
-  } catch (err: any) {
+  } catch {
     return null;
   }
 }

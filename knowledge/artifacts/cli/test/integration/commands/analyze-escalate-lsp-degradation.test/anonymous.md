@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/analyze-escalate-lsp-degradation.test.ts#anonymous@L61
+id: artifacts/cli/test/integration/commands/analyze-escalate-lsp-degradation.test.ts#anonymous@L20
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/analyze-escalate-lsp-degradation.test.ts

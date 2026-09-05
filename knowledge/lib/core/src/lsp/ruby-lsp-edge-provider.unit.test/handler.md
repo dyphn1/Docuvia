@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts#handler@L139
+id: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts#handler@L221
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts

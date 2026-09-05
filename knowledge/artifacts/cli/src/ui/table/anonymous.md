@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/ui/table.ts#anonymous@L99
+id: artifacts/cli/src/ui/table.ts#anonymous@L92
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/ui/table.ts

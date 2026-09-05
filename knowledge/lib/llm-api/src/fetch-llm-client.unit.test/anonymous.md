@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.unit.test.ts#anonymous@L91
+id: lib/llm-api/src/fetch-llm-client.unit.test.ts#anonymous@L67
 type: symbol
 name: anonymous
 filePath: lib/llm-api/src/fetch-llm-client.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/llm-api/src/fetch-llm-client.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/llm-api/src/fetch-llm-client.unit.test.ts`
+

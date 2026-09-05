@@ -55,6 +55,9 @@ export const MemoryKeys = {
   GIT_NETWORK_TIMEOUT_MS: "gitNetworkTimeoutMs",
   /** Manual force override. */
   FORCE: "force",
+  /** `analyze --escalate-to-lsp --tier-c-all` (Tier C drain-all override) — when set, the Tier C
+   *  drain processes the whole queue instead of stopping at the per-run caps. */
+  TIER_C_DRAIN_ALL: "tierCDrainAll",
   /** The already-parsed `{title, content, nodeType, confidence}[]` payload for
    *  `--agent-authored` mode -- boundary-validated by the CLI layer (zod) before this is set. */
   AGENT_AUTHORED_DECISIONS: "agentAuthoredDecisions",

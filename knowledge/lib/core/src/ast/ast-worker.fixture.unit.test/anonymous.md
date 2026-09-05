@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker.fixture.unit.test.ts#anonymous@L709
+id: lib/core/src/ast/ast-worker.fixture.unit.test.ts#anonymous@L76
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker.fixture.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/ast/ast-worker.fixture.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/ast-worker.fixture.unit.test.ts`
+

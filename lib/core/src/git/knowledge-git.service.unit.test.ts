@@ -458,6 +458,17 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     );
   });
 
+  it("fresh-installed hook groups the chain with a failure hint and still ends in exit 0 (issue #196)", () => {
+    // Structural lock on the hook's push-time contract: failures print one line
+    // and never block the push. Marker assertions alone would not catch a broken
+    // grouping.
+    const content = GitConstants.PRE_PUSH_HOOK_CONTENT;
+    expect(content).toContain("&& { npx --no-install docuvia analyze");
+    expect(content).toContain('|| echo "docuvia: tier-b/sync failed');
+    expect(content.trimEnd().endsWith("exit 0")).toBe(true);
+    expect(content).toContain(GitConstants.PRE_PUSH_FAILURE_HINT_MARKER);
+  });
+
   it("does not install (non-fatal) when .git/hooks does not exist", async () => {
     const git = makeMockGitProvider({
       hooksDirExists: vi.fn().mockResolvedValue(false),

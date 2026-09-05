@@ -135,6 +135,8 @@ describe("StatusWorkflow.execute()", () => {
       tierBFilesProcessed: 8,
       tierBFilesTotal: 10,
       tierCQueued: 0,
+      // No GitProvider registered in this test -- freshness degrades to unknown.
+      graphFreshness: "unknown",
     });
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
@@ -173,6 +175,74 @@ describe("StatusWorkflow.execute()", () => {
     ).execute();
 
     expect(result.tierCQueued).toBe(2);
+  });
+
+  it("reports graphFreshness fresh when last-ingested matches HEAD (issue #193)", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+            ? "abc123"
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.register(
+      TOKENS.GitProvider,
+      () =>
+        ({
+          getHeadSha: vi.fn().mockResolvedValue("abc123"),
+        }) as any,
+    );
+    docuviaFactory.lock();
+
+    const result = await new StatusWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
+
+    expect(result.graphFreshness).toBe("fresh");
+  });
+
+  it("reports graphFreshness stale when last-ingested lags HEAD (issue #193)", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+            ? "old-sha"
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.register(
+      TOKENS.GitProvider,
+      () =>
+        ({
+          getHeadSha: vi.fn().mockResolvedValue("new-sha"),
+        }) as any,
+    );
+    docuviaFactory.lock();
+
+    const result = await new StatusWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
+
+    expect(result.graphFreshness).toBe("stale");
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

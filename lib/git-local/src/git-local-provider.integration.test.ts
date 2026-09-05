@@ -209,6 +209,14 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
 
     const tracked = await provider.listTrackedFilesWithBlobHash(tmpDir);
     expect(tracked.has("tracked.ts")).toBe(true);
+    // The Map value is the real staged blob sha, matching git's own rev-parse.
+    const blobSha = tracked.get("tracked.ts");
+    expect(blobSha).toMatch(/^[0-9a-f]{40}$/);
+    const { stdout: expectedSha } = await git(tmpDir, [
+      "rev-parse",
+      "HEAD:tracked.ts",
+    ]);
+    expect(blobSha).toBe(expectedSha.trim());
 
     const untracked = await provider.listUntrackedFiles(tmpDir);
     expect(untracked).toContain("untracked.ts");

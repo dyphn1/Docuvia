@@ -158,6 +158,7 @@ describe("FetchLlmClient.chatCompletion() error classification (issue #134)", ()
       }),
     ).rejects.toMatchObject({
       code: "LLM_RATE_LIMITED",
+      message: expect.stringContaining("rate limit exceeded"),
     });
   });
 
@@ -181,9 +182,9 @@ describe("FetchLlmClient.chatCompletion() error classification (issue #134)", ()
       }),
     ).rejects.toMatchObject({
       code: "LLM_AUTH_FAILED",
+      message: expect.stringContaining("invalid api key"),
     });
   });
-
   it("throws LLM_AUTH_FAILED for HTTP 403 responses", async () => {
     vi.stubGlobal(
       "fetch",
@@ -204,6 +205,7 @@ describe("FetchLlmClient.chatCompletion() error classification (issue #134)", ()
       }),
     ).rejects.toMatchObject({
       code: "LLM_AUTH_FAILED",
+      message: expect.stringContaining("forbidden"),
     });
   });
 
@@ -227,6 +229,7 @@ describe("FetchLlmClient.chatCompletion() error classification (issue #134)", ()
       }),
     ).rejects.toMatchObject({
       code: "LLM_CHAT_COMPLETION_FAILED",
+      message: expect.stringContaining("internal error"),
     });
   });
 });

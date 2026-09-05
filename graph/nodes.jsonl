@@ -7258,6 +7258,15 @@
 {"id":"lib/ui-core/src/workflows/sync/sync-messages.ts#SYNCED","type":"symbol","name":"SYNCED","filePath":"lib/ui-core/src/workflows/sync/sync-messages.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-result.ts","type":"file","name":"lib/ui-core/src/workflows/sync/sync-result.ts","filePath":"lib/ui-core/src/workflows/sync/sync-result.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-result.ts#SyncResult","type":"symbol","name":"SyncResult","filePath":"lib/ui-core/src/workflows/sync/sync-result.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","type":"file","name":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L15","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L18","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L22","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L27","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L32","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L41","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L47","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts","type":"file","name":"lib/ui-core/src/workflows/sync/sync-state.ts","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#acquireSyncStateLock","type":"symbol","name":"acquireSyncStateLock","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#loadSyncState","type":"symbol","name":"loadSyncState","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}

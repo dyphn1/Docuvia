@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/test/fast-import.unit.test.ts#anonymous@L73
+id: lib/git-local/test/fast-import.unit.test.ts#anonymous@L87
 type: symbol
 name: anonymous
 filePath: lib/git-local/test/fast-import.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/git-local/test/fast-import.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/git-local/test/fast-import.unit.test.ts`
-

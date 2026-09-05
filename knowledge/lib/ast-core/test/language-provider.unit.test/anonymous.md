@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/language-provider.unit.test.ts#anonymous@L86
+id: lib/ast-core/test/language-provider.unit.test.ts#anonymous@L71
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/language-provider.unit.test.ts

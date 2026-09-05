@@ -188,6 +188,10 @@ export const DOCTOR_MESSAGES = {
    *  the user disabled it via `docuvia hooks disable tier-b-c-prepush`. */
   PRE_PUSH_HOOK_HOOKS_CHECK_STALE:
     "The pre-push hook predates the `hooks check` gate -- its Tier B/snapshot/sync-knowledge chain would run even when `tier-b-c-prepush` is disabled via `docuvia hooks disable`.",
+  /** Issue #196: a hook with the `hooks check` gate but predating the failure hint
+   *  swallows Tier B/C failures with zero push-time visibility (pre-#196 PLAT-007). */
+  PRE_PUSH_HOOK_FAILURE_HINT_STALE:
+    "The pre-push hook predates the Tier B/sync failure hint -- Tier B/C failures stay silent at push time (only in JSONL logs).",
   /** Includes the resolved hook file path — same reasoning as `GIT_HOOK_RESOLVABLE`. */
   PRE_PUSH_HOOK_OK: (hookPath: string) =>
     `Pre-push hook is installed and includes the sync-knowledge step (${hookPath}).`,

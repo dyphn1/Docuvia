@@ -527,6 +527,11 @@ export class DoctorWorkflow {
       const hasHooksCheck = !!hook?.includes(
         GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER,
       );
+      // Issue #196: a hook with the `hooks check` gate but without the failure
+      // hint swallows Tier B/C failures with zero push-time visibility.
+      const hasFailureHint = !!hook?.includes(
+        GitConstants.PRE_PUSH_FAILURE_HINT_MARKER,
+      );
 
       let result = await this.classifyPrePushHookState(
         git,
@@ -534,6 +539,7 @@ export class DoctorWorkflow {
         hasSyncKnowledge,
         hasEnvGate,
         hasHooksCheck,
+        hasFailureHint,
       );
       result = await this.repairPrePushHookIfRequested(
         fix,
@@ -542,6 +548,7 @@ export class DoctorWorkflow {
         hasSyncKnowledge,
         hasEnvGate,
         hasHooksCheck,
+        hasFailureHint,
       );
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.PRE_PUSH_HOOK] = result;
@@ -553,7 +560,7 @@ export class DoctorWorkflow {
 
   /** Issue #133: dispatches `doctor --fix`'s pre-push repair. A pre-push hook carrying the
    *  current marker but missing any of the sync-knowledge / --fallback-ast env-gate / hooks-check
-   *  steps is stale and is upgraded in place via `installPrePushHook`. A healthy hook, an absent
+   *  / failure-hint steps is stale and is upgraded in place via `installPrePushHook`. A healthy hook, an absent
    *  hook, or a resolvability-only FAIL (all markers present) is never touched. */
   private async repairPrePushHookIfRequested(
     fix: boolean,
@@ -562,9 +569,11 @@ export class DoctorWorkflow {
     hasSyncKnowledge: boolean,
     hasEnvGate: boolean,
     hasHooksCheck: boolean,
+    hasFailureHint: boolean,
   ): Promise<DiagnosticResult> {
     if (!fix || !hasCurrent) return result;
-    if (hasSyncKnowledge && hasEnvGate && hasHooksCheck) return result;
+    if (hasSyncKnowledge && hasEnvGate && hasHooksCheck && hasFailureHint)
+      return result;
     return this.repairStalePrePushHookIfRequested(result);
   }
 
@@ -599,6 +608,7 @@ export class DoctorWorkflow {
     hasSyncKnowledge: boolean,
     hasEnvGate: boolean,
     hasHooksCheck: boolean,
+    hasFailureHint: boolean,
   ): Promise<DiagnosticResult> {
     if (!hasCurrent) {
       return {
@@ -626,6 +636,15 @@ export class DoctorWorkflow {
       return {
         status: DiagnosticStatus.FAIL,
         message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_HOOKS_CHECK_STALE,
+        suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+      };
+    }
+    // Issue #196: a hook with the `hooks check` gate but without the failure hint
+    // swallows Tier B/C failures with zero push-time visibility.
+    if (!hasFailureHint) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_FAILURE_HINT_STALE,
         suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
       };
     }

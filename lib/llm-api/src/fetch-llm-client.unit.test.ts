@@ -133,6 +133,107 @@ describe("FetchLlmClient.checkBridgeReachability() (issue #134 -- Tier C bridge 
   });
 });
 
+describe("FetchLlmClient.chatCompletion() error classification (issue #134)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("throws LLM_RATE_LIMITED for HTTP 429 responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "rate limit exceeded" }), {
+          status: 429,
+          statusText: "Too Many Requests",
+        }),
+      ),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    await expect(
+      client.chatCompletion({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    ).rejects.toMatchObject({
+      code: "LLM_RATE_LIMITED",
+      message: expect.stringContaining("rate limit exceeded"),
+    });
+  });
+
+  it("throws LLM_AUTH_FAILED for HTTP 401 responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "invalid api key" }), {
+          status: 401,
+          statusText: "Unauthorized",
+        }),
+      ),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    await expect(
+      client.chatCompletion({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    ).rejects.toMatchObject({
+      code: "LLM_AUTH_FAILED",
+      message: expect.stringContaining("invalid api key"),
+    });
+  });
+  it("throws LLM_AUTH_FAILED for HTTP 403 responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403,
+          statusText: "Forbidden",
+        }),
+      ),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    await expect(
+      client.chatCompletion({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    ).rejects.toMatchObject({
+      code: "LLM_AUTH_FAILED",
+      message: expect.stringContaining("forbidden"),
+    });
+  });
+
+  it("throws LLM_CHAT_COMPLETION_FAILED for other non-2xx responses (e.g. 500)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "internal error" }), {
+          status: 500,
+          statusText: "Internal Server Error",
+        }),
+      ),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    await expect(
+      client.chatCompletion({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    ).rejects.toMatchObject({
+      code: "LLM_CHAT_COMPLETION_FAILED",
+      message: expect.stringContaining("internal error"),
+    });
+  });
+});
+
 describe("FetchLlmClient completions URL normalization (phase 1b -- no doubled /v1)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

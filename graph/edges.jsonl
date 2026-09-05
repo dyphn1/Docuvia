@@ -61,7 +61,6 @@
 {"source":"artifacts/cli/src/cli.ts#handleReview","target":"artifacts/cli/src/commands/review.ts#reviewCommand","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleReview","target":"artifacts/cli/src/utils/resolve-output-format.ts#resolveOutputFormat","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleSnapshot","target":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","type":"calls"}
-{"source":"artifacts/cli/src/cli.ts#handleStatus","target":"l2:23070","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleSyncKnowledge","target":"artifacts/cli/src/commands/sync-knowledge.ts#syncKnowledgeCommand","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleUninstall","target":"artifacts/cli/src/commands/uninstall.ts#uninstallCommand","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#main","target":"artifacts/cli/src/cli.ts#computeInteractivity","type":"calls"}
@@ -204,7 +203,6 @@
 {"source":"artifacts/cli/src/commands/doctor.ts#printDoctorSummary","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/doctor.ts#printDoctorSummary","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/doctor.ts#printDoctorSummary","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
-{"source":"artifacts/cli/src/commands/doctor.ts#printDoctorSummary","target":"l2:23191","type":"calls"}
 {"source":"artifacts/cli/src/commands/doctor.ts#runDoctorDiagnostics","target":"artifacts/cli/src/commands/doctor.ts#printDiagnosticsReport","type":"calls"}
 {"source":"artifacts/cli/src/commands/doctor.ts#runDoctorDiagnostics","target":"artifacts/cli/src/commands/doctor.ts#printDoctorSummary","type":"calls"}
 {"source":"artifacts/cli/src/commands/doctor.ts#runDoctorDiagnostics","target":"artifacts/cli/src/commands/doctor.ts#resolveDoctorLlmConfig","type":"calls"}
@@ -224,9 +222,6 @@
 {"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
-{"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"l2:23192","type":"calls"}
-{"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"l2:23193","type":"calls"}
-{"source":"artifacts/cli/src/commands/export-topology.ts#printExportDetails","target":"l2:23194","type":"calls"}
 {"source":"artifacts/cli/src/commands/export-topology.unit.test.ts","target":"artifacts/cli/src/commands/export-topology.ts#resolveOutDir","type":"calls"}
 {"source":"artifacts/cli/src/commands/export-topology.unit.test.ts","target":"artifacts/cli/src/commands/export-topology.ts#resolveOutDir","type":"calls"}
 {"source":"artifacts/cli/src/commands/export-topology.unit.test.ts","target":"artifacts/cli/src/commands/export-topology.ts#resolveOutDir","type":"calls"}
@@ -257,7 +252,6 @@
 {"source":"artifacts/cli/src/commands/hooks.ts#hooksCommand","target":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#hooksCommand","target":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#hooksCommand","target":"artifacts/cli/src/ui/wizard.ts#error","type":"calls"}
-{"source":"artifacts/cli/src/commands/hooks.ts#hooksCommand","target":"l2:23199","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#listHooksSubcommand","target":"artifacts/cli/src/logging/create-logger.ts#createPinoBackedLogger","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#listHooksSubcommand","target":"artifacts/cli/src/ui/wizard.ts#error","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#listHooksSubcommand","target":"artifacts/cli/src/ui/wizard.ts#header","type":"calls"}
@@ -268,9 +262,6 @@
 {"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"artifacts/cli/src/ui/wizard.ts#error","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
 {"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"artifacts/cli/src/ui/wizard.ts#table","type":"calls"}
-{"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"l2:23196","type":"calls"}
-{"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"l2:23197","type":"calls"}
-{"source":"artifacts/cli/src/commands/hooks.ts#setHookEnabledSubcommand","target":"l2:23198","type":"calls"}
 {"source":"artifacts/cli/src/commands/hydrate.ts","target":"artifacts/cli/src/commands/hydrate.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/commands/hydrate.ts","target":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","type":"contains"}
 {"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"artifacts/cli/src/logging/create-logger.ts#createPinoBackedLogger","type":"calls"}
@@ -279,10 +270,6 @@
 {"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"artifacts/cli/src/ui/wizard.ts#spinner","type":"calls"}
-{"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"l2:23200","type":"calls"}
-{"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"l2:23201","type":"calls"}
-{"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"l2:23202","type":"calls"}
-{"source":"artifacts/cli/src/commands/hydrate.ts#hydrateCommand","target":"l2:23203","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts","target":"artifacts/cli/src/commands/impact.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/commands/impact.ts","target":"artifacts/cli/src/commands/impact.ts#anonymous@L61","type":"contains"}
 {"source":"artifacts/cli/src/commands/impact.ts","target":"artifacts/cli/src/commands/impact.ts#impactCommand","type":"contains"}
@@ -314,12 +301,10 @@
 {"source":"artifacts/cli/src/commands/impact.ts#printBlastRadius","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printBlastRadius","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printBlastRadius","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
-{"source":"artifacts/cli/src/commands/impact.ts#printBlastRadius","target":"l2:23205","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printBlastRadiusTable","target":"artifacts/cli/src/ui/wizard.ts#table","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printEntryWhy","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printEntryWhy","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printEntryWhy","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
-{"source":"artifacts/cli/src/commands/impact.ts#printEntryWhy","target":"l2:23204","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printHumanResult","target":"artifacts/cli/src/commands/impact.ts#printBlastRadius","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printHumanResult","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/impact.ts#printNotFound","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
@@ -387,7 +372,6 @@
 {"source":"artifacts/cli/src/commands/query.ts#printHumanL3Entries","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#printHumanL3Entries","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#printHumanL3Entries","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
-{"source":"artifacts/cli/src/commands/query.ts#printHumanL3Entries","target":"l2:23206","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#printHumanResults","target":"artifacts/cli/src/commands/query.ts#printHumanEdgeList","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#printHumanResults","target":"artifacts/cli/src/commands/query.ts#printHumanEdgeList","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#printHumanResults","target":"artifacts/cli/src/commands/query.ts#printHumanL2Header","type":"calls"}
@@ -406,7 +390,6 @@
 {"source":"artifacts/cli/src/commands/query.ts#queryCommand","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#formatPromptOutput","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#queryCommand","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#queryCommand","target":"artifacts/cli/src/ui/wizard.ts#log","type":"calls"}
-{"source":"artifacts/cli/src/commands/query.ts#resolveIncomingUnprocessedWarning","target":"l2:23207","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#resolveQueryLimit","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#resolveQueryTarget","target":"artifacts/cli/src/ui/wizard.ts#askInput","type":"calls"}
 {"source":"artifacts/cli/src/commands/query.ts#resolveQueryTarget","target":"artifacts/cli/src/ui/wizard.ts#error","type":"calls"}
@@ -451,9 +434,6 @@
 {"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"artifacts/cli/src/ui/wizard.ts#spinner","type":"calls"}
-{"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"l2:23208","type":"calls"}
-{"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"l2:23209","type":"calls"}
-{"source":"artifacts/cli/src/commands/snapshot.ts#snapshotCommand","target":"l2:23210","type":"calls"}
 {"source":"artifacts/cli/src/commands/status.ts","target":"artifacts/cli/src/commands/status.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/commands/status.ts","target":"artifacts/cli/src/commands/status.ts#statusCommand","type":"contains"}
 {"source":"artifacts/cli/src/commands/status.ts#statusCommand","target":"artifacts/cli/src/logging/create-logger.ts#createPinoBackedLogger","type":"calls"}
@@ -506,7 +486,6 @@
 {"source":"artifacts/cli/src/commands/uninstall.ts#removeGitHooksStep","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
 {"source":"artifacts/cli/src/commands/uninstall.ts#removeGitHooksStep","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
 {"source":"artifacts/cli/src/commands/uninstall.ts#removeGitHooksStep","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
-{"source":"artifacts/cli/src/commands/uninstall.ts#removeGitHooksStep","target":"l2:23212","type":"calls"}
 {"source":"artifacts/cli/src/commands/uninstall.ts#reportUninstallOutcome","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
 {"source":"artifacts/cli/src/commands/uninstall.ts#reportUninstallOutcome","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
 {"source":"artifacts/cli/src/commands/uninstall.ts#runCleanupSteps","target":"artifacts/cli/src/commands/uninstall.ts#cleanupLegacyMarkdownAgentBlocks","type":"calls"}
@@ -726,7 +705,6 @@
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#mergeDocuviaHookIntoProjectSettings","target":"artifacts/cli/src/platforms/claude.platform.ts#docuviaProjectHookCommand","type":"calls"}
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#mergeDocuviaHookIntoProjectSettings","target":"artifacts/cli/src/platforms/claude.platform.ts#readProjectSettingsFile","type":"calls"}
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#mergeDocuviaHookIntoProjectSettings","target":"artifacts/cli/src/ui/wizard.ts#warn","type":"calls"}
-{"source":"artifacts/cli/src/platforms/claude.platform.ts#mergeDocuviaHookIntoProjectSettings","target":"l2:23195","type":"calls"}
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#printMcpServerRemovalReminder","target":"artifacts/cli/src/ui/wizard.ts#info","type":"calls"}
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#pruneDocuviaHookFromProjectSettings","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
 {"source":"artifacts/cli/src/platforms/claude.platform.ts#pruneDocuviaHookFromProjectSettings","target":"artifacts/cli/src/ui/wizard.ts#success","type":"calls"}
@@ -793,7 +771,6 @@
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#XML_TAGS","type":"contains"}
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptContextLines","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptIncomingLines","type":"calls"}
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptContextLines","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptOutgoingLines","type":"calls"}
-{"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptIncomingLines","target":"l2:23207","type":"calls"}
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptL2Lines","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildL3OpenTag","type":"calls"}
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#formatPromptOutput","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptContextLines","type":"calls"}
 {"source":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#formatPromptOutput","target":"artifacts/cli/src/prompt-format/query-prompt-formatter.ts#buildPromptL2Lines","type":"calls"}
@@ -910,7 +887,6 @@
 {"source":"artifacts/cli/src/utils/lsp-args.ts","target":"artifacts/cli/src/utils/lsp-args.ts#parseLspArgs","type":"contains"}
 {"source":"artifacts/cli/src/utils/lsp-args.ts","target":"artifacts/cli/src/utils/lsp-args.ts#splitShellWords","type":"contains"}
 {"source":"artifacts/cli/src/utils/lsp-args.ts#parseLspArgs","target":"artifacts/cli/src/utils/lsp-args.ts#splitShellWords","type":"calls"}
-{"source":"artifacts/cli/src/utils/lsp-args.ts#parseLspArgs","target":"l2:23183","type":"calls"}
 {"source":"artifacts/cli/src/utils/lsp-args.ts#splitShellWords","target":"artifacts/cli/src/utils/lsp-args.ts#flushToken","type":"calls"}
 {"source":"artifacts/cli/src/utils/lsp-args.ts#splitShellWords","target":"artifacts/cli/src/utils/lsp-args.ts#flushToken","type":"calls"}
 {"source":"artifacts/cli/src/utils/lsp-args.ts#splitShellWords","target":"artifacts/cli/src/utils/lsp-args.ts#isDoubleQuoteEscape","type":"calls"}
@@ -1359,15 +1335,6 @@
 {"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"artifacts/cli/test/unit/commands/analyze.unit.test.ts#anonymous@L960","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"artifacts/cli/test/unit/commands/analyze.unit.test.ts#anonymous@L961","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"artifacts/cli/test/unit/commands/analyze.unit.test.ts#anonymous@L999","type":"contains"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23178","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23179","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23181","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23181","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23182","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23184","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23185","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23186","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/analyze.unit.test.ts","target":"l2:23188","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/clean.unit.test.ts","target":"artifacts/cli/src/commands/clean.ts#cleanCommand","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/clean.unit.test.ts","target":"artifacts/cli/src/commands/clean.ts#cleanCommand","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/clean.unit.test.ts","target":"artifacts/cli/src/commands/clean.ts#cleanCommand","type":"calls"}
@@ -1659,6 +1626,8 @@
 {"source":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts","target":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts#anonymous@L69","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts","target":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts#anonymous@L72","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts","target":"artifacts/cli/test/unit/commands/snapshot.unit.test.ts#anonymous@L83","type":"contains"}
+{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/src/commands/status.ts#statusCommand","type":"calls"}
+{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/src/commands/status.ts#statusCommand","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L19","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L24","type":"contains"}
@@ -1667,9 +1636,7 @@
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L39","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L49","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L53","type":"contains"}
-{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L79","type":"contains"}
-{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"l2:23070","type":"calls"}
-{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"l2:23070","type":"calls"}
+{"source":"artifacts/cli/test/unit/commands/status.unit.test.ts","target":"artifacts/cli/test/unit/commands/status.unit.test.ts#anonymous@L81","type":"contains"}
 {"source":"artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts","target":"artifacts/cli/src/commands/sync-knowledge.ts#syncKnowledgeCommand","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts","target":"artifacts/cli/src/commands/sync-knowledge.ts#syncKnowledgeCommand","type":"calls"}
 {"source":"artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts","target":"artifacts/cli/src/commands/sync-knowledge.ts#syncKnowledgeCommand","type":"calls"}
@@ -8409,7 +8376,6 @@
 {"source":"lib/ui-core/src/docuvia-api.unit.test.ts","target":"lib/ui-core/src/docuvia-api.unit.test.ts#anonymous@L62","type":"contains"}
 {"source":"lib/ui-core/src/docuvia-api.unit.test.ts","target":"lib/ui-core/src/docuvia-api.unit.test.ts#anonymous@L72","type":"contains"}
 {"source":"lib/ui-core/src/docuvia-api.unit.test.ts","target":"lib/ui-core/src/docuvia-api.unit.test.ts#anonymous@L97","type":"contains"}
-{"source":"lib/ui-core/src/index.ts","target":"l2:29938","type":"depends_on"}
 {"source":"lib/ui-core/src/index.ts","target":"lib/ui-core/src/utils/resolve-db-path.ts#resolveDbPath","type":"depends_on"}
 {"source":"lib/ui-core/src/index.ts","target":"lib/ui-core/src/workflows/analyze/analyze-result.ts#AnalyzeResult","type":"depends_on"}
 {"source":"lib/ui-core/src/index.ts","target":"lib/ui-core/src/workflows/analyze/analyze-result.ts#ExtractedDecision","type":"depends_on"}
@@ -11776,6 +11742,7 @@
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L102","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L103","type":"contains"}
@@ -11798,15 +11765,23 @@
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L227","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L232","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L247","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L252","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L265","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L270","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L285","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L250","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L258","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L261","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L266","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L282","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L287","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L295","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L3","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L311","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L314","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L300","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L313","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L318","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L333","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L343","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L359","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#anonymous@L362","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockHydrationService","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"calls"}
@@ -11814,7 +11789,7 @@
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"calls"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#makeMockStore","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withFtsSyncSuspended","type":"contains"}
-{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withFtsSyncSuspended@L308","type":"contains"}
+{"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withFtsSyncSuspended@L356","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withReadLock","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withTransaction","type":"contains"}
 {"source":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/status/status-workflow.unit.test.ts#withWriteLock","type":"contains"}

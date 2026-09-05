@@ -1859,6 +1859,18 @@ describe("GraphStore.open DB classification", () => {
     const reader = await GraphStore.open({ dbPath, readonly: true });
     await reader.close();
   });
+
+  it("rejects malformed dbPath before touching fs (issue #261)", async () => {
+    await expect(GraphStore.open({ dbPath: "" })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
+    await expect(GraphStore.open({ dbPath: "db\0evil" })).rejects.toMatchObject(
+      { code: "INVALID_INPUT" },
+    );
+    await expect(
+      GraphStore.open({ dbPath: undefined as unknown as string }),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  });
 });
 
 describe("callSites repo: callee evidence columns (issue #192, migration 0012)", () => {

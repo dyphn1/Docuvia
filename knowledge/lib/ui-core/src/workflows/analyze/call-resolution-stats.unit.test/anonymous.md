@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/call-resolution-stats.unit.test.ts#anonymous@L59
+id: lib/ui-core/src/workflows/analyze/call-resolution-stats.unit.test.ts#anonymous@L45
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/call-resolution-stats.unit.test.ts

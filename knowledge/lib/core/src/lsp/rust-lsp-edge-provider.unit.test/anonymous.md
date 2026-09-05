@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts#FakeLspClient.anonymous
+id: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts#anonymous@L477
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts

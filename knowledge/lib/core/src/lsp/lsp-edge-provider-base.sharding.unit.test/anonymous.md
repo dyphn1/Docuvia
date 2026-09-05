@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#FakeLspClient.anonymous
+id: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#anonymous@L515
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts`
+test.ts`

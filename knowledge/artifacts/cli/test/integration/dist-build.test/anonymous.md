@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/dist-build.test.ts#anonymous@L99
+id: artifacts/cli/test/integration/dist-build.test.ts#anonymous@L89
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/dist-build.test.ts

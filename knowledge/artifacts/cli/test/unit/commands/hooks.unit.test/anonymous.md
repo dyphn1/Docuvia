@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/hooks.unit.test.ts#anonymous@L10
+id: artifacts/cli/test/unit/commands/hooks.unit.test.ts#anonymous@L90
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/hooks.unit.test.ts

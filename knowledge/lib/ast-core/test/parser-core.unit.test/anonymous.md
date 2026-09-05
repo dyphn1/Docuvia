@@ -7,4 +7,3 @@ filePath: lib/ast-core/test/parser-core.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/test/parser-core.unit.test.ts`
-

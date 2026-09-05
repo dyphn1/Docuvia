@@ -5382,6 +5382,13 @@
 {"id":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts#withReadLock","type":"symbol","name":"withReadLock","filePath":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts"}
 {"id":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts#withTransaction","type":"symbol","name":"withTransaction","filePath":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts"}
 {"id":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts#withWriteLock","type":"symbol","name":"withWriteLock","filePath":"lib/ui-core/src/utils/ensure-hydrated.unit.test.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.ts","type":"file","name":"lib/ui-core/src/utils/is-path-within-workspace.ts","filePath":"lib/ui-core/src/utils/is-path-within-workspace.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.ts#isPathWithinWorkspace","type":"symbol","name":"isPathWithinWorkspace","filePath":"lib/ui-core/src/utils/is-path-within-workspace.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts","type":"file","name":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts","filePath":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous@L14","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous@L23","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts"}
+{"id":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous@L7","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts"}
 {"id":"lib/ui-core/src/utils/resolve-db-path.ts","type":"file","name":"lib/ui-core/src/utils/resolve-db-path.ts","filePath":"lib/ui-core/src/utils/resolve-db-path.ts"}
 {"id":"lib/ui-core/src/utils/resolve-db-path.ts#resolveDbPath","type":"symbol","name":"resolveDbPath","filePath":"lib/ui-core/src/utils/resolve-db-path.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-log-writer.ts","type":"file","name":"lib/ui-core/src/workflows/analyze/analyze-log-writer.ts","filePath":"lib/ui-core/src/workflows/analyze/analyze-log-writer.ts"}
@@ -6421,6 +6428,7 @@
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#CLEANING","type":"symbol","name":"CLEANING","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETE_FAILED","type":"symbol","name":"DELETE_FAILED","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETED_AT","type":"symbol","name":"DELETED_AT","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
+{"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#PATH_ESCAPES_WORKSPACE","type":"symbol","name":"PATH_ESCAPES_WORKSPACE","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-result.ts","type":"file","name":"lib/ui-core/src/workflows/clean/clean-result.ts","filePath":"lib/ui-core/src/workflows/clean/clean-result.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-result.ts#CleanResult","type":"symbol","name":"CleanResult","filePath":"lib/ui-core/src/workflows/clean/clean-result.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-workflow.ts","type":"file","name":"lib/ui-core/src/workflows/clean/clean-workflow.ts","filePath":"lib/ui-core/src/workflows/clean/clean-workflow.ts"}
@@ -7269,7 +7277,10 @@
 {"id":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts#anonymous@L47","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts","type":"file","name":"lib/ui-core/src/workflows/sync/sync-state.ts","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#acquireSyncStateLock","type":"symbol","name":"acquireSyncStateLock","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state.ts#anonymous@L80","type":"symbol","name":"anonymous","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#loadSyncState","type":"symbol","name":"loadSyncState","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
+{"id":"lib/ui-core/src/workflows/sync/sync-state.ts#releaseSyncStateLock","type":"symbol","name":"releaseSyncStateLock","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#resolveSyncStatePath","type":"symbol","name":"resolveSyncStatePath","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#saveSyncState","type":"symbol","name":"saveSyncState","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}
 {"id":"lib/ui-core/src/workflows/sync/sync-state.ts#SyncStateFile","type":"symbol","name":"SyncStateFile","filePath":"lib/ui-core/src/workflows/sync/sync-state.ts"}

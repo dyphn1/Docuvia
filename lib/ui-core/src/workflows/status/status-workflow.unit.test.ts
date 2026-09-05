@@ -245,6 +245,54 @@ describe("StatusWorkflow.execute()", () => {
     expect(result.graphFreshness).toBe("stale");
   });
 
+  it("degrades graphFreshness to unknown when HEAD is unborn, meta is missing, or git throws (issue #193)", async () => {
+    const nullHeadStore = makeMockStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+            ? "abc123"
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(nullHeadStore),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.register(
+      TOKENS.GitProvider,
+      () =>
+        ({
+          getHeadSha: vi
+            .fn()
+            .mockResolvedValueOnce(undefined)
+            .mockResolvedValueOnce("abc123")
+            .mockRejectedValueOnce(new Error("git failed")),
+        }) as any,
+    );
+    docuviaFactory.lock();
+
+    const workflow = new StatusWorkflow("/workspace/demo", createMockLogger());
+    // Unborn HEAD -> unknown.
+    expect((await workflow.execute()).graphFreshness).toBe("unknown");
+    // Missing meta (second call returns undefined for every key) -> unknown.
+    (nullHeadStore.meta.get as ReturnType<typeof vi.fn>).mockImplementation(
+      () => undefined,
+    );
+    expect((await workflow.execute()).graphFreshness).toBe("unknown");
+    // Git throwing -> unknown, never a status crash.
+    (nullHeadStore.meta.get as ReturnType<typeof vi.fn>).mockImplementation(
+      (key: string) =>
+        key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+          ? "abc123"
+          : undefined,
+    );
+    expect((await workflow.execute()).graphFreshness).toBe("unknown");
+  });
+
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
     const dbOpenError = new DocuviaError(
       "DB_NOT_FOUND",

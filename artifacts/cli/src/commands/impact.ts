@@ -75,6 +75,7 @@ function printBlastRadius(
   tierBCoverage?: TierBCoverageHint,
   coverageNote?: string,
   riskNote?: string,
+  partialCoverage?: boolean,
 ): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
@@ -101,6 +102,13 @@ function printBlastRadius(
     for (const entry of blastRadius) {
       printEntryWhy(entry.name, entry.why);
     }
+  }
+
+  // Issue #192: partialCoverage flag -- surface when Tier B is incomplete
+  if (partialCoverage) {
+    ui.warn(
+      "Partial Tier B coverage: some workspace files not yet analyzed; blast radius may be incomplete.",
+    );
   }
 
   // Issue #192: an empty result is UNKNOWN (never a false-safe LOW), and a lower-bound result
@@ -145,6 +153,7 @@ function printHumanResult(
     result.tierBCoverage,
     result.coverageNote,
     result.riskNote,
+    result.partialCoverage,
   );
 }
 

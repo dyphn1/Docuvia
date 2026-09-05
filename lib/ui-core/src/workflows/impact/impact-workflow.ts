@@ -140,6 +140,14 @@ export class ImpactWorkflow {
       targetFileResolution,
     });
 
+    // Issue #192: partialCoverage flag -- true when Tier B coverage is incomplete
+    // (processed < total) and we have a non-empty blast radius, or when empty blast radius
+    // but Tier B is incomplete. This flag indicates the edge graph has known gaps.
+    const hasPartialCoverage =
+      coverage != null &&
+      coverage.totalFiles > 0 &&
+      coverage.processedFiles < coverage.totalFiles;
+
     const coverageNote = pickBackCompatCoverageNote(
       registryMediated,
       epistemicResult.riskNote,
@@ -155,6 +163,7 @@ export class ImpactWorkflow {
         : {}),
       ...(coverageNote ? { coverageNote } : {}),
       ...(tierBCoverage ? { tierBCoverage } : {}),
+      ...(hasPartialCoverage ? { partialCoverage: true } : {}),
     };
   }
 

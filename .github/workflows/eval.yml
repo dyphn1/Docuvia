@@ -1,11 +1,11 @@
-# Impact-accuracy eval (issue #192) — REPORT-ONLY by design.
+# Impact-accuracy eval (issue #192) — REPORT-ONLY until baseline established.
 #
 # Mirrors code-review-graph's eval.yml stance: this workflow measures blast-radius
 # precision/recall against the human-labeled corpus in
-# `artifacts/cli/test/support/impact-corpus.ts` and posts the numbers, but does NOT gate
-# merges. No regression threshold is enforced until enough dated runs accumulate baseline
-# history (see the integration test's doc comment for the harness-integrity assertions that
-# DO fail — a broken control case or a silently errored case fails here too).
+# `artifacts/cli/test/support/impact-corpus.ts` and posts the numbers. No regression
+# threshold is enforced until baseline history accumulates (see the integration test's
+# doc comment for harness-integrity assertions that DO fail — a broken control case or a
+# silently errored case fails here too).
 name: Eval
 
 on:
@@ -50,6 +50,30 @@ jobs:
 
       - name: Run impact-accuracy eval over the regression corpus
         run: pnpm run eval:impact
+
+      - name: Upload eval reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: impact-accuracy-results
+          path: |
+            evaluate/results/*.csv
+            evaluate/results/*.summary.md
+          retention-days: 90
+
+      # Baseline gating: after N runs with stable mean F1 >= 0.6, uncomment the gate below.
+      # The gate uses the dated summary file and fails if mean F1 drops below threshold.
+      # To activate: set BASELINE_MEAN_F1_THRESHOLD=0.6 and uncomment this step.
+      # - name: Gate on F1 regression (activate after baseline)
+      #   run: |
+      #     threshold=${BASELINE_MEAN_F1_THRESHOLD:-0.6}
+      #     summary="$(ls -1 evaluate/results/*.summary.md | tail -n 1)"
+      #     meanF1=$(grep -E 'mean F1' "$summary" | sed -E 's/.*: ([0-9.]+)%?/\1/')
+      #     meanF1=$(echo "$meanF1 / 100" | bc -l 2>/dev/null || echo "$meanF1")
+      #     if (( $(echo "$meanF1 < $threshold" | bc -l) )); then
+      #       echo "❌ Impact accuracy F1 ($meanF1) below threshold ($threshold)"
+      #       exit 1
+      #     fi
+      #     echo "✅ Impact accuracy F1 ($meanF1) meets threshold ($threshold)"
 
       - name: Upload eval reports
         uses: actions/upload-artifact@v4

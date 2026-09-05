@@ -241,6 +241,7 @@ describe("ImpactWorkflow.execute()", () => {
       epistemic: "lower-bound",
       riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(3, 10),
       tierBCoverage: tierBCoverageHint,
+      partialCoverage: true,
     });
   });
 

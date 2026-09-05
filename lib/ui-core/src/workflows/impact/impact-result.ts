@@ -26,4 +26,7 @@ export interface ImpactResult {
    *  it, "No dependents found / Risk level: LOW" reads as confident when registry-mediated
    *  cross-package dependents may simply be invisible to the edge model. */
   coverageNote?: string;
+  /** Issue #192: partial coverage flag -- true when the edge graph is known to have incomplete
+   *  Tier B coverage for this symbol's blast radius. Omitted when coverage is complete or unknown. */
+  partialCoverage?: boolean;
 }

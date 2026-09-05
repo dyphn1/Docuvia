@@ -15,9 +15,6 @@ import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
 import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 
-/** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds `resolveNewestSourceTrailerSha`'s log scan without truncating any real history (mirrors `HydrationService`'s identical scan-depth choice). */
-const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
-
 /** Escapes regex metacharacters in a literal string before embedding it in a `RegExp` — used by
  *  `DOCUVIA_HOOK_BLOCK_PATTERN` below (defensive; `DOCUVIA_HOOK_HEADER_COMMENT` itself carries no
  *  metacharacters today, but this keeps the pattern correct if that ever changes). */
@@ -858,7 +855,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     const log = await this.git.getCommitLog(
       cwd,
       branchName,
-      KNOWLEDGE_LOG_SCAN_LIMIT,
+      GitConstants.KNOWLEDGE_LOG_SCAN_LIMIT,
     );
     for (const entry of log) {
       const sourceSha = parseSourceTrailer(entry.message);
@@ -875,7 +872,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     const log = await this.git.getCommitLog(
       cwd,
       branchName,
-      KNOWLEDGE_LOG_SCAN_LIMIT,
+      GitConstants.KNOWLEDGE_LOG_SCAN_LIMIT,
     );
     for (const entry of log) {
       const sSha = parseSourceTrailer(entry.message);

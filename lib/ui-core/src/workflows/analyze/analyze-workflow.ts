@@ -567,10 +567,6 @@ type AnalyzeWorkflowOptions = NonNullable<
   ConstructorParameters<typeof AnalyzeWorkflow>[2]
 >;
 
-/** Knowledge branch is a dedicated orphan branch of small, purpose-built commits -- mirrors
- *  `HydrationService`'s identical scan-depth choice (see its own `KNOWLEDGE_LOG_SCAN_LIMIT`). */
-const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
-
 /**
  * Reads the `Docuvia-Source` trailer off the specific knowledge-branch commit
  * `tryHydrateThenDelta` resolved via `IHydrationService.resolveHydrationCommit` -- that method
@@ -585,7 +581,7 @@ async function resolveSourceShaForKnowledgeCommit(
   const log = await git.getCommitLog(
     workspaceRoot,
     GitConstants.KNOWLEDGE_ROOT,
-    KNOWLEDGE_LOG_SCAN_LIMIT,
+    GitConstants.KNOWLEDGE_LOG_SCAN_LIMIT,
   );
   const entry = log.find((e) => e.sha === knowledgeSha);
   return entry ? parseSourceTrailer(entry.message) : undefined;

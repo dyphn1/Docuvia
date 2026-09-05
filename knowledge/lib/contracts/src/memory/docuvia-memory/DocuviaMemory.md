@@ -1,9 +1,9 @@
 ---
-id: lib/contracts/src/memory/docuvia-memory.ts#DocuviaMemory
+id: lib/contracts/src/memory/docuvia-memory.ts#docuviaMemory
 type: symbol
-name: DocuviaMemory
+name: docuviaMemory
 filePath: lib/contracts/src/memory/docuvia-memory.ts
 ---
-# Symbol: DocuviaMemory
+# Symbol: docuviaMemory
 
 File: `lib/contracts/src/memory/docuvia-memory.ts`

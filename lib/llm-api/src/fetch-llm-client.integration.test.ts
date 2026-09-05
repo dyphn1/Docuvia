@@ -119,7 +119,7 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     expect(receivedAuth).toBeUndefined();
   });
 
-  it("chatCompletion throws a DocuviaError with LLM_CHAT_COMPLETION_FAILED on a non-2xx response", async () => {
+  it("chatCompletion throws LLM_AUTH_FAILED for a 401 response (issue #134 error classification)", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "unauthorized" }));
@@ -135,8 +135,29 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
         messages: [{ role: "user", content: "hello" }],
       }),
     ).rejects.toMatchObject({
-      code: "LLM_CHAT_COMPLETION_FAILED",
+      code: "LLM_AUTH_FAILED",
       message: expect.stringContaining("unauthorized"),
+    });
+  });
+
+  it("chatCompletion throws LLM_CHAT_COMPLETION_FAILED for a 500 response (issue #134 error classification)", async () => {
+    const server = await startServer((_req, res) => {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "internal error" }));
+    });
+    close = server.close;
+
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: server.url, apiKey: "secret-key" });
+
+    await expect(
+      client.chatCompletion({
+        model: "gpt-test",
+        messages: [{ role: "user", content: "hello" }],
+      }),
+    ).rejects.toMatchObject({
+      code: "LLM_CHAT_COMPLETION_FAILED",
+      message: expect.stringContaining("internal error"),
     });
   });
 

@@ -233,6 +233,15 @@ export async function parseOpenApiSpec(
   };
 }
 
+const OPENAPI_SCAN_LINE_LIMIT = 20;
+/**
+ * Upper bound on the scanned prefix (issue #290) — `split("\n", 20)` alone does
+ * not bound memory on pathological single-line inputs (e.g. minified JSON),
+ * where `lines[0]` plus its `trim()` copy hold the whole file twice.
+ * Trade-off: a signature past the first 20 lines / 8k chars reads as a miss —
+ * acceptable for this fast-path heuristic (signatures sit at the root level).
+ */
+const OPENAPI_SCAN_MAX_CHARS = 8000;
 /**
  * Detect if a file is likely an OpenAPI spec by inspecting its content.
  * Fast path: check for 'openapi' or 'swagger' key at root level.
@@ -245,7 +254,9 @@ export function isOpenApiFile(content: string, ext: string): boolean {
   }
 
   // Quick scan for the signature key (faster than full parse)
-  const lines = content.split("\n", 20);
+  const lines = content
+    .slice(0, OPENAPI_SCAN_MAX_CHARS)
+    .split("\n", OPENAPI_SCAN_LINE_LIMIT);
   for (const line of lines) {
     const trimmed = line.trim();
     if (

@@ -7,4 +7,3 @@ filePath: lib/core/src/ast/core-pipeline.honest.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/core-pipeline.honest.unit.test.ts`
-

@@ -59,6 +59,7 @@ describe("statusCommand", () => {
       tierBFilesProcessed: 8,
       tierBFilesTotal: 10,
       tierCQueued: 3,
+      graphFreshness: "stale",
     });
 
     await statusCommand();
@@ -73,6 +74,7 @@ describe("statusCommand", () => {
         ["L3 Decisions", "12"],
         ["Tier B Coverage", "8 / 10 (80.0%)"],
         ["Tier C Queue", "3"],
+        ["Graph Freshness", expect.stringContaining("stale")],
       ]),
     );
   });

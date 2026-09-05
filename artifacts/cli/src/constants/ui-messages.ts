@@ -78,6 +78,12 @@ export const UI_MESSAGES = {
   // Issue #58: pending Tier C (LLM-inferred L3) candidates -- surfaced so a permanently-empty
   // queue is visible rather than silent.
   STATUS_METRIC_TIER_C_QUEUE: "Tier C Queue",
+  // Issue #193: HEAD-vs-last-ingested freshness for agent/hook quick checks.
+  STATUS_METRIC_GRAPH_FRESHNESS: "Graph Freshness",
+  STATUS_FRESHNESS_FRESH: "✓ fresh",
+  STATUS_FRESHNESS_STALE:
+    "⚠ stale (run 'docuvia analyze' or see 'docuvia doctor')",
+  STATUS_FRESHNESS_UNKNOWN: "? unknown",
 
   // Publish Command (IFCE-005: renamed from `sync`)
   PUBLISH_HEADER: "Publish to Docuvia",

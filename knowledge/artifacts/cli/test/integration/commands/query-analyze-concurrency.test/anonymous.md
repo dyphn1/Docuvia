@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/query-analyze-concurrency.test.ts#anonymous@L82
+id: artifacts/cli/test/integration/commands/query-analyze-concurrency.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/query-analyze-concurrency.test.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/commands/query-analyze-concurrency.test
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/query-analyze-concurrency.test.ts`
+ts`

@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#GraphStore.anonymous@L347
+id: lib/schema/src/sqlite/graph-store.ts#assertValidDbPath
 type: symbol
-name: anonymous
+name: assertValidDbPath
 filePath: lib/schema/src/sqlite/graph-store.ts
 ---
-# Symbol: anonymous
+# Symbol: assertValidDbPath
 
 File: `lib/schema/src/sqlite/graph-store.ts`

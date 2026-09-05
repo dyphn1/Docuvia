@@ -7,3 +7,4 @@ filePath: lib/schema/src/register.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/register.ts`
+ts`

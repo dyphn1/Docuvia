@@ -1,5 +1,5 @@
 ---
-id: lib/plugins-ast/test/languages.unit.test.ts#anonymous@L290
+id: lib/plugins-ast/test/languages.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/plugins-ast/test/languages.unit.test.ts

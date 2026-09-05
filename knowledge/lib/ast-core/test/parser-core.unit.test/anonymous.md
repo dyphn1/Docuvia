@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/parser-core.unit.test.ts#anonymous@L73
+id: lib/ast-core/test/parser-core.unit.test.ts#anonymous@L67
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/parser-core.unit.test.ts

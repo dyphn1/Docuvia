@@ -2138,10 +2138,11 @@
 {"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L23","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
 {"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L31","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
 {"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L41","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
-{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L42","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
-{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L47","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
-{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L57","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
+{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L52","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
+{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L53","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
+{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L60","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
 {"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L7","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
+{"id":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L70","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/memory/docuvia-memory.unit.test.ts"}
 {"id":"lib/contracts/src/testing/mocks-test.ts","type":"file","name":"lib/contracts/src/testing/mocks-test.ts","filePath":"lib/contracts/src/testing/mocks-test.ts"}
 {"id":"lib/contracts/src/testing/mocks-test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/testing/mocks-test.ts"}
 {"id":"lib/contracts/src/testing/mocks-test.ts#makeMockGitProvider","type":"symbol","name":"makeMockGitProvider","filePath":"lib/contracts/src/testing/mocks-test.ts"}
@@ -6428,7 +6429,6 @@
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#CLEANING","type":"symbol","name":"CLEANING","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETE_FAILED","type":"symbol","name":"DELETE_FAILED","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETED_AT","type":"symbol","name":"DELETED_AT","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
-{"id":"lib/ui-core/src/workflows/clean/clean-messages.ts#PATH_ESCAPES_WORKSPACE","type":"symbol","name":"PATH_ESCAPES_WORKSPACE","filePath":"lib/ui-core/src/workflows/clean/clean-messages.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-result.ts","type":"file","name":"lib/ui-core/src/workflows/clean/clean-result.ts","filePath":"lib/ui-core/src/workflows/clean/clean-result.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-result.ts#CleanResult","type":"symbol","name":"CleanResult","filePath":"lib/ui-core/src/workflows/clean/clean-result.ts"}
 {"id":"lib/ui-core/src/workflows/clean/clean-workflow.ts","type":"file","name":"lib/ui-core/src/workflows/clean/clean-workflow.ts","filePath":"lib/ui-core/src/workflows/clean/clean-workflow.ts"}

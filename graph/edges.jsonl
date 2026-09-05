@@ -3134,10 +3134,11 @@
 {"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L23","type":"contains"}
 {"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L31","type":"contains"}
 {"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L41","type":"contains"}
-{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L42","type":"contains"}
-{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L47","type":"contains"}
-{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L57","type":"contains"}
+{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L52","type":"contains"}
+{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L53","type":"contains"}
+{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L60","type":"contains"}
 {"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L7","type":"contains"}
+{"source":"lib/contracts/src/memory/docuvia-memory.unit.test.ts","target":"lib/contracts/src/memory/docuvia-memory.unit.test.ts#anonymous@L70","type":"contains"}
 {"source":"lib/contracts/src/testing/mocks-test.ts","target":"lib/contracts/src/testing/mocks-test.ts#anonymous","type":"contains"}
 {"source":"lib/contracts/src/testing/mocks-test.ts","target":"lib/contracts/src/testing/mocks-test.ts#makeMockGitProvider","type":"contains"}
 {"source":"lib/contracts/src/testing/mocks-test.ts","target":"lib/contracts/src/testing/mocks-test.ts#makeMockKnowledgeGit","type":"contains"}
@@ -8368,6 +8369,7 @@
 {"source":"lib/ui-core/src/docuvia-api.ts#query","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#query","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#removeDocuviaDir","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
+{"source":"lib/ui-core/src/docuvia-api.ts#removeDocuviaDir","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#review","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#setHookEnabled","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
 {"source":"lib/ui-core/src/docuvia-api.ts#setHookEnabled","target":"lib/ui-core/src/docuvia-api.ts#requireMemory","type":"calls"}
@@ -10651,12 +10653,10 @@
 {"source":"lib/ui-core/src/workflows/clean/clean-messages.ts","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#CLEANING","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-messages.ts","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETE_FAILED","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-messages.ts","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETED_AT","type":"contains"}
-{"source":"lib/ui-core/src/workflows/clean/clean-messages.ts","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#PATH_ESCAPES_WORKSPACE","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-result.ts","target":"lib/ui-core/src/workflows/clean/clean-result.ts#CleanResult","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts","target":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts","target":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.constructor","type":"contains"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts","target":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","type":"contains"}
-{"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/utils/is-path-within-workspace.ts#isPathWithinWorkspace","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/utils/resolve-db-path.ts#resolveDbPath","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-log-writer.ts#appendCleanLogLine","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-log-writer.ts#writeCleanSummary","type":"calls"}
@@ -10664,7 +10664,6 @@
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#CLEANING","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETE_FAILED","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#DELETED_AT","type":"calls"}
-{"source":"lib/ui-core/src/workflows/clean/clean-workflow.ts#CleanWorkflow.execute","target":"lib/ui-core/src/workflows/clean/clean-messages.ts#PATH_ESCAPES_WORKSPACE","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/clean/clean-workflow.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -12037,7 +12036,6 @@
 {"source":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#withTransaction","type":"contains"}
 {"source":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#withWriteLock","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"contains"}
-{"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","target":"lib/ui-core/src/utils/is-path-within-workspace.ts#isPathWithinWorkspace","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous","type":"contains"}

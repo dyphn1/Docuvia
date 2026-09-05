@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/skills/install-skills.unit.test.ts#anonymous@L29
+id: artifacts/cli/test/unit/skills/install-skills.unit.test.ts#anonymous@L21
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/skills/install-skills.unit.test.ts

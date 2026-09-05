@@ -4,6 +4,8 @@ export const CLEAN_MESSAGES = {
   DELETED: "Cleaned .docuvia/local.db database.",
   NOT_FOUND: "No local database found to clean.",
   DELETE_FAILED: (dbPath: string) => `Failed to delete database at ${dbPath}`,
+  PATH_ESCAPES_WORKSPACE: (dbPath: string, workspaceRoot: string) =>
+    `Refusing to delete database at ${dbPath}: resolved outside workspace ${workspaceRoot}`,
   DELETED_AT: (dbPath: string) => `Deleted local database at ${dbPath}`,
 } as const;
 

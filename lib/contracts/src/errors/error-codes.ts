@@ -51,6 +51,7 @@ export const ErrorCodes = {
   // Orchestration (lib/ui-core)
   INIT_WORKFLOW_FAILED: "INIT_WORKFLOW_FAILED",
   CLEAN_WORKFLOW_FAILED: "CLEAN_WORKFLOW_FAILED",
+  UNINSTALL_WORKFLOW_FAILED: "UNINSTALL_WORKFLOW_FAILED",
 
   // Boundary validation (Presentation layer)
   INVALID_INPUT: "INVALID_INPUT",

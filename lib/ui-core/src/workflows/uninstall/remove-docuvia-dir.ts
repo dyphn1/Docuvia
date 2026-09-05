@@ -1,6 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
-import { DOCUVIA_DIR_NAME, type ILogger } from "@workspace/contracts";
+import {
+  DOCUVIA_DIR_NAME,
+  DocuviaError,
+  ErrorCodes,
+  type ILogger,
+} from "@workspace/contracts";
+import { isPathWithinWorkspace } from "../../utils/is-path-within-workspace.js";
 
 const REMOVE_DOCUVIA_DIR_MESSAGES = {
   REMOVED: "Removed .docuvia/ directory",
@@ -19,6 +25,15 @@ export async function removeDocuviaDataDir(
   logger: ILogger,
 ): Promise<{ removed: boolean }> {
   const dirPath = path.join(workspaceRoot, DOCUVIA_DIR_NAME);
+
+  // Guardrail (issue #266): same rationale as `CleanWorkflow` — never rm -rf
+  // outside the workspace even if path construction ever changes.
+  if (!isPathWithinWorkspace(dirPath, workspaceRoot)) {
+    throw new DocuviaError(
+      ErrorCodes.UNINSTALL_WORKFLOW_FAILED,
+      `Refusing to remove directory at ${dirPath}: resolved outside workspace ${workspaceRoot}`,
+    );
+  }
 
   let exists = true;
   try {

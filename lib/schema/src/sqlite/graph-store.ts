@@ -42,12 +42,32 @@ const GRAPH_STORE_ERROR_MESSAGES = {
   INIT_LOCK_TIMED_OUT: (lockPath: string) =>
     `Timed out waiting for the database init lock at ${lockPath} — another Docuvia process may be stuck`,
   OPEN_FAILED: (dbPath: string) => `Failed to open database at ${dbPath}`,
+  INVALID_DB_PATH:
+    "Invalid database path: dbPath must be a non-empty string without NUL bytes",
   NOT_FOUND: (dbPath: string) =>
     `Local database not found at ${dbPath}. Please run "docuvia init".`,
   MIGRATIONS_FAILED: "Failed to apply migrations",
   PRUNE_MISSING_FILES_FAILED: "Failed to prune missing files",
 } as const;
 
+/**
+ * Defense in depth (issue #261): reject malformed paths before any fs call — an
+ * empty/NUL-containing dbPath would otherwise reach `path.dirname` +
+ * `fs.mkdirSync({ recursive: true })` and throw an opaque native error (or, for
+ * exotic inputs, create directories at unintended locations).
+ */
+function assertValidDbPath(dbPath: string): void {
+  if (
+    typeof dbPath !== "string" ||
+    dbPath.length === 0 ||
+    dbPath.includes("\0")
+  ) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      GRAPH_STORE_ERROR_MESSAGES.INVALID_DB_PATH,
+    );
+  }
+}
 /**
  * Cross-process mutex around a fresh database's first bootstrap (WAL-mode switch + migrations)
  * — same shape as git-local-provider.ts's `acquireKnowledgeLock`/`releaseKnowledgeLock`. Needed
@@ -137,6 +157,7 @@ export class GraphStore implements IGraphStore {
   }
 
   static async open(opts: GraphStoreOpenOptions): Promise<GraphStore> {
+    assertValidDbPath(opts.dbPath);
     // Only writers bootstrap (switch journal mode, apply migrations) — that sequence isn't safe
     // against a second process doing the same thing at the same time (see acquireInitLock's
     // comment), so serialize it with a cross-process lock. Readonly opens never touch the file

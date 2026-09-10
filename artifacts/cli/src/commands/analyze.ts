@@ -474,7 +474,7 @@ function setupAnalyzeMemory(
       docuviaMemory.set(scopeId, MemoryKeys.TIER_B_FULL_RESYNC, true);
     }
     if (tierCAll) {
-      docuviaMemory.set(scopeId, "tierCDrainAll" as any, true);
+      docuviaMemory.set(scopeId, MemoryKeys.TIER_C_DRAIN_ALL, true);
     }
     setTierBEnvMemory(scopeId, lspTimeoutMs, lspProcesses);
     setTierCMemory(scopeId, llmConfig);

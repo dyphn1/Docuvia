@@ -262,7 +262,7 @@ export const docuviaApi = {
         force: docuviaMemory.get<boolean>(scopeId, MemoryKeys.FORCE),
         tierCDrainAll: docuviaMemory.get<boolean>(
           scopeId,
-          "tierCDrainAll" as any,
+          MemoryKeys.TIER_C_DRAIN_ALL,
         ),
       }).execute();
     }

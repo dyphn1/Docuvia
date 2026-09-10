@@ -152,4 +152,12 @@ paths:
     expect(isOpenApiFile("just text", ".txt")).toBe(false);
     expect(isOpenApiFile("just yaml", ".yaml")).toBe(false);
   });
+
+  it("isOpenApiFile bounds memory on extreme single-line input (issue #290)", () => {
+    const hugeLine = `{"data": "${"x".repeat(5_000_000)}"}`;
+    expect(isOpenApiFile(hugeLine, ".json")).toBe(false);
+    expect(
+      isOpenApiFile(`openapi: 3.0.0\n${"y".repeat(5_000_000)}`, ".yaml"),
+    ).toBe(true);
+  });
 });

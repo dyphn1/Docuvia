@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#GraphStore.anonymous@L332
+id: lib/schema/src/sqlite/graph-store.ts#getErrnoCode
 type: symbol
-name: anonymous
+name: getErrnoCode
 filePath: lib/schema/src/sqlite/graph-store.ts
 ---
-# Symbol: anonymous
+# Symbol: getErrnoCode
 
 File: `lib/schema/src/sqlite/graph-store.ts`

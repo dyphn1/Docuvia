@@ -2,6 +2,18 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.7.0](https://github.com/dyphn1/Docuvia/compare/v1.6.2...v1.7.0) (2026-09-10)
+
+### Bug Fixes
+
+- **hooks,doctor:** pre-push prints one-line Tier B/sync failure hint without blocking push ([#308](https://github.com/dyphn1/Docuvia/issues/308)) ([3da5a74](https://github.com/dyphn1/Docuvia/commit/3da5a74f2ebc4659b783a452e26a581b7c2df69c)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#196](https://github.com/dyphn1/Docuvia/issues/196) [#196](https://github.com/dyphn1/Docuvia/issues/196) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+- **schema:** validate dbPath in GraphStore.open before fs access ([#296](https://github.com/dyphn1/Docuvia/issues/296)) ([a1e246a](https://github.com/dyphn1/Docuvia/commit/a1e246a1bbc997746538bd4e3640e42143225b3c)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#261](https://github.com/dyphn1/Docuvia/issues/261) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+- **ui-core,contracts:** guard destructive delete paths to stay within workspace ([#298](https://github.com/dyphn1/Docuvia/issues/298)) ([b158dbf](https://github.com/dyphn1/Docuvia/commit/b158dbfae7bf5c6d25dd42d98af463c76d795d40)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#266](https://github.com/dyphn1/Docuvia/issues/266) [#267](https://github.com/dyphn1/Docuvia/issues/267) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+
+### Features
+
+- **status:** report graph freshness vs HEAD in status workflow and CLI ([#309](https://github.com/dyphn1/Docuvia/issues/309)) ([5f8accd](https://github.com/dyphn1/Docuvia/commit/5f8accd7fb14f4319c2e01e7d0765f9882a86f9f)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#193](https://github.com/dyphn1/Docuvia/issues/193) [#193](https://github.com/dyphn1/Docuvia/issues/193) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+
 ## [1.6.2](https://github.com/dyphn1/Docuvia/compare/v1.6.1...v1.6.2) (2026-09-10)
 
 ### Bug Fixes

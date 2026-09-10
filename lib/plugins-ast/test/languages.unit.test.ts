@@ -119,7 +119,11 @@ describe("Language Configurations", () => {
       expect(config).toBeDefined();
       expect(Array.isArray(config.extensions)).toBe(true);
       expect(config.extensions.length).toBeGreaterThanOrEqual(1);
+      for (const ext of config.extensions) {
+        expect(ext.startsWith(".")).toBe(true);
+      }
       expect(typeof config.wasm_file).toBe("string");
+      expect(config.wasm_file.endsWith(".wasm")).toBe(true);
       expect(config.queries).toBeDefined();
     });
   });

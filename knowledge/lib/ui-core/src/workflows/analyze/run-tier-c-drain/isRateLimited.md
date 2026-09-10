@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#anonymous@L452
+id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#isRateLimited
 type: symbol
-name: anonymous
+name: isRateLimited
 filePath: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts
 ---
-# Symbol: anonymous
+# Symbol: isRateLimited
 
 File: `lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts`

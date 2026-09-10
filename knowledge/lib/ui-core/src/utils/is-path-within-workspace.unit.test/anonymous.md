@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous@L23
+id: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts#anonymous@L7
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts`
+

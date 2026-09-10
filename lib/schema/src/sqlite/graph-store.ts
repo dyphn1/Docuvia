@@ -70,7 +70,10 @@ async function acquireInitLock(dbPath: string): Promise<string> {
       await handle.close();
       return lockPath;
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as NodeJS.ErrnoException).code
+          : undefined;
       if (
         code !== ERRNO_EEXIST &&
         code !== ERRNO_EPERM &&

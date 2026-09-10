@@ -111,6 +111,9 @@ class Foo {
     expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
     // scope-resolver.ts has call sites
     expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
+    // Concrete content (issues #233/#234): the module really depends on contracts.
+    const modulePaths = result.data!.imports.map((i) => i.modulePath);
+    expect(modulePaths).toContain("@workspace/contracts");
   });
 
   it("parses real Docuvia source file (ast-worker.ts)", async () => {
@@ -131,6 +134,10 @@ class Foo {
     expect(result.data!.calls.length).toBeGreaterThanOrEqual(1);
     // ast-worker.ts imports from @workspace/ast-core and @workspace/contracts
     expect(result.data!.imports.length).toBeGreaterThanOrEqual(1);
+    // Concrete content (issues #233/#234): the worker's own key functions.
+    const names = result.data!.functions.map((f) => f.name);
+    expect(names).toContain("getCalleeEvidence");
+    expect(names).toContain("buildParseResponse");
   });
 });
 

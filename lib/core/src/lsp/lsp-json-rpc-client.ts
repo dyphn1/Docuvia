@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { UTF8_ENCODING } from "@workspace/contracts";
 import { LspWireConstants, LSP_MESSAGES } from "./lsp-constants.js";
 import {
   needsWindowsShellWrapper,
@@ -224,9 +225,9 @@ export class LspJsonRpcClient {
   private write(message: Record<string, unknown>): void {
     const payload = JSON.stringify(message);
     const header =
-      `${LspWireConstants.CONTENT_LENGTH_HEADER_PREFIX}${Buffer.byteLength(payload, LspWireConstants.ENCODING)}` +
+      `${LspWireConstants.CONTENT_LENGTH_HEADER_PREFIX}${Buffer.byteLength(payload, UTF8_ENCODING)}` +
       LspWireConstants.HEADER_BODY_SEPARATOR;
-    this.child!.stdin.write(header + payload, LspWireConstants.ENCODING);
+    this.child!.stdin.write(header + payload, UTF8_ENCODING);
   }
 
   private onData(chunk: Buffer): void {
@@ -245,9 +246,7 @@ export class LspJsonRpcClient {
     );
     if (sepIndex === -1) return false;
 
-    const header = this.buffer
-      .subarray(0, sepIndex)
-      .toString(LspWireConstants.ENCODING);
+    const header = this.buffer.subarray(0, sepIndex).toString(UTF8_ENCODING);
     const match = /Content-Length:\s*(\d+)/i.exec(header);
     const bodyStart = sepIndex + LspWireConstants.HEADER_BODY_SEPARATOR.length;
     if (!match) {
@@ -262,7 +261,7 @@ export class LspJsonRpcClient {
 
     const body = this.buffer
       .subarray(bodyStart, bodyStart + length)
-      .toString(LspWireConstants.ENCODING);
+      .toString(UTF8_ENCODING);
     this.buffer = this.buffer.subarray(bodyStart + length);
     this.handleMessage(body);
     return true;
@@ -286,9 +285,9 @@ export class LspJsonRpcClient {
   /** Keeps only the last `STDERR_TAIL_MAX_CHARS` characters seen so far -- see that constant's
    *  doc comment for why this doesn't just keep everything. */
   private onStderr(chunk: Buffer): void {
-    this.stderrTail = (
-      this.stderrTail + chunk.toString(LspWireConstants.ENCODING)
-    ).slice(-STDERR_TAIL_MAX_CHARS);
+    this.stderrTail = (this.stderrTail + chunk.toString(UTF8_ENCODING)).slice(
+      -STDERR_TAIL_MAX_CHARS,
+    );
   }
 
   private onExit(code: number | null): void {

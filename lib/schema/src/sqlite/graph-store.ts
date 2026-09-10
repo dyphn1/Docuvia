@@ -48,6 +48,12 @@ const GRAPH_STORE_ERROR_MESSAGES = {
   PRUNE_MISSING_FILES_FAILED: "Failed to prune missing files",
 } as const;
 
+/** Safely extracts Node's optional errno code without assuming a caught value's shape. */
+function getErrnoCode(err: unknown): string | undefined {
+  if (!(err instanceof Error) || !("code" in err)) return undefined;
+  return (err as NodeJS.ErrnoException).code;
+}
+
 /**
  * Cross-process mutex around a fresh database's first bootstrap (WAL-mode switch + migrations)
  * — same shape as git-local-provider.ts's `acquireKnowledgeLock`/`releaseKnowledgeLock`. Needed
@@ -70,7 +76,7 @@ async function acquireInitLock(dbPath: string): Promise<string> {
       await handle.close();
       return lockPath;
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
+      const code = getErrnoCode(err);
       if (
         code !== ERRNO_EEXIST &&
         code !== ERRNO_EPERM &&

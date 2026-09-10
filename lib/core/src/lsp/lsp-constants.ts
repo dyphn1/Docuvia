@@ -5,7 +5,6 @@ export const LspWireConstants = {
   CONTENT_LENGTH_HEADER_PREFIX: "Content-Length: ",
   HEADER_BODY_SEPARATOR: "\r\n\r\n",
   JSON_RPC_VERSION: "2.0",
-  ENCODING: "utf8",
 } as const;
 
 export const LspMethods = {

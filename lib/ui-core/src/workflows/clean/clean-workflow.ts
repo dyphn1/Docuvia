@@ -4,6 +4,7 @@ import { CLEAN_EVENTS, CLEAN_MESSAGES } from "./clean-messages.js";
 import { appendCleanLogLine, writeCleanSummary } from "./clean-log-writer.js";
 import type { CleanResult } from "./clean-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { isPathWithinWorkspace } from "../../utils/is-path-within-workspace.js";
 
 /**
  * The `clean` workflow — wholesale-deletes `.docuvia/local.db` (see `IGraphStore.pruneMissingFiles`
@@ -19,6 +20,16 @@ export class CleanWorkflow {
   public async execute(): Promise<CleanResult> {
     const { workspaceRoot, logger } = this;
     const dbPath = resolveDbPath(workspaceRoot);
+
+    // Guardrail (issue #267): never unlink outside the workspace, even if path
+    // construction ever changes — `resolveDbPath` joins trusted constants today,
+    // but the delete itself must not trust its input blindly.
+    if (!isPathWithinWorkspace(dbPath, workspaceRoot)) {
+      throw new DocuviaError(
+        ErrorCodes.CLEAN_WORKFLOW_FAILED,
+        CLEAN_MESSAGES.PATH_ESCAPES_WORKSPACE(dbPath, workspaceRoot),
+      );
+    }
 
     logger.info(CLEAN_MESSAGES.CLEANING(dbPath));
     await appendCleanLogLine(workspaceRoot, { event: CLEAN_EVENTS.START });

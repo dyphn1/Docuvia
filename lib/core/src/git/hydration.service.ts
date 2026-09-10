@@ -11,8 +11,6 @@ import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
 import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
 
-/** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds it without truncating any real history. */
-const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
 /** Bounds the source-HEAD ancestry walk during nearest-ancestor resolution. */
 const SOURCE_ANCESTRY_WALK_LIMIT = 2000;
 /** Below this many current nodes, the shrink guard never triggers -- a tiny/test-scale graph
@@ -91,7 +89,7 @@ export class HydrationService implements IHydrationService {
     const log = await this.git.getCommitLog(
       cwd,
       branchName,
-      KNOWLEDGE_LOG_SCAN_LIMIT,
+      GitConstants.KNOWLEDGE_LOG_SCAN_LIMIT,
     );
     const sourceToKnowledge = new Map<string, string>();
     for (const entry of log) {

@@ -14,6 +14,14 @@ export const GIT_DEFAULT_REMOTE_NAME = "origin" as const;
 /** Docuvia-specific git conventions — the domain semantics layered on top of `IGitProvider`'s raw primitives. */
 export const GitConstants = {
   KNOWLEDGE_ROOT: "docuvia-knowledge",
+  /**
+   * Shared scan depth for knowledge-branch log reads (issues #270/#283) — previously
+   * copy-defined as `KNOWLEDGE_LOG_SCAN_LIMIT = 5000` in `knowledge-git.service.ts`,
+   * `hydration.service.ts` and `analyze-workflow.ts`. The knowledge branch is a dedicated
+   * orphan branch of small, purpose-built commits, so this comfortably bounds log scans
+   * without truncating any real history.
+   */
+  KNOWLEDGE_LOG_SCAN_LIMIT: 5000,
   KNOWLEDGE_DIR_NAME: "knowledge",
   GRAPH_DIR_NAME: "graph",
   /** Subdirectory of `KNOWLEDGE_DIR_NAME` holding L3 decision cards (phase2-l3-distribution.md

@@ -48,6 +48,14 @@ export async function statusCommand(cwd: string = process.cwd()) {
           `${status.tierBFilesProcessed} / ${status.tierBFilesTotal} (${tierBCoveragePct}%)`,
         ],
         [UI_MESSAGES.STATUS_METRIC_TIER_C_QUEUE, String(status.tierCQueued)],
+        [
+          UI_MESSAGES.STATUS_METRIC_GRAPH_FRESHNESS,
+          status.graphFreshness === "fresh"
+            ? UI_MESSAGES.STATUS_FRESHNESS_FRESH
+            : status.graphFreshness === "stale"
+              ? UI_MESSAGES.STATUS_FRESHNESS_STALE
+              : UI_MESSAGES.STATUS_FRESHNESS_UNKNOWN,
+        ],
       ],
     );
   } catch (error: unknown) {

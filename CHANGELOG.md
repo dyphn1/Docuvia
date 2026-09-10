@@ -2,6 +2,14 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.6.2](https://github.com/dyphn1/Docuvia/compare/v1.6.1...v1.6.2) (2026-09-10)
+
+### Bug Fixes
+
+- **contracts,core,ui-core:** centralize KNOWLEDGE_LOG_SCAN_LIMIT in GitConstants ([#295](https://github.com/dyphn1/Docuvia/issues/295)) ([a4a5511](https://github.com/dyphn1/Docuvia/commit/a4a5511003222c960e9500ece4d03e4dfd5c2a2c)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#270](https://github.com/dyphn1/Docuvia/issues/270) [#283](https://github.com/dyphn1/Docuvia/issues/283) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+- **contracts,ui-core,cli:** use MemoryKeys instead of as-any casts for force/tierCDrainAll ([#294](https://github.com/dyphn1/Docuvia/issues/294)) ([d9e12c8](https://github.com/dyphn1/Docuvia/commit/d9e12c8fb7f172dae88b7de7cfd18106dd38b40a)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#281](https://github.com/dyphn1/Docuvia/issues/281) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+- resolve small type-safety and constant hygiene issues ([#348](https://github.com/dyphn1/Docuvia/issues/348)) ([3574b47](https://github.com/dyphn1/Docuvia/commit/3574b4789a9c99e8a1813c8ecdb1e63c3433730e))
+
 ## [1.6.1](https://github.com/dyphn1/Docuvia/compare/v1.6.0...v1.6.1) (2026-09-10)
 
 ### Bug Fixes

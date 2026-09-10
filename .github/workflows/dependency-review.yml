@@ -1,0 +1,31 @@
+name: Dependency Review
+
+# Blocks PRs that introduce dependencies with known vulnerabilities or
+# incompatible licenses (issue #197). PR-only: pushes to main have nothing to
+# compare against that ci.yml doesn't already cover.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Review dependency changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, AGPL-1.0-only, AGPL-3.0-only, AGPL-3.0-or-later

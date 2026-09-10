@@ -326,8 +326,23 @@ export class FetchLlmClient implements ILlmClient {
 
     if (!res.ok) {
       const message = await this.parseErrorBody(res);
+      // Issue #134: classify HTTP errors specifically so Tier C drain can distinguish
+      // transient rate-limit rejections (retry-worthy) from permanent auth failures
+      // or genuine bridge unreachability.
+      if (res.status === 429) {
+        throw new DocuviaError(
+          ErrorCodes.LLM_RATE_LIMITED,
+          LlmApiMessages.chatCompletionFailedWithReason(message),
+        );
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new DocuviaError(
+          ErrorCodes.LLM_AUTH_FAILED,
+          LlmApiMessages.chatCompletionFailedWithReason(message),
+        );
+      }
       throw new DocuviaError(
-        ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
+        ErrorCodes.LLM_HTTP_FAILED,
         LlmApiMessages.chatCompletionFailedWithReason(message),
       );
     }
@@ -339,7 +354,7 @@ export class FetchLlmClient implements ILlmClient {
       return this.fromWireResult(body);
     } catch (err) {
       throw DocuviaError.wrap(
-        ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
+        ErrorCodes.LLM_INVALID_RESPONSE,
         LlmApiMessages.CHAT_COMPLETION_INVALID_JSON,
         err,
       );

@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.7.1](https://github.com/dyphn1/Docuvia/compare/v1.7.0...v1.7.1) (2026-09-10)
+
+### Bug Fixes
+
+- **llm-api,ui-core:** distinguish HTTP/response failures from bridge-unreachable (issue [#134](https://github.com/dyphn1/Docuvia/issues/134)) ([#280](https://github.com/dyphn1/Docuvia/issues/280)) ([1f88fa0](https://github.com/dyphn1/Docuvia/commit/1f88fa0669d459c874b2ac2ddfa98b8dc470db18))
+
 # [1.7.0](https://github.com/dyphn1/Docuvia/compare/v1.6.2...v1.7.0) (2026-09-10)
 
 ### Bug Fixes

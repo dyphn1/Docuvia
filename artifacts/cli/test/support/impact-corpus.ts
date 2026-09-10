@@ -1,7 +1,7 @@
 /**
  * Issue #192's regression corpus: a synthetic mini-repo whose dependency structure is fully
  * human-labeled (GOLDEN_CASES below), covering both edges the static graph models (controls)
- * and its four documented blind spots (AGENTS.md:128 / docs/gitbook/user-guide/cli/impact.md
+ * and its documented blind spots (AGENTS.md:128 / docs/gitbook/user-guide/cli/impact.md
  * "What counts as a dependency edge"):
  *
  *   1. runtime-variable import      (`import()` of a specifier built from a variable)
@@ -9,16 +9,10 @@
  *   3. re-export chain              (barrel re-export between the definition and the caller)
  *   4. child_process spawn          (execFile of another project file)
  *
- * Plus the gap issue #217's `ast_call_sites` fallback is meant to close but currently does
- * not -- kept as a failing row on purpose so the miss stays visible (see the case's own
- * comment for the dotted-vs-bare `target_function` mismatch behind it):
- *
- *   5. unresolved receiver call     (cross-file method call on a value whose type
- *                                    ScopeResolver can't resolve, so no static edge is built)
- *
- * Files live as inline strings (not fixture files in a source tree) so intentional dynamic-
- * import patterns never enter typecheck/lint's purview. Symbol names are `eval`-prefixed to be
- * globally unique -- impact resolves targets by exact-then-LIKE name match.
+ * Plus receiver/method-call gaps issue #217's `ast_call_sites` fallback is intended to expose.
+ * Files live as inline strings (not fixture files in a source tree) so intentional dynamic-import
+ * patterns never enter typecheck/lint's purview. Symbol names are `eval`-prefixed to be globally
+ * unique -- impact resolves targets by exact-then-LIKE name match.
  */
 
 export const CORPUS_FILES: Record<string, string> = {
@@ -108,10 +102,6 @@ export const CORPUS_FILES: Record<string, string> = {
   // `engine.evalRenderTemplate`, while ImpactService.resolveCallSiteFallback looks up the
   // node's bare name `evalRenderTemplate` with an exact IN (...) match, so the two never meet.
   // Verified against a live `docuvia init` + `impact` run, 2026-08-25.
-  //
-  // This case therefore scores 0.000 today, on purpose: the fallback DOES work for bare
-  // identifier calls (`evalPlainHelper()`), so without a case like this the corpus would
-  // report the feature as fine while its headline use case silently misses.
   "src/renderer.ts": [
     "export class EvalRenderer {",
     "  evalRenderTemplate(): string {",
@@ -142,6 +132,26 @@ export const CORPUS_FILES: Record<string, string> = {
     "}",
     "",
   ].join("\n"),
+
+  // ── Case 8: typed obj.method() call, kept in independent fixture files ────
+  // Distinct paths/names are intentional: reusing Case 7's object keys would overwrite those
+  // fixtures before the evaluator ever writes the synthetic repository, silently corrupting the
+  // benchmark. This case measures whether a typed receiver call is linked/recovered correctly.
+  "src/method-renderer.ts": [
+    "export class EvalMethodRenderer {",
+    '  evalRenderMethod() { return "rendered"; }',
+    "}",
+    "",
+  ].join("\n"),
+  "src/method-render-host.ts": [
+    'import { EvalMethodRenderer } from "./method-renderer";',
+    "",
+    "export function evalMethodRenderHost(): void {",
+    "  const renderer = new EvalMethodRenderer();",
+    "  renderer.evalRenderMethod();",
+    "}",
+    "",
+  ].join("\n"),
 };
 
 export interface GoldenCase {
@@ -153,7 +163,8 @@ export interface GoldenCase {
     | "runtime-variable-import"
     | "computed-import-specifier"
     | "child-process-spawn"
-    | "unresolved-receiver-call";
+    | "unresolved-receiver-call"
+    | "unresolved-method-call";
   /** Impact target resolved via `findNodeByName` (exact match by design). */
   target: string;
   /** Human-labeled ground truth: workspace-relative files that genuinely depend on `target`. */
@@ -164,49 +175,41 @@ export const GOLDEN_CASES: GoldenCase[] = [
   {
     scenario: "control-static-call",
     target: "evalAdd",
-    // client.ts calls evalAdd through a static call edge -- the one relation the graph models.
     expectedDependentFiles: ["src/calculator.ts"],
   },
   {
     scenario: "plain-import-no-call",
     target: "EVAL_MAX_RETRIES",
-    // A value import with no call site creates no edge -- documented blind spot, but still a
-    // true dependency: deleting config.ts breaks client.ts.
     expectedDependentFiles: ["src/client.ts"],
   },
   {
     scenario: "re-export-chain",
     target: "evalChainHelper",
-    // Both the barrel re-export and the ultimate caller genuinely depend on util.ts; whether
-    // the graph resolves *through* the barrel is exactly what this case measures.
     expectedDependentFiles: ["src/app-main.ts", "src/mid/index.ts"],
   },
   {
     scenario: "runtime-variable-import",
     target: "runCleanupPlugin",
-    // plugin-loader imports `./plugins/${pluginName}` built at runtime -- invisible to static
-    // edge construction, yet loadPlugin executes runCleanupPlugin.
     expectedDependentFiles: ["src/plugin-loader.ts"],
   },
   {
     scenario: "computed-import-specifier",
     target: "EVAL_EN_MESSAGES",
-    // i18n.ts's template-literal specifier names en-messages.ts only at runtime.
     expectedDependentFiles: ["src/i18n.ts"],
   },
   {
     scenario: "child-process-spawn",
     target: "runMigrations",
-    // task-runner execFile's the compiled migrate script -- a real operational dependency the
-    // edge graph does not model (only literal `new Worker(...)` spawns are special-cased).
     expectedDependentFiles: ["src/task-runner.ts"],
   },
   {
     scenario: "unresolved-receiver-call",
     target: "evalRenderTemplate",
-    // render-host.ts genuinely depends on evalRenderTemplate -- deleting renderer.ts breaks it.
-    // Expected to fail today (see the fixture comment above for the dotted-vs-bare mismatch);
-    // this row is the regression signal that will flip to 1.000 when that lookup is fixed.
     expectedDependentFiles: ["src/render-host.ts"],
+  },
+  {
+    scenario: "unresolved-method-call",
+    target: "evalRenderMethod",
+    expectedDependentFiles: ["src/method-render-host.ts"],
   },
 ];

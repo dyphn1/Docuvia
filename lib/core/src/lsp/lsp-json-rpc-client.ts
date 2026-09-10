@@ -246,9 +246,7 @@ export class LspJsonRpcClient {
     );
     if (sepIndex === -1) return false;
 
-    const header = this.buffer
-      .subarray(0, sepIndex)
-      .toString(UTF8_ENCODING);
+    const header = this.buffer.subarray(0, sepIndex).toString(UTF8_ENCODING);
     const match = /Content-Length:\s*(\d+)/i.exec(header);
     const bodyStart = sepIndex + LspWireConstants.HEADER_BODY_SEPARATOR.length;
     if (!match) {
@@ -287,9 +285,9 @@ export class LspJsonRpcClient {
   /** Keeps only the last `STDERR_TAIL_MAX_CHARS` characters seen so far -- see that constant's
    *  doc comment for why this doesn't just keep everything. */
   private onStderr(chunk: Buffer): void {
-    this.stderrTail = (
-      this.stderrTail + chunk.toString(UTF8_ENCODING)
-    ).slice(-STDERR_TAIL_MAX_CHARS);
+    this.stderrTail = (this.stderrTail + chunk.toString(UTF8_ENCODING)).slice(
+      -STDERR_TAIL_MAX_CHARS,
+    );
   }
 
   private onExit(code: number | null): void {

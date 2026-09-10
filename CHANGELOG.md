@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.8.0](https://github.com/dyphn1/Docuvia/compare/v1.7.1...v1.8.0) (2026-09-10)
+
+### Features
+
+- **impact:** add measurable partial-coverage baseline for issue [#192](https://github.com/dyphn1/Docuvia/issues/192) ([#310](https://github.com/dyphn1/Docuvia/issues/310)) ([942d74b](https://github.com/dyphn1/Docuvia/commit/942d74b7a43776fa6f3a44dc3b2d2bc43fbba1d1))
+
 ## [1.7.1](https://github.com/dyphn1/Docuvia/compare/v1.7.0...v1.7.1) (2026-09-10)
 
 ### Bug Fixes

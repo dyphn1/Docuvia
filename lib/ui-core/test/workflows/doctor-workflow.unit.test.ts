@@ -1611,6 +1611,35 @@ describe("DoctorWorkflow", () => {
       expect(result.allPassed).toBe(false);
     });
 
+    it("reports FAIL for a hooks-check-era pre-push hook that predates the failure hint (issue #196)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.HOOKS_CHECK_PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["pre_push_hook"].message).toContain(
+        "failure hint",
+      );
+      expect(result.diagnostics["pre_push_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
     it("reports PASS when the pre-push hook includes the sync-knowledge step and docuvia resolves", async () => {
       const git = {
         readHookFile: vi

@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.6.1](https://github.com/dyphn1/Docuvia/compare/v1.6.0...v1.6.1) (2026-09-10)
+
+### Bug Fixes
+
+- **ast-core:** bound isOpenApiFile scan prefix to 8k chars ([#293](https://github.com/dyphn1/Docuvia/issues/293)) ([bda04f9](https://github.com/dyphn1/Docuvia/commit/bda04f907f537224aaae1a1cd1cbce94952cf02e)), closes [#134](https://github.com/dyphn1/Docuvia/issues/134) [#290](https://github.com/dyphn1/Docuvia/issues/290) [#280](https://github.com/dyphn1/Docuvia/issues/280)
+
 # [1.6.0](https://github.com/dyphn1/Docuvia/compare/v1.5.1...v1.6.0) (2026-08-30)
 
 ### Features

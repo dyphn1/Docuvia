@@ -40,7 +40,7 @@ describe("initTempLifecycle", () => {
       createMockLogger(),
     );
 
-    expect(lifecycle).toBeDefined();
+    expect(lifecycle?.tempFileManager.getTempDirPath()).toBe(tempDirPath);
     expect(fs.existsSync(tempDirPath)).toBe(true);
     expect(build).toHaveBeenCalledWith(tmpDir, expect.anything());
 

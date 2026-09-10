@@ -53,7 +53,11 @@ describe("call-resolution-stats stamping", () => {
   it("stampFullCallResolution is a no-op on an empty fresh map (never wipes data with nothing)", () => {
     const { store, meta } = makeStore({ "old.ts": STATS_A });
     stampFullCallResolution(store, {});
-    expect(meta.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)).toBeDefined();
+    expect(
+      JSON.parse(meta.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!),
+    ).toEqual({
+      byFile: { "old.ts": STATS_A },
+    });
     expect(readCallResolution(store)).toEqual({ "old.ts": STATS_A });
   });
 

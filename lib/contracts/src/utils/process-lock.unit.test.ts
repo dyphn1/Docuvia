@@ -2,7 +2,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, afterEach } from "vitest";
-import { acquireProcessLock } from "./process-lock.js";
+import {
+  acquireProcessLock,
+  ProcessLockTimeoutError,
+} from "./process-lock.js";
 import { UTF8_ENCODING } from "../constants/encoding.js";
 
 const tempDirs: string[] = [];
@@ -63,20 +66,19 @@ describe("acquireProcessLock()", () => {
     await second.release();
   });
 
-  it("times out if the lock is never released", async () => {
+  it("throws ProcessLockTimeoutError if the lock is never released", async () => {
     const lockPath = await makeLockPath();
     const holder = await acquireProcessLock(lockPath);
 
     await expect(
       acquireProcessLock(lockPath, { maxWaitMs: 150, retryIntervalMs: 20 }),
-    ).rejects.toThrow(/Timed out waiting for the lock/);
+    ).rejects.toBeInstanceOf(ProcessLockTimeoutError);
 
     await holder.release();
   });
 
   it("reclaims a stale lock once its mtime is old AND its recorded PID is dead", async () => {
     const lockPath = await makeLockPath();
-    // A PID astronomically unlikely to be alive on any real machine.
     const deadPid = 999_999_999;
     await fs.writeFile(lockPath, String(deadPid));
     const longAgo = new Date(Date.now() - 60_000);
@@ -96,7 +98,6 @@ describe("acquireProcessLock()", () => {
 
   it("does not reclaim a lock whose mtime looks stale but whose PID is still alive", async () => {
     const lockPath = await makeLockPath();
-    // The test process's own PID is guaranteed alive for the duration of this test.
     await fs.writeFile(lockPath, String(process.pid));
     const longAgo = new Date(Date.now() - 60_000);
     await fs.utimes(lockPath, longAgo, longAgo);
@@ -107,7 +108,7 @@ describe("acquireProcessLock()", () => {
         retryIntervalMs: 20,
         staleAfterMs: 50,
       }),
-    ).rejects.toThrow(/Timed out waiting for the lock/);
+    ).rejects.toBeInstanceOf(ProcessLockTimeoutError);
 
     await fs.rm(lockPath, { force: true });
   });
@@ -118,14 +119,13 @@ describe("acquireProcessLock()", () => {
       heartbeatIntervalMs: 30,
     });
 
-    // Outlast a staleAfterMs shorter than the heartbeat interval; the mtime should keep refreshing.
     await expect(
       acquireProcessLock(lockPath, {
         maxWaitMs: 200,
         retryIntervalMs: 20,
         staleAfterMs: 10,
       }),
-    ).rejects.toThrow(/Timed out waiting for the lock/);
+    ).rejects.toBeInstanceOf(ProcessLockTimeoutError);
 
     await holder.release();
   });

@@ -1,10 +1,9 @@
 ---
-id: lib/contracts/src/utils/process-lock.ts#anonymous@L87
+id: lib/contracts/src/utils/process-lock.ts#ProcessLockTimeoutError.constructor
 type: symbol
-name: anonymous
+name: constructor
 filePath: lib/contracts/src/utils/process-lock.ts
 ---
-# Symbol: anonymous
+# Symbol: constructor
 
 File: `lib/contracts/src/utils/process-lock.ts`
-

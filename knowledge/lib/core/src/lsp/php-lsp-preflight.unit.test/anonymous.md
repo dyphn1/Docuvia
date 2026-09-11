@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/php-lsp-preflight.unit.test.ts#anonymous@L23
+id: lib/core/src/lsp/php-lsp-preflight.unit.test.ts#anonymous@L47
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/php-lsp-preflight.unit.test.ts

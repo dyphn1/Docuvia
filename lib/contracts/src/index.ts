@@ -290,7 +290,10 @@ export {
   ERRNO_EBUSY,
   PLATFORM_WIN32,
 } from "./constants/fs.js";
-export { acquireProcessLock } from "./utils/process-lock.js";
+export {
+  acquireProcessLock,
+  ProcessLockTimeoutError,
+} from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
 export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
 export {

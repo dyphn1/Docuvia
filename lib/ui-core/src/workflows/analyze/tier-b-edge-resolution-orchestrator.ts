@@ -6,6 +6,8 @@ import {
   TOKENS,
   TIER_B_LANGUAGE_IDS,
   UTF8_ENCODING,
+  HASH_ALGO_SHA256,
+  ENCODING_HEX,
   type EdgeResolutionCallSite,
   type EdgeResolutionFileFailure,
   type EdgeResolutionOutcome,
@@ -19,15 +21,6 @@ import {
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import type { TierBQueueEntry } from "./tier-b-queue.js";
-
-/** Content-hash fallback algorithm for a live file not covered by a clean git blob hash (D5's
- *  staleness guard) -- mirrors `run-delta-ingestion.ts`'s own local consts, which themselves
- *  mirror `FileDiscoveryService`'s manual-hash path (`lib/core`'s internal encoding constants
- *  aren't part of `@workspace/core`'s public surface, so each `lib/ui-core` caller that needs
- *  this defines its own copy of the same two literals rather than reaching into `lib/core`
- *  internals). */
-const CONTENT_HASH_ALGORITHM = "sha256";
-const CONTENT_HASH_DIGEST_ENCODING = "hex";
 
 /** Per-language honest-degradation fidelity (multi-language-lsp-support plan, Finding F) --
  *  additive alongside the aggregate `unavailableReason` below. */
@@ -267,9 +260,9 @@ async function resolveLiveContentHash(
       UTF8_ENCODING,
     );
     return crypto
-      .createHash(CONTENT_HASH_ALGORITHM)
+      .createHash(HASH_ALGO_SHA256)
       .update(content)
-      .digest(CONTENT_HASH_DIGEST_ENCODING);
+      .digest(ENCODING_HEX);
   } catch {
     return undefined;
   }

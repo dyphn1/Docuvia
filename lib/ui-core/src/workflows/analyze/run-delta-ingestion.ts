@@ -255,10 +255,7 @@ async function collectFilesToParse(
     // for the rare case a just-changed file isn't yet reflected in `listTrackedFilesWithBlobHash`.
     const hash =
       blobHashes.get(entry.file) ??
-      crypto
-        .createHash(HASH_ALGO_SHA256)
-        .update(content)
-        .digest(ENCODING_HEX);
+      crypto.createHash(HASH_ALGO_SHA256).update(content).digest(ENCODING_HEX);
     filesToParse.push({ file: entry.file, hash, code: content });
     changedBytes += sizeBytes;
 

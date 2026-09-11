@@ -33,6 +33,7 @@ export const AstMessages = {
     "AST worker exited during pool shutdown (expected)",
   WORKER_CRASHED_EXITED: "AST worker crashed/exited",
   WORKER_EXITED_UNEXPECTEDLY: "Worker exited unexpectedly",
+  POOL_TERMINATED: "AST worker pool terminated before task completion",
   UNKNOWN_FILE: "(unknown file)",
   PARSE_CACHE_HIT: "AST parse cache hit",
   CACHE_METRICS_AND_QUEUE_PERFORMANCE:

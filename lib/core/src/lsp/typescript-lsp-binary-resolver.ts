@@ -6,21 +6,23 @@ import {
   TsLspConstants,
   DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
 } from "./typescript-lsp-constants.js";
+import { buildMinimalLspEnv } from "./lsp-process-env.js";
 
-/** Builds an env override that raises tsserver's heap ceiling via NODE_OPTIONS -- unless the
- *  caller's own environment already sets --max-old-space-size itself, in which case this returns
- *  undefined and leaves the caller's env untouched entirely (respecting an explicit user choice).
- *  When NODE_OPTIONS is already set to something else (e.g. --stack-trace-limit), the new flag is
- *  appended, not a replacement. Passed as the npm/npx strategy's `buildEnv` so it applies to
- *  whichever resolution branch wins. */
-function buildTsHeapSizeEnvOverride(): NodeJS.ProcessEnv | undefined {
+/** Builds the minimal child-process env plus tsserver's heap ceiling. The parent process's
+ * environment is deliberately not spread here: doing so would leak credentials/API keys into
+ * the TypeScript LSP process and bypass the transport's minimal-env policy (issue #322).
+ * Existing NODE_OPTIONS are preserved so an explicit --max-old-space-size choice still wins. */
+function buildTsHeapSizeEnvOverride(): NodeJS.ProcessEnv {
+  const env = buildMinimalLspEnv();
   const existing = process.env.NODE_OPTIONS ?? "";
-  if (existing.includes("--max-old-space-size")) return undefined;
+  if (existing.includes("--max-old-space-size")) {
+    env.NODE_OPTIONS = existing;
+    return env;
+  }
+
   const flag = `--max-old-space-size=${DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB}`;
-  return {
-    ...process.env,
-    NODE_OPTIONS: existing ? `${existing} ${flag}` : flag,
-  };
+  env.NODE_OPTIONS = existing ? `${existing} ${flag}` : flag;
+  return env;
 }
 
 /**

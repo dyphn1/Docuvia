@@ -16,6 +16,20 @@ import {
   type ExtractedDecision,
 } from "./analyze-result.js";
 
+/** True when `resolvedPath` is the workspace root itself or a lexical child of it. */
+function isInsideWorkspace(
+  resolvedPath: string,
+  workspaceRoot: string,
+): boolean {
+  const relative = path.relative(workspaceRoot, resolvedPath);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
 /**
  * `analyze <targetPath> --agent-authored`'s write path (issue #42, roadmap items 32-34) --
  * skips the LLM entirely: `deps.decisions` is already the final `ExtractedDecision[]`, produced
@@ -39,7 +53,18 @@ export async function runAgentAuthoredWrite(deps: {
     source: L3DecisionSources.AGENT_AUTHORED,
   });
 
-  const resolvedPath = path.resolve(workspaceRoot, targetPath);
+  const resolvedWorkspaceRoot = path.resolve(workspaceRoot);
+  const resolvedPath = path.resolve(resolvedWorkspaceRoot, targetPath);
+  if (!isInsideWorkspace(resolvedPath, resolvedWorkspaceRoot)) {
+    const message = ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath);
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.FOCUSED_ERROR,
+      targetPath,
+      message,
+    });
+    throw new DocuviaError(ErrorCodes.INVALID_INPUT, message);
+  }
+
   if (!fs.existsSync(resolvedPath)) {
     const message = ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath);
     await appendAnalyzeLogLine(workspaceRoot, {

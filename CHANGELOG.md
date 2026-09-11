@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.2](https://github.com/dyphn1/Docuvia/compare/v1.8.1...v1.8.2) (2026-09-11)
+
+### Bug Fixes
+
+- **ui-core:** reject agent-authored target path traversal ([#353](https://github.com/dyphn1/Docuvia/issues/353)) ([dc6475b](https://github.com/dyphn1/Docuvia/commit/dc6475ba76b63652b2eb8d21e2c699ba670ab6d2))
+
 ## [1.8.1](https://github.com/dyphn1/Docuvia/compare/v1.8.0...v1.8.1) (2026-09-11)
 
 ### Bug Fixes

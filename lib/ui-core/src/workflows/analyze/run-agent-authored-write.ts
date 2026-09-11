@@ -17,7 +17,10 @@ import {
 } from "./analyze-result.js";
 
 /** True when `resolvedPath` is the workspace root itself or a lexical child of it. */
-function isInsideWorkspace(resolvedPath: string, workspaceRoot: string): boolean {
+function isInsideWorkspace(
+  resolvedPath: string,
+  workspaceRoot: string,
+): boolean {
   const relative = path.relative(workspaceRoot, resolvedPath);
   return (
     relative === "" ||

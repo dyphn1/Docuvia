@@ -1,7 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import path from "node:path";
 import { ErrorCodes } from "@workspace/contracts";
 import { resolveHookPathWithinDir } from "./hook-path.js";
+
+const INVALID_HOOK_NAMES = [
+  "../config",
+  "nested/pre-push",
+  "nested\\pre-push",
+  ".",
+  "..",
+  "",
+] as const;
 
 function expectPathTraversal(fn: () => unknown): void {
   try {
@@ -21,16 +30,11 @@ describe("resolveHookPathWithinDir()", () => {
     );
   });
 
-  it.each([
-    "../config",
-    "nested/pre-push",
-    "nested\\pre-push",
-    ".",
-    "..",
-    "",
-  ])("rejects path-like hook name %j", (hookName) => {
-    expectPathTraversal(() => resolveHookPathWithinDir(hooksDir, hookName));
-  });
+  for (const hookName of INVALID_HOOK_NAMES) {
+    it(`rejects path-like hook name ${JSON.stringify(hookName)}`, () => {
+      expectPathTraversal(() => resolveHookPathWithinDir(hooksDir, hookName));
+    });
+  }
 
   it("rejects an absolute path", () => {
     const absolute = path.resolve(hooksDir, "..", "outside-hook");

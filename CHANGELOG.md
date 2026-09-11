@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.6](https://github.com/dyphn1/Docuvia/compare/v1.8.5...v1.8.6) (2026-09-11)
+
+### Bug Fixes
+
+- **core:** contain LSP workspace file reads ([#365](https://github.com/dyphn1/Docuvia/issues/365)) ([599d134](https://github.com/dyphn1/Docuvia/commit/599d1349633363c02791477a61a024f2a39e65ed))
+
 ## [1.8.5](https://github.com/dyphn1/Docuvia/compare/v1.8.4...v1.8.5) (2026-09-11)
 
 ### Bug Fixes

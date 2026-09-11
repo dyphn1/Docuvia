@@ -205,18 +205,50 @@ export class LspJsonRpcClient {
     this.write({ jsonrpc: LspWireConstants.JSON_RPC_VERSION, method, params });
   }
 
-  /** Ends stdin and kills the process (best-effort; never throws). Idempotent. */
+  /** Settles pending requests and releases the child-process transport (best-effort; never throws).
+   *  Idempotent. A server that ignores SIGTERM must not keep request timers, stdio listeners, or
+   *  this client instance reachable indefinitely (issue #324). */
   async stop(): Promise<void> {
     if (!this.child || this.stopped) return;
     this.stopped = true;
     const child = this.child;
+    this.child = undefined;
+
+    // PendingRequest.reject() owns each request timeout and clears it before rejecting, so routing
+    // stop through the same settlement path releases both the promise and its timer immediately.
+    this.rejectAllPending(new Error(LSP_MESSAGES.clientStoppedBeforeResponse));
+    this.buffer = Buffer.alloc(0);
+    this.stderrTail = "";
+
+    // Break the stream -> listener -> client reference chain before killing the process. The
+    // child-level error listener is replaced with a no-op sink so a late asynchronous kill/spawn
+    // error cannot become an unhandled EventEmitter 'error' after teardown detached this client.
+    child.stdout.removeAllListeners("data");
+    child.stderr.removeAllListeners("data");
+    child.removeAllListeners("exit");
+    child.removeAllListeners("error");
+    child.removeAllListeners("spawn");
+    child.on("error", () => undefined);
+
     try {
       child.stdin.end();
     } catch {
       // best-effort
     }
     try {
+      child.stdin.destroy();
+      child.stdout.destroy();
+      child.stderr.destroy();
+    } catch {
+      // best-effort
+    }
+    try {
       child.kill();
+    } catch {
+      // best-effort
+    }
+    try {
+      child.unref();
     } catch {
       // best-effort
     }

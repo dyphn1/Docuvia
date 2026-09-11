@@ -10,7 +10,11 @@ import {
   LogLevels,
   UTF8_ENCODING,
 } from "@workspace/contracts";
-import { docuviaApi } from "@workspace/ui-core";
+import {
+  AnalyzeResultKind as ANALYZE_RESULT_KIND,
+  DecisionNodeType,
+  docuviaApi,
+} from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
@@ -19,38 +23,23 @@ import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 import { readStdin } from "../utils/read-stdin.js";
 import { parseLspArgs } from "../utils/lsp-args.js";
 
-/**
- * Mirrors `AnalyzeResultKind` from `lib/ui-core`'s `analyze-result.ts` — not re-exported
- * through `@workspace/ui-core`'s barrel, so the discriminant values are duplicated here rather
- * than imported (only the `AnalyzeResult` type crosses that boundary today).
- */
-const ANALYZE_RESULT_KIND = {
-  AUTO_FULL_INGESTION: "autoFullIngestion",
-  AUTO_DELTA: "autoDelta",
-  AUTO_DELTA_NOOP: "autoDeltaNoop",
-  DECISION_EXTRACTION: "decisionExtraction",
-  TIER_B_BATCH: "tierBBatch",
-  FLUSH_STAGED_L3: "flushStagedL3",
-} as const;
-
 type AnalyzeResult = Awaited<ReturnType<typeof docuviaApi.analyze>>;
 type AnalyzeSpinner = ReturnType<typeof ui.spinner>;
 
 /**
  * `--agent-authored`'s payload shape (issue #42) — boundary validation (design-spirit.md #4
- * precedent, mirrors `init.ts`'s `InitInputSchema`), local to this file rather than imported
- * from `lib/ui-core` (same boundary-duplication convention `ANALYZE_RESULT_KIND` above already
- * uses; `ExtractedDecision`/`DecisionNodeType` aren't meant to leak CLI-layer validation concerns
- * into the Orchestration layer either). Deliberate deviation from `parseDecisionsFromLlmContent`'s
- * LLM-path leniency (which coerces an invalid/missing `nodeType` to `context` rather than
- * failing): an agent's own structured JSON payload is a caller that can simply fix its input, so
- * this hard-fails on an invalid `nodeType`/out-of-range `confidence`/missing `title` instead of
- * silently coercing it, which would hide a real bug in whatever produced the payload.
+ * precedent, mirrors `init.ts`'s `InitInputSchema`). The node-type vocabulary comes from the
+ * shared analyze contract so CLI validation cannot drift from persistence/workflow semantics.
+ * Deliberate deviation from `parseDecisionsFromLlmContent`'s LLM-path leniency (which coerces an
+ * invalid/missing `nodeType` to `context` rather than failing): an agent's own structured JSON
+ * payload is a caller that can simply fix its input, so this hard-fails on an invalid
+ * `nodeType`/out-of-range `confidence`/missing `title` instead of silently coercing it, which
+ * would hide a real bug in whatever produced the payload.
  */
 const AgentAuthoredDecisionSchema = z.object({
   title: z.string().min(1),
   content: z.string(),
-  nodeType: z.enum(["change", "rule", "decision", "context"]),
+  nodeType: z.nativeEnum(DecisionNodeType),
   confidence: z.number().min(0).max(1),
 });
 const AgentAuthoredPayloadSchema = z.object({

@@ -2,6 +2,15 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.3](https://github.com/dyphn1/Docuvia/compare/v1.8.2...v1.8.3) (2026-09-11)
+
+### Bug Fixes
+
+- **ast-core:** reuse centralized query capture names ([#360](https://github.com/dyphn1/Docuvia/issues/360)) ([0c6eda1](https://github.com/dyphn1/Docuvia/commit/0c6eda1afeeb82a096f23aeb2ee8c376889a8d6a))
+- **core:** inject Rust LSP process environment ([#361](https://github.com/dyphn1/Docuvia/issues/361)) ([3dce7b8](https://github.com/dyphn1/Docuvia/commit/3dce7b852308147f18e9e6211880e88f346f130a))
+- **core:** prevent TypeScript LSP env secret leakage ([#359](https://github.com/dyphn1/Docuvia/issues/359)) ([7669cf0](https://github.com/dyphn1/Docuvia/commit/7669cf0ffc4fe3d79e3cd2585dea07ddd929e033))
+- **core:** settle AST worker tasks during terminate ([#362](https://github.com/dyphn1/Docuvia/issues/362)) ([82d9108](https://github.com/dyphn1/Docuvia/commit/82d9108bc7687c5cd3e425ca459089d0956f9852))
+
 ## [1.8.2](https://github.com/dyphn1/Docuvia/compare/v1.8.1...v1.8.2) (2026-09-11)
 
 ### Bug Fixes

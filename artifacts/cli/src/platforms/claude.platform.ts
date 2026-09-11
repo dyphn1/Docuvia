@@ -24,7 +24,7 @@ import {
   DOCUVIA_MCP_LAUNCH_ARGS,
   DOCUVIA_WORKSPACE_ROOT_ENV_VAR,
 } from "../constants/init-templates.js";
-import { UTF8_ENCODING } from "@workspace/contracts";
+import { ERRNO_ENOENT, UTF8_ENCODING } from "@workspace/contracts";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
 const NODE_PLATFORM_WIN32 = "win32";
@@ -32,7 +32,6 @@ const NODE_PLATFORM_DARWIN = "darwin";
 const MACOS_LIBRARY_DIR = "Library";
 const MACOS_APPLICATION_SUPPORT_DIR = "Application Support";
 const XDG_CONFIG_DIR = ".config";
-const ERRNO_ENOENT = "ENOENT";
 
 async function removeClaudeHookFile(claudeHooksPath: string): Promise<void> {
   try {

@@ -9,12 +9,10 @@ import {
   DOCUVIA_DIR_NAME,
   DocuviaError,
   ErrorCodes,
+  ERRNO_ENOENT,
 } from "@workspace/contracts";
 
 const TEMP_SUBDIR_NAME = "tmp";
-
-/** Node.js system error code for "no such file or directory" — expected/ignorable when unlinking an already-gone temp file. */
-const ERRNO_ENOENT = "ENOENT";
 
 const TempFileMessages = {
   INITIALIZED: "TempFileManager initialized",

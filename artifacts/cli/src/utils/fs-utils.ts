@@ -1,10 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { UTF8_ENCODING } from "@workspace/contracts";
+import { ERRNO_ENOENT, UTF8_ENCODING } from "@workspace/contracts";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-
-const ERRNO_ENOENT = "ENOENT";
 
 export async function writeOrAppend(
   filePath: string,

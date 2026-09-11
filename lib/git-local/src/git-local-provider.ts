@@ -27,6 +27,7 @@ import {
 import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX, GIT_HEAD_REF } from "./constants/git-refs.js";
 import { GIT_BIN } from "./constants/git-cli.js";
+import { resolveHookPathWithinDir } from "./hook-path.js";
 
 const rawGitExecFileAsync = promisify(execFile);
 
@@ -399,9 +400,10 @@ export class GitLocalProvider implements IGitProvider {
     cwd: string,
     hookName: string,
   ): Promise<string | undefined> {
+    const hooksDir = await this.resolveHooksDir(cwd);
+    const hookPath = resolveHookPathWithinDir(hooksDir, hookName);
     try {
-      const hooksDir = await this.resolveHooksDir(cwd);
-      return await fs.readFile(path.join(hooksDir, hookName), UTF8_ENCODING);
+      return await fs.readFile(hookPath, UTF8_ENCODING);
     } catch {
       return undefined;
     }
@@ -414,7 +416,8 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<void> {
     try {
       const hooksDir = await this.resolveHooksDir(cwd);
-      await fs.appendFile(path.join(hooksDir, hookName), content);
+      const hookPath = resolveHookPathWithinDir(hooksDir, hookName);
+      await fs.appendFile(hookPath, content);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -431,7 +434,8 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<void> {
     try {
       const hooksDir = await this.resolveHooksDir(cwd);
-      await fs.writeFile(path.join(hooksDir, hookName), content);
+      const hookPath = resolveHookPathWithinDir(hooksDir, hookName);
+      await fs.writeFile(hookPath, content);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -447,7 +451,8 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<void> {
     try {
       const hooksDir = await this.resolveHooksDir(cwd);
-      await fs.chmod(path.join(hooksDir, hookName), 0o755);
+      const hookPath = resolveHookPathWithinDir(hooksDir, hookName);
+      await fs.chmod(hookPath, 0o755);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,

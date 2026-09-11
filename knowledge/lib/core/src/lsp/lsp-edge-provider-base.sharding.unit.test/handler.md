@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#handler@L530
+id: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#handler@L487
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts

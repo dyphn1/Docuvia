@@ -116,11 +116,7 @@ export {
   ValidityStatuses,
   L3DecisionSources,
 } from "./interfaces/graph-store.interfaces.js";
-export type {
-  DecisionNodeType,
-  ExtractedDecision,
-  AnalyzeResultKind,
-} from "./interfaces/analyze.interfaces.js";
+export type { ExtractedDecision } from "./interfaces/analyze.interfaces.js";
 export {
   DecisionNodeType,
   AnalyzeResultKind,

@@ -117,6 +117,15 @@ export {
   L3DecisionSources,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
+  DecisionNodeType,
+  ExtractedDecision,
+  AnalyzeResultKind,
+} from "./interfaces/analyze.interfaces.js";
+export {
+  DecisionNodeType,
+  AnalyzeResultKind,
+} from "./interfaces/analyze.interfaces.js";
+export type {
   HydrationResult,
   IHydrationService,
 } from "./interfaces/hydration.interfaces.js";

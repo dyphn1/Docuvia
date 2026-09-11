@@ -20,6 +20,8 @@ import {
   aggregateCallResolution,
   GitConstants,
   MAX_FILE_SIZE_BYTES,
+  HASH_ALGO_SHA256,
+  ENCODING_HEX,
 } from "@workspace/contracts";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
@@ -40,11 +42,6 @@ import {
   collectContractSymbolCandidates,
 } from "./tier-c-candidates.js";
 import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
-
-/** Content-hash fallback algorithm for a just-changed file not yet reflected in
- *  `listTrackedFilesWithBlobHash` — mirrors `FileDiscoveryService`'s own manual-hash path. */
-const CONTENT_HASH_ALGORITHM = "sha256";
-const CONTENT_HASH_DIGEST_ENCODING = "hex";
 
 /**
  * `analyze` auto mode's delta-ingestion branch (§6b) — the graph already has data and `HEAD` has
@@ -259,9 +256,9 @@ async function collectFilesToParse(
     const hash =
       blobHashes.get(entry.file) ??
       crypto
-        .createHash(CONTENT_HASH_ALGORITHM)
+        .createHash(HASH_ALGO_SHA256)
         .update(content)
-        .digest(CONTENT_HASH_DIGEST_ENCODING);
+        .digest(ENCODING_HEX);
     filesToParse.push({ file: entry.file, hash, code: content });
     changedBytes += sizeBytes;
 

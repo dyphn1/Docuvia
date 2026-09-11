@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.1](https://github.com/dyphn1/Docuvia/compare/v1.8.0...v1.8.1) (2026-09-11)
+
+### Bug Fixes
+
+- **ui-core:** reuse acquireProcessLock for sync-state mutex instead of bespoke loop ([ed37668](https://github.com/dyphn1/Docuvia/commit/ed376685d60e91b7ac5bfd9a647a28bab22ec670))
+
 # [1.8.0](https://github.com/dyphn1/Docuvia/compare/v1.7.1...v1.8.0) (2026-09-10)
 
 ### Features

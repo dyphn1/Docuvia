@@ -457,13 +457,34 @@ export class AstWorkerPool implements IASTWorkerPool {
 
   async terminate(): Promise<void> {
     this.shuttingDown = true;
+    const terminationError = new Error(AstMessages.POOL_TERMINATED);
+
     for (const timeout of this.taskTimeouts.values()) {
       clearTimeout(timeout);
     }
     this.taskTimeouts.clear();
-    await Promise.all(this.workers.map((w) => w.terminate()));
-    this.workers = [];
+
+    // Settle every parse promise before tearing workers down. Previously terminate() only cleared
+    // timers and killed workers, leaving both in-flight pendingTasks and not-yet-dispatched
+    // taskQueue entries permanently unresolved (issue #323).
+    for (const callbacks of this.pendingTasks.values()) {
+      callbacks.reject(terminationError);
+    }
+    this.pendingTasks.clear();
+    for (const task of this.taskQueue) {
+      task.reject(terminationError);
+    }
+    this.taskQueue = [];
+
+    // Clear correlation state before worker.terminate() emits its expected non-zero exit event, so
+    // shutdown error handling cannot reject the same task a second time or retain file/task data.
+    this.workerTasks.clear();
+    this.taskFilePaths.clear();
     this.workerQueue = [];
+
+    const workers = this.workers;
+    this.workers = [];
+    await Promise.all(workers.map((w) => w.terminate()));
   }
 
   async serializeBatch<T>(fn: () => Promise<T>): Promise<T> {

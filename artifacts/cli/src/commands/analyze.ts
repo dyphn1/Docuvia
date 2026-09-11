@@ -10,11 +10,9 @@ import {
   LogLevels,
   UTF8_ENCODING,
   DecisionNodeType,
-} from "@workspace/contracts";
-import {
   AnalyzeResultKind as ANALYZE_RESULT_KIND,
-  docuviaApi,
-} from "@workspace/ui-core";
+} from "@workspace/contracts";
+import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";

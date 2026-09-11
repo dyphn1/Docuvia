@@ -3810,6 +3810,9 @@
 {"id":"lib/core/src/lsp/lsp-edge-provider-base.ts#SharedBatchState","type":"symbol","name":"SharedBatchState","filePath":"lib/core/src/lsp/lsp-edge-provider-base.ts"}
 {"id":"lib/core/src/lsp/lsp-edge-provider-base.ts#toNodeKey","type":"symbol","name":"toNodeKey","filePath":"lib/core/src/lsp/lsp-edge-provider-base.ts"}
 {"id":"lib/core/src/lsp/lsp-edge-provider-base.ts#UsedNodeKeysByFile","type":"symbol","name":"UsedNodeKeysByFile","filePath":"lib/core/src/lsp/lsp-edge-provider-base.ts"}
+{"id":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","type":"file","name":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","filePath":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts"}
+{"id":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts"}
+{"id":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts#anonymous@L8","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts","type":"file","name":"lib/core/src/lsp/lsp-json-rpc-client.ts","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#buildDefaultLspEnv","type":"symbol","name":"buildDefaultLspEnv","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#JsonRpcResponse","type":"symbol","name":"JsonRpcResponse","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
@@ -3823,6 +3826,7 @@
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.anonymous@L151","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.anonymous@L171","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.anonymous@L174","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
+{"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.anonymous@L230","type":"symbol","name":"anonymous","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.handleMessage","type":"symbol","name":"handleMessage","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.notify","type":"symbol","name":"notify","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}
 {"id":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.onData","type":"symbol","name":"onData","filePath":"lib/core/src/lsp/lsp-json-rpc-client.ts"}

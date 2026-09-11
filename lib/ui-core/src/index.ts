@@ -4,6 +4,10 @@ export { resolveDbPath } from "./utils/resolve-db-path.js";
 export type { CleanResult } from "./workflows/clean/clean-result.js";
 export type { StatusResult } from "./workflows/status/status-result.js";
 export type { SyncResult } from "./workflows/sync/sync-result.js";
+export {
+  AnalyzeResultKind,
+  DecisionNodeType,
+} from "./workflows/analyze/analyze-result.js";
 export type {
   AnalyzeResult,
   ExtractedDecision,

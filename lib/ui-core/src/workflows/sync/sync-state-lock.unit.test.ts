@@ -26,14 +26,13 @@ describe("withSyncStateLock lock acquisition (issue #268)", () => {
     vi.clearAllMocks();
   });
 
-  it("maps only a process-lock timeout to DB_LOCKED with the sync-state message", async () => {
+  it("maps timeout to DB_LOCKED", async () => {
     vi.mocked(acquireProcessLock).mockRejectedValueOnce(
       new ProcessLockTimeoutError("/x.lock"),
     );
+    const run = withSyncStateLock(tmpDir, async () => {});
 
-    await expect(
-      withSyncStateLock(tmpDir, async () => {}),
-    ).rejects.toMatchObject({
+    await expect(run).rejects.toMatchObject({
       code: "DB_LOCKED",
       message: expect.stringContaining(
         "Timed out waiting for the sync-state lock",
@@ -41,18 +40,17 @@ describe("withSyncStateLock lock acquisition (issue #268)", () => {
     });
   });
 
-  it("preserves non-timeout acquisition failures instead of misreporting DB_LOCKED", async () => {
+  it("preserves non-timeout acquisition failures", async () => {
     const ioError = Object.assign(new Error("read-only filesystem"), {
       code: "EROFS",
     });
     vi.mocked(acquireProcessLock).mockRejectedValueOnce(ioError);
+    const run = withSyncStateLock(tmpDir, async () => {});
 
-    await expect(
-      withSyncStateLock(tmpDir, async () => {}),
-    ).rejects.toBe(ioError);
+    await expect(run).rejects.toBe(ioError);
   });
 
-  it("releases the delegated handle even when the callback throws", async () => {
+  it("releases the delegated handle when the callback throws", async () => {
     const release = vi.fn();
     vi.mocked(acquireProcessLock).mockResolvedValueOnce({
       release,

@@ -9,6 +9,9 @@ export const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
 /** System error code reported by Node.js `fs.open(path, "wx")` when `path` already exists. */
 export const ERRNO_EEXIST = "EEXIST" as const;
 
+/** System error code reported by Node.js operations when a file or directory does not exist. */
+export const ERRNO_ENOENT = "ENOENT" as const;
+
 /** System error code reported by Node.js operations when permission is denied or a resource is locked. */
 export const ERRNO_EPERM = "EPERM" as const;
 

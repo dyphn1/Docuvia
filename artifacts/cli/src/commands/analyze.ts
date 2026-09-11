@@ -9,10 +9,10 @@ import {
   MemoryKeys,
   LogLevels,
   UTF8_ENCODING,
+  DecisionNodeType,
 } from "@workspace/contracts";
 import {
   AnalyzeResultKind as ANALYZE_RESULT_KIND,
-  DecisionNodeType,
   docuviaApi,
 } from "@workspace/ui-core";
 import "../registration.js";

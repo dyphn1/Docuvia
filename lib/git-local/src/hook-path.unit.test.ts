@@ -3,6 +3,15 @@ import path from "node:path";
 import { ErrorCodes } from "@workspace/contracts";
 import { resolveHookPathWithinDir } from "./hook-path.js";
 
+function expectPathTraversal(fn: () => unknown): void {
+  try {
+    fn();
+    throw new Error("expected hook path validation to reject");
+  } catch (error) {
+    expect(error).toMatchObject({ code: ErrorCodes.FS_PATH_TRAVERSAL });
+  }
+}
+
 describe("resolveHookPathWithinDir()", () => {
   const hooksDir = path.resolve("repo", ".git", "hooks");
 
@@ -20,15 +29,11 @@ describe("resolveHookPathWithinDir()", () => {
     "..",
     "",
   ])("rejects path-like hook name %j", (hookName) => {
-    expect(() => resolveHookPathWithinDir(hooksDir, hookName)).toThrow(
-      expect.objectContaining({ code: ErrorCodes.FS_PATH_TRAVERSAL }),
-    );
+    expectPathTraversal(() => resolveHookPathWithinDir(hooksDir, hookName));
   });
 
   it("rejects an absolute path", () => {
     const absolute = path.resolve(hooksDir, "..", "outside-hook");
-    expect(() => resolveHookPathWithinDir(hooksDir, absolute)).toThrow(
-      expect.objectContaining({ code: ErrorCodes.FS_PATH_TRAVERSAL }),
-    );
+    expectPathTraversal(() => resolveHookPathWithinDir(hooksDir, absolute));
   });
 });

@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.5](https://github.com/dyphn1/Docuvia/compare/v1.8.4...v1.8.5) (2026-09-11)
+
+### Bug Fixes
+
+- **git-local:** add hook path containment helper ([aaa76a4](https://github.com/dyphn1/Docuvia/commit/aaa76a461701aa82246b8ae3146949849332149e))
+- **git-local:** contain hook file paths ([8566b56](https://github.com/dyphn1/Docuvia/commit/8566b567c18c08d41af64fa57fd6e6663386cee0))
+
 ## [1.8.4](https://github.com/dyphn1/Docuvia/compare/v1.8.3...v1.8.4) (2026-09-11)
 
 ### Bug Fixes

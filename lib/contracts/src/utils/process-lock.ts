@@ -13,6 +13,14 @@ const ProcessLockErrorMessages = {
     `Timed out waiting for the lock at ${lockPath} — another process may be stuck`,
 } as const;
 
+/** Raised only when a process lock could not be acquired before maxWaitMs elapsed. */
+export class ProcessLockTimeoutError extends Error {
+  public constructor(lockPath: string) {
+    super(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
+    this.name = "ProcessLockTimeoutError";
+  }
+}
+
 /** Tunables for {@link acquireProcessLock}; all have defaults, override per call site. */
 export interface ProcessLockOptions {
   /** How long to wait for the lock before throwing, in ms. */
@@ -130,7 +138,7 @@ export async function acquireProcessLock(
     if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs)) continue;
 
     if (Date.now() > deadline) {
-      throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
+      throw new ProcessLockTimeoutError(lockPath);
     }
     await sleep(opts.retryIntervalMs);
   }

@@ -7,6 +7,7 @@ import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js"
 describe("resolveTypeScriptLspBinary()", () => {
   let workspaceRoot: string;
   let originalNodeOptions: string | undefined;
+  let originalSecret: string | undefined;
 
   beforeEach(() => {
     workspaceRoot = fs.mkdtempSync(
@@ -16,7 +17,9 @@ describe("resolveTypeScriptLspBinary()", () => {
     // test-runner process happens to have set -- tests that care about a pre-existing value set
     // it explicitly within their own body instead.
     originalNodeOptions = process.env.NODE_OPTIONS;
+    originalSecret = process.env.DOCUVIA_LSP_SECRET_TEST;
     delete process.env.NODE_OPTIONS;
+    process.env.DOCUVIA_LSP_SECRET_TEST = "must-not-leak";
   });
 
   afterEach(() => {
@@ -25,6 +28,11 @@ describe("resolveTypeScriptLspBinary()", () => {
       delete process.env.NODE_OPTIONS;
     } else {
       process.env.NODE_OPTIONS = originalNodeOptions;
+    }
+    if (originalSecret === undefined) {
+      delete process.env.DOCUVIA_LSP_SECRET_TEST;
+    } else {
+      process.env.DOCUVIA_LSP_SECRET_TEST = originalSecret;
     }
   });
 
@@ -94,12 +102,21 @@ describe("resolveTypeScriptLspBinary()", () => {
       );
     });
 
-    it("leaves env undefined when NODE_OPTIONS already sets --max-old-space-size", () => {
-      process.env.NODE_OPTIONS = "--max-old-space-size=8192";
+    it("preserves an explicit --max-old-space-size value", () => {
+      process.env.NODE_OPTIONS = "--max-old-space-size=4096";
 
       const resolved = resolveTypeScriptLspBinary(workspaceRoot);
 
-      expect(resolved.env).toBeUndefined();
+      expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+    });
+
+    it("does not leak unrelated parent-process environment variables", () => {
+      const resolved = resolveTypeScriptLspBinary(workspaceRoot);
+
+      expect(resolved.env?.DOCUVIA_LSP_SECRET_TEST).toBeUndefined();
+      if (process.env.PATH !== undefined) {
+        expect(resolved.env?.PATH).toBe(process.env.PATH);
+      }
     });
   });
 });

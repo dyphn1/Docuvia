@@ -23,6 +23,7 @@ import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { partitionTierBBucket } from "./tier-b-project-partitioner.js";
 import type { ResolvedLspBinary } from "./lsp-binary-resolver-strategies.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
+import { resolveLspWorkspacePath } from "./lsp-workspace-path.js";
 import {
   buildUniqueNodeKey,
   buildQualifiedBaseKey,
@@ -1794,7 +1795,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       this.closeOpenFile(client, victim, state.openFileCache);
     }
 
-    const absolutePath = path.join(workspaceRoot, relativePath);
+    const absolutePath = resolveLspWorkspacePath(workspaceRoot, relativePath);
     const content = await fs.readFile(absolutePath, UTF8_ENCODING);
     const uri = pathToFileURL(absolutePath).toString();
 

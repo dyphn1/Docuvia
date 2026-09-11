@@ -46,6 +46,27 @@ describe("checkRustLspPreflight()", () => {
     expect(result.reason!.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("uses the injected process environment for the Cargo bin candidate", async () => {
+    fs.writeFileSync(path.join(workspaceRoot, "Cargo.toml"), "[package]\n");
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "rust-analyzer",
+      args: [],
+      locallyResolved: false,
+    });
+    const cargoHome = path.join(workspaceRoot, "custom-cargo-home");
+
+    await checkRustLspPreflight(workspaceRoot, undefined, {
+      env: { CARGO_HOME: cargoHome },
+    });
+
+    expect(resolvePathNativeBinary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraCandidateDirs: [path.join(cargoHome, "bin")],
+      }),
+      undefined,
+    );
+  });
+
   it("reports not ready when Cargo.toml is present but rust-analyzer binary cannot be found", async () => {
     fs.writeFileSync(path.join(workspaceRoot, "Cargo.toml"), "[package]\n");
 

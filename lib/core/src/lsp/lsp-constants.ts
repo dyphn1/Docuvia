@@ -34,6 +34,8 @@ export const LspSymbolKinds = {
 export const LSP_MESSAGES = {
   clientNotRunning: (method: string) =>
     `LSP request "${method}" attempted after the client stopped running`,
+  clientStoppedBeforeResponse:
+    "LSP client stopped before the server responded to the request",
   requestTimedOut: (method: string, timeoutMs: number) =>
     `LSP request "${method}" timed out after ${timeoutMs}ms`,
   serverExited: (code: number | null, stderrTail?: string) =>

@@ -1,13 +1,7 @@
 import type { Language, Node, QueryCapture } from "web-tree-sitter";
 import { Query } from "web-tree-sitter";
 import { AstEventType } from "./constants/ast-event-constants.js";
-
-/** Query capture group names for relationships without an AstEvent.type counterpart. */
-const QueryCaptureName = {
-  IMPLEMENTS: "implements",
-  EXTENDS: "extends",
-  VARIABLE: "variable",
-} as const;
+import { QueryCaptureName } from "./constants/query-capture-names.js";
 
 export interface LanguageProvider {
   buildScopeMap?: (importStatements: Node[]) => Map<string, string>;

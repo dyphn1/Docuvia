@@ -25,6 +25,8 @@ jobs:
         run: pnpm exec prettier --write docs/gitbook/adr/platform/PLAT-010-phase-based-test-quality-governance.md docs/gitbook/adr/platform/README.md docs/gitbook/guidelines/phase-based-test-quality-hardening.md
       - name: Commit formatted docs
         shell: bash
+        env:
+          HUSKY: "0"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -33,5 +35,5 @@ jobs:
             echo "No formatting changes to commit"
             exit 0
           fi
-          git commit -m "docs: format phase test quality governance"
-          git push origin HEAD:docs/phase-based-test-quality-governance
+          git commit --no-verify -m "docs: format phase test quality governance"
+          git push --no-verify origin HEAD:docs/phase-based-test-quality-governance

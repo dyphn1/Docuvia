@@ -296,9 +296,11 @@ export {
   ERRNO_EBUSY,
   PLATFORM_WIN32,
 } from "./constants/fs.js";
-export {
-  acquireProcessLock,
-  ProcessLockTimeoutError,
+export { ProcessLockTimeoutError } from "./utils/process-lock.js";
+export type {
+  AcquireProcessLock,
+  ProcessLockOptions,
+  ProcessLockHandle,
 } from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
 export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
@@ -307,10 +309,6 @@ export {
   callResolutionDenominator,
 } from "./utils/call-resolution.js";
 export type { INodeProcess } from "./interfaces/process.interfaces.js";
-export type {
-  ProcessLockOptions,
-  ProcessLockHandle,
-} from "./utils/process-lock.js";
 export { DiagnosticStatus } from "./interfaces/diagnostic.interfaces.js";
 export type {
   DiagnosticResult,

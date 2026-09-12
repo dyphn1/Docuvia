@@ -41,10 +41,76 @@ export interface TddQualityResult {
   };
 }
 
+interface DimensionEvaluation {
+  result: TddDimensionResult;
+  weightedPoints: number;
+  applicableWeight: number;
+  requiredChecksPass: boolean;
+}
+
 function assertCount(name: string, value: number): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${name} must be a non-negative integer`);
   }
+}
+
+function assertDimensionEvidence(
+  dimension: TddQualityDimension,
+  item: TddDimensionEvidence,
+): void {
+  assertCount(`${dimension}.passed`, item.passed);
+  assertCount(`${dimension}.required`, item.required);
+
+  if (item.passed > item.required) {
+    throw new Error(`${dimension}.passed cannot exceed required`);
+  }
+}
+
+function evaluateNotApplicableDimension(
+  dimension: TddQualityDimension,
+  item: TddDimensionEvidence,
+): DimensionEvaluation {
+  if (!item.naReason?.trim()) {
+    throw new Error(
+      `${dimension} has no required checks; provide an explicit N/A reason instead of silently omitting evidence`,
+    );
+  }
+
+  return {
+    result: {
+      ...item,
+      applicable: false,
+      percentage: null,
+    },
+    weightedPoints: 0,
+    applicableWeight: 0,
+    requiredChecksPass: true,
+  };
+}
+
+function evaluateDimension(
+  dimension: TddQualityDimension,
+  item: TddDimensionEvidence,
+): DimensionEvaluation {
+  assertDimensionEvidence(dimension, item);
+
+  if (item.required === 0) {
+    return evaluateNotApplicableDimension(dimension, item);
+  }
+
+  const percentage = (item.passed / item.required) * 100;
+  const weight = TDD_QUALITY_WEIGHTS[dimension];
+
+  return {
+    result: {
+      ...item,
+      applicable: true,
+      percentage,
+    },
+    weightedPoints: percentage * weight,
+    applicableWeight: weight,
+    requiredChecksPass: item.passed === item.required,
+  };
 }
 
 export function evaluateTddQuality(
@@ -54,48 +120,20 @@ export function evaluateTddQuality(
 
   let weightedPoints = 0;
   let applicableWeight = 0;
-  let allApplicableDimensionsHaveEvidence = true;
   let allRequiredChecksPass = true;
-
   const dimensions = {} as Record<TddQualityDimension, TddDimensionResult>;
 
   for (const dimension of Object.keys(
     TDD_QUALITY_WEIGHTS,
   ) as TddQualityDimension[]) {
-    const item = evidence.dimensions[dimension];
-    assertCount(`${dimension}.passed`, item.passed);
-    assertCount(`${dimension}.required`, item.required);
-
-    if (item.passed > item.required) {
-      throw new Error(`${dimension}.passed cannot exceed required`);
-    }
-
-    if (item.required === 0) {
-      if (!item.naReason?.trim()) {
-        allApplicableDimensionsHaveEvidence = false;
-        throw new Error(
-          `${dimension} has no required checks; provide an explicit N/A reason instead of silently omitting evidence`,
-        );
-      }
-      dimensions[dimension] = {
-        ...item,
-        applicable: false,
-        percentage: null,
-      };
-      continue;
-    }
-
-    const percentage = (item.passed / item.required) * 100;
-    const weight = TDD_QUALITY_WEIGHTS[dimension];
-    applicableWeight += weight;
-    weightedPoints += percentage * weight;
-    allRequiredChecksPass &&= item.passed === item.required;
-
-    dimensions[dimension] = {
-      ...item,
-      applicable: true,
-      percentage,
-    };
+    const evaluated = evaluateDimension(
+      dimension,
+      evidence.dimensions[dimension],
+    );
+    dimensions[dimension] = evaluated.result;
+    weightedPoints += evaluated.weightedPoints;
+    applicableWeight += evaluated.applicableWeight;
+    allRequiredChecksPass &&= evaluated.requiredChecksPass;
   }
 
   if (applicableWeight === 0) {
@@ -103,24 +141,20 @@ export function evaluateTddQuality(
   }
 
   const score = weightedPoints / applicableWeight;
-  const sourceConformancePasses = evidence.sourceConformance === "PASS";
-  const noSkippedTestsCountedAsPassed = evidence.skippedTests === 0;
+  const gates = {
+    allApplicableDimensionsHaveEvidence: true,
+    allRequiredChecksPass,
+    sourceConformancePasses: evidence.sourceConformance === "PASS",
+    noSkippedTestsCountedAsPassed: evidence.skippedTests === 0,
+  };
   const passes =
-    allApplicableDimensionsHaveEvidence &&
-    allRequiredChecksPass &&
-    sourceConformancePasses &&
-    noSkippedTestsCountedAsPassed &&
+    Object.values(gates).every(Boolean) &&
     Math.abs(score - 100) < Number.EPSILON;
 
   return {
     score,
     result: passes ? "PASS" : "FAIL",
     dimensions,
-    gates: {
-      allApplicableDimensionsHaveEvidence,
-      allRequiredChecksPass,
-      sourceConformancePasses,
-      noSkippedTestsCountedAsPassed,
-    },
+    gates,
   };
 }

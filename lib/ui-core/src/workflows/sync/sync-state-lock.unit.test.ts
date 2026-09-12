@@ -9,7 +9,10 @@ import {
 } from "@workspace/contracts";
 import { withSyncStateLock } from "./sync-state.js";
 
-const acquireProcessLock = vi.fn<AcquireProcessLock>();
+const acquireProcessLock = vi.fn<
+  Parameters<AcquireProcessLock>,
+  ReturnType<AcquireProcessLock>
+>();
 
 describe("withSyncStateLock lock acquisition (issue #268)", () => {
   let tmpDir: string;

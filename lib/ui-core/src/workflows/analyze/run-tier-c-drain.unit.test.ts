@@ -144,6 +144,9 @@ describe("runTierCDrain() (§9)", () => {
 
   beforeEach(() => {
     resetFactoryForTests();
+    docuviaFactory.register(TOKENS.ProcessLock, () => async () => ({
+      release: async () => {},
+    }));
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );

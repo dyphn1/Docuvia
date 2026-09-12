@@ -2,6 +2,27 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import type { AcquireProcessLock } from "@workspace/contracts";
+
+function createSerialProcessLock(): AcquireProcessLock {
+  let tail = Promise.resolve();
+  return async () => {
+    const previous = tail;
+    let unlock!: () => void;
+    tail = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    await previous;
+    let released = false;
+    return {
+      async release(): Promise<void> {
+        if (released) return;
+        released = true;
+        unlock();
+      },
+    };
+  };
+}
 import {
   loadSyncState,
   saveSyncState,
@@ -10,9 +31,11 @@ import {
 
 describe("sync-state", () => {
   let tmpDir: string;
+  let acquireProcessLock: AcquireProcessLock;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-sync-state-test-"));
+    acquireProcessLock = createSerialProcessLock();
   });
 
   afterEach(() => {
@@ -40,7 +63,7 @@ describe("sync-state", () => {
     // Each run below sleeps between load and save specifically to force that race window open;
     // if withSyncStateLock didn't actually serialize the two calls, one hash would be lost.
     const runOne = async (hash: string): Promise<void> => {
-      await withSyncStateLock(tmpDir, async () => {
+      await withSyncStateLock(tmpDir, acquireProcessLock, async () => {
         const state = await loadSyncState(tmpDir);
         const project = state["proj-1"] ?? { syncedContentHashes: [] };
         await new Promise((resolve) => setTimeout(resolve, 20));
@@ -60,25 +83,25 @@ describe("sync-state", () => {
   }, 10_000);
 
   it("withSyncStateLock releases the lock file after the callback resolves", async () => {
-    await withSyncStateLock(tmpDir, async () => {});
+    await withSyncStateLock(tmpDir, acquireProcessLock, async () => {});
 
     // A second acquisition must not block/timeout if the first one released cleanly.
-    await expect(withSyncStateLock(tmpDir, async () => "ok")).resolves.toBe(
-      "ok",
-    );
+    await expect(
+      withSyncStateLock(tmpDir, acquireProcessLock, async () => "ok"),
+    ).resolves.toBe("ok");
   });
 
   it("withSyncStateLock releases the lock file even when the callback throws", async () => {
     await expect(
-      withSyncStateLock(tmpDir, async () => {
+      withSyncStateLock(tmpDir, acquireProcessLock, async () => {
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
 
     // Lock must have been released despite the throw — otherwise every subsequent sync would
     // hang/time out waiting on a lock nobody will ever release.
-    await expect(withSyncStateLock(tmpDir, async () => "ok")).resolves.toBe(
-      "ok",
-    );
+    await expect(
+      withSyncStateLock(tmpDir, acquireProcessLock, async () => "ok"),
+    ).resolves.toBe("ok");
   });
 });

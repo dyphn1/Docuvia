@@ -2,7 +2,8 @@ import os from "node:os";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  acquireProcessLock,
+  docuviaFactory,
+  TOKENS,
   DOCUVIA_DIR_NAME,
   TIER_C_LOCK_FILE_NAME,
   type ProcessLockHandle,
@@ -34,6 +35,7 @@ export async function tryAcquireTierCLock(
   );
   try {
     await fs.mkdir(path.dirname(lockPath), { recursive: true });
+    const acquireProcessLock = docuviaFactory.resolve(TOKENS.ProcessLock);
     return await acquireProcessLock(lockPath, {
       maxWaitMs: TIER_C_LOCK_MAX_WAIT_MS,
       retryIntervalMs: 50,

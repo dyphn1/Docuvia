@@ -31,7 +31,7 @@ describe("Phase 3 AST worker quality", () => {
           "  return helper(41);",
           "}",
         ].join("\n"),
-        language: "typescript",
+        language: "typescript" as const,
       };
 
       const first = await pool.parse(request);

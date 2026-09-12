@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  acquireProcessLock,
+  docuviaFactory,
+  TOKENS,
   DOCUVIA_DIR_NAME,
   INIT_COMMAND_LOCK_FILE_NAME,
 } from "@workspace/contracts";
@@ -35,6 +36,7 @@ export async function withInitCommandLock<T>(
     INIT_COMMAND_LOCK_FILE_NAME,
   );
   await fs.mkdir(path.dirname(lockPath), { recursive: true });
+  const acquireProcessLock = docuviaFactory.resolve(TOKENS.ProcessLock);
   const lock = await acquireProcessLock(lockPath, {
     maxWaitMs: INIT_COMMAND_LOCK_MAX_WAIT_MS,
     heartbeatIntervalMs: INIT_COMMAND_LOCK_HEARTBEAT_MS,

@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.12](https://github.com/dyphn1/Docuvia/compare/v1.8.11...v1.8.12) (2026-09-12)
+
+### Bug Fixes
+
+- **ast:** make semantic diff node ids deterministic ([59a254d](https://github.com/dyphn1/Docuvia/commit/59a254d843b71bceb4eb88a4fa3e3c5de8c32f42))
+
 ## [1.8.11](https://github.com/dyphn1/Docuvia/compare/v1.8.10...v1.8.11) (2026-09-12)
 
 ### Bug Fixes

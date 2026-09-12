@@ -58,9 +58,7 @@ const evidenceTitles: Record<TddQualityDimension, readonly string[]> = {
   determinism: [
     "produces identical normalized output and parse side effects across two identical-input runs",
   ],
-  sourceTraceability: [
-    `TDD-SOURCE: ${authoritativeSource}`,
-  ],
+  sourceTraceability: [`TDD-SOURCE: ${authoritativeSource}`],
 };
 
 function foundCount(titles: readonly string[]): number {

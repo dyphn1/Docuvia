@@ -9,13 +9,14 @@ import {
 } from "@workspace/contracts";
 import { withSyncStateLock } from "./sync-state.js";
 
+const acquireProcessLock = vi.fn<AcquireProcessLock>();
+
 describe("withSyncStateLock lock acquisition (issue #268)", () => {
   let tmpDir: string;
-  let acquireProcessLock: ReturnType<typeof vi.fn<AcquireProcessLock>>;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-sync-lock-test-"));
-    acquireProcessLock = vi.fn<AcquireProcessLock>();
+    acquireProcessLock.mockReset();
   });
 
   afterEach(() => {

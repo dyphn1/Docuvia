@@ -192,7 +192,10 @@ const contracts: readonly ContractEvidence[] = [
 function readEvidenceFiles(files: readonly string[]): string {
   return files
     .map((relativePath) =>
-      readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8"),
+      readFileSync(
+        fileURLToPath(new URL(relativePath, import.meta.url)),
+        "utf8",
+      ),
     )
     .join("\n");
 }
@@ -226,7 +229,9 @@ describe("Phase 1 contracts/schema quantitative TDD quality matrix", () => {
     (contract) => {
       const result = evaluateContract(contract);
 
-      expect(result.score).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+      expect(result.score).toBeGreaterThanOrEqual(
+        TDD_QUALITY_MINIMUM_PASS_SCORE,
+      );
       expect(result.result).toBe("PASS");
       expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
       expect(result.gates.sourceConformancePasses).toBe(true);
@@ -235,12 +240,15 @@ describe("Phase 1 contracts/schema quantitative TDD quality matrix", () => {
     },
   );
 
-  it("keeps the aggregate Phase 1 score at or above the governance floor", () => {
-    const results = contracts.map(evaluateContract);
-    const aggregate =
-      results.reduce((sum, result) => sum + result.score, 0) / results.length;
+  it(
+    "keeps the aggregate Phase 1 score at or above the governance floor",
+    () => {
+      const results = contracts.map(evaluateContract);
+      const aggregate =
+        results.reduce((sum, result) => sum + result.score, 0) / results.length;
 
-    expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
-    expect(results.every((result) => result.result === "PASS")).toBe(true);
-  });
+      expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+      expect(results.every((result) => result.result === "PASS")).toBe(true);
+    },
+  );
 });

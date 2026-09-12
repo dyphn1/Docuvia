@@ -254,7 +254,7 @@ const capabilities: readonly CapabilityEvidence[] = [
       inputCompleteness: [
         "Python: from x import y",
         "Rust: use foo::bar as baz",
-        "Go: import \"pkg\"",
+        'Go: import "pkg"',
       ],
       outputCompleteness: [
         "TS named import with alias: import { A as B } from 'bar'",
@@ -277,7 +277,10 @@ const capabilities: readonly CapabilityEvidence[] = [
 function readEvidenceFiles(files: readonly string[]): string {
   return files
     .map((relativePath) =>
-      readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8"),
+      readFileSync(
+        fileURLToPath(new URL(relativePath, import.meta.url)),
+        "utf8",
+      ),
     )
     .join("\n");
 }
@@ -309,7 +312,9 @@ describe("Phase 3 AST and language extraction quantitative TDD quality matrix", 
     (capability) => {
       const result = evaluateCapability(capability);
 
-      expect(result.score).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+      expect(result.score).toBeGreaterThanOrEqual(
+        TDD_QUALITY_MINIMUM_PASS_SCORE,
+      );
       expect(result.result).toBe("PASS");
       expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
       expect(result.gates.allRequiredChecksPass).toBe(true);

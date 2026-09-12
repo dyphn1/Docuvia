@@ -27,6 +27,25 @@ import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { writeTierCBudget } from "./tier-c-budget.js";
 import { tryAcquireTierCLock } from "./tier-c-throttle.js";
 
+function resetFactoryWithProcessLock(): void {
+  resetFactoryForTests();
+  let held = false;
+  const acquireProcessLock = async () => {
+    Date.now(); // Preserve the concrete lock's deadline read for Date.now()-sequenced tests.
+    if (held) throw new Error("process lock already held");
+    held = true;
+    let released = false;
+    return {
+      async release(): Promise<void> {
+        if (released) return;
+        released = true;
+        held = false;
+      },
+    };
+  };
+  docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);
+}
+
 const HEAD_SHA = "cafebabecafebabecafebabecafebabecafebabe";
 
 function makeGit(overrides: Partial<IGitProvider> = {}): IGitProvider {
@@ -143,10 +162,7 @@ describe("runTierCDrain() (§9)", () => {
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
-    docuviaFactory.register(TOKENS.ProcessLock, () => async () => ({
-      release: async () => {},
-    }));
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -246,7 +262,7 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -400,7 +416,7 @@ describe("runTierCDrain() -- wall-clock cap and item cap (gating test 4)", () =>
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -517,7 +533,7 @@ describe("runTierCDrain() -- mid-run budget exhaustion (gating test 2, second cl
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -596,7 +612,7 @@ describe("runTierCDrain() -- system-load-high skip path (gating test 5, third na
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -652,7 +668,7 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );
@@ -867,7 +883,7 @@ describe("runTierCDrain() -- drainAll (issue #145: --tier-c-all)", () => {
   let workspaceRoot: string;
 
   beforeEach(() => {
-    resetFactoryForTests();
+    resetFactoryWithProcessLock();
     workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
     );

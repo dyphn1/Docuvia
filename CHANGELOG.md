@@ -2,6 +2,15 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.8](https://github.com/dyphn1/Docuvia/compare/v1.8.7...v1.8.8) (2026-09-12)
+
+### Bug Fixes
+
+- **cli:** resolve init process lock through DI token ([e7be632](https://github.com/dyphn1/Docuvia/commit/e7be6324bc3096a3b00d634e9346b725c47dc1ac))
+- complete process-lock DI migration ([ddf7856](https://github.com/dyphn1/Docuvia/commit/ddf785659b2eb5cd32e983b58ef8d230c5621d23))
+- **ui-core:** remove unused core dependency ([8a33d79](https://github.com/dyphn1/Docuvia/commit/8a33d796e7f819fbd2c0c0b9913036484a3d166a))
+- **ui-core:** resolve process lock through contracts token ([f9c35df](https://github.com/dyphn1/Docuvia/commit/f9c35df2307e95648c4c4397da9117444f5c7c98))
+
 ## [1.8.7](https://github.com/dyphn1/Docuvia/compare/v1.8.6...v1.8.7) (2026-09-12)
 
 ### Bug Fixes

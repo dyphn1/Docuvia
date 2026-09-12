@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.10](https://github.com/dyphn1/Docuvia/compare/v1.8.9...v1.8.10) (2026-09-12)
+
+### Bug Fixes
+
+- validate complete IPC log message shape ([ab19f38](https://github.com/dyphn1/Docuvia/commit/ab19f3863f045acea4d29f2940feaacc63d15998))
+
 ## [1.8.9](https://github.com/dyphn1/Docuvia/compare/v1.8.8...v1.8.9) (2026-09-12)
 
 ### Bug Fixes

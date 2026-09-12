@@ -71,7 +71,8 @@ describe("quantitative TDD quality scoring", () => {
     evidence.dimensions.unexpectedInput = {
       passed: 0,
       required: 0,
-      naReason: "The measured pure function accepts no external or malformed input surface.",
+      naReason:
+        "The measured pure function accepts no external or malformed input surface.",
     };
 
     const result = evaluateTddQuality(evidence);

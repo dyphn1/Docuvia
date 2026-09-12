@@ -25,9 +25,17 @@ function deriveDomainPrefix(parts: string[]): string {
   if (parts[0] === SRC_DIR_SEGMENT && parts.length > 1) {
     return parts[1]; // src/auth -> auth
   }
-  if (parts.length > 2 && parts[1] === SRC_DIR_SEGMENT) {
+  if (
+    parts.length > 3 &&
+    NESTED_SRC_ROOT_DIRS.includes(parts[0]) &&
+    parts[2] === SRC_DIR_SEGMENT
+  ) {
     // Workspaces: packages/cli/src/mcp -> cli
-    return NESTED_SRC_ROOT_DIRS.includes(parts[0]) ? parts[1] : parts[0];
+    return parts[1];
+  }
+  if (parts.length > 2 && parts[1] === SRC_DIR_SEGMENT) {
+    // Plain package layout: core/src/ingestion -> core
+    return parts[0];
   }
   // Direct top-level folders that aren't src
   return parts[0];

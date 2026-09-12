@@ -259,7 +259,10 @@ const capabilities: readonly CapabilityEvidence[] = [
 function readEvidenceFiles(files: readonly string[]): string {
   return files
     .map((relativePath) =>
-      readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8"),
+      readFileSync(
+        fileURLToPath(new URL(relativePath, import.meta.url)),
+        "utf8",
+      ),
     )
     .join("\n");
 }
@@ -276,7 +279,8 @@ function evaluateCapability(capability: CapabilityEvidence) {
     ]),
   ) as TddQualityEvidence["dimensions"];
 
-  const skippedTests = (combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? []).length;
+  const skippedTests = (combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? [])
+    .length;
 
   return evaluateTddQuality({
     dimensions,
@@ -291,7 +295,9 @@ describe("Phase 2 repository discovery/local acquisition quantitative TDD qualit
     (capability) => {
       const result = evaluateCapability(capability);
 
-      expect(result.score).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+      expect(result.score).toBeGreaterThanOrEqual(
+        TDD_QUALITY_MINIMUM_PASS_SCORE,
+      );
       expect(result.result).toBe("PASS");
       expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
       expect(result.gates.sourceConformancePasses).toBe(true);

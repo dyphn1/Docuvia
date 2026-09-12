@@ -48,10 +48,37 @@ interface DimensionEvaluation {
   requiredChecksPass: boolean;
 }
 
+const QUALITY_SCORE_TOLERANCE = 1e-9;
+const DIMENSION_NAMES = Object.keys(
+  TDD_QUALITY_WEIGHTS,
+) as TddQualityDimension[];
+const VALID_DIMENSION_NAMES = new Set<string>(DIMENSION_NAMES);
+
 function assertCount(name: string, value: number): void {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(`${name} must be a non-negative integer`);
   }
+}
+
+function assertKnownDimensionKeys(
+  dimensions: TddQualityEvidence["dimensions"],
+): void {
+  for (const key of Object.keys(dimensions)) {
+    if (!VALID_DIMENSION_NAMES.has(key)) {
+      throw new Error(`unknown TDD quality dimension: ${key}`);
+    }
+  }
+}
+
+function getDimensionEvidence(
+  dimensions: TddQualityEvidence["dimensions"],
+  dimension: TddQualityDimension,
+): TddDimensionEvidence {
+  const item = dimensions[dimension];
+  if (!item) {
+    throw new Error(`${dimension} evidence is missing`);
+  }
+  return item;
 }
 
 function assertDimensionEvidence(
@@ -117,18 +144,17 @@ export function evaluateTddQuality(
   evidence: TddQualityEvidence,
 ): TddQualityResult {
   assertCount("skippedTests", evidence.skippedTests);
+  assertKnownDimensionKeys(evidence.dimensions);
 
   let weightedPoints = 0;
   let applicableWeight = 0;
   let allRequiredChecksPass = true;
   const dimensions = {} as Record<TddQualityDimension, TddDimensionResult>;
 
-  for (const dimension of Object.keys(
-    TDD_QUALITY_WEIGHTS,
-  ) as TddQualityDimension[]) {
+  for (const dimension of DIMENSION_NAMES) {
     const evaluated = evaluateDimension(
       dimension,
-      evidence.dimensions[dimension],
+      getDimensionEvidence(evidence.dimensions, dimension),
     );
     dimensions[dimension] = evaluated.result;
     weightedPoints += evaluated.weightedPoints;
@@ -149,7 +175,7 @@ export function evaluateTddQuality(
   };
   const passes =
     Object.values(gates).every(Boolean) &&
-    Math.abs(score - 100) < Number.EPSILON;
+    Math.abs(score - 100) < QUALITY_SCORE_TOLERANCE;
 
   return {
     score,

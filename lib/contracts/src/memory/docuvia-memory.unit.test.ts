@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { DocuviaMemory, MemoryKeys } from "./docuvia-memory.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 
+// TDD-SOURCE: docs/gitbook/architecture/application-lifecycle-and-state.md
+
 describe("DocuviaMemory", () => {
   let memory: DocuviaMemory;
 
@@ -68,11 +70,44 @@ describe("DocuviaMemory", () => {
     expect(memory.get("scope-1", MemoryKeys.API_URL)).toBe(undefined);
   });
 
+  it("recreating a deleted scope does not leak values from the previous lifecycle", () => {
+    memory.createScope("scope-1");
+    memory.set("scope-1", MemoryKeys.API_URL, "old-value");
+    memory.deleteScope("scope-1");
+
+    memory.createScope("scope-1");
+
+    expect(memory.hasScope("scope-1")).toBe(true);
+    expect(memory.get("scope-1", MemoryKeys.API_URL)).toBe(undefined);
+  });
+
   it("hasScope() reflects scope lifecycle", () => {
     expect(memory.hasScope("scope-1")).toBe(false);
     memory.createScope("scope-1");
     expect(memory.hasScope("scope-1")).toBe(true);
     memory.deleteScope("scope-1");
     expect(memory.hasScope("scope-1")).toBe(false);
+  });
+
+  it("produces identical observable state across repeated identical operation sequences", () => {
+    const runSequence = () => {
+      const candidate = new DocuviaMemory();
+      candidate.createScope("scope-a");
+      candidate.createScope("scope-b");
+      candidate.set("scope-a", MemoryKeys.WORKSPACE_ROOT, "/repo");
+      candidate.set("scope-a", MemoryKeys.FORCE, true);
+      candidate.set("scope-b", MemoryKeys.API_URL, "https://example.test");
+
+      return {
+        hasA: candidate.hasScope("scope-a"),
+        hasB: candidate.hasScope("scope-b"),
+        workspace: candidate.get("scope-a", MemoryKeys.WORKSPACE_ROOT),
+        force: candidate.get("scope-a", MemoryKeys.FORCE),
+        apiUrl: candidate.get("scope-b", MemoryKeys.API_URL),
+        isolatedLookup: candidate.get("scope-b", MemoryKeys.WORKSPACE_ROOT),
+      };
+    };
+
+    expect(runSequence()).toEqual(runSequence());
   });
 });

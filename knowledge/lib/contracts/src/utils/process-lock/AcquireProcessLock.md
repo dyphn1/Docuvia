@@ -1,9 +1,9 @@
 ---
-id: lib/contracts/src/utils/process-lock.ts#release
+id: lib/contracts/src/utils/process-lock.ts#AcquireProcessLock
 type: symbol
-name: release
+name: AcquireProcessLock
 filePath: lib/contracts/src/utils/process-lock.ts
 ---
-# Symbol: release
+# Symbol: AcquireProcessLock
 
 File: `lib/contracts/src/utils/process-lock.ts`

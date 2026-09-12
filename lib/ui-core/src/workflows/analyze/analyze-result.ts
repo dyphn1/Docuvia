@@ -1,38 +1,9 @@
-/** `ExtractedDecision.nodeType` values — mirrors GitNexus's L3 node-type vocabulary. */
-export const DecisionNodeType = {
-  CHANGE: "change",
-  RULE: "rule",
-  DECISION: "decision",
-  CONTEXT: "context",
-} as const;
-export type DecisionNodeType =
-  (typeof DecisionNodeType)[keyof typeof DecisionNodeType];
+import { AnalyzeResultKind } from "@workspace/contracts";
+import type { ExtractedDecision } from "@workspace/contracts";
 
-export interface ExtractedDecision {
-  title: string;
-  nodeType: DecisionNodeType;
-  content: string;
-  confidence: number;
-}
-
-/** `AnalyzeResult.kind` discriminant values. The old `configScan` kind died with the no-arg
- *  auto-mode breaking change (PLAT-007 Tier A; phase1-decision-integration.md §6a). */
-export const AnalyzeResultKind = {
-  AUTO_FULL_INGESTION: "autoFullIngestion",
-  AUTO_DELTA: "autoDelta",
-  AUTO_DELTA_NOOP: "autoDeltaNoop",
-  DECISION_EXTRACTION: "decisionExtraction",
-  /** `analyze --escalate-to-lsp` — the Tier B batch (PLAT-007; phase1-decision-integration.md
-   *  §8). A sibling mode to auto mode / focused extraction, not a modifier of either — it
-   *  consumes the `tierBQueue` accumulated by prior Tier A (no-flag) runs, never re-runs Tier A
-   *  itself. */
-  TIER_B_BATCH: "tierBBatch",
-  /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design §8.2)
-   *  -- the post-commit hook's drain of `.docuvia/pending-l3-decisions.json` entries whose
-   *  `filePath` is in the triggering commit's changed-file list. A fourth, mutually-exclusive
-   *  mode alongside auto/`targetPath`/`--escalate-to-lsp` -- no `targetPath`, no `--escalate-to-lsp`. */
-  FLUSH_STAGED_L3: "flushStagedL3",
-} as const;
+// Keep ui-core's existing public surface while sourcing cross-layer vocabulary from contracts.
+export { AnalyzeResultKind, DecisionNodeType } from "@workspace/contracts";
+export type { ExtractedDecision } from "@workspace/contracts";
 
 /**
  * No-arg `docuvia analyze` result shapes (PLAT-007 Tier A; phase1-decision-integration.md §6).

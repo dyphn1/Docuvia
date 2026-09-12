@@ -34,9 +34,8 @@ describe("Phase 3 AST-core quality hardening", () => {
     await Parser.init();
     let wasmPath = "";
     try {
-      wasmPath = require.resolve(
-        "tree-sitter-wasms/out/tree-sitter-typescript.wasm",
-      );
+      wasmPath =
+        require.resolve("tree-sitter-wasms/out/tree-sitter-typescript.wasm");
     } catch {
       wasmPath = path.resolve(
         __dirname,
@@ -69,7 +68,8 @@ calls = ["call_expression"]
   });
 
   it("semantic diff returns an empty result for empty and fully out-of-range changes", () => {
-    const source = "export function stable(value: number): number { return value; }\n";
+    const source =
+      "export function stable(value: number): number { return value; }\n";
     const detector = new SemanticDiffDetector(parser, language);
 
     expect(detector.analyze(source, source, [])).toEqual([]);

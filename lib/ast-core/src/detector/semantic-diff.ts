@@ -184,7 +184,7 @@ export class SemanticDiffDetector {
     const pruningLevel = this.resolvePruningLevel(oldNode, semanticBoundary);
 
     return {
-      nodeId: newName || semanticBoundary.id.toString(),
+      nodeId: newName || this.getStableStructuralNodeId(semanticBoundary),
       nodeType: semanticBoundary.type,
       pruningLevel,
       newRange: {
@@ -273,20 +273,62 @@ export class SemanticDiffDetector {
     const nameNode = node.childForFieldName("name");
     if (nameNode) return nameNode.text;
 
-    // Handle variable declarations: variable_declaration -> variable_declarator -> name
-    if (
-      node.type === TreeSitterNodeTypes.VARIABLE_DECLARATION ||
-      node.type === TreeSitterNodeTypes.LEXICAL_DECLARATION
-    ) {
-      const decl = node.children.find(
-        (c: Node) => c.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
-      );
-      if (decl) {
-        const declName = decl.childForFieldName("name");
-        if (declName) return declName.text;
-      }
+    const exportedName = this.getExportedDeclarationName(node);
+    if (exportedName) return exportedName;
+
+    return this.getVariableDeclarationName(node);
+  }
+
+  /**
+   * A line-only diff range can resolve to the outer export_statement rather than the named
+   * declaration it wraps (especially when the entire declaration fits on one line). Tier C
+   * treats ModifiedNode.nodeId as the symbol name when constructing `<file>#<symbolName>`, so
+   * returning tree-sitter's allocation-dependent Node.id here would create an unstable,
+   * unresolvable candidate. Prefer the wrapped declaration's semantic name when available.
+   */
+  private getExportedDeclarationName(node: Node): string | null {
+    if (node.type !== TreeSitterNodeTypes.EXPORT_STATEMENT) return null;
+
+    const declaration = node.childForFieldName("declaration");
+    if (declaration) {
+      const declarationName = this.getNodeName(declaration);
+      if (declarationName) return declarationName;
     }
+
+    for (const child of node.namedChildren) {
+      if (!child || child.type === TreeSitterNodeTypes.EXPORT_STATEMENT)
+        continue;
+      if (!SEMANTIC_TYPES.has(child.type)) continue;
+      const childName = this.getNodeName(child);
+      if (childName) return childName;
+    }
+
     return null;
+  }
+
+  /** Handles variable_declaration -> variable_declarator -> name. */
+  private getVariableDeclarationName(node: Node): string | null {
+    if (
+      node.type !== TreeSitterNodeTypes.VARIABLE_DECLARATION &&
+      node.type !== TreeSitterNodeTypes.LEXICAL_DECLARATION
+    ) {
+      return null;
+    }
+
+    const decl = node.children.find(
+      (child: Node) => child.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
+    );
+    return decl?.childForFieldName("name")?.text ?? null;
+  }
+
+  /**
+   * Tree-sitter `Node.id` is only an allocation identity inside one parse and changes across
+   * repeated parses of identical source. For genuinely unnamed semantic boundaries, use a source
+   * coordinate key instead so repeated analysis remains deterministic. Named symbols continue to
+   * use their semantic name, which is what Tier C's candidate key expects.
+   */
+  private getStableStructuralNodeId(node: Node): string {
+    return `${node.type}@${node.startPosition.row}:${node.startPosition.column}-${node.endPosition.row}:${node.endPosition.column}`;
   }
 
   private getSignature(node: Node): string {

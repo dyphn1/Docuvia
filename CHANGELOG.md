@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.11](https://github.com/dyphn1/Docuvia/compare/v1.8.10...v1.8.11) (2026-09-12)
+
+### Bug Fixes
+
+- **discovery:** derive nested workspace VCS domains correctly ([6dd3787](https://github.com/dyphn1/Docuvia/commit/6dd3787787e3cfa783e4d2c1a82a35aeabc847b1))
+
 ## [1.8.10](https://github.com/dyphn1/Docuvia/compare/v1.8.9...v1.8.10) (2026-09-12)
 
 ### Bug Fixes

@@ -32,7 +32,7 @@ jobs:
           existing = '''    resetFactoryForTests();\n    docuviaFactory.register(TOKENS.ProcessLock, () => async () => ({\n      release: async () => {},\n    }));'''
           s = s.replace(existing, '    resetFactoryWithProcessLock();')
           s = s.replace('    resetFactoryForTests();', '    resetFactoryWithProcessLock();')
-          helper = '''function resetFactoryWithProcessLock(): void {\n  resetFactoryForTests();\n  let held = false;\n  const acquireProcessLock = async () => {\n    if (held) throw new Error("process lock already held");\n    held = true;\n    let released = false;\n    return {\n      async release(): Promise<void> {\n        if (released) return;\n        released = true;\n        held = false;\n      },\n    };\n  };\n  docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);\n}\n\n'''
+          helper = '''function resetFactoryWithProcessLock(): void {\n  resetFactoryForTests();\n  let held = false;\n  const acquireProcessLock = async () => {\n    Date.now(); // Preserve the concrete lock's deadline read for Date.now()-sequenced tests.\n    if (held) throw new Error("process lock already held");\n    held = true;\n    let released = false;\n    return {\n      async release(): Promise<void> {\n        if (released) return;\n        released = true;\n        held = false;\n      },\n    };\n  };\n  docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);\n}\n\n'''
           marker = 'const HEAD_SHA = "cafebabecafebabecafebabecafebabecafebabe";\n'
           if helper not in s:
               s = s.replace(marker, helper + marker)
@@ -51,6 +51,8 @@ jobs:
           p.write_text(s)
       - name: Format
         run: pnpm exec prettier --write lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts
+      - name: Build workspace for integration test package resolution
+        run: pnpm build
       - name: Targeted tests
         run: pnpm exec vitest run lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts --testTimeout=120000 --hookTimeout=120000
       - name: Typecheck

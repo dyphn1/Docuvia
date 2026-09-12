@@ -286,10 +286,7 @@ export class SemanticDiffDetector {
       }
 
       for (const child of node.namedChildren) {
-        if (
-          !child ||
-          child.type === TreeSitterNodeTypes.EXPORT_STATEMENT
-        )
+        if (!child || child.type === TreeSitterNodeTypes.EXPORT_STATEMENT)
           continue;
         if (!SEMANTIC_TYPES.has(child.type)) continue;
         const childName = this.getNodeName(child);

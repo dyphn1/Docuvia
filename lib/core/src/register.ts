@@ -24,6 +24,7 @@ import { JavaLspEdgeProvider } from "./lsp/java-lsp-edge-provider.js";
 import { CsharpLspEdgeProvider } from "./lsp/csharp-lsp-edge-provider.js";
 import { PhpLspEdgeProvider } from "./lsp/php-lsp-edge-provider.js";
 import { RubyLspEdgeProvider } from "./lsp/ruby-lsp-edge-provider.js";
+import { acquireProcessLock } from "./process/process-lock.js";
 
 /**
  * Self-registration side effect (see
@@ -91,6 +92,8 @@ docuviaFactory.register(
   TOKENS.TempFileManager,
   () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger),
 );
+
+docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);
 
 docuviaFactory.register(
   TOKENS.QueryService,

@@ -66,6 +66,28 @@ describe("quantitative TDD quality scoring", () => {
     );
   });
 
+  it("negative control: a missing dimension produces an explicit validation error", () => {
+    const evidence = completeEvidence();
+    delete (
+      evidence.dimensions as Partial<TddQualityEvidence["dimensions"]>
+    ).determinism;
+
+    expect(() => evaluateTddQuality(evidence)).toThrow(
+      "determinism evidence is missing",
+    );
+  });
+
+  it("negative control: an unknown dimension is rejected instead of silently ignored", () => {
+    const evidence = completeEvidence();
+    Object.assign(evidence.dimensions, {
+      determinismTypo: { passed: 1, required: 1 },
+    });
+
+    expect(() => evaluateTddQuality(evidence)).toThrow(
+      "unknown TDD quality dimension: determinismTypo",
+    );
+  });
+
   it("allows a genuine N/A only when the reason is explicit and re-normalizes applicable weights", () => {
     const evidence = completeEvidence();
     evidence.dimensions.unexpectedInput = {
@@ -83,6 +105,23 @@ describe("quantitative TDD quality scoring", () => {
       applicable: false,
       percentage: null,
     });
+  });
+
+  it("accepts a mathematically complete score despite harmless floating-point rounding", () => {
+    const evidence = completeEvidence();
+    const naReason = "Not applicable to this deliberately narrow test contract.";
+
+    evidence.dimensions.positiveParameters = { passed: 0, required: 0, naReason };
+    evidence.dimensions.negativeParameters = { passed: 0, required: 0, naReason };
+    evidence.dimensions.inputCompleteness = { passed: 0, required: 0, naReason };
+    evidence.dimensions.outputCompleteness = { passed: 0, required: 0, naReason };
+    evidence.dimensions.errorHandling = { passed: 0, required: 0, naReason };
+    evidence.dimensions.determinism = { passed: 0, required: 0, naReason };
+
+    const result = evaluateTddQuality(evidence);
+
+    expect(result.score).toBeCloseTo(100, 12);
+    expect(result.result).toBe("PASS");
   });
 
   it("does not count a perfect numeric score as PASS when skipped tests exist", () => {

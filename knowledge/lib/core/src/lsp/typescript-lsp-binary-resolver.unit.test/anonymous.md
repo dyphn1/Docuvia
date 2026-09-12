@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-binary-resolver.unit.test.ts#anonymous@L94
+id: lib/core/src/lsp/typescript-lsp-binary-resolver.unit.test.ts#anonymous@L89
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/typescript-lsp-binary-resolver.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/lsp/typescript-lsp-binary-resolver.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/typescript-lsp-binary-resolver.unit.test.ts`
+

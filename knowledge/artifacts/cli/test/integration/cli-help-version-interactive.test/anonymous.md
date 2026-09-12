@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/cli-help-version-interactive.test.ts#anonymous@L70
+id: artifacts/cli/test/integration/cli-help-version-interactive.test.ts#anonymous@L97
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/cli-help-version-interactive.test.ts

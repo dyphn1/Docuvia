@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.9](https://github.com/dyphn1/Docuvia/compare/v1.8.8...v1.8.9) (2026-09-12)
+
+### Bug Fixes
+
+- align TDD scorer pass threshold with governance ([f3ca1df](https://github.com/dyphn1/Docuvia/commit/f3ca1dfc66623c136a33aeca4b83c7c63d5b2891))
+
 ## [1.8.8](https://github.com/dyphn1/Docuvia/compare/v1.8.7...v1.8.8) (2026-09-12)
 
 ### Bug Fixes

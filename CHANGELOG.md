@@ -2,6 +2,18 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.7](https://github.com/dyphn1/Docuvia/compare/v1.8.6...v1.8.7) (2026-09-12)
+
+### Bug Fixes
+
+- **cli:** consume analyze vocabulary from ui-core ([f4325ee](https://github.com/dyphn1/Docuvia/commit/f4325ee15dc557e60de9ee6fc3209232091b7b0f))
+- **contracts:** avoid duplicate type/value re-exports ([b9c9a7d](https://github.com/dyphn1/Docuvia/commit/b9c9a7d1965560e7e19ca88f00d797f54b56b06f))
+- **contracts:** centralize analyze result vocabulary ([f1a98dd](https://github.com/dyphn1/Docuvia/commit/f1a98dd70a9180472aee2c8759a57ce73f962204))
+- **contracts:** export analyze vocabulary ([4e2cfb4](https://github.com/dyphn1/Docuvia/commit/4e2cfb438e6affefebccf3c9f743751bff1499dd))
+- import decision vocabulary from contracts ([ac949dd](https://github.com/dyphn1/Docuvia/commit/ac949dd5bd49c51ecb4ac3aa27281ad9b9176f3b))
+- source analyze discriminants from contracts ([fd1e314](https://github.com/dyphn1/Docuvia/commit/fd1e314dd1ae68ddf07dbc8ffb3ca21e555bf4ff))
+- **ui-core:** re-export analyze discriminants ([d6ae37e](https://github.com/dyphn1/Docuvia/commit/d6ae37ea4ae57d98552ff445dc291220ad54e0c9))
+
 ## [1.8.6](https://github.com/dyphn1/Docuvia/compare/v1.8.5...v1.8.6) (2026-09-11)
 
 ### Bug Fixes

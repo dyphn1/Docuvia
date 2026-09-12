@@ -1,14 +1,43 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {
+  docuviaFactory,
+  TOKENS,
+  resetFactoryForTests,
+  ProcessLockTimeoutError,
+  type AcquireProcessLock,
+} from "@workspace/contracts";
 import {
   checkTierCSystemLoad,
   tryAcquireTierCLock,
 } from "./tier-c-throttle.js";
 
+function createTestProcessLock(): AcquireProcessLock {
+  let held = false;
+  return async (lockPath) => {
+    if (held) throw new ProcessLockTimeoutError(lockPath);
+    held = true;
+    let released = false;
+    return {
+      async release(): Promise<void> {
+        if (released) return;
+        released = true;
+        held = false;
+      },
+    };
+  };
+}
+
 describe("tryAcquireTierCLock() (§9f, §9k gating test 3)", () => {
   let workspaceRoot: string;
+
+  beforeEach(() => {
+    resetFactoryForTests();
+    const acquireProcessLock = createTestProcessLock();
+    docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);
+  });
 
   afterEach(() => {
     if (workspaceRoot)

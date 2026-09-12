@@ -28,18 +28,18 @@ The project is divided into independently testable phases. Except for documentat
 
 The initial phase map is:
 
-| Phase | Responsibility | Primary scope |
-| --- | --- | --- |
-| 0 | Scoring framework and evidence rules | scorer, mandatory gates, AST pilot |
-| 1 | Contracts and schema boundaries | `lib/contracts`, `lib/schema` |
-| 2 | Repository discovery and local source acquisition | `lib/git-local`, discovery/git/process/temp helpers |
-| 3 | AST and language extraction | `lib/ast-core`, `lib/plugins-ast`, `lib/core/src/ast`, related detector behavior |
-| 4 | Graph ingestion, persistence and topology | graph/topology plus graph persistence |
-| 5 | Query and retrieval | query/search/retrieval capabilities |
-| 6 | Impact analysis and reliability/staleness | impact analysis, #192 corpus, #193 freshness behavior |
-| 7 | LSP, LLM and remote enrichment providers | LSP, `lib/llm-api`, `lib/remote-api`, provider degradation |
-| 8 | Orchestration, registration and UI core | `lib/ui-core`, registration/factory wiring |
-| 9 | CLI and cross-layer workflows | `artifacts/cli`, smoke/E2E user flows |
+| Phase | Responsibility                                    | Primary scope                                                                    |
+| ----- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 0     | Scoring framework and evidence rules              | scorer, mandatory gates, AST pilot                                               |
+| 1     | Contracts and schema boundaries                   | `lib/contracts`, `lib/schema`                                                    |
+| 2     | Repository discovery and local source acquisition | `lib/git-local`, discovery/git/process/temp helpers                              |
+| 3     | AST and language extraction                       | `lib/ast-core`, `lib/plugins-ast`, `lib/core/src/ast`, related detector behavior |
+| 4     | Graph ingestion, persistence and topology         | graph/topology plus graph persistence                                            |
+| 5     | Query and retrieval                               | query/search/retrieval capabilities                                              |
+| 6     | Impact analysis and reliability/staleness         | impact analysis, #192 corpus, #193 freshness behavior                            |
+| 7     | LSP, LLM and remote enrichment providers          | LSP, `lib/llm-api`, `lib/remote-api`, provider degradation                       |
+| 8     | Orchestration, registration and UI core           | `lib/ui-core`, registration/factory wiring                                       |
+| 9     | CLI and cross-layer workflows                     | `artifacts/cli`, smoke/E2E user flows                                            |
 
 Phase boundaries follow **system responsibility**, not package count. A phase may span several packages when they jointly implement one observable contract.
 
@@ -61,16 +61,16 @@ A phase with any contract below 80 is incomplete even if the phase average is ab
 
 Unless an explicit follow-up decision changes the model, the score uses these dimensions:
 
-| Dimension | Weight |
-| --- | ---: |
-| Positive parameters / happy paths | 15% |
-| Negative parameters | 15% |
-| Input completeness / boundaries | 15% |
-| Output contract completeness | 15% |
-| Error handling | 15% |
-| Unexpected / malformed input | 10% |
-| Determinism / repeatability | 10% |
-| Source / requirement traceability | 5% |
+| Dimension                         | Weight |
+| --------------------------------- | -----: |
+| Positive parameters / happy paths |    15% |
+| Negative parameters               |    15% |
+| Input completeness / boundaries   |    15% |
+| Output contract completeness      |    15% |
+| Error handling                    |    15% |
+| Unexpected / malformed input      |    10% |
+| Determinism / repeatability       |    10% |
+| Source / requirement traceability |     5% |
 
 For applicable dimensions, the contract score is the weighted normalized percentage of passed required checks.
 
@@ -78,12 +78,12 @@ A dimension may be marked N/A only when the evidence includes a concrete reason.
 
 ### 4. Score bands
 
-| Score | Interpretation |
-| --- | --- |
-| < 80 | **FAIL** — phase/contract is not hardened |
-| 80–89.99 | **PASS** — minimum acceptable hardening |
-| 90–94.99 | **STRONG** — preferred quality level |
-| 95–100 | **EXCELLENT** — unusually complete evidence |
+| Score    | Interpretation                              |
+| -------- | ------------------------------------------- |
+| < 80     | **FAIL** — phase/contract is not hardened   |
+| 80–89.99 | **PASS** — minimum acceptable hardening     |
+| 90–94.99 | **STRONG** — preferred quality level        |
+| 95–100   | **EXCELLENT** — unusually complete evidence |
 
 The score is capped at 100. There is no requirement to reach 100, and no test may be added only to inflate the number.
 

@@ -21,16 +21,16 @@ A phase cannot pass by average alone. **Every scored contract must be >= 80**, t
 
 Use these dimensions unless an accepted ADR explicitly changes them:
 
-| Dimension | Weight | What counts as useful evidence |
-| --- | ---: | --- |
-| Positive parameters | 15% | valid inputs, happy paths, supported variants |
-| Negative parameters | 15% | invalid/rejected parameters, unsupported values, forbidden states |
-| Input completeness | 15% | empty/min/max/boundary/optional/multi-item inputs relevant to the contract |
-| Output completeness | 15% | full result shape, ordering, metadata, side effects, warnings/errors where applicable |
-| Error handling | 15% | expected failures, dependency failures, fallback errors, cleanup behavior |
-| Unexpected input | 10% | malformed/unexpected/duplicate/partial data and defensive behavior |
-| Determinism | 10% | repeated identical input produces identical normalized output and required side effects |
-| Source traceability | 5% | executable evidence tied to an ADR, architecture document, requirement, protocol, accepted issue, or other authoritative source |
+| Dimension           | Weight | What counts as useful evidence                                                                                                  |
+| ------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------- |
+| Positive parameters |    15% | valid inputs, happy paths, supported variants                                                                                   |
+| Negative parameters |    15% | invalid/rejected parameters, unsupported values, forbidden states                                                               |
+| Input completeness  |    15% | empty/min/max/boundary/optional/multi-item inputs relevant to the contract                                                      |
+| Output completeness |    15% | full result shape, ordering, metadata, side effects, warnings/errors where applicable                                           |
+| Error handling      |    15% | expected failures, dependency failures, fallback errors, cleanup behavior                                                       |
+| Unexpected input    |    10% | malformed/unexpected/duplicate/partial data and defensive behavior                                                              |
+| Determinism         |    10% | repeated identical input produces identical normalized output and required side effects                                         |
+| Source traceability |     5% | executable evidence tied to an ADR, architecture document, requirement, protocol, accepted issue, or other authoritative source |
 
 Coverage percentage is useful supporting evidence, but it is not one of these dimensions and does not replace them.
 
@@ -38,18 +38,18 @@ Coverage percentage is useful supporting evidence, but it is not one of these di
 
 The current project hardening order is:
 
-| Phase | Responsibility | Primary scope | Test emphasis |
-| --- | --- | --- | --- |
-| 0 | Scoring framework and evidence rules | scorer + AST pilot | scorer correctness, negative controls, source traceability |
-| 1 | Contracts and schema boundaries | `lib/contracts`, `lib/schema` | contract mapping, schema constraints, migrations, invalid data |
-| 2 | Repository discovery and local source acquisition | `lib/git-local`, discovery/git/process/temp helpers | repository/path states, filesystem isolation, Git edge cases |
-| 3 | AST and language extraction | `lib/ast-core`, `lib/plugins-ast`, core AST/detector | golden/broken/ambiguous/legacy fixtures, parser failures, normalization |
-| 4 | Graph ingestion, persistence and topology | graph/topology and graph persistence | node/edge invariants, re-ingest, delete/update, idempotence, freshness |
-| 5 | Query and retrieval | query/search/retrieval | match/no-match, ranking/filter behavior, malformed queries |
-| 6 | Impact analysis and reliability/staleness | impact + #192/#193 evidence | precision/recall/F1, stale-vs-wrong classification, blind spots |
-| 7 | LSP, LLM and remote enrichment | LSP, `lib/llm-api`, `lib/remote-api` | provider failures, timeout/degradation, normalized deterministic boundaries |
-| 8 | Orchestration, registration and UI core | `lib/ui-core`, registration/factory wiring | pure mocks, mapping, provider selection, missing/conflicting registrations |
-| 9 | CLI and cross-layer workflows | `artifacts/cli` | bootstrap, parsing, exit codes, diagnostics, user-flow smoke/E2E |
+| Phase | Responsibility                                    | Primary scope                                        | Test emphasis                                                               |
+| ----- | ------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| 0     | Scoring framework and evidence rules              | scorer + AST pilot                                   | scorer correctness, negative controls, source traceability                  |
+| 1     | Contracts and schema boundaries                   | `lib/contracts`, `lib/schema`                        | contract mapping, schema constraints, migrations, invalid data              |
+| 2     | Repository discovery and local source acquisition | `lib/git-local`, discovery/git/process/temp helpers  | repository/path states, filesystem isolation, Git edge cases                |
+| 3     | AST and language extraction                       | `lib/ast-core`, `lib/plugins-ast`, core AST/detector | golden/broken/ambiguous/legacy fixtures, parser failures, normalization     |
+| 4     | Graph ingestion, persistence and topology         | graph/topology and graph persistence                 | node/edge invariants, re-ingest, delete/update, idempotence, freshness      |
+| 5     | Query and retrieval                               | query/search/retrieval                               | match/no-match, ranking/filter behavior, malformed queries                  |
+| 6     | Impact analysis and reliability/staleness         | impact + #192/#193 evidence                          | precision/recall/F1, stale-vs-wrong classification, blind spots             |
+| 7     | LSP, LLM and remote enrichment                    | LSP, `lib/llm-api`, `lib/remote-api`                 | provider failures, timeout/degradation, normalized deterministic boundaries |
+| 8     | Orchestration, registration and UI core           | `lib/ui-core`, registration/factory wiring           | pure mocks, mapping, provider selection, missing/conflicting registrations  |
+| 9     | CLI and cross-layer workflows                     | `artifacts/cli`                                      | bootstrap, parsing, exit codes, diagnostics, user-flow smoke/E2E            |
 
 Do not move implementation hardening into a later phase just because a convenient test already touches it. Keep evidence attributable to the active phase.
 
@@ -98,16 +98,16 @@ Do not estimate from test count. For each contract and dimension, count required
 
 Example:
 
-| Dimension | Passing | Required | Result |
-| --- | ---: | ---: | ---: |
-| Positive parameters | 2 | 2 | 100% |
-| Negative parameters | 1 | 2 | 50% |
-| Input completeness | 1 | 3 | 33.3% |
-| Output completeness | 2 | 4 | 50% |
-| Error handling | 2 | 3 | 66.7% |
-| Unexpected input | 0 | 2 | 0% |
-| Determinism | 0 | 1 | 0% |
-| Source traceability | 0 | 1 | 0% |
+| Dimension           | Passing | Required | Result |
+| ------------------- | ------: | -------: | -----: |
+| Positive parameters |       2 |        2 |   100% |
+| Negative parameters |       1 |        2 |    50% |
+| Input completeness  |       1 |        3 |  33.3% |
+| Output completeness |       2 |        4 |    50% |
+| Error handling      |       2 |        3 |  66.7% |
+| Unexpected input    |       0 |        2 |     0% |
+| Determinism         |       0 |        1 |     0% |
+| Source traceability |       0 |        1 |     0% |
 
 The baseline is valuable even when it is low. Do not modify the rubric to make the baseline look better.
 
@@ -199,36 +199,42 @@ Every phase should end with a report in the parent issue or phase issue using th
 ## Phase N — Final quality report
 
 ### Scope
+
 - Contract A
 - Contract B
 
 ### Authoritative sources
+
 - ADR ...
 - Architecture ...
 - Issue ...
 
 ### Baseline
-| Contract | Baseline | Main gaps |
-| --- | ---: | --- |
-| A | 56.25 | determinism, malformed input |
-| B | 82.50 | output completeness |
+
+| Contract | Baseline | Main gaps                    |
+| -------- | -------: | ---------------------------- |
+| A        |    56.25 | determinism, malformed input |
+| B        |    82.50 | output completeness          |
 
 ### Final score
-| Contract | Final | Gate | Remaining gaps |
-| --- | ---: | --- | --- |
-| A | 92.50 | PASS | one low-risk boundary case |
-| B | 88.75 | PASS | richer diagnostic assertion |
+
+| Contract | Final | Gate | Remaining gaps              |
+| -------- | ----: | ---- | --------------------------- |
+| A        | 92.50 | PASS | one low-risk boundary case  |
+| B        | 88.75 | PASS | richer diagnostic assertion |
 
 **Phase score:** 90.63
 **Phase result:** PASS
 **Quality band:** STRONG
 
 ### Evidence added
+
 - test ...
 - fixture ...
 - negative control ...
 
 ### Follow-ups
+
 - #...
 ```
 
@@ -266,13 +272,13 @@ A clean 91 with meaningful behavioral evidence is preferable to an artificial 10
 
 Use multiple metrics for different questions:
 
-| Metric | Answers |
-| --- | --- |
-| line/branch/function coverage | "Was this code executed?" |
-| TDD quality score | "Did tests prove the important contract behaviors?" |
-| precision/recall/F1 | "How accurate is this analysis/retrieval behavior against labeled truth?" |
-| determinism/repeatability | "Does the same input produce stable normalized behavior?" |
-| CI gate result | "Is this change acceptable to merge?" |
+| Metric                        | Answers                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| line/branch/function coverage | "Was this code executed?"                                                 |
+| TDD quality score             | "Did tests prove the important contract behaviors?"                       |
+| precision/recall/F1           | "How accurate is this analysis/retrieval behavior against labeled truth?" |
+| determinism/repeatability     | "Does the same input produce stable normalized behavior?"                 |
+| CI gate result                | "Is this change acceptable to merge?"                                     |
 
 Do not substitute one metric for another.
 

@@ -187,7 +187,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       inputCompleteness: {
-        evidence: ["returns a complete empty topology contract for empty graph input"],
+        evidence: [
+          "returns a complete empty topology contract for empty graph input",
+        ],
       },
       outputCompleteness: {
         evidence: [
@@ -210,7 +212,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/topology.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/topology.interfaces.ts",
+        ],
       },
     },
   },
@@ -269,7 +273,9 @@ const capabilities: readonly CapabilityEvidence[] = [
     ],
     dimensions: {
       positiveParameters: {
-        evidence: ["should allow multiple readers to hold the lock concurrently"],
+        evidence: [
+          "should allow multiple readers to hold the lock concurrently",
+        ],
       },
       negativeParameters: {
         evidence: [
@@ -323,7 +329,8 @@ function evaluateCapability(capability: CapabilityEvidence) {
     Object.entries(capability.dimensions).map(([dimension, spec]) => [
       dimension,
       {
-        passed: spec.evidence.filter((item) => combinedSource.includes(item)).length,
+        passed: spec.evidence.filter((item) => combinedSource.includes(item))
+          .length,
         required: spec.evidence.length,
         naReason: spec.naReason,
       },
@@ -363,8 +370,8 @@ describe("Phase 4 graph ingestion, persistence and topology quantitative TDD qua
 
     expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
     expect(results.every((result) => result.result === "PASS")).toBe(true);
-    expect(
-      results.every((result) => result.gates.allRequiredChecksPass),
-    ).toBe(true);
+    expect(results.every((result) => result.gates.allRequiredChecksPass)).toBe(
+      true,
+    );
   });
 });

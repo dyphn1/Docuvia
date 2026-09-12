@@ -109,12 +109,29 @@ describe("quantitative TDD quality scoring", () => {
 
   it("accepts a mathematically complete score despite harmless floating-point rounding", () => {
     const evidence = completeEvidence();
-    const naReason = "Not applicable to this deliberately narrow test contract.";
+    const naReason =
+      "Not applicable to this deliberately narrow test contract.";
 
-    evidence.dimensions.positiveParameters = { passed: 0, required: 0, naReason };
-    evidence.dimensions.negativeParameters = { passed: 0, required: 0, naReason };
-    evidence.dimensions.inputCompleteness = { passed: 0, required: 0, naReason };
-    evidence.dimensions.outputCompleteness = { passed: 0, required: 0, naReason };
+    evidence.dimensions.positiveParameters = {
+      passed: 0,
+      required: 0,
+      naReason,
+    };
+    evidence.dimensions.negativeParameters = {
+      passed: 0,
+      required: 0,
+      naReason,
+    };
+    evidence.dimensions.inputCompleteness = {
+      passed: 0,
+      required: 0,
+      naReason,
+    };
+    evidence.dimensions.outputCompleteness = {
+      passed: 0,
+      required: 0,
+      naReason,
+    };
     evidence.dimensions.errorHandling = { passed: 0, required: 0, naReason };
     evidence.dimensions.determinism = { passed: 0, required: 0, naReason };
 

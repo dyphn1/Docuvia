@@ -17,6 +17,7 @@
 - [Overview](guidelines/README.md)
 - [Design Spirit & Core Principles](guidelines/design-spirit.md)
 - [File Placement & Folder Rules](guidelines/file-placement-rules.md)
+- [Phase-Based Test Quality Hardening](guidelines/phase-based-test-quality-hardening.md)
 
 ## 📖 User Guide
 
@@ -43,6 +44,7 @@
 ## 📋 Architecture Decision Records
 
 - [ADR Index](adr/README.md)
+  - [PLAT-010 — Phase-Based Test Quality Governance](adr/platform/PLAT-010-phase-based-test-quality-governance.md)
 
 ## 🔄 Workflows
 

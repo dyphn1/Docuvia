@@ -59,13 +59,19 @@ describe("Phase 2 git-local acquisition quality", () => {
       (await repo.provider.listTrackedFilesWithBlobHash(repo.dir)).entries(),
     );
     const firstHead = await repo.provider.getHeadSha(repo.dir);
-    const firstChanges = await repo.provider.getRecentChangedFilePaths(repo.dir, 100);
+    const firstChanges = await repo.provider.getRecentChangedFilePaths(
+      repo.dir,
+      100,
+    );
 
     const secondTracked = Array.from(
       (await repo.provider.listTrackedFilesWithBlobHash(repo.dir)).entries(),
     );
     const secondHead = await repo.provider.getHeadSha(repo.dir);
-    const secondChanges = await repo.provider.getRecentChangedFilePaths(repo.dir, 100);
+    const secondChanges = await repo.provider.getRecentChangedFilePaths(
+      repo.dir,
+      100,
+    );
 
     expect(secondTracked).toEqual(firstTracked);
     expect(secondHead).toBe(firstHead);

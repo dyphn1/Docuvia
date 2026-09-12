@@ -61,17 +61,19 @@ describe("Phase 2 discovery contract hardening", () => {
   it("VCS hotspot discovery derives nested workspace domains instead of structural container names", async () => {
     const git = makeMockGitProvider({
       isGitRepository: vi.fn().mockResolvedValue(true),
-      getRecentChangedFilePaths: vi.fn().mockResolvedValue([
-        "src/auth/login.ts",
-        "src/auth/session.ts",
-        "packages/cli/src/main.ts",
-        "packages/cli/src/run.ts",
-        "artifacts/server/src/index.ts",
-        "crates/parser/src/lib.rs",
-        "docs/guide.md",
-        ".github/workflows/ci.yml",
-        "README.md",
-      ]),
+      getRecentChangedFilePaths: vi
+        .fn()
+        .mockResolvedValue([
+          "src/auth/login.ts",
+          "src/auth/session.ts",
+          "packages/cli/src/main.ts",
+          "packages/cli/src/run.ts",
+          "artifacts/server/src/index.ts",
+          "crates/parser/src/lib.rs",
+          "docs/guide.md",
+          ".github/workflows/ci.yml",
+          "README.md",
+        ]),
     });
 
     await expect(
@@ -179,9 +181,7 @@ describe("Phase 2 discovery contract hardening", () => {
         .mockResolvedValue(new Map([["tracked.ts", "blob-sha"]])),
       listUntrackedFiles: vi.fn().mockResolvedValue(["untracked.ts"]),
       listModifiedFiles: vi.fn().mockResolvedValue(["tracked.ts"]),
-      readBlobContent: vi
-        .fn()
-        .mockResolvedValue("export const tracked = 1;\n"),
+      readBlobContent: vi.fn().mockResolvedValue("export const tracked = 1;\n"),
     });
 
     const result = await new FileDiscoveryService(git).discoverFiles(

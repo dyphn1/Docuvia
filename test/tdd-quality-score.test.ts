@@ -68,9 +68,8 @@ describe("quantitative TDD quality scoring", () => {
 
   it("negative control: a missing dimension produces an explicit validation error", () => {
     const evidence = completeEvidence();
-    delete (
-      evidence.dimensions as Partial<TddQualityEvidence["dimensions"]>
-    ).determinism;
+    delete (evidence.dimensions as Partial<TddQualityEvidence["dimensions"]>)
+      .determinism;
 
     expect(() => evaluateTddQuality(evidence)).toThrow(
       "determinism evidence is missing",

@@ -29,6 +29,7 @@ import type {
   IEdgeResolutionProvider,
   TierBLanguageId,
 } from "../interfaces/edge-resolution.interfaces.js";
+import type { AcquireProcessLock } from "../utils/process-lock.js";
 
 /**
  * A phantom-typed registration token — see
@@ -85,6 +86,7 @@ export const TOKENS = {
     createToken<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>(
       "GraphStoreOpener",
     ),
+  ProcessLock: createToken<AcquireProcessLock>("ProcessLock"),
   /** A builder function, not a shared instance — mirrors `TempFileManager`'s token shape since
    *  construction needs per-run config (`apiUrl`/`pat`) sourced from `docuviaMemory`, not
    *  swappable tech. */

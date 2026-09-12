@@ -9,11 +9,10 @@
  *
  * The base key is `${file}#${name}` and `UNIQUE(project_id, node_key)`, so a second insert under
  * an already-used key would violate that constraint. Disambiguate only on an actual collision
- * (two symbols in the same file sharing a name -- overloaded functions, same-named methods on
- * different classes, multiple anonymous callbacks, ...), preferring the symbol's start line
- * (readable, usually enough) and falling back to a counter for the rare case where even that
- * repeats (e.g. `x.map(() => {}).filter(() => {})` on one line) -- guaranteed unique, so the
- * common non-colliding case keeps its plain `file#name` key.
+ * (two symbols in the same file sharing a name -- overloaded functions, multiple anonymous
+ * callbacks, ...), preferring the symbol's start line (readable, usually enough) and falling back
+ * to a counter for the rare case where even that repeats (e.g. `x.map(() => {}).filter(() => {})`
+ * on one line) -- guaranteed unique, so the common non-colliding case keeps its plain key.
  *
  * `startLine` must be the same 0-based line number Tier A itself uses (raw tree-sitter
  * `Node.startPosition.row`, per `ast-worker.ts`'s `collectFunctionNodes`/`collectClassNodes` --
@@ -21,14 +20,13 @@
  * `Position.line` (`textDocument/documentSymbol`'s `selectionRange.start.line`) is 0-based too, so
  * a Tier B caller can pass it straight through with no conversion.
  *
- * This whole collision-then-disambiguate scheme is order-dependent by construction -- tolerable
- * with one key-assigning path, a recurring source of drift now that a second (Tier B's LSP path)
- * has to predict the same key without seeing Tier A's own insertion order (see
- * `lsp-edge-provider-base.ts`'s `resolveNodeKeyForFile` for how far line/kind-sorting closes that
- * gap, and where it still can't). [GRPH-006](../../../../docs/gitbook/adr/graph/GRPH-006-qualified-symbol-table-node-key.md)
- * proposes replacing this with structurally-qualified keys that remove the order-dependency
- * entirely -- not yet implemented; a materially larger change (AST-plugin containment tracking +
- * a persisted-graph migration + every other `node_key` consumer), not folded into this fix.
+ * GRPH-006's qualified-name layer has shipped: `buildQualifiedBaseKey` below gives symbols in
+ * different containers structurally different keys (for example `file#ClassA.handle` vs.
+ * `file#ClassB.handle`) before this collision fallback runs. The fallback remains intentionally
+ * order-dependent only for residual real collisions that qualification cannot remove, such as
+ * same-named overloads in the same container; line/counter disambiguation is still required for
+ * those shapes. See the accepted GRPH-006 ADR for the shipped language/migration scope and the
+ * separately documented Tier-B limitations.
  */
 export function buildUniqueNodeKey(
   usedNodeKeys: Set<string>,

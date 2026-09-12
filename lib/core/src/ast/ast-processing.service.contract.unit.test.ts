@@ -92,7 +92,9 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
     }));
     const service = new AstProcessingService(pool);
 
-    const result = await service.processFiles("/workspace", [makeFile("broken.ts")]);
+    const result = await service.processFiles("/workspace", [
+      makeFile("broken.ts"),
+    ]);
 
     expect(result).toEqual({
       parsed: [],
@@ -113,7 +115,9 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
     }));
     const service = new AstProcessingService(pool);
 
-    const result = await service.processFiles("/workspace", [makeFile("malformed.ts")]);
+    const result = await service.processFiles("/workspace", [
+      makeFile("malformed.ts"),
+    ]);
 
     expect(result).toEqual({
       parsed: [],
@@ -133,7 +137,9 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
     });
     const service = new AstProcessingService(pool);
 
-    const result = await service.processFiles("/workspace", [makeFile("throw.ts")]);
+    const result = await service.processFiles("/workspace", [
+      makeFile("throw.ts"),
+    ]);
 
     expect(result).toEqual({
       parsed: [],
@@ -157,7 +163,10 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
     const service = new AstProcessingService(pool);
     const duplicate = makeFile("duplicate.ts");
 
-    const result = await service.processFiles("/workspace", [duplicate, duplicate]);
+    const result = await service.processFiles("/workspace", [
+      duplicate,
+      duplicate,
+    ]);
 
     expect(result.parsed).toHaveLength(2);
     expect(result.parsed.map((item) => item.file)).toEqual([

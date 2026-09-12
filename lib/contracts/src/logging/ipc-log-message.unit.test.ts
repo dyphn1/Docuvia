@@ -4,21 +4,18 @@ import { isIpcLogMessage } from "./ipc-log-message.js";
 // TDD-SOURCE: docs/gitbook/architecture/ipc-logging-architecture.md
 
 describe("isIpcLogMessage", () => {
-  it(
-    "accepts the complete documented IPC log wire shape for every supported level",
-    () => {
-      for (const level of ["debug", "info", "warn", "error"] as const) {
-        expect(
-          isIpcLogMessage({
-            type: "ipc-log",
-            level,
-            message: `message-${level}`,
-            context: { file: "a.ts", attempt: 1 },
-          }),
-        ).toBe(true);
-      }
-    },
-  );
+  it("accepts the complete documented IPC log wire shape for every supported level", () => {
+    for (const level of ["debug", "info", "warn", "error"] as const) {
+      expect(
+        isIpcLogMessage({
+          type: "ipc-log",
+          level,
+          message: `message-${level}`,
+          context: { file: "a.ts", attempt: 1 },
+        }),
+      ).toBe(true);
+    }
+  });
 
   it("accepts a valid IPC log message when optional context is omitted", () => {
     expect(
@@ -31,9 +28,9 @@ describe("isIpcLogMessage", () => {
   });
 
   it("rejects tagged payloads with a missing or unsupported level", () => {
-    expect(
-      isIpcLogMessage({ type: "ipc-log", message: "missing-level" }),
-    ).toBe(false);
+    expect(isIpcLogMessage({ type: "ipc-log", message: "missing-level" })).toBe(
+      false,
+    );
     expect(
       isIpcLogMessage({
         type: "ipc-log",
@@ -81,18 +78,15 @@ describe("isIpcLogMessage", () => {
     }
   });
 
-  it(
-    "returns the same validation result across repeated identical inputs",
-    () => {
-      const message = {
-        type: "ipc-log",
-        level: "error",
-        message: "deterministic",
-        context: { file: "same.ts" },
-      } as const;
+  it("returns the same validation result across repeated identical inputs", () => {
+    const message = {
+      type: "ipc-log",
+      level: "error",
+      message: "deterministic",
+      context: { file: "same.ts" },
+    } as const;
 
-      expect(isIpcLogMessage(message)).toBe(true);
-      expect(isIpcLogMessage(message)).toBe(true);
-    },
-  );
+    expect(isIpcLogMessage(message)).toBe(true);
+    expect(isIpcLogMessage(message)).toBe(true);
+  });
 });

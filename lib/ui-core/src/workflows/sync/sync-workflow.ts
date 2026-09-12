@@ -122,8 +122,10 @@ export class SyncWorkflow {
       // The load→mutate→save cycle below races against any other `docuvia publish` process
       // touching the same workspace's sync-state.json — held for the push call too, since the
       // decision of what's "newly synced" is only valid under the lock that guards the save.
+      const acquireProcessLock = docuviaFactory.resolve(TOKENS.ProcessLock);
       const result = await withSyncStateLock(
         workspaceRoot,
+        acquireProcessLock,
         async (): Promise<SyncResult> => {
           const syncState = await loadSyncState(workspaceRoot);
           const projectState = syncState[projectId] ?? {

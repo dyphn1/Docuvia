@@ -315,9 +315,6 @@ importers:
       "@workspace/contracts":
         specifier: workspace:^
         version: link:../contracts
-      "@workspace/core":
-        specifier: workspace:^
-        version: link:../core
     devDependencies:
       "@types/node":
         specifier: "catalog:"

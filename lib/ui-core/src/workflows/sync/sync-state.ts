@@ -8,7 +8,7 @@ import {
   DocuviaError,
   ErrorCodes,
   ProcessLockTimeoutError,
-  acquireProcessLock,
+  type AcquireProcessLock,
 } from "@workspace/contracts";
 
 export interface SyncStateFile {
@@ -37,11 +37,14 @@ const SYNC_STATE_LOCK_MESSAGES = {
 
 /**
  * Cross-process mutex around a load→mutate→save cycle of `sync-state.json`.
- * Delegates to the canonical process-lock helper so all cross-process locks share the same
- * PID + heartbeat stale-lock semantics. Only a real lock timeout is translated to DB_LOCKED;
- * filesystem and other acquisition failures keep their original error semantics.
+ * The concrete lock technology is injected through the contracts boundary. Only a real lock
+ * timeout is translated to DB_LOCKED; filesystem and other acquisition failures keep their
+ * original error semantics.
  */
-async function acquireSyncStateLock(statePath: string) {
+async function acquireSyncStateLock(
+  statePath: string,
+  acquireProcessLock: AcquireProcessLock,
+) {
   const lockPath = `${statePath}${SYNC_STATE_LOCK_FILE_SUFFIX}`;
   await fs.mkdir(path.dirname(lockPath), { recursive: true });
   try {
@@ -60,13 +63,15 @@ async function acquireSyncStateLock(statePath: string) {
   }
 }
 
-/** Wraps a load→mutate→save `sync-state.json` cycle in the cross-process mutex above. */
+/** Wraps a load→mutate→save `sync-state.json` cycle in the injected cross-process mutex above. */
 export async function withSyncStateLock<T>(
   workspaceRoot: string,
+  acquireProcessLock: AcquireProcessLock,
   fn: () => Promise<T>,
 ): Promise<T> {
   const handle = await acquireSyncStateLock(
     resolveSyncStatePath(workspaceRoot),
+    acquireProcessLock,
   );
   try {
     return await fn();

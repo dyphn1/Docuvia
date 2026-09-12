@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, afterEach } from "vitest";
-import { acquireProcessLock, ProcessLockTimeoutError } from "./process-lock.js";
-import { UTF8_ENCODING } from "../constants/encoding.js";
+import { ProcessLockTimeoutError, UTF8_ENCODING } from "@workspace/contracts";
+import { acquireProcessLock } from "./process-lock.js";
 
 const tempDirs: string[] = [];
 

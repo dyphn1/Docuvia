@@ -5,7 +5,8 @@ import path from "path";
 import { execFileSync } from "child_process";
 import DatabaseCtor from "better-sqlite3";
 import {
-  acquireProcessLock,
+  docuviaFactory,
+  TOKENS,
   DOCUVIA_DIR_NAME,
   INIT_COMMAND_LOCK_FILE_NAME,
 } from "@workspace/contracts";
@@ -169,11 +170,14 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
         INIT_COMMAND_LOCK_FILE_NAME,
       );
       fs.mkdirSync(path.dirname(lockPath), { recursive: true });
-      const heldLock = await acquireProcessLock(lockPath, {
-        maxWaitMs: 5_000,
-        heartbeatIntervalMs: 500,
-        staleAfterMs: 60_000,
-      });
+      const heldLock = await docuviaFactory.resolve(TOKENS.ProcessLock)(
+        lockPath,
+        {
+          maxWaitMs: 5_000,
+          heartbeatIntervalMs: 500,
+          staleAfterMs: 60_000,
+        },
+      );
 
       let mcpSettled = false;
       const mcpPromise = initTool.handler({}).then((result) => {

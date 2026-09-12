@@ -1,13 +1,3 @@
-import fs from "node:fs/promises";
-import { UTF8_ENCODING } from "../constants/encoding.js";
-import {
-  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
-  ERRNO_EEXIST,
-  ERRNO_EPERM,
-  ERRNO_EACCES,
-  ERRNO_EBUSY,
-} from "../constants/fs.js";
-
 const ProcessLockErrorMessages = {
   TIMED_OUT_WAITING: (lockPath: string) =>
     `Timed out waiting for the lock at ${lockPath} — another process may be stuck`,
@@ -21,7 +11,7 @@ export class ProcessLockTimeoutError extends Error {
   }
 }
 
-/** Tunables for {@link acquireProcessLock}; all have defaults, override per call site. */
+/** Tunables for a process lock; all runtime implementations must honor these semantics. */
 export interface ProcessLockOptions {
   /** How long to wait for the lock before throwing, in ms. */
   maxWaitMs: number;
@@ -31,8 +21,8 @@ export interface ProcessLockOptions {
   heartbeatIntervalMs: number;
   /**
    * A lock is only reclaimed as abandoned once its mtime has been stale for this long AND its
-   * recorded PID is no longer alive (see `isProcessAlive`) — mtime alone can't distinguish a
-   * crashed holder from a live one whose heartbeat is merely delayed under load.
+   * recorded PID is no longer alive. Implementations must not reclaim a live holder based on
+   * mtime alone.
    */
   staleAfterMs: number;
   /** Called once, the first time this call finds the lock already held by another process. */
@@ -40,122 +30,15 @@ export interface ProcessLockOptions {
 }
 
 export interface ProcessLockHandle {
-  /** Idempotent — safe to call more than once. Stops the heartbeat and removes the lockfile. */
+  /** Idempotent — safe to call more than once. Stops the heartbeat and releases the lock. */
   release(): Promise<void>;
 }
 
-const DEFAULT_OPTIONS: ProcessLockOptions = {
-  maxWaitMs: 10_000,
-  retryIntervalMs: 100,
-  heartbeatIntervalMs: 10_000,
-  staleAfterMs: 30_000,
-};
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** `process.kill(pid, 0)` throws ESRCH if the PID is gone, but EPERM if it exists and we just
- *  lack permission to signal it — either way EPERM means "alive". */
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code === ERRNO_EPERM;
-  }
-}
-
-async function readLockPid(lockPath: string): Promise<number | undefined> {
-  try {
-    const pid = Number.parseInt(await fs.readFile(lockPath, UTF8_ENCODING), 10);
-    return Number.isFinite(pid) ? pid : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-async function removeStaleLockIfAbandoned(
-  lockPath: string,
-  staleAfterMs: number,
-): Promise<boolean> {
-  const stat = await fs.stat(lockPath).catch(() => undefined);
-  if (!stat || Date.now() - stat.mtimeMs <= staleAfterMs) return false;
-
-  const pid = await readLockPid(lockPath);
-  if (pid !== undefined && isProcessAlive(pid)) return false;
-
-  await fs.rm(lockPath, { force: true }).catch(() => {});
-  return true;
-}
-
-function isRetryableLockError(err: unknown): boolean {
-  const code = (err as NodeJS.ErrnoException).code;
-  return (
-    code === ERRNO_EEXIST ||
-    code === ERRNO_EPERM ||
-    code === ERRNO_EACCES ||
-    code === ERRNO_EBUSY
-  );
-}
-
-async function tryCreateLockFile(lockPath: string): Promise<boolean> {
-  try {
-    const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
-    await handle.writeFile(String(process.pid));
-    await handle.close();
-    return true;
-  } catch (err) {
-    if (!isRetryableLockError(err)) throw err;
-    return false;
-  }
-}
-
 /**
- * Cross-process mutex backed by an exclusively-created (`wx`) lockfile containing the holder's
- * PID — the same shape as the ad hoc locks in `graph-store.ts`'s `acquireInitLock` and
- * `git-local-provider.ts`'s `acquireKnowledgeLock` (see PLAT-006), generalized with a heartbeat so
- * it's safe to hold across a long-running operation (not just a sub-second DB bootstrap): the
- * holder periodically touches the lockfile's mtime, and waiters only reclaim it as abandoned once
- * both the mtime is stale *and* the recorded PID is confirmed dead.
+ * Technology boundary for cross-process locking. `@workspace/contracts` owns only this contract;
+ * the Node filesystem/PID implementation lives in `@workspace/core` and is registered by token.
  */
-export async function acquireProcessLock(
+export type AcquireProcessLock = (
   lockPath: string,
-  options: Partial<ProcessLockOptions> = {},
-): Promise<ProcessLockHandle> {
-  const opts: ProcessLockOptions = { ...DEFAULT_OPTIONS, ...options };
-  const deadline = Date.now() + opts.maxWaitMs;
-  let notifiedWaiting = false;
-
-  for (;;) {
-    if (await tryCreateLockFile(lockPath)) break;
-
-    if (!notifiedWaiting) {
-      notifiedWaiting = true;
-      options.onWaiting?.();
-    }
-
-    if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs)) continue;
-
-    if (Date.now() > deadline) {
-      throw new ProcessLockTimeoutError(lockPath);
-    }
-    await sleep(opts.retryIntervalMs);
-  }
-
-  const heartbeat = setInterval(() => {
-    const now = new Date();
-    fs.utimes(lockPath, now, now).catch(() => {});
-  }, opts.heartbeatIntervalMs);
-  heartbeat.unref?.();
-
-  let released = false;
-  return {
-    async release(): Promise<void> {
-      if (released) return;
-      released = true;
-      clearInterval(heartbeat);
-      await fs.rm(lockPath, { force: true }).catch(() => {});
-    },
-  };
-}
+  options?: Partial<ProcessLockOptions>,
+) => Promise<ProcessLockHandle>;

@@ -198,6 +198,9 @@ describe("SyncWorkflow.execute()", () => {
       path.join(os.tmpdir(), "docuvia-sync-workflow-test-"),
     );
     resetFactoryForTests();
+    docuviaFactory.register(TOKENS.ProcessLock, () => async () => ({
+      release: async () => {},
+    }));
   });
 
   afterEach(() => {

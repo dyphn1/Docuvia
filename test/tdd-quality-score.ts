@@ -9,6 +9,8 @@ export const TDD_QUALITY_WEIGHTS = {
   sourceTraceability: 0.05,
 } as const;
 
+export const TDD_QUALITY_MINIMUM_PASS_SCORE = 80;
+
 export type TddQualityDimension = keyof typeof TDD_QUALITY_WEIGHTS;
 
 export interface TddDimensionEvidence {
@@ -149,6 +151,7 @@ export function evaluateTddQuality(
   let weightedPoints = 0;
   let applicableWeight = 0;
   let allRequiredChecksPass = true;
+  let allApplicableDimensionsHaveEvidence = true;
   const dimensions = {} as Record<TddQualityDimension, TddDimensionResult>;
 
   for (const dimension of DIMENSION_NAMES) {
@@ -160,6 +163,9 @@ export function evaluateTddQuality(
     weightedPoints += evaluated.weightedPoints;
     applicableWeight += evaluated.applicableWeight;
     allRequiredChecksPass &&= evaluated.requiredChecksPass;
+    if (evaluated.result.applicable) {
+      allApplicableDimensionsHaveEvidence &&= evaluated.result.passed > 0;
+    }
   }
 
   if (applicableWeight === 0) {
@@ -168,18 +174,21 @@ export function evaluateTddQuality(
 
   const score = weightedPoints / applicableWeight;
   const gates = {
-    allApplicableDimensionsHaveEvidence: true,
+    allApplicableDimensionsHaveEvidence,
     allRequiredChecksPass,
     sourceConformancePasses: evidence.sourceConformance === "PASS",
     noSkippedTestsCountedAsPassed: evidence.skippedTests === 0,
   };
-  const passes =
-    Object.values(gates).every(Boolean) &&
-    Math.abs(score - 100) < QUALITY_SCORE_TOLERANCE;
+  const mandatoryGatesPass =
+    gates.allApplicableDimensionsHaveEvidence &&
+    gates.sourceConformancePasses &&
+    gates.noSkippedTestsCountedAsPassed;
+  const minimumScorePasses =
+    score + QUALITY_SCORE_TOLERANCE >= TDD_QUALITY_MINIMUM_PASS_SCORE;
 
   return {
     score,
-    result: passes ? "PASS" : "FAIL",
+    result: mandatoryGatesPass && minimumScorePasses ? "PASS" : "FAIL",
     dimensions,
     gates,
   };

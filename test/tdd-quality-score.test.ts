@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   evaluateTddQuality,
+  TDD_QUALITY_MINIMUM_PASS_SCORE,
   type TddQualityEvidence,
 } from "./tdd-quality-score.js";
 
@@ -22,7 +23,11 @@ function completeEvidence(): TddQualityEvidence {
 }
 
 describe("quantitative TDD quality scoring", () => {
-  it("returns PASS only when every required check and mandatory gate passes", () => {
+  it("uses the PLAT-010 minimum PASS score", () => {
+    expect(TDD_QUALITY_MINIMUM_PASS_SCORE).toBe(80);
+  });
+
+  it("returns PASS for a complete 100 score when mandatory gates pass", () => {
     const result = evaluateTddQuality(completeEvidence());
 
     expect(result.score).toBe(100);
@@ -35,6 +40,32 @@ describe("quantitative TDD quality scoring", () => {
     });
   });
 
+  it("returns PASS at exactly 80 when every applicable dimension has evidence", () => {
+    const evidence = completeEvidence();
+    evidence.dimensions.positiveParameters = { passed: 1, required: 3 };
+    evidence.dimensions.negativeParameters = { passed: 1, required: 3 };
+
+    const result = evaluateTddQuality(evidence);
+
+    expect(result.score).toBeCloseTo(80, 12);
+    expect(result.result).toBe("PASS");
+    expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
+    expect(result.gates.allRequiredChecksPass).toBe(false);
+  });
+
+  it("fails below 80 even when every applicable dimension has evidence", () => {
+    const evidence = completeEvidence();
+    evidence.dimensions.positiveParameters = { passed: 1, required: 4 };
+    evidence.dimensions.negativeParameters = { passed: 1, required: 3 };
+
+    const result = evaluateTddQuality(evidence);
+
+    expect(result.score).toBeCloseTo(78.75, 12);
+    expect(result.result).toBe("FAIL");
+    expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
+    expect(result.gates.allRequiredChecksPass).toBe(false);
+  });
+
   it("negative control: a missing determinism check lowers the score and forces FAIL", () => {
     const evidence = completeEvidence();
     evidence.dimensions.determinism = { passed: 0, required: 1 };
@@ -43,6 +74,7 @@ describe("quantitative TDD quality scoring", () => {
 
     expect(result.score).toBe(90);
     expect(result.result).toBe("FAIL");
+    expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(false);
     expect(result.gates.allRequiredChecksPass).toBe(false);
   });
 

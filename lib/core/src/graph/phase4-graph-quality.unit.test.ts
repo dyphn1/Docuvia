@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ParsedAstFileResult } from "@workspace/contracts";
 import { GraphStore } from "@workspace/schema";
 import { buildQualifiedBaseKey, buildUniqueNodeKey } from "./node-key.js";
@@ -11,6 +11,32 @@ import { ScopeResolver } from "./scope-resolver.js";
 // TDD-SOURCE: docs/gitbook/adr/graph/GRPH-006-qualified-symbol-table-node-key.md
 // TDD-SOURCE: lib/contracts/src/interfaces/graph-persister.interfaces.ts
 // TDD-SOURCE: lib/contracts/src/interfaces/graph-store.interfaces.ts
+
+function makeParsedResults(): ParsedAstFileResult[] {
+  return [
+    {
+      file: "src/a.ts",
+      hash: "hash-a",
+      data: {
+        imports: [],
+        exports: [],
+        functions: [
+          { name: "foo", startLine: 0, endLine: 0 },
+          { name: "bar", startLine: 1, endLine: 1 },
+        ],
+        classes: [],
+        calls: [
+          {
+            sourceFunction: "foo",
+            targetFunction: "bar",
+            startLine: 0,
+            startColumn: 20,
+          },
+        ],
+      },
+    },
+  ];
+}
 
 describe("Phase 4 graph hardening", () => {
   let store: GraphStore | undefined;
@@ -65,30 +91,6 @@ describe("Phase 4 graph hardening", () => {
     }).id;
     const persister = new GraphPersisterService();
 
-    const parsedResults: ParsedAstFileResult[] = [
-      {
-        file: "src/a.ts",
-        hash: "hash-a",
-        data: {
-          imports: [],
-          exports: [],
-          functions: [
-            { name: "foo", startLine: 0, endLine: 0 },
-            { name: "bar", startLine: 1, endLine: 1 },
-          ],
-          classes: [],
-          calls: [
-            {
-              sourceFunction: "foo",
-              targetFunction: "bar",
-              startLine: 0,
-              startColumn: 20,
-            },
-          ],
-        },
-      },
-    ];
-
     const semanticSnapshot = () => {
       const nodes = store!.graph.getAllNodes();
       const keyById = new Map(
@@ -125,7 +127,7 @@ describe("Phase 4 graph hardening", () => {
       store,
       workspaceRoot: tmpDir,
       projectId,
-      parsedResults,
+      parsedResults: makeParsedResults(),
       tags: ["typescript"],
     };
 
@@ -145,5 +147,35 @@ describe("Phase 4 graph hardening", () => {
       target: "src/a.ts#bar",
       linkType: "calls",
     });
+  });
+
+  it("rolls back partial AST graph writes when persistence fails during edge insertion", async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-phase4-rollback-"));
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    store = await GraphStore.open({ dbPath });
+    const projectId = store.projects.insert({
+      name: "phase4",
+      repoUrl: "file:///phase4",
+    }).id;
+    const before = store.graph.count();
+    const persister = new GraphPersisterService();
+
+    vi.spyOn(store.graph, "insertLink").mockImplementationOnce(() => {
+      throw new Error("phase4 forced edge failure");
+    });
+
+    await expect(
+      persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: makeParsedResults(),
+        tags: [],
+      }),
+    ).rejects.toThrow("phase4 forced edge failure");
+
+    expect(store.graph.count()).toEqual(before);
+    expect(store.graph.findNodeIdByNodeKey("src/a.ts")).toBeUndefined();
+    expect(store.files.getAllHashes()).toEqual([]);
   });
 });

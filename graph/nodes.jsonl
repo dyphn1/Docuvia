@@ -40,8 +40,8 @@
 {"id":"artifacts/cli/src/commands/analyze.ts#AnalyzeResult","type":"symbol","name":"AnalyzeResult","filePath":"artifacts/cli/src/commands/analyze.ts"}
 {"id":"artifacts/cli/src/commands/analyze.ts#AnalyzeSpinner","type":"symbol","name":"AnalyzeSpinner","filePath":"artifacts/cli/src/commands/analyze.ts"}
 {"id":"artifacts/cli/src/commands/analyze.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/commands/analyze.ts"}
-{"id":"artifacts/cli/src/commands/analyze.ts#anonymous@L735","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/commands/analyze.ts"}
-{"id":"artifacts/cli/src/commands/analyze.ts#anonymous@L881","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/commands/analyze.ts"}
+{"id":"artifacts/cli/src/commands/analyze.ts#anonymous@L722","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/commands/analyze.ts"}
+{"id":"artifacts/cli/src/commands/analyze.ts#anonymous@L868","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/commands/analyze.ts"}
 {"id":"artifacts/cli/src/commands/analyze.ts#confirmTierBGateOrAbort","type":"symbol","name":"confirmTierBGateOrAbort","filePath":"artifacts/cli/src/commands/analyze.ts"}
 {"id":"artifacts/cli/src/commands/analyze.ts#dispatchAgentAuthored","type":"symbol","name":"dispatchAgentAuthored","filePath":"artifacts/cli/src/commands/analyze.ts"}
 {"id":"artifacts/cli/src/commands/analyze.ts#dispatchFlushStagedL3","type":"symbol","name":"dispatchFlushStagedL3","filePath":"artifacts/cli/src/commands/analyze.ts"}
@@ -1898,6 +1898,12 @@
 {"id":"lib/contracts/src/factory/tokens.ts#Token","type":"symbol","name":"Token","filePath":"lib/contracts/src/factory/tokens.ts"}
 {"id":"lib/contracts/src/factory/tokens.ts#TOKENS","type":"symbol","name":"TOKENS","filePath":"lib/contracts/src/factory/tokens.ts"}
 {"id":"lib/contracts/src/index.ts","type":"file","name":"lib/contracts/src/index.ts","filePath":"lib/contracts/src/index.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts","type":"file","name":"lib/contracts/src/interfaces/analyze.interfaces.ts","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts#AnalyzeResultKind","type":"symbol","name":"AnalyzeResultKind","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts#AnalyzeResultKind@L20","type":"symbol","name":"AnalyzeResultKind","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts#DecisionNodeType","type":"symbol","name":"DecisionNodeType","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts#DecisionNodeType@L9","type":"symbol","name":"DecisionNodeType","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
+{"id":"lib/contracts/src/interfaces/analyze.interfaces.ts#ExtractedDecision","type":"symbol","name":"ExtractedDecision","filePath":"lib/contracts/src/interfaces/analyze.interfaces.ts"}
 {"id":"lib/contracts/src/interfaces/ast.interfaces.ts","type":"file","name":"lib/contracts/src/interfaces/ast.interfaces.ts","filePath":"lib/contracts/src/interfaces/ast.interfaces.ts"}
 {"id":"lib/contracts/src/interfaces/ast.interfaces.ts#AstExportKind","type":"symbol","name":"AstExportKind","filePath":"lib/contracts/src/interfaces/ast.interfaces.ts"}
 {"id":"lib/contracts/src/interfaces/ast.interfaces.ts#AstExportKinds","type":"symbol","name":"AstExportKinds","filePath":"lib/contracts/src/interfaces/ast.interfaces.ts"}
@@ -5488,11 +5494,7 @@
 {"id":"lib/ui-core/src/workflows/analyze/analyze-messages.ts#TIER_C_SUMMARY","type":"symbol","name":"TIER_C_SUMMARY","filePath":"lib/ui-core/src/workflows/analyze/analyze-messages.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts","type":"file","name":"lib/ui-core/src/workflows/analyze/analyze-result.ts","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#AnalyzeResult","type":"symbol","name":"AnalyzeResult","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
-{"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#AnalyzeResultKind","type":"symbol","name":"AnalyzeResultKind","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#AutoModeResult","type":"symbol","name":"AutoModeResult","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
-{"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType","type":"symbol","name":"DecisionNodeType","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
-{"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#DecisionNodeType@L1","type":"symbol","name":"DecisionNodeType","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
-{"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#ExtractedDecision","type":"symbol","name":"ExtractedDecision","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-result.ts#TierBBatchResult","type":"symbol","name":"TierBBatchResult","filePath":"lib/ui-core/src/workflows/analyze/analyze-result.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-workflow.ts","type":"file","name":"lib/ui-core/src/workflows/analyze/analyze-workflow.ts","filePath":"lib/ui-core/src/workflows/analyze/analyze-workflow.ts"}
 {"id":"lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow","type":"symbol","name":"AnalyzeWorkflow","filePath":"lib/ui-core/src/workflows/analyze/analyze-workflow.ts"}

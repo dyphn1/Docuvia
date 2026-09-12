@@ -273,41 +273,52 @@ export class SemanticDiffDetector {
     const nameNode = node.childForFieldName("name");
     if (nameNode) return nameNode.text;
 
-    // A line-only diff range can resolve to the outer export_statement rather than the named
-    // declaration it wraps (especially when the entire declaration fits on one line). Tier C
-    // treats ModifiedNode.nodeId as the symbol name when constructing `<file>#<symbolName>`, so
-    // returning tree-sitter's allocation-dependent Node.id here would create an unstable,
-    // unresolvable candidate. Prefer the wrapped declaration's semantic name when available.
-    if (node.type === TreeSitterNodeTypes.EXPORT_STATEMENT) {
-      const declaration = node.childForFieldName("declaration");
-      if (declaration) {
-        const declarationName = this.getNodeName(declaration);
-        if (declarationName) return declarationName;
-      }
+    const exportedName = this.getExportedDeclarationName(node);
+    if (exportedName) return exportedName;
 
-      for (const child of node.namedChildren) {
-        if (!child || child.type === TreeSitterNodeTypes.EXPORT_STATEMENT)
-          continue;
-        if (!SEMANTIC_TYPES.has(child.type)) continue;
-        const childName = this.getNodeName(child);
-        if (childName) return childName;
-      }
+    return this.getVariableDeclarationName(node);
+  }
+
+  /**
+   * A line-only diff range can resolve to the outer export_statement rather than the named
+   * declaration it wraps (especially when the entire declaration fits on one line). Tier C
+   * treats ModifiedNode.nodeId as the symbol name when constructing `<file>#<symbolName>`, so
+   * returning tree-sitter's allocation-dependent Node.id here would create an unstable,
+   * unresolvable candidate. Prefer the wrapped declaration's semantic name when available.
+   */
+  private getExportedDeclarationName(node: Node): string | null {
+    if (node.type !== TreeSitterNodeTypes.EXPORT_STATEMENT) return null;
+
+    const declaration = node.childForFieldName("declaration");
+    if (declaration) {
+      const declarationName = this.getNodeName(declaration);
+      if (declarationName) return declarationName;
     }
 
-    // Handle variable declarations: variable_declaration -> variable_declarator -> name
-    if (
-      node.type === TreeSitterNodeTypes.VARIABLE_DECLARATION ||
-      node.type === TreeSitterNodeTypes.LEXICAL_DECLARATION
-    ) {
-      const decl = node.children.find(
-        (c: Node) => c.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
-      );
-      if (decl) {
-        const declName = decl.childForFieldName("name");
-        if (declName) return declName.text;
-      }
+    for (const child of node.namedChildren) {
+      if (!child || child.type === TreeSitterNodeTypes.EXPORT_STATEMENT)
+        continue;
+      if (!SEMANTIC_TYPES.has(child.type)) continue;
+      const childName = this.getNodeName(child);
+      if (childName) return childName;
     }
+
     return null;
+  }
+
+  /** Handles variable_declaration -> variable_declarator -> name. */
+  private getVariableDeclarationName(node: Node): string | null {
+    if (
+      node.type !== TreeSitterNodeTypes.VARIABLE_DECLARATION &&
+      node.type !== TreeSitterNodeTypes.LEXICAL_DECLARATION
+    ) {
+      return null;
+    }
+
+    const decl = node.children.find(
+      (child: Node) => child.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
+    );
+    return decl?.childForFieldName("name")?.text ?? null;
   }
 
   /**

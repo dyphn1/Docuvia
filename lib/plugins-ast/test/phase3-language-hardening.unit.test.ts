@@ -56,7 +56,6 @@ function resolveCallableName(node: Node): string {
 }
 
 interface Fixture {
-  name: string;
   config: LanguageConfig;
   source: string;
   expectedFunctions: string[];
@@ -65,37 +64,34 @@ interface Fixture {
   malformed: string;
 }
 
-const fixtures: Fixture[] = [
-  {
-    name: "C",
-    config: cConfig,
-    source: `
+const cFixture: Fixture = {
+  config: cConfig,
+  source: `
 #include <stdio.h>
 struct Calculator { int value; };
 int add(int a, int b) { return a + b; }
 int main(void) { printf("%d", add(1, 2)); return 0; }
 `,
-    expectedFunctions: ["add", "main"],
-    expectedClasses: ["Calculator"],
-    expectedImportText: "stdio.h",
-    malformed: "int broken(",
-  },
-  {
-    name: "C#",
-    config: csharpConfig,
-    source: `
+  expectedFunctions: ["add", "main"],
+  expectedClasses: ["Calculator"],
+  expectedImportText: "stdio.h",
+  malformed: "int broken(",
+};
+
+const csharpFixture: Fixture = {
+  config: csharpConfig,
+  source: `
 using System;
 public class Calculator {
   public int Add(int a, int b) { return a + b; }
   public void Run() { Console.WriteLine(Add(1, 2)); }
 }
 `,
-    expectedFunctions: ["Add", "Run"],
-    expectedClasses: ["Calculator"],
-    expectedImportText: "System",
-    malformed: "public class Broken { public void Run(",
-  },
-];
+  expectedFunctions: ["Add", "Run"],
+  expectedClasses: ["Calculator"],
+  expectedImportText: "System",
+  malformed: "public class Broken { public void Run(",
+};
 
 async function extract(config: LanguageConfig, source: string) {
   const language = await Language.load(resolveWasmPath(config.wasm_file));
@@ -108,7 +104,9 @@ async function extract(config: LanguageConfig, source: string) {
   provider.initQueries(language);
   try {
     return {
-      functions: provider.extractFunctions(tree.rootNode).map(resolveCallableName),
+      functions: provider
+        .extractFunctions(tree.rootNode)
+        .map(resolveCallableName),
       classes: provider
         .extractClasses(tree.rootNode)
         .map((node) => node.childForFieldName("name")?.text ?? node.text),
@@ -122,36 +120,50 @@ async function extract(config: LanguageConfig, source: string) {
   }
 }
 
+async function expectCompleteExtraction(fixture: Fixture) {
+  const result = await extract(fixture.config, fixture.source);
+
+  expect(result.queryFailures).toEqual([]);
+  for (const name of fixture.expectedFunctions) {
+    expect(result.functions).toContain(name);
+  }
+  for (const name of fixture.expectedClasses) {
+    expect(result.classes).toContain(name);
+  }
+  expect(
+    result.imports.some((value) => value.includes(fixture.expectedImportText)),
+  ).toBe(true);
+}
+
+async function expectMalformedStable(fixture: Fixture) {
+  const first = await extract(fixture.config, fixture.malformed);
+  const second = await extract(fixture.config, fixture.malformed);
+
+  expect(second).toEqual(first);
+  expect(first.queryFailures).toEqual([]);
+  expect(Array.isArray(first.functions)).toBe(true);
+  expect(Array.isArray(first.classes)).toBe(true);
+  expect(Array.isArray(first.imports)).toBe(true);
+}
+
 describe("Phase 3 language extraction hardening", () => {
   beforeAll(async () => {
     await Parser.init();
   });
 
-  for (const fixture of fixtures) {
-    it(`extracts complete ${fixture.name} fixture data with real grammar WASM`, async () => {
-      const result = await extract(fixture.config, fixture.source);
+  it("extracts complete C fixture data with real grammar WASM", async () => {
+    await expectCompleteExtraction(cFixture);
+  });
 
-      expect(result.queryFailures).toEqual([]);
-      for (const name of fixture.expectedFunctions) {
-        expect(result.functions).toContain(name);
-      }
-      for (const name of fixture.expectedClasses) {
-        expect(result.classes).toContain(name);
-      }
-      expect(
-        result.imports.some((value) => value.includes(fixture.expectedImportText)),
-      ).toBe(true);
-    });
+  it("C malformed source remains bounded and deterministic across reruns", async () => {
+    await expectMalformedStable(cFixture);
+  });
 
-    it(`${fixture.name} malformed source remains bounded and deterministic across reruns`, async () => {
-      const first = await extract(fixture.config, fixture.malformed);
-      const second = await extract(fixture.config, fixture.malformed);
+  it("extracts complete C# fixture data with real grammar WASM", async () => {
+    await expectCompleteExtraction(csharpFixture);
+  });
 
-      expect(second).toEqual(first);
-      expect(first.queryFailures).toEqual([]);
-      expect(Array.isArray(first.functions)).toBe(true);
-      expect(Array.isArray(first.classes)).toBe(true);
-      expect(Array.isArray(first.imports)).toBe(true);
-    });
-  }
+  it("C# malformed source remains bounded and deterministic across reruns", async () => {
+    await expectMalformedStable(csharpFixture);
+  });
 });

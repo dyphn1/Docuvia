@@ -3,6 +3,9 @@ import { DocuviaFactory } from "./docuvia-factory.js";
 import { createToken } from "./tokens.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 
+// TDD-SOURCE: docs/gitbook/architecture/virtual-contracts-architecture.md
+// TDD-SOURCE: docs/gitbook/architecture/application-lifecycle-and-state.md
+
 interface ITestThing {
   dep?: string;
 }
@@ -85,6 +88,25 @@ describe("DocuviaFactory", () => {
     expect(factory.has(TOKEN)).toBe(false);
     factory.register(TOKEN, () => ({}));
     expect(factory.has(TOKEN)).toBe(true);
+  });
+
+  it("propagates provider errors without rewriting the dependency failure", () => {
+    const providerError = new Error("provider failed");
+    factory.register(TOKEN, () => {
+      throw providerError;
+    });
+
+    expect(() => factory.resolve(TOKEN)).toThrow(providerError);
+  });
+
+  it("produces equivalent values across repeated identical resolves while preserving transient identity", () => {
+    factory.register(TOKEN, () => ({ dep: "stable" }));
+
+    const first = factory.resolve(TOKEN);
+    const second = factory.resolve(TOKEN);
+
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
   });
 
   it("type safety: a provider returning the wrong shape for a token is a compile error", () => {

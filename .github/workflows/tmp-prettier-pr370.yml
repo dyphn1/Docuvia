@@ -1,0 +1,37 @@
+name: tmp-prettier-pr370
+
+on:
+  push:
+    branches:
+      - test/tdd-quality-ast-processing
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/tdd-quality-ast-processing
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format failing file
+        run: pnpm exec prettier --write test/tdd-quality-score.test.ts
+      - name: Commit formatting
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/tdd-quality-score.test.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes to commit"
+            exit 0
+          fi
+          HUSKY=0 git commit -m "style: format TDD scorer negative controls"
+          git push origin HEAD:test/tdd-quality-ast-processing

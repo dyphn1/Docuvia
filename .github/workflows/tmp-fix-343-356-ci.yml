@@ -71,7 +71,7 @@ jobs:
           git add lib/ui-core/src/workflows/analyze/tier-c-throttle.ts lib/ui-core/src/workflows/analyze/tier-c-throttle.unit.test.ts lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts lib/ui-core/src/workflows/sync/sync-state-lock.unit.test.ts lib/ui-core/src/workflows/sync/sync-state.unit.test.ts artifacts/cli/src/utils/init-command-lock.ts lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts pnpm-lock.yaml
           if ! git diff --cached --quiet; then
             git commit --no-verify -m "fix: complete process-lock DI migration"
-            git push origin HEAD:fix/issues-343-356
+            HUSKY=0 git push origin HEAD:fix/issues-343-356
           fi
       - name: Verify no old contracts runtime import remains
         run: |

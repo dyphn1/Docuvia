@@ -212,9 +212,8 @@ function evaluateContract(contract: ContractEvidence) {
     ]),
   ) as TddQualityEvidence["dimensions"];
 
-  const skippedTests = (
-    combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? []
-  ).length;
+  const skippedTests = (combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? [])
+    .length;
 
   return evaluateTddQuality({
     dimensions,
@@ -240,15 +239,12 @@ describe("Phase 1 contracts/schema quantitative TDD quality matrix", () => {
     },
   );
 
-  it(
-    "keeps the aggregate Phase 1 score at or above the governance floor",
-    () => {
-      const results = contracts.map(evaluateContract);
-      const aggregate =
-        results.reduce((sum, result) => sum + result.score, 0) / results.length;
+  it("keeps the aggregate Phase 1 score at or above the governance floor", () => {
+    const results = contracts.map(evaluateContract);
+    const aggregate =
+      results.reduce((sum, result) => sum + result.score, 0) / results.length;
 
-      expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
-      expect(results.every((result) => result.result === "PASS")).toBe(true);
-    },
-  );
+    expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+    expect(results.every((result) => result.result === "PASS")).toBe(true);
+  });
 });

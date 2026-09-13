@@ -10,6 +10,10 @@ import {
 import { RemoteApiHttp } from "./constants/http.js";
 import { RemoteApiMessages } from "./constants/messages.js";
 import { RemoteApiPaths } from "./constants/paths.js";
+import {
+  parseRemoteL2NodeSummaries,
+  parseSyncPushResult,
+} from "./response-validation.js";
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -76,12 +80,23 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
       );
     }
 
+    let body: unknown;
     try {
-      return (await res.json()) as RemoteL2NodeSummary[];
+      body = await res.json();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.SYNC_FETCH_FAILED,
         RemoteApiMessages.FETCH_L2_NODES_INVALID_JSON,
+        err,
+      );
+    }
+
+    try {
+      return parseRemoteL2NodeSummaries(body);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.SYNC_FETCH_FAILED,
+        RemoteApiMessages.FETCH_L2_NODES_INVALID_RESPONSE,
         err,
       );
     }
@@ -119,12 +134,23 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
       );
     }
 
+    let body: unknown;
     try {
-      return (await res.json()) as SyncPushResult;
+      body = await res.json();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.SYNC_PUSH_FAILED,
         RemoteApiMessages.SYNC_PUSH_INVALID_JSON,
+        err,
+      );
+    }
+
+    try {
+      return parseSyncPushResult(body);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.SYNC_PUSH_FAILED,
+        RemoteApiMessages.SYNC_PUSH_INVALID_RESPONSE,
         err,
       );
     }

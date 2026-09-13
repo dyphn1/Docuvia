@@ -2,6 +2,15 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.14](https://github.com/dyphn1/Docuvia/compare/v1.8.13...v1.8.14) (2026-09-13)
+
+### Bug Fixes
+
+- distinguish malformed LLM response shapes ([f4eec45](https://github.com/dyphn1/Docuvia/commit/f4eec4511098b0d8e6b16f71868fb611d0335d66))
+- distinguish malformed remote response shapes ([ed5cfe5](https://github.com/dyphn1/Docuvia/commit/ed5cfe5fc2ba990f147376a024d24b408ecf2d0d))
+- validate LLM provider response contracts ([6569774](https://github.com/dyphn1/Docuvia/commit/6569774c6da03e37da79bf5472bf2c9f042e45d1))
+- validate remote provider response contracts ([2630d48](https://github.com/dyphn1/Docuvia/commit/2630d48eba2d71dcef7b3a218306b9e152d1897c))
+
 ## [1.8.13](https://github.com/dyphn1/Docuvia/compare/v1.8.12...v1.8.13) (2026-09-13)
 
 ### Bug Fixes

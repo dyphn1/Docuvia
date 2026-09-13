@@ -132,7 +132,8 @@ export function assertImpactEvalRegressionFloor(
     );
   }
   if (aggregate.meanF1 === null || aggregate.meanF1 < minimumMeanF1) {
-    const actual = aggregate.meanF1 === null ? "n/a" : aggregate.meanF1.toFixed(3);
+    const actual =
+      aggregate.meanF1 === null ? "n/a" : aggregate.meanF1.toFixed(3);
     throw new Error(
       `impact accuracy regression gate: mean F1 ${actual} is below ${minimumMeanF1.toFixed(3)}`,
     );

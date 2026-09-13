@@ -32,16 +32,24 @@ const capabilities: readonly CapabilityEvidence[] = [
     ],
     dimensions: {
       positiveParameters: {
-        evidence: ["returns the 1-hop set of nodes that depend on the resolved target"],
+        evidence: [
+          "returns the 1-hop set of nodes that depend on the resolved target",
+        ],
       },
       negativeParameters: {
-        evidence: ["returns undefined when the target does not resolve to any node"],
+        evidence: [
+          "returns undefined when the target does not resolve to any node",
+        ],
       },
       inputCompleteness: {
-        evidence: ["resolves the target via LIKE fallback when there is no exact name match"],
+        evidence: [
+          "resolves the target via LIKE fallback when there is no exact name match",
+        ],
       },
       outputCompleteness: {
-        evidence: ["includes callers from different edge types (calls, extends, implements)"],
+        evidence: [
+          "includes callers from different edge types (calls, extends, implements)",
+        ],
       },
       errorHandling: {
         evidence: [],
@@ -49,13 +57,19 @@ const capabilities: readonly CapabilityEvidence[] = [
           "getBlastRadius() is a synchronous graph read and declares no local recovery contract; repository failures intentionally propagate to the API boundary.",
       },
       unexpectedInput: {
-        evidence: ["returns an empty array when the node exists but has no incoming edges"],
+        evidence: [
+          "returns an empty array when the node exists but has no incoming edges",
+        ],
       },
       determinism: {
-        evidence: ["returns identical blast-radius entries across repeated identical reads"],
+        evidence: [
+          "returns identical blast-radius entries across repeated identical reads",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts",
+        ],
       },
     },
   },
@@ -69,16 +83,24 @@ const capabilities: readonly CapabilityEvidence[] = [
     ],
     dimensions: {
       positiveParameters: {
-        evidence: ["appends lsp-fallback entries from reverse-read call sites when no static caller edge exists"],
+        evidence: [
+          "appends lsp-fallback entries from reverse-read call sites when no static caller edge exists",
+        ],
       },
       negativeParameters: {
-        evidence: ["does not query call sites at all when a real static caller edge exists (fallback fires only when needed)"],
+        evidence: [
+          "does not query call sites at all when a real static caller edge exists (fallback fires only when needed)",
+        ],
       },
       inputCompleteness: {
-        evidence: ["recovers unresolved receiver calls through the terminal callee name"],
+        evidence: [
+          "recovers unresolved receiver calls through the terminal callee name",
+        ],
       },
       outputCompleteness: {
-        evidence: ["attaches L3 'why' data to an lsp-fallback entry like a static one"],
+        evidence: [
+          "attaches L3 'why' data to an lsp-fallback entry like a static one",
+        ],
       },
       errorHandling: {
         evidence: [],
@@ -86,13 +108,19 @@ const capabilities: readonly CapabilityEvidence[] = [
           "The fallback is a read-only best-effort path over ICallSitesRepo; storage failures intentionally propagate rather than being converted into false-safe empty impact.",
       },
       unexpectedInput: {
-        evidence: ["skips the target's own file and files absent from the graph, and never trusts a LIKE match as the dependent node"],
+        evidence: [
+          "skips the target's own file and files absent from the graph, and never trusts a LIKE match as the dependent node",
+        ],
       },
       determinism: {
-        evidence: ["returns identical lsp-fallback entries across repeated identical reads"],
+        evidence: [
+          "returns identical lsp-fallback entries across repeated identical reads",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts",
+        ],
       },
     },
   },
@@ -111,7 +139,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["returns LOW for zero impacted nodes"],
       },
       inputCompleteness: {
-        evidence: ["reads store.graph.count().l2Nodes and threads it into the scaled formula (above-reference branch)"],
+        evidence: [
+          "reads store.graph.count().l2Nodes and threads it into the scaled formula (above-reference branch)",
+        ],
       },
       outputCompleteness: {
         evidence: ["returns CRITICAL at/above the CRITICAL threshold"],
@@ -122,13 +152,19 @@ const capabilities: readonly CapabilityEvidence[] = [
           "computeRiskLevelFromCounts() is pure arithmetic over validated graph counts and declares no error/recovery path.",
       },
       unexpectedInput: {
-        evidence: ["does not divide by zero or propagate NaN for a freshly-init'd, not-yet-ingested graph (totalNodeCount 0)"],
+        evidence: [
+          "does not divide by zero or propagate NaN for a freshly-init'd, not-yet-ingested graph (totalNodeCount 0)",
+        ],
       },
       determinism: {
-        evidence: ["never decreases the effective HIGH/CRITICAL thresholds as totalNodeCount grows (monotonicity)"],
+        evidence: [
+          "never decreases the effective HIGH/CRITICAL thresholds as totalNodeCount grows (monotonicity)",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/impact.interfaces.ts",
+        ],
       },
     },
   },
@@ -146,22 +182,32 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["scores the control static-call case perfectly"],
       },
       negativeParameters: {
-        evidence: ["fails the regression gate when mean F1 drops below the locked baseline"],
+        evidence: [
+          "fails the regression gate when mean F1 drops below the locked baseline",
+        ],
       },
       inputCompleteness: {
-        evidence: ["scores the real docuvia impact JSON result for every golden case"],
+        evidence: [
+          "scores the real docuvia impact JSON result for every golden case",
+        ],
       },
       outputCompleteness: {
-        evidence: ["produced a scored row for every golden case (errors included, never dropped)"],
+        evidence: [
+          "produced a scored row for every golden case (errors included, never dropped)",
+        ],
       },
       errorHandling: {
         evidence: ["keeps the harness honest: no case silently errored"],
       },
       unexpectedInput: {
-        evidence: ["keeps an unresolved target visible as an empty prediction rather than dropping the case"],
+        evidence: [
+          "keeps an unresolved target visible as an empty prediction rather than dropping the case",
+        ],
       },
       determinism: {
-        evidence: ["produces identical scores across repeated impact evaluation of the same corpus"],
+        evidence: [
+          "produces identical scores across repeated impact evaluation of the same corpus",
+        ],
       },
       sourceTraceability: {
         evidence: ["TDD-SOURCE: issue #192 impact accuracy acceptance criteria"],

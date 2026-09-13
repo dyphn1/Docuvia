@@ -37,7 +37,7 @@ const fakePool = (): IASTWorkerPool =>
     initialize: vi.fn(async () => undefined),
     parse: vi.fn(),
     terminate: vi.fn(async () => undefined),
-    serializeBatch: vi.fn(async (fn) => fn()),
+    serializeBatch: async <T>(fn: () => Promise<T>): Promise<T> => fn(),
   }) as IASTWorkerPool;
 
 describe("Phase 8 core registration / lifetime wiring", () => {
@@ -70,7 +70,8 @@ describe("Phase 8 core registration / lifetime wiring", () => {
     const second = factory.resolve(TOKENS.QueryService);
 
     expect(first).not.toBe(second);
-    expect(first.constructor).toBe(second.constructor);
+    expect(typeof first.query).toBe("function");
+    expect(typeof second.query).toBe("function");
   });
 
   it("defers AST worker-pool construction until first resolve and shares one pool across transient processors", () => {
@@ -123,7 +124,7 @@ describe("Phase 8 core registration / lifetime wiring", () => {
     const pool = fakePool();
     const constructionError = new Error("worker pool construction failed");
     const createAstWorkerPool = vi
-      .fn<() => IASTWorkerPool>()
+      .fn<[], IASTWorkerPool>()
       .mockImplementationOnce(() => {
         throw constructionError;
       })

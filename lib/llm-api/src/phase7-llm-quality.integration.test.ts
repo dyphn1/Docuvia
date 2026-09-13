@@ -172,7 +172,9 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
       }),
     ).rejects.toMatchObject({
       code: "LLM_INVALID_RESPONSE",
-      message: expect.stringContaining("did not match the chat-completion contract"),
+      message: expect.stringContaining(
+        "did not match the chat-completion contract",
+      ),
     });
   });
 
@@ -208,7 +210,9 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
       }
     }).rejects.toMatchObject({
       code: "LLM_STREAM_FAILED",
-      message: expect.stringContaining("did not match the chat-completion contract"),
+      message: expect.stringContaining(
+        "did not match the chat-completion contract",
+      ),
     });
   });
 

@@ -112,7 +112,10 @@ export class GraphPersisterService implements IGraphPersister {
           continue;
         }
 
-        const resolved = resolver.resolveCall(result.file, descriptor.localName);
+        const resolved = resolver.resolveCall(
+          result.file,
+          descriptor.localName,
+        );
         if (!resolved) continue;
         const targetId =
           store.graph.findNodeIdByName(
@@ -141,9 +144,7 @@ export class GraphPersisterService implements IGraphPersister {
       (result.data.implements ?? []).some(
         (edge) => edge.targetInterface === localName,
       ) ||
-      (result.data.extends ?? []).some(
-        (edge) => edge.targetClass === localName,
-      )
+      (result.data.extends ?? []).some((edge) => edge.targetClass === localName)
     );
   }
 
@@ -250,9 +251,7 @@ export class GraphPersisterService implements IGraphPersister {
         ),
       );
     }
-    candidates.add(
-      path.posix.normalize(normalizedTarget.replace(/^\//, "")),
-    );
+    candidates.add(path.posix.normalize(normalizedTarget.replace(/^\//, "")));
 
     for (const candidate of candidates) {
       if (parsedFiles.has(candidate)) return candidate;

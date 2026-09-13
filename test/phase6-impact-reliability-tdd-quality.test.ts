@@ -210,7 +210,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: issue #192 impact accuracy acceptance criteria"],
+        evidence: [
+          "TDD-SOURCE: issue #192 impact accuracy acceptance criteria",
+        ],
       },
     },
   },

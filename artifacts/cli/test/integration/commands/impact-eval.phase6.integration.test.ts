@@ -56,7 +56,9 @@ function dependentFilesFromImpactResult(
   for (const entry of result.blastRadius) {
     const paths = exactNodePaths(db, entry.name);
     if (paths.length === 0) {
-      throw new Error(`impact entry '${entry.name}' cannot be mapped to an exact L2 node`);
+      throw new Error(
+        `impact entry '${entry.name}' cannot be mapped to an exact L2 node`,
+      );
     }
     for (const filePath of paths) {
       // `docuvia impact` intentionally reports the symbol's containing file as context. The
@@ -185,7 +187,9 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
       "unresolved-receiver-call",
       "unresolved-method-call",
     ]) {
-      const result = results.find((candidate) => candidate.scenario === scenario);
+      const result = results.find(
+        (candidate) => candidate.scenario === scenario,
+      );
       expect(result).toMatchObject({ precision: 1, recall: 1, f1: 1 });
     }
   });
@@ -195,12 +199,16 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
   });
 
   it("keeps the corrected product-path aggregate above the active regression floor", () => {
-    expect(() => assertImpactEvalRegressionFloor(aggregateCases(results))).not.toThrow();
+    expect(() =>
+      assertImpactEvalRegressionFloor(aggregateCases(results)),
+    ).not.toThrow();
   });
 
   it("wrote dated CSV + markdown reports to evaluate/results/", () => {
     const date = new Date().toISOString().slice(0, 10);
-    expect(existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.csv`))).toBe(true);
+    expect(
+      existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.csv`)),
+    ).toBe(true);
     expect(
       existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.summary.md`)),
     ).toBe(true);

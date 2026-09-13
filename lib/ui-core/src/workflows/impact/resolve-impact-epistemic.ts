@@ -79,8 +79,7 @@ function lowResolutionRiskNote(
   ) {
     return undefined;
   }
-  const ratio =
-    targetFileResolution.resolved / targetFileResolution.applicable;
+  const ratio = targetFileResolution.resolved / targetFileResolution.applicable;
   if (ratio >= GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD) {
     return undefined;
   }

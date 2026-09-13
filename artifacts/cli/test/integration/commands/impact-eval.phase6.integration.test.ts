@@ -15,7 +15,7 @@ import {
   type ImpactEvalCaseResult,
 } from "../../support/impact-eval-scorer.js";
 
-// TDD-SOURCE: issue #192 impact accuracy acceptance criteria
+// TDD-SOURCE: issues #192 and #393 impact accuracy acceptance criteria
 
 const RESULTS_DIR = resolve(__dirname, "../../../../../evaluate/results");
 
@@ -116,7 +116,7 @@ async function evaluateCorpus(
   return results;
 }
 
-describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
+describe("Phase 6: real docuvia impact accuracy regression gate (#192/#393)", () => {
   let sandbox: TestSandbox;
   let db: Database.Database;
   let results: ImpactEvalCaseResult[];
@@ -203,7 +203,7 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
     }
   });
 
-  it("keeps irreducible runtime-boundary cases visible for #393", () => {
+  it("recovers bounded runtime import candidates without sacrificing precision (#393)", () => {
     for (const scenario of [
       "runtime-variable-import",
       "computed-import-specifier",
@@ -211,7 +211,12 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
       const result = results.find(
         (candidate) => candidate.scenario === scenario,
       );
-      expect(result).toMatchObject({ status: "ok", f1: 0 });
+      expect(result).toMatchObject({
+        status: "ok",
+        precision: 1,
+        recall: 1,
+        f1: 1,
+      });
     }
   });
 

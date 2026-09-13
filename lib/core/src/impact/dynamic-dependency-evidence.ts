@@ -61,7 +61,10 @@ function skipBlockComment(source: string, start: number): number {
   return end === -1 ? source.length : end + 2;
 }
 
-function findClosingParen(source: string, openIndex: number): number | undefined {
+function findClosingParen(
+  source: string,
+  openIndex: number,
+): number | undefined {
   let depth = 1;
   let i = openIndex + 1;
   while (i < source.length) {
@@ -89,7 +92,10 @@ function findClosingParen(source: string, openIndex: number): number | undefined
   return undefined;
 }
 
-function sourcePosition(source: string, index: number): { line: number; column: number } {
+function sourcePosition(
+  source: string,
+  index: number,
+): { line: number; column: number } {
   const before = source.slice(0, index);
   const line = before.split("\n").length - 1;
   const lastNewline = before.lastIndexOf("\n");
@@ -212,7 +218,10 @@ function resolveLocalPatternPrefix(
 
 function patternCouldMatchTarget(
   sourceFile: string,
-  scanned: Pick<ScannedDynamicImport, "literalPrefix" | "literalSuffix" | "interpolated">,
+  scanned: Pick<
+    ScannedDynamicImport,
+    "literalPrefix" | "literalSuffix" | "interpolated"
+  >,
   targetFile: string,
 ): boolean {
   const prefix = resolveLocalPatternPrefix(sourceFile, scanned.literalPrefix);
@@ -272,7 +281,9 @@ function resolveCandidates(
   };
 }
 
-function sortEvidence(items: DynamicDependencyEvidence[]): DynamicDependencyEvidence[] {
+function sortEvidence(
+  items: DynamicDependencyEvidence[],
+): DynamicDependencyEvidence[] {
   return items.sort(
     (a, b) =>
       a.sourceFile.localeCompare(b.sourceFile) ||
@@ -335,7 +346,10 @@ export function persistDynamicDependencyEvidence(
     }
   }
 
-  store.meta.set(metaKey(projectId), JSON.stringify(sortEvidence([...retained, ...fresh])));
+  store.meta.set(
+    metaKey(projectId),
+    JSON.stringify(sortEvidence([...retained, ...fresh])),
+  );
 }
 
 /** Target-relevant bounded evidence plus unresolved evidence whose pattern can still name target. */
@@ -355,7 +369,8 @@ export function dynamicEvidenceForTarget(
       {
         literalPrefix: item.literalPrefix,
         literalSuffix: item.literalSuffix,
-        interpolated: item.expression.startsWith("`") && item.expression.includes("${"),
+        interpolated:
+          item.expression.startsWith("`") && item.expression.includes("${"),
       },
       targetFile,
     );

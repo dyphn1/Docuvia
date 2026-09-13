@@ -5,17 +5,19 @@
  *
  * - Scoring is at FILE granularity (a flagged symbol in the right file is a hit).
  * - Failures are recorded as `status: "error"` rows that stay in the report but are EXCLUDED
- *   from every aggregate -- a crashed case must never masquerade as a score (CRG's old bug:
- *   exceptions silently produced perfect recall).
- * - No threshold enforcement lives here; gating is deferred until the baseline has history
- *   (mirrors CRG's report-only eval.yml stance).
+ *   from every aggregate -- a crashed case must never masquerade as a score.
+ * - Phase 6 locks the corrected product-path baseline behind a real regression gate.
+ *
+ * TDD-SOURCE: issue #192 impact accuracy acceptance criteria
  */
+
+export const IMPACT_EVAL_MIN_MEAN_F1 = 0.5;
 
 export interface ImpactEvalCaseResult {
   scenario: string;
   target: string;
   status: "ok" | "error";
-  /** Workspace-relative files the graph predicted as dependents (empty on error). */
+  /** Workspace-relative files the product predicted as dependents (empty on error). */
   predictedFiles: string[];
   /** Human-labeled ground truth files. */
   expectedFiles: string[];
@@ -36,8 +38,8 @@ export interface ImpactEvalAggregate {
 }
 
 /** File-level set scoring: precision = tp/predicted, recall = tp/actual, F1 = harmonic mean.
- *  Empty sets score 0 rather than NaN -- a zero-prediction case is a real recall failure,
- *  never a division error. */
+ * Empty sets score 0 rather than NaN -- a zero-prediction case is a real recall failure,
+ * never a division error. */
 export function scoreCase(
   scenario: string,
   target: string,
@@ -114,6 +116,30 @@ export function aggregateCases(
   };
 }
 
+/**
+ * Phase 6 regression gate. Error rows fail independently of F1 so a crashed case can never be
+ * hidden by the aggregate. The 0.500 floor is the corrected-product-path floor: the historical
+ * raw-node_links report was 0.250, while the shipped impact fallback is required to recover the
+ * two receiver/method-call cases in addition to the static-call and re-export controls.
+ */
+export function assertImpactEvalRegressionFloor(
+  aggregate: ImpactEvalAggregate,
+  minimumMeanF1 = IMPACT_EVAL_MIN_MEAN_F1,
+): void {
+  if (aggregate.casesErrored > 0) {
+    throw new Error(
+      `impact accuracy regression gate: ${aggregate.casesErrored} case(s) errored`,
+    );
+  }
+  if (aggregate.meanF1 === null || aggregate.meanF1 < minimumMeanF1) {
+    const actual =
+      aggregate.meanF1 === null ? "n/a" : aggregate.meanF1.toFixed(3);
+    throw new Error(
+      `impact accuracy regression gate: mean F1 ${actual} is below ${minimumMeanF1.toFixed(3)}`,
+    );
+  }
+}
+
 const CSV_HEADER =
   "scenario,target,status,predicted_files,expected_files,tp,fp,fn,precision,recall,f1";
 
@@ -137,7 +163,7 @@ export function buildCsv(results: ImpactEvalCaseResult[]): string {
 }
 
 /** Markdown summary for CI job summaries / PR comments -- includes the aggregate caveat block
- *  so a bare F1 number can never circulate without its context. */
+ * so a bare F1 number can never circulate without its context. */
 export function buildMarkdownSummary(
   results: ImpactEvalCaseResult[],
   aggregate: ImpactEvalAggregate,
@@ -159,8 +185,8 @@ export function buildMarkdownSummary(
     "",
     `**Aggregate (ok rows only):** precision ${fmt(aggregate.meanPrecision)} · recall ${fmt(aggregate.meanRecall)} · F1 ${fmt(aggregate.meanF1)} (${aggregate.casesScored} scored, ${aggregate.casesErrored} errored)`,
     "",
-    "> Report-only baseline: no regression gate until enough runs accumulate history",
-    "> (mirrors CRG eval.yml). Ground truth is human-labeled per case; see",
+    `> Regression gate active: mean F1 must remain >= ${IMPACT_EVAL_MIN_MEAN_F1.toFixed(3)} and no case may error.`,
+    "> Ground truth is human-labeled per case; see",
     "> `artifacts/cli/test/support/impact-corpus.ts`.",
     "",
   ].join("\n");

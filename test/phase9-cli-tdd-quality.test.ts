@@ -33,7 +33,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["prints usage and exits 0 for --help"],
       },
       negativeParameters: {
-        evidence: ["rejects an unknown command option before command execution"],
+        evidence: [
+          "rejects an unknown command option before command execution",
+        ],
       },
       inputCompleteness: {
         evidence: [
@@ -46,9 +48,7 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       errorHandling: {
-        evidence: [
-          "still exits 1 with usage for a genuinely unknown command",
-        ],
+        evidence: ["still exits 1 with usage for a genuinely unknown command"],
       },
       unexpectedInput: {
         evidence: [
@@ -107,7 +107,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       determinism: {
-        evidence: ["keeps repeated init idempotent at the persisted graph boundary"],
+        evidence: [
+          "keeps repeated init idempotent at the persisted graph boundary",
+        ],
       },
       sourceTraceability: {
         evidence: [
@@ -158,7 +160,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       determinism: {
-        evidence: ["is idempotent: running analyze twice never duplicates the project row"],
+        evidence: [
+          "is idempotent: running analyze twice never duplicates the project row",
+        ],
       },
       sourceTraceability: {
         evidence: [
@@ -178,7 +182,9 @@ const capabilities: readonly CapabilityEvidence[] = [
     ],
     dimensions: {
       positiveParameters: {
-        evidence: ["resolves the query and prints human-readable results by default"],
+        evidence: [
+          "resolves the query and prints human-readable results by default",
+        ],
       },
       negativeParameters: {
         evidence: [
@@ -186,7 +192,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       inputCompleteness: {
-        evidence: ["passes a valid --limit through to the memory scope unchanged"],
+        evidence: [
+          "passes a valid --limit through to the memory scope unchanged",
+        ],
       },
       outputCompleteness: {
         evidence: [

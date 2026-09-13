@@ -30,6 +30,10 @@ const PROJECT_FILE_EXTENSIONS = [
 const COMPILED_JS_EXTENSION = /\.(?:js|jsx|mjs|cjs)$/;
 const WILDCARD_IMPORT = "*";
 
+type ImportDescriptor = NonNullable<
+  ParsedAstFileResult["data"]["imports"]
+>[number];
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -92,6 +96,16 @@ export class GraphPersisterService implements IGraphPersister {
     workspaceRoot: string,
     parsedResults: ParsedAstFileResult[],
   ): void {
+    const resolver = this.createScopeResolver(workspaceRoot, parsedResults);
+    for (const result of parsedResults) {
+      this.linkValueImportsForFile(store, resolver, result);
+    }
+  }
+
+  private createScopeResolver(
+    workspaceRoot: string,
+    parsedResults: ParsedAstFileResult[],
+  ): ScopeResolver {
     const resolver = new ScopeResolver(workspaceRoot);
     for (const result of parsedResults) {
       resolver.registerFile(
@@ -101,35 +115,42 @@ export class GraphPersisterService implements IGraphPersister {
         localSymbols(result),
       );
     }
+    return resolver;
+  }
 
-    for (const result of parsedResults) {
-      const sourceId = store.graph.findNodeIdByName(result.file, result.file);
-      if (!sourceId) continue;
+  private linkValueImportsForFile(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    result: ParsedAstFileResult,
+  ): void {
+    const sourceId = store.graph.findNodeIdByName(result.file, result.file);
+    if (!sourceId) return;
 
-      for (const descriptor of result.data.imports ?? []) {
-        if (descriptor.viaReexport) continue;
-        if (this.hasStrongerSymbolRelationship(result, descriptor.localName)) {
-          continue;
-        }
-
-        const resolved = resolver.resolveCall(
-          result.file,
-          descriptor.localName,
-        );
-        if (!resolved) continue;
-        const targetId =
-          store.graph.findNodeIdByName(
-            resolved.targetFile,
-            resolved.targetSymbol,
-          ) ??
-          store.graph.findNodeIdByName(
-            resolved.targetFile,
-            resolved.targetFile,
-          );
-        if (!targetId || targetId === sourceId) continue;
-        this.insertLinkOnce(store, sourceId, targetId, LinkTypes.IMPORTS);
-      }
+    for (const descriptor of result.data.imports ?? []) {
+      this.linkValueImport(store, resolver, result, sourceId, descriptor);
     }
+  }
+
+  private linkValueImport(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    result: ParsedAstFileResult,
+    sourceId: number,
+    descriptor: ImportDescriptor,
+  ): void {
+    if (descriptor.viaReexport) return;
+    if (this.hasStrongerSymbolRelationship(result, descriptor.localName)) return;
+
+    const resolved = resolver.resolveCall(result.file, descriptor.localName);
+    if (!resolved) return;
+    const targetId =
+      store.graph.findNodeIdByName(
+        resolved.targetFile,
+        resolved.targetSymbol,
+      ) ??
+      store.graph.findNodeIdByName(resolved.targetFile, resolved.targetFile);
+    if (!targetId || targetId === sourceId) return;
+    this.insertLinkOnce(store, sourceId, targetId, LinkTypes.IMPORTS);
   }
 
   private hasStrongerSymbolRelationship(
@@ -159,48 +180,88 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
   ): void {
     const parsedFiles = new Set(parsedResults.map((result) => result.file));
-
     for (const result of parsedResults) {
-      const source = readFileWithinRoot(workspaceRoot, result.file);
-      if (!source) continue;
-      const sourceId = store.graph.findNodeIdByName(result.file, result.file);
-      if (!sourceId) continue;
+      this.linkLiteralChildProcessesForFile(
+        store,
+        workspaceRoot,
+        parsedFiles,
+        result,
+      );
+    }
+  }
 
-      for (const descriptor of result.data.imports ?? []) {
-        if (!CHILD_PROCESS_MODULES.has(descriptor.modulePath)) continue;
-        for (const invocation of this.childProcessInvocations(descriptor)) {
-          for (const targetPath of this.extractLiteralProcessTargets(
-            source,
-            invocation.localExpression,
-            invocation.api,
-          )) {
-            const targetFile = this.resolveProjectFile(
-              result.file,
-              targetPath,
-              parsedFiles,
-            );
-            if (!targetFile) continue;
-            const targetId = store.graph.findNodeIdByName(
-              targetFile,
-              targetFile,
-            );
-            if (!targetId || targetId === sourceId) continue;
-            this.insertLinkOnce(
-              store,
-              sourceId,
-              targetId,
-              LinkTypes.DEPENDS_ON,
-            );
-          }
-        }
+  private linkLiteralChildProcessesForFile(
+    store: IGraphStore,
+    workspaceRoot: string,
+    parsedFiles: ReadonlySet<string>,
+    result: ParsedAstFileResult,
+  ): void {
+    const source = readFileWithinRoot(workspaceRoot, result.file);
+    if (!source) return;
+    const sourceId = store.graph.findNodeIdByName(result.file, result.file);
+    if (!sourceId) return;
+
+    for (const descriptor of result.data.imports ?? []) {
+      if (CHILD_PROCESS_MODULES.has(descriptor.modulePath)) {
+        this.linkChildProcessDescriptor(
+          store,
+          parsedFiles,
+          result.file,
+          sourceId,
+          source,
+          descriptor,
+        );
       }
     }
   }
 
-  private childProcessInvocations(descriptor: {
-    localName: string;
-    originalName: string;
-  }): Array<{ api: string; localExpression: string }> {
+  private linkChildProcessDescriptor(
+    store: IGraphStore,
+    parsedFiles: ReadonlySet<string>,
+    sourceFile: string,
+    sourceId: number,
+    source: string,
+    descriptor: ImportDescriptor,
+  ): void {
+    for (const invocation of this.childProcessInvocations(descriptor)) {
+      const targets = this.extractLiteralProcessTargets(
+        source,
+        invocation.localExpression,
+        invocation.api,
+      );
+      for (const targetPath of targets) {
+        this.linkResolvedProcessTarget(
+          store,
+          parsedFiles,
+          sourceFile,
+          sourceId,
+          targetPath,
+        );
+      }
+    }
+  }
+
+  private linkResolvedProcessTarget(
+    store: IGraphStore,
+    parsedFiles: ReadonlySet<string>,
+    sourceFile: string,
+    sourceId: number,
+    targetPath: string,
+  ): void {
+    const targetFile = this.resolveProjectFile(
+      sourceFile,
+      targetPath,
+      parsedFiles,
+    );
+    if (!targetFile) return;
+    const targetId = store.graph.findNodeIdByName(targetFile, targetFile);
+    if (!targetId || targetId === sourceId) return;
+    this.insertLinkOnce(store, sourceId, targetId, LinkTypes.DEPENDS_ON);
+  }
+
+  private childProcessInvocations(
+    descriptor: ImportDescriptor,
+  ): Array<{ api: string; localExpression: string }> {
     if (
       CHILD_PROCESS_FILE_APIS.has(descriptor.originalName) &&
       descriptor.originalName !== WILDCARD_IMPORT

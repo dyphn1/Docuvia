@@ -206,9 +206,9 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
 
   it("wrote dated CSV + markdown reports to evaluate/results/", () => {
     const date = new Date().toISOString().slice(0, 10);
-    expect(
-      existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.csv`)),
-    ).toBe(true);
+    expect(existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.csv`))).toBe(
+      true,
+    );
     expect(
       existsSync(join(RESULTS_DIR, `impact_accuracy_${date}.summary.md`)),
     ).toBe(true);

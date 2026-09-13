@@ -47,6 +47,14 @@ export interface ImpactEpistemicResult {
   riskNote?: string;
 }
 
+function isCoverageIncomplete(
+  processed: number | undefined,
+  total: number | undefined,
+): boolean {
+  if (processed === undefined || total === undefined) return true;
+  return processed < total;
+}
+
 function dynamicRiskNote(
   dynamicEvidence: DynamicDependencyEvidence[] | undefined,
 ): string | undefined {
@@ -61,6 +69,27 @@ function dynamicRiskNote(
   );
 }
 
+function lowResolutionRiskNote(
+  targetFileResolution: TargetFileResolution | undefined,
+): string | undefined {
+  if (!targetFileResolution) return undefined;
+  if (
+    targetFileResolution.applicable <
+    GitConstants.DEFAULT_CALL_RESOLUTION_MIN_SAMPLE
+  ) {
+    return undefined;
+  }
+  const ratio =
+    targetFileResolution.resolved / targetFileResolution.applicable;
+  if (ratio >= GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD) {
+    return undefined;
+  }
+  return IMPACT_MESSAGES.RISK_NOTE_EMPTY_LOW_RESOLUTION(
+    targetFileResolution.resolved,
+    targetFileResolution.applicable,
+  );
+}
+
 /** Note selection for an empty confirmed blast radius (first match wins): partial Tier B coverage
  *  > registry-mediated dependents > explicit dynamic evidence > issue #221 P2''s low own-file
  *  resolution > the structural static-edges-only caveat. The new #393 rung is inserted only
@@ -72,11 +101,7 @@ function pickEmptyRiskNote(
   targetFileResolution: TargetFileResolution | undefined,
   dynamicEvidence: DynamicDependencyEvidence[] | undefined,
 ): string {
-  const coverageIncomplete =
-    workspaceFilesProcessed === undefined ||
-    workspaceFilesTotal === undefined ||
-    workspaceFilesProcessed < workspaceFilesTotal;
-  if (coverageIncomplete) {
+  if (isCoverageIncomplete(workspaceFilesProcessed, workspaceFilesTotal)) {
     return IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(
       workspaceFilesProcessed ?? 0,
       workspaceFilesTotal ?? 0,
@@ -87,18 +112,8 @@ function pickEmptyRiskNote(
   }
   const dynamicNote = dynamicRiskNote(dynamicEvidence);
   if (dynamicNote) return dynamicNote;
-  if (
-    targetFileResolution &&
-    targetFileResolution.applicable >=
-      GitConstants.DEFAULT_CALL_RESOLUTION_MIN_SAMPLE &&
-    targetFileResolution.resolved / targetFileResolution.applicable <
-      GitConstants.DEFAULT_CALL_RESOLUTION_NOTE_THRESHOLD
-  ) {
-    return IMPACT_MESSAGES.RISK_NOTE_EMPTY_LOW_RESOLUTION(
-      targetFileResolution.resolved,
-      targetFileResolution.applicable,
-    );
-  }
+  const resolutionNote = lowResolutionRiskNote(targetFileResolution);
+  if (resolutionNote) return resolutionNote;
   return IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY;
 }
 
@@ -138,11 +153,7 @@ export function resolveImpactEpistemic(
     };
   }
 
-  const coverageIncomplete =
-    workspaceFilesProcessed === undefined ||
-    workspaceFilesTotal === undefined ||
-    workspaceFilesProcessed < workspaceFilesTotal;
-  if (coverageIncomplete) {
+  if (isCoverageIncomplete(workspaceFilesProcessed, workspaceFilesTotal)) {
     return {
       riskLevel: computedRiskLevel,
       epistemic: EpistemicLevels.LOWER_BOUND,

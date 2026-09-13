@@ -162,11 +162,16 @@ export {
 export {
   RiskLevels,
   EpistemicLevels,
+  DynamicDependencyStatuses,
+  DynamicDependencyKinds,
   BlastRadiusEdgeSources,
 } from "./interfaces/impact.interfaces.js";
 export type {
   RiskLevel,
   EpistemicLevel,
+  DynamicDependencyStatus,
+  DynamicDependencyKind,
+  DynamicDependencyEvidence,
   BlastRadiusEdgeSource,
   BlastRadiusEntry,
   IImpactService,

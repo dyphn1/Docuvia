@@ -21,33 +21,13 @@ export class ImpactService extends Phase6ImpactService {
     const blastRadius = super.getBlastRadius(store, target);
     if (!blastRadius) return undefined;
 
-    const targetNode = store.graph.findNodeByName(target);
-    if (!targetNode?.filePath) return blastRadius;
+    const targetFile = store.graph.findNodeByName(target)?.filePath;
+    if (!targetFile) return blastRadius;
 
     const seen = new Set(blastRadius.map((entry) => entry.name));
-    for (const evidence of this.getDynamicEvidence(store, target)) {
-      if (evidence.status !== DynamicDependencyStatuses.BOUNDED) continue;
-      if (!evidence.candidatePaths.includes(targetNode.filePath)) continue;
-      if (evidence.sourceFile === targetNode.filePath) continue;
-      if (seen.has(evidence.sourceFile)) continue;
-
-      const sourceNode = store.graph.findNodeByName(evidence.sourceFile);
-      if (!sourceNode || sourceNode.name !== evidence.sourceFile) continue;
-      const l3Rows = store.l3.getByL2NodeId(sourceNode.id);
-      const why =
-        l3Rows.length > 0
-          ? l3Rows.map((row) => ({ title: row.title, content: row.content }))
-          : undefined;
-      blastRadius.push({
-        name: sourceNode.name,
-        type: sourceNode.type,
-        edgeSource: BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
-        dynamicEvidence: evidence,
-        ...(why ? { why } : {}),
-      });
-      seen.add(evidence.sourceFile);
-    }
-
+    blastRadius.push(
+      ...this.resolveDynamicCandidateEntries(store, target, targetFile, seen),
+    );
     return blastRadius;
   }
 
@@ -56,5 +36,63 @@ export class ImpactService extends Phase6ImpactService {
     target: string,
   ): DynamicDependencyEvidence[] {
     return dynamicEvidenceForTarget(store, target);
+  }
+
+  private resolveDynamicCandidateEntries(
+    store: IGraphStore,
+    target: string,
+    targetFile: string,
+    seen: Set<string>,
+  ): BlastRadiusEntry[] {
+    const entries: BlastRadiusEntry[] = [];
+    for (const evidence of this.getDynamicEvidence(store, target)) {
+      const entry = this.buildDynamicCandidateEntry(
+        store,
+        evidence,
+        targetFile,
+        seen,
+      );
+      if (!entry) continue;
+      entries.push(entry);
+      seen.add(entry.name);
+    }
+    return entries;
+  }
+
+  private buildDynamicCandidateEntry(
+    store: IGraphStore,
+    evidence: DynamicDependencyEvidence,
+    targetFile: string,
+    seen: ReadonlySet<string>,
+  ): BlastRadiusEntry | undefined {
+    if (!this.isCandidateForTarget(evidence, targetFile)) return undefined;
+    if (evidence.sourceFile === targetFile || seen.has(evidence.sourceFile)) {
+      return undefined;
+    }
+
+    const sourceNode = store.graph.findNodeByName(evidence.sourceFile);
+    if (!sourceNode || sourceNode.name !== evidence.sourceFile) return undefined;
+    const l3Rows = store.l3.getByL2NodeId(sourceNode.id);
+    const why =
+      l3Rows.length > 0
+        ? l3Rows.map((row) => ({ title: row.title, content: row.content }))
+        : undefined;
+    return {
+      name: sourceNode.name,
+      type: sourceNode.type,
+      edgeSource: BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
+      dynamicEvidence: evidence,
+      ...(why ? { why } : {}),
+    };
+  }
+
+  private isCandidateForTarget(
+    evidence: DynamicDependencyEvidence,
+    targetFile: string,
+  ): boolean {
+    return (
+      evidence.status === DynamicDependencyStatuses.BOUNDED &&
+      evidence.candidatePaths.includes(targetFile)
+    );
   }
 }

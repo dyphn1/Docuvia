@@ -1,4 +1,8 @@
-import { docuviaFactory, TOKENS } from "@workspace/contracts";
+import {
+  docuviaFactory,
+  TOKENS,
+  type DocuviaFactory,
+} from "@workspace/contracts";
 import { KnowledgeGitService } from "./git/knowledge-git.service.js";
 import { SnapshotRendererService } from "./git/snapshot-renderer.service.js";
 import { ChangeDetectionService } from "./git/change-detection.service.js";
@@ -7,7 +11,10 @@ import { FileDiscoveryService } from "./discovery/file-discovery.service.js";
 import { ConfigScannerService } from "./discovery/config-scanner.service.js";
 import { VcsScannerService } from "./discovery/vcs-scanner.service.js";
 import { AstProcessingService } from "./ast/ast-processing.service.js";
-import { AstWorkerPool } from "./ast/ast-worker-pool.js";
+import {
+  AstWorkerPool,
+  type IASTWorkerPool,
+} from "./ast/ast-worker-pool.js";
 import { GraphPersisterService } from "./graph/phase6-graph-persister.js";
 import { TempFileManager } from "./temp-files/temp-file-manager.js";
 import { QueryService } from "./query/query.service.js";
@@ -26,127 +33,142 @@ import { PhpLspEdgeProvider } from "./lsp/php-lsp-edge-provider.js";
 import { RubyLspEdgeProvider } from "./lsp/ruby-lsp-edge-provider.js";
 import { acquireProcessLock } from "./process/process-lock.js";
 
+export interface CoreRegistrationOptions {
+  /** Composition seam used to preserve/test the one-shared-pool lifetime without constructing
+   *  the worker pool during the synchronous registration/bootstrap phase. */
+  createAstWorkerPool?: () => IASTWorkerPool;
+}
+
 /**
- * Self-registration side effect (see
- * docs/gitbook/architecture/application-lifecycle-and-state.md's Bootstrap phase) — imported
- * once, for its side effect only, by the Presentation layer. `lib/ui-core` never imports these
- * concrete classes directly; it only resolves them by token and sees the associated interface.
+ * Registers the Domain Core's providers into a factory.
  *
- * No generic annotations here — each `TOKENS.X` value carries its own return/params types (see
- * `tokens.ts`'s `Token<T, P>`), so `register()` infers everything and rejects a provider whose
- * shape doesn't match the token at compile time (see
- * docs/gitbook/architecture/virtual-contracts-architecture.md#8).
+ * The default call at the bottom of this module preserves the implementation library's normal
+ * self-registration side effect (see
+ * docs/gitbook/architecture/application-lifecycle-and-state.md's Bootstrap phase). Accepting an
+ * explicit factory is a composition-root seam: Phase 8 can prove registration completeness and
+ * lifetime semantics against an isolated factory without resetting/re-importing the global
+ * singleton.
  *
- * Every provider takes an optional `{ logger }` param — the per-run logger is never resolved
- * from the factory (it's request-scoped, not swappable tech), so the Orchestration layer passes
- * it explicitly on every `resolve()` call.
+ * No generic annotations are required at registration sites — each `TOKENS.X` value carries its
+ * own return/params types (see `tokens.ts`'s `Token<T, P>`), so `register()` infers everything and
+ * rejects a provider whose shape doesn't match the token at compile time.
  */
-docuviaFactory.register(
-  TOKENS.KnowledgeGitService,
-  (f, params) =>
-    new KnowledgeGitService(
-      f.resolve(TOKENS.GitProvider),
-      params?.logger,
-      params?.gitNetworkTimeoutMs,
-    ),
-);
+export function registerCoreProviders(
+  factory: DocuviaFactory = docuviaFactory,
+  options: CoreRegistrationOptions = {},
+): void {
+  const createAstWorkerPool =
+    options.createAstWorkerPool ?? (() => new AstWorkerPool());
 
-docuviaFactory.register(
-  TOKENS.FileDiscovery,
-  (f, params) =>
-    new FileDiscoveryService(f.resolve(TOKENS.GitProvider), params?.logger),
-);
+  factory.register(
+    TOKENS.KnowledgeGitService,
+    (f, params) =>
+      new KnowledgeGitService(
+        f.resolve(TOKENS.GitProvider),
+        params?.logger,
+        params?.gitNetworkTimeoutMs,
+      ),
+  );
 
-docuviaFactory.register(
-  TOKENS.ConfigScanner,
-  (_f, params) => new ConfigScannerService(params?.logger),
-);
+  factory.register(
+    TOKENS.FileDiscovery,
+    (f, params) =>
+      new FileDiscoveryService(f.resolve(TOKENS.GitProvider), params?.logger),
+  );
 
-docuviaFactory.register(
-  TOKENS.VcsScanner,
-  (f, params) =>
-    new VcsScannerService(f.resolve(TOKENS.GitProvider), params?.logger),
-);
+  factory.register(
+    TOKENS.ConfigScanner,
+    (_f, params) => new ConfigScannerService(params?.logger),
+  );
 
-// One shared worker pool for the whole process: every workflow that resolves AstProcessor must
-// run its batches through the SAME AstWorkerPool, so their spawn/concurrency is governed by the
-// pool's single `serializeBatch` lock rather than each building its own (cpus-1)-sized cohort.
-// A transient pool per resolve() is exactly the worker-count multiplication behind the "many
-// processes on a large project" memory blowup -- see ast-worker-pool.ts's serializeBatch.
-// The per-request logger is injected into the AstProcessingService instead (whose parse results
-// are logged on the presenting workflow's own logger), so the shared pool keeps only a
-// noop/fallback logger for its own internal crash diagnostics.
-const sharedAstWorkerPool = new AstWorkerPool();
+  factory.register(
+    TOKENS.VcsScanner,
+    (f, params) =>
+      new VcsScannerService(f.resolve(TOKENS.GitProvider), params?.logger),
+  );
 
-docuviaFactory.register(
-  TOKENS.AstProcessor,
-  (_f, params) => new AstProcessingService(sharedAstWorkerPool, params?.logger),
-);
+  // One shared worker pool for this registration scope: every transient AstProcessingService
+  // resolved from the same factory runs through the SAME pool, so serializeBatch() governs
+  // spawn/concurrency across workflows. The pool itself is deliberately lazy: Bootstrap only
+  // registers constructors; the first orchestration resolve enters the Instantiate phase and
+  // creates the pool. This keeps the anti-worker-multiplication invariant without constructing a
+  // heavy resource as a module-level registration side effect.
+  let sharedAstWorkerPool: IASTWorkerPool | undefined;
+  factory.register(
+    TOKENS.AstProcessor,
+    (_f, params) => {
+      sharedAstWorkerPool ??= createAstWorkerPool();
+      return new AstProcessingService(sharedAstWorkerPool, params?.logger);
+    },
+  );
 
-docuviaFactory.register(
-  TOKENS.GraphPersister,
-  () => new GraphPersisterService(),
-);
+  factory.register(
+    TOKENS.GraphPersister,
+    () => new GraphPersisterService(),
+  );
 
-docuviaFactory.register(
-  TOKENS.TempFileManager,
-  () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger),
-);
+  factory.register(
+    TOKENS.TempFileManager,
+    () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger),
+  );
 
-docuviaFactory.register(TOKENS.ProcessLock, () => acquireProcessLock);
+  factory.register(TOKENS.ProcessLock, () => acquireProcessLock);
 
-docuviaFactory.register(
-  TOKENS.QueryService,
-  (_f, params) => new QueryService(params?.logger),
-);
+  factory.register(
+    TOKENS.QueryService,
+    (_f, params) => new QueryService(params?.logger),
+  );
 
-docuviaFactory.register(TOKENS.TierBCoverageHintProvider, () => ({
-  resolve: resolveTierBCoverageHint,
-}));
+  factory.register(TOKENS.TierBCoverageHintProvider, () => ({
+    resolve: resolveTierBCoverageHint,
+  }));
 
-docuviaFactory.register(
-  TOKENS.ImpactService,
-  (_f, params) => new ImpactService(params?.logger),
-);
+  factory.register(
+    TOKENS.ImpactService,
+    (_f, params) => new ImpactService(params?.logger),
+  );
 
-docuviaFactory.register(
-  TOKENS.ChangeDetectionService,
-  (f, params) =>
-    new ChangeDetectionService(
-      f.resolve(TOKENS.ImpactService, params),
-      params?.logger,
-    ),
-);
+  factory.register(
+    TOKENS.ChangeDetectionService,
+    (f, params) =>
+      new ChangeDetectionService(
+        f.resolve(TOKENS.ImpactService, params),
+        params?.logger,
+      ),
+  );
 
-docuviaFactory.register(
-  TOKENS.TopologyBuilder,
-  () => new TopologyBuilderService(),
-);
+  factory.register(
+    TOKENS.TopologyBuilder,
+    () => new TopologyBuilderService(),
+  );
 
-docuviaFactory.register(
-  TOKENS.SnapshotRenderer,
-  () => new SnapshotRendererService(),
-);
+  factory.register(
+    TOKENS.SnapshotRenderer,
+    () => new SnapshotRendererService(),
+  );
 
-docuviaFactory.register(
-  TOKENS.HydrationService,
-  (f, params) =>
-    new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger),
-);
+  factory.register(
+    TOKENS.HydrationService,
+    (f, params) =>
+      new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger),
+  );
 
-docuviaFactory.register(
-  TOKENS.SemanticDiffAnalyzer,
-  (_f, params) => new SemanticDiffAnalyzerService(params?.logger),
-);
+  factory.register(
+    TOKENS.SemanticDiffAnalyzer,
+    (_f, params) => new SemanticDiffAnalyzerService(params?.logger),
+  );
 
-docuviaFactory.register(TOKENS.EdgeResolutionProviders, (_f, params) => ({
-  typescript: () => new TypescriptLspEdgeProvider(params?.logger),
-  python: () => new PythonLspEdgeProvider(params?.logger),
-  go: () => new GoLspEdgeProvider(params?.logger),
-  rust: () => new RustLspEdgeProvider(params?.logger),
-  cpp: () => new CppLspEdgeProvider(params?.logger),
-  java: () => new JavaLspEdgeProvider(params?.logger),
-  csharp: () => new CsharpLspEdgeProvider(params?.logger),
-  php: () => new PhpLspEdgeProvider(params?.logger),
-  ruby: () => new RubyLspEdgeProvider(params?.logger),
-}));
+  factory.register(TOKENS.EdgeResolutionProviders, (_f, params) => ({
+    typescript: () => new TypescriptLspEdgeProvider(params?.logger),
+    python: () => new PythonLspEdgeProvider(params?.logger),
+    go: () => new GoLspEdgeProvider(params?.logger),
+    rust: () => new RustLspEdgeProvider(params?.logger),
+    cpp: () => new CppLspEdgeProvider(params?.logger),
+    java: () => new JavaLspEdgeProvider(params?.logger),
+    csharp: () => new CsharpLspEdgeProvider(params?.logger),
+    php: () => new PhpLspEdgeProvider(params?.logger),
+    ruby: () => new RubyLspEdgeProvider(params?.logger),
+  }));
+}
+
+registerCoreProviders();

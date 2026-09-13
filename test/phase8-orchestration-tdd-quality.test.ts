@@ -64,9 +64,7 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       sourceTraceability: {
-        evidence: [
-          "TDD-SOURCE: lib/ui-core/src/docuvia-api.ts#docuviaApi",
-        ],
+        evidence: ["TDD-SOURCE: lib/ui-core/src/docuvia-api.ts#docuviaApi"],
       },
     },
   },
@@ -88,7 +86,7 @@ const capabilities: readonly CapabilityEvidence[] = [
       },
       inputCompleteness: {
         evidence: [
-          "queryService.query).toHaveBeenCalledWith(store, \"authService\", 5)",
+          'queryService.query).toHaveBeenCalledWith(store, "authService", 5)',
         ],
       },
       outputCompleteness: {

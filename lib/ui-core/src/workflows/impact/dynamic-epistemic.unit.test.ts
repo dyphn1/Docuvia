@@ -44,7 +44,9 @@ describe("issue #393 dynamic impact epistemics", () => {
     expect(result.epistemic).toBe(EpistemicLevels.LOWER_BOUND);
     expect(result.riskNote).toContain("src/plugin-loader.ts:8");
     expect(result.riskNote).toContain("bounded-local-pattern");
-    expect(result.riskNote).toContain("possible targets, not confirmed runtime edges");
+    expect(result.riskNote).toContain(
+      "possible targets, not confirmed runtime edges",
+    );
   });
 
   it("marks a non-empty confirmed result lower-bound when dynamic evidence can add dependents", () => {

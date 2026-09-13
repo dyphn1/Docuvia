@@ -16,7 +16,7 @@
     "typecheck": "tsc --build",
     "lint": "eslint .",
     "test": "rimraf coverage && vitest run --coverage --testTimeout=120000 --hookTimeout=120000",
-    "eval:impact": "vitest run artifacts/cli/test/integration/commands/impact-eval.integration.test.ts",
+    "eval:impact": "vitest run artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts artifacts/cli/test/support/impact-eval-scorer.phase6.unit.test.ts --testTimeout=240000 --hookTimeout=240000",
     "format": "prettier --write .",
     "prepare": "husky"
   },

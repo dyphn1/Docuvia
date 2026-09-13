@@ -1,11 +1,8 @@
-# Impact-accuracy eval (issue #192) — REPORT-ONLY until baseline established.
+# Impact-accuracy eval (issue #192) — Phase 6 regression gate.
 #
-# Mirrors code-review-graph's eval.yml stance: this workflow measures blast-radius
-# precision/recall against the human-labeled corpus in
-# `artifacts/cli/test/support/impact-corpus.ts` and posts the numbers. No regression
-# threshold is enforced until baseline history accumulates (see the integration test's
-# doc comment for harness-integrity assertions that DO fail — a broken control case or a
-# silently errored case fails here too).
+# The evaluator runs the real structured `docuvia impact --format=json` path against the
+# human-labeled corpus in `artifacts/cli/test/support/impact-corpus.ts`, writes precision/recall/F1
+# evidence, and fails when the corrected product-path baseline regresses or any case errors.
 name: Eval
 
 on:
@@ -27,7 +24,7 @@ permissions:
 
 jobs:
   impact-accuracy:
-    name: Impact accuracy (report-only)
+    name: Impact accuracy (gated)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,52 +45,35 @@ jobs:
       - name: Build (all packages)
         run: pnpm run build
 
-      - name: Run impact-accuracy eval over the regression corpus
+      - name: Run gated impact-accuracy eval over the regression corpus
         run: pnpm run eval:impact
 
       - name: Upload eval reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: impact-accuracy-results
           path: |
             evaluate/results/*.csv
             evaluate/results/*.summary.md
+          if-no-files-found: warn
           retention-days: 90
 
-      # Baseline gating: after N runs with stable mean F1 >= 0.6, uncomment the gate below.
-      # The gate uses the dated summary file and fails if mean F1 drops below threshold.
-      # To activate: set BASELINE_MEAN_F1_THRESHOLD=0.6 and uncomment this step.
-      # - name: Gate on F1 regression (activate after baseline)
-      #   run: |
-      #     threshold=${BASELINE_MEAN_F1_THRESHOLD:-0.6}
-      #     summary="$(ls -1 evaluate/results/*.summary.md | tail -n 1)"
-      #     meanF1=$(grep -E 'mean F1' "$summary" | sed -E 's/.*: ([0-9.]+)%?/\1/')
-      #     meanF1=$(echo "$meanF1 / 100" | bc -l 2>/dev/null || echo "$meanF1")
-      #     if (( $(echo "$meanF1 < $threshold" | bc -l) )); then
-      #       echo "❌ Impact accuracy F1 ($meanF1) below threshold ($threshold)"
-      #       exit 1
-      #     fi
-      #     echo "✅ Impact accuracy F1 ($meanF1) meets threshold ($threshold)"
-
-      # `continue-on-error` (not `|| echo`) keeps this report-only workflow non-gating while
-      # still showing a red step when posting fails. The previous `|| echo` swallowed every
-      # failure into a green check -- including the fact that `--edit-if-exists` is not a real
-      # `gh pr comment` flag (the valid ones are `--edit-last` / `--create-if-none`), so this
-      # step had never actually posted a summary to any PR.
-      #
-      # Posting a fresh comment rather than `--edit-last`: `--edit-last` targets the last
-      # comment by the *current user*, and the Knowledge Graph review job also comments as
-      # github-actions[bot] -- editing "the last one" would clobber its review.
+      # Posting is informational; the preceding eval step is the blocking correctness gate.
+      # A fresh comment is used rather than --edit-last because other jobs also comment as
+      # github-actions[bot], and editing "the last one" could clobber an unrelated review.
       - name: Post summary to PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.number }}
         run: |
           set -euo pipefail
-          # Glob rather than rebuilding the dated filename: the scorer owns that name, and a
-          # date computed here drifts from it across a UTC midnight mid-run.
-          summary="$(ls -1 evaluate/results/*.summary.md | tail -n 1)"
+          summary="$(ls -1 evaluate/results/*.summary.md 2>/dev/null | tail -n 1 || true)"
+          if [ -z "$summary" ]; then
+            echo "No impact summary was produced; the gated eval step contains the failure."
+            exit 0
+          fi
           echo "Posting $summary to PR #$PR_NUMBER"
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$summary"

@@ -110,14 +110,14 @@ describe("report rendering", () => {
     expect(lines[1]).toContain(",1.000,");
   });
 
-  it("buildMarkdownSummary embeds the report-only caveat next to the aggregate", () => {
+  it("buildMarkdownSummary embeds the active regression gate next to the aggregate", () => {
     const md = buildMarkdownSummary(
       [scoreCase("s", "t", [], ["src/a.ts"])],
       aggregateCases([scoreCase("s", "t", [], ["src/a.ts"])]),
     );
 
     expect(md).toContain("Impact accuracy eval (#192)");
-    expect(md).toContain("Report-only baseline");
+    expect(md).toContain("Regression gate active");
     expect(md).toContain("| s | `t` |");
   });
 });

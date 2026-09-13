@@ -38,7 +38,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["keeps identifier-ish tokens (dots/slashes/dashes) intact"],
       },
       outputCompleteness: {
-        evidence: ["keeps a meaningful single-character token instead of dropping it as noise"],
+        evidence: [
+          "keeps a meaningful single-character token instead of dropping it as noise",
+        ],
       },
       errorHandling: {
         evidence: [],
@@ -49,10 +51,14 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["returns empty keywords for punctuation-only input"],
       },
       determinism: {
-        evidence: ["produces identical keyword arrays across repeated identical input"],
+        evidence: [
+          "produces identical keyword arrays across repeated identical input",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts",
+        ],
       },
     },
   },
@@ -89,10 +95,14 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["returns null when the target does not resolve"],
       },
       determinism: {
-        evidence: ["returns identical structural context across repeated identical reads"],
+        evidence: [
+          "returns identical structural context across repeated identical reads",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts",
+        ],
       },
     },
   },
@@ -106,7 +116,7 @@ const capabilities: readonly CapabilityEvidence[] = [
     ],
     dimensions: {
       positiveParameters: {
-        evidence: ["tags an exact findNodeByName hit as matchType: \"exact\""],
+        evidence: ['tags an exact findNodeByName hit as matchType: "exact"'],
       },
       negativeParameters: {
         evidence: ["treats an invalid limit"],
@@ -117,7 +127,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       outputCompleteness: {
-        evidence: ["deduplicates overlapping exact and keyword candidates by layer/id"],
+        evidence: [
+          "deduplicates overlapping exact and keyword candidates by layer/id",
+        ],
       },
       errorHandling: {
         evidence: [],
@@ -128,10 +140,14 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["logs a warning when falling back from an invalid limit"],
       },
       determinism: {
-        evidence: ["returns identical ordered search results across repeated identical input"],
+        evidence: [
+          "returns identical ordered search results across repeated identical input",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts",
+        ],
       },
     },
   },
@@ -153,7 +169,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["returns null l2/empty l3/null context when nothing matches"],
       },
       inputCompleteness: {
-        evidence: ["attaches l3 write-path provenance from the underlying l3_nodes row"],
+        evidence: [
+          "attaches l3 write-path provenance from the underlying l3_nodes row",
+        ],
       },
       outputCompleteness: {
         evidence: [
@@ -171,10 +189,14 @@ const capabilities: readonly CapabilityEvidence[] = [
         ],
       },
       determinism: {
-        evidence: ["returns identical complete query results across repeated identical input"],
+        evidence: [
+          "returns identical complete query results across repeated identical input",
+        ],
       },
       sourceTraceability: {
-        evidence: ["TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts"],
+        evidence: [
+          "TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts",
+        ],
       },
     },
   },

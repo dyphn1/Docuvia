@@ -10,10 +10,14 @@ interface PersistedGraphCounts {
 function readPersistedGraphCounts(sandbox: TestSandbox): PersistedGraphCounts {
   const db = sandbox.getDb();
   try {
-    const projects = db.prepare("SELECT COUNT(*) AS count FROM projects").get() as {
+    const projects = db
+      .prepare("SELECT COUNT(*) AS count FROM projects")
+      .get() as {
       count: number;
     };
-    const l2Nodes = db.prepare("SELECT COUNT(*) AS count FROM l2_nodes").get() as {
+    const l2Nodes = db
+      .prepare("SELECT COUNT(*) AS count FROM l2_nodes")
+      .get() as {
       count: number;
     };
     return { projects: projects.count, l2Nodes: l2Nodes.count };

@@ -65,7 +65,11 @@ export class GraphPersisterService implements IGraphPersister {
 
     await input.store.withWriteLock(() =>
       input.store.withTransaction(() => {
-        this.linkValueImports(input.store, input.workspaceRoot, input.parsedResults);
+        this.linkValueImports(
+          input.store,
+          input.workspaceRoot,
+          input.parsedResults,
+        );
         this.linkLiteralChildProcesses(
           input.store,
           input.workspaceRoot,
@@ -114,7 +118,11 @@ export class GraphPersisterService implements IGraphPersister {
           store.graph.findNodeIdByName(
             resolved.targetFile,
             resolved.targetSymbol,
-          ) ?? store.graph.findNodeIdByName(resolved.targetFile, resolved.targetFile);
+          ) ??
+          store.graph.findNodeIdByName(
+            resolved.targetFile,
+            resolved.targetFile,
+          );
         if (!targetId || targetId === sourceId) continue;
         this.insertLinkOnce(store, sourceId, targetId, LinkTypes.IMPORTS);
       }
@@ -171,9 +179,17 @@ export class GraphPersisterService implements IGraphPersister {
               parsedFiles,
             );
             if (!targetFile) continue;
-            const targetId = store.graph.findNodeIdByName(targetFile, targetFile);
+            const targetId = store.graph.findNodeIdByName(
+              targetFile,
+              targetFile,
+            );
             if (!targetId || targetId === sourceId) continue;
-            this.insertLinkOnce(store, sourceId, targetId, LinkTypes.DEPENDS_ON);
+            this.insertLinkOnce(
+              store,
+              sourceId,
+              targetId,
+              LinkTypes.DEPENDS_ON,
+            );
           }
         }
       }
@@ -224,14 +240,19 @@ export class GraphPersisterService implements IGraphPersister {
   ): string | undefined {
     const normalizedTarget = rawTarget.replace(/\\/g, "/");
     const candidates = new Set<string>();
-    if (normalizedTarget.startsWith("./") || normalizedTarget.startsWith("../")) {
+    if (
+      normalizedTarget.startsWith("./") ||
+      normalizedTarget.startsWith("../")
+    ) {
       candidates.add(
         path.posix.normalize(
           path.posix.join(path.posix.dirname(sourceFile), normalizedTarget),
         ),
       );
     }
-    candidates.add(path.posix.normalize(normalizedTarget.replace(/^\//, "")));
+    candidates.add(
+      path.posix.normalize(normalizedTarget.replace(/^\//, "")),
+    );
 
     for (const candidate of candidates) {
       if (parsedFiles.has(candidate)) return candidate;

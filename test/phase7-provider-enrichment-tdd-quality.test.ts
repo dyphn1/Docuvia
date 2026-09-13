@@ -114,6 +114,60 @@ const capabilities: readonly CapabilityEvidence[] = [
     },
   },
   {
+    name: "LSP Tier-B project partitioning",
+    files: [
+      "../lib/core/src/lsp/tier-b-project-partitioner.unit.test.ts",
+      "../lib/core/src/lsp/phase7-lsp-quality.unit.test.ts",
+      "../lib/core/src/lsp/tier-b-project-partitioner.ts",
+    ],
+    dimensions: {
+      positiveParameters: {
+        evidence: [
+          "maps each file to its nearest owning project and groups Rust workspace crates",
+        ],
+      },
+      negativeParameters: {
+        evidence: [
+          "falls back to the workspace root for files with no owning marker",
+        ],
+      },
+      inputCompleteness: {
+        evidence: [
+          "expands TypeScript workspaces and honors tsconfig references",
+          "orders Go submodules ahead of the module that replaces into them",
+          "orders C# projects after the projects they reference",
+          "uses $languageId project markers as the file boundary",
+        ],
+      },
+      outputCompleteness: {
+        evidence: [
+          "orders dependency projects before dependents (bottom-up, PRJ-003)",
+        ],
+      },
+      errorHandling: {
+        evidence: [
+          "treats malformed TypeScript project metadata as no local dependency instead of throwing",
+        ],
+      },
+      unexpectedInput: {
+        evidence: [
+          "terminates deterministically on a dependency cycle (path-order tiebreak)",
+        ],
+      },
+      determinism: {
+        evidence: [
+          "terminates deterministically on a dependency cycle (path-order tiebreak)",
+          "keeps files grouped with their owning project regardless of input order",
+        ],
+      },
+      sourceTraceability: {
+        evidence: [
+          "TDD-SOURCE: lib/core/src/lsp/tier-b-project-partitioner.ts#partitionTierBBucket (PRJ-001/PRJ-003)",
+        ],
+      },
+    },
+  },
+  {
     name: "LSP edge enrichment",
     files: [
       "../lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts",

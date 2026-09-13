@@ -102,16 +102,33 @@ export class ImpactService implements IImpactService {
       return undefined;
     }
 
-    const blastRadius = store.graph
-      .getIncomingEdges(node.id)
-      .map(({ id, name, type }) => this.buildEntry(store, id, name, type));
+    const directIncoming = store.graph.getIncomingEdges(node.id);
+    const blastRadius = directIncoming.map(({ id, name, type }) =>
+      this.buildEntry(store, id, name, type),
+    );
 
-    // Issue #217: when nothing except the trivial self-file `contains` link points at the
-    // target, ScopeResolver never resolved any real caller -- exactly where dynamic-loading
-    // dependents (runtime-variable plugin paths, computed `import()` specifiers) hide. The
-    // ast_call_sites reverse read runs only on this path, so the static fast path's latency
-    // is untouched.
-    if (!this.hasStaticCallerEdge(store, node.id)) {
+    // Issue #192 real-repository acceptance case: a file is represented by one file node plus
+    // child symbol nodes. Calls/imports/extends normally point at the child symbol, not the file
+    // node itself, so querying a file used to miss real dependents such as
+    // persist-ast-graph.ts -> ScopeResolver in scope-resolver.ts. Fold those child-symbol
+    // dependents back to their containing files without mutating the graph or double-counting a
+    // caller already visible through a direct file-level edge.
+    if (this.isFileNode(node)) {
+      blastRadius.push(
+        ...this.resolveContainedSymbolDependents(
+          store,
+          node.id,
+          new Set(directIncoming.map(({ id }) => id)),
+        ),
+      );
+    }
+
+    // Issue #217: when nothing except the trivial self-file `contains` link points at a
+    // symbol target, ScopeResolver never resolved any real caller -- exactly where
+    // dynamic-loading dependents (runtime-variable plugin paths, computed `import()` specifiers)
+    // hide. The ast_call_sites reverse read is keyed by symbol name, so file targets use the
+    // contained-symbol aggregation above instead of an ineffective file-path call-site lookup.
+    if (!this.isFileNode(node) && !this.hasStaticCallerEdge(store, node.id)) {
       const staticNames = new Set(blastRadius.map((entry) => entry.name));
       const fallbackEntries = this.resolveCallSiteFallback(
         store,
@@ -132,6 +149,52 @@ export class ImpactService implements IImpactService {
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  private isFileNode(node: { name: string; filePath?: string }): boolean {
+    return node.filePath !== undefined && node.name === node.filePath;
+  }
+
+  /**
+   * File-level impact is the union of direct file callers plus callers of symbols contained by
+   * that file. A symbol caller is projected back to its containing file when one exists, so the
+   * result remains a file-level blast radius rather than leaking implementation-level symbols.
+   */
+  private resolveContainedSymbolDependents(
+    store: IGraphStore,
+    fileNodeId: number,
+    alreadyResolvedIds: ReadonlySet<number>,
+  ): BlastRadiusEntry[] {
+    const entries: BlastRadiusEntry[] = [];
+    const seen = new Set(alreadyResolvedIds);
+    const containedSymbols = store.graph
+      .getOutgoingRelations(fileNodeId)
+      .filter(({ linkType }) => linkType === LinkTypes.CONTAINS);
+
+    for (const symbol of containedSymbols) {
+      for (const incoming of store.graph.getIncomingRelations(symbol.id)) {
+        if (incoming.linkType === LinkTypes.CONTAINS) continue;
+        const dependent = this.resolveContainingFile(store, incoming);
+        if (dependent.id === fileNodeId || seen.has(dependent.id)) continue;
+        seen.add(dependent.id);
+        entries.push(
+          this.buildEntry(store, dependent.id, dependent.name, dependent.type),
+        );
+      }
+    }
+
+    return entries;
+  }
+
+  /** Returns a symbol's containing file when the neighbor is a symbol; file nodes pass through. */
+  private resolveContainingFile(
+    store: IGraphStore,
+    node: { id: number; name: string; type: string },
+  ): { id: number; name: string; type: string } {
+    const container = store.graph
+      .getIncomingRelations(node.id)
+      .find(({ linkType }) => linkType === LinkTypes.CONTAINS);
+    return container ?? node;
   }
 
   /** `true` when at least one incoming edge is a real caller relationship -- anything but the

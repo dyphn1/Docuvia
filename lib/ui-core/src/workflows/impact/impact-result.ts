@@ -1,5 +1,6 @@
 import type {
   BlastRadiusEntry,
+  DynamicDependencyEvidence,
   EpistemicLevel,
   RiskLevel,
   TierBCoverageHint,
@@ -7,15 +8,16 @@ import type {
 
 export interface ImpactResult {
   blastRadius: BlastRadiusEntry[];
-  /** Issue #192: an empty blast radius is UNKNOWN, never LOW (see `RiskLevels.UNKNOWN`). */
+  /** Issue #192: an empty confirmed blast radius is UNKNOWN, never LOW (see `RiskLevels.UNKNOWN`). */
   riskLevel: RiskLevel;
-  /** Issue #192: omitted entirely when `exact` (omit-when-confident convention) -- present with
-   *  `lower-bound` whenever the edge graph's coverage behind this result is incomplete. */
+  /** Issue #192/#393: omitted entirely when `exact`; present with `lower-bound` whenever static
+   *  coverage is incomplete or target-relevant runtime dependency evidence exists. */
   epistemic?: EpistemicLevel;
-  /** Issue #192: human-readable reason attached whenever `epistemic` is lower-bound -- which
-   *  coverage gap applies (partial Tier B ingestion / registry-mediated dependents / static
-   *  edges only). Empty results are never silent zeros anymore. */
+  /** Human-readable reason attached whenever `epistemic` is lower-bound. */
   riskNote?: string;
+  /** Issue #393: target-relevant runtime dependency boundaries, including bounded candidate sets
+   *  and unresolved expressions. Omitted when none were observed. */
+  dynamicEvidence?: DynamicDependencyEvidence[];
   /** Additive, omit-when-confident "not yet Tier B-processed" signal (see `TierBCoverageHint`'s
    *  own doc comment) -- attached only when an empty `blastRadius` might mean "never looked at"
    *  rather than "confirmed zero", computed one layer up from `ImpactService` (`ImpactWorkflow`). */

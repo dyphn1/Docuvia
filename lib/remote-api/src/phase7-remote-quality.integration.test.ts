@@ -59,7 +59,9 @@ describe("Phase 7 FetchRemoteSyncClient contract quality", () => {
 
     await expect(client.fetchRemoteL2Nodes("42")).rejects.toMatchObject({
       code: "SYNC_FETCH_FAILED",
-      message: expect.stringContaining("did not match the remote-node contract"),
+      message: expect.stringContaining(
+        "did not match the remote-node contract",
+      ),
     });
   });
 

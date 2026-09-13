@@ -42,6 +42,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Diagnostic — print Phase 6 Prettier diff
+        run: |
+          cp lib/core/src/graph/phase6-graph-persister.ts /tmp/phase6-graph-persister.before.ts
+          pnpm exec prettier --write lib/core/src/graph/phase6-graph-persister.ts
+          diff -u /tmp/phase6-graph-persister.before.ts lib/core/src/graph/phase6-graph-persister.ts || true
+
       - name: Build (all packages)
         run: pnpm run build
 

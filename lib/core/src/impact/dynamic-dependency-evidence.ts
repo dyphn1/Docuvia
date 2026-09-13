@@ -30,6 +30,11 @@ interface ScannedDynamicImport {
   interpolated: boolean;
 }
 
+interface DynamicImportScanMatch {
+  item: ScannedDynamicImport;
+  nextIndex: number;
+}
+
 function metaKey(projectId: number): string {
   return `${META_KEY_PREFIX}:${projectId}`;
 }
@@ -61,6 +66,18 @@ function skipBlockComment(source: string, start: number): number {
   return end === -1 ? source.length : end + 2;
 }
 
+/** Returns the first index after a comment/string token, or undefined when `start` is code. */
+function skipIgnoredToken(source: string, start: number): number | undefined {
+  const ch = source[start];
+  const next = source[start + 1];
+  if (ch === "/" && next === "/") return skipLineComment(source, start);
+  if (ch === "/" && next === "*") return skipBlockComment(source, start);
+  if (ch === "'" || ch === '"' || ch === "`") {
+    return skipQuoted(source, start, ch);
+  }
+  return undefined;
+}
+
 function findClosingParen(
   source: string,
   openIndex: number,
@@ -68,22 +85,13 @@ function findClosingParen(
   let depth = 1;
   let i = openIndex + 1;
   while (i < source.length) {
-    const ch = source[i];
-    const next = source[i + 1];
-    if (ch === "/" && next === "/") {
-      i = skipLineComment(source, i);
+    const skipped = skipIgnoredToken(source, i);
+    if (skipped !== undefined) {
+      i = skipped;
       continue;
     }
-    if (ch === "/" && next === "*") {
-      i = skipBlockComment(source, i);
-      continue;
-    }
-    if (ch === "'" || ch === '"' || ch === "`") {
-      i = skipQuoted(source, i, ch);
-      continue;
-    }
-    if (ch === "(") depth++;
-    if (ch === ")") {
+    if (source[i] === "(") depth++;
+    if (source[i] === ")") {
       depth--;
       if (depth === 0) return i;
     }
@@ -135,6 +143,41 @@ function literalParts(expression: string): {
   };
 }
 
+function isImportKeywordAt(source: string, index: number): boolean {
+  if (!source.startsWith("import", index)) return false;
+  if (isIdentifierChar(source[index - 1])) return false;
+  return !isIdentifierChar(source[index + 6]);
+}
+
+function scanDynamicImportAt(
+  source: string,
+  index: number,
+): DynamicImportScanMatch | undefined {
+  if (!isImportKeywordAt(source, index)) return undefined;
+  let open = index + 6;
+  while (/\s/.test(source[open] ?? "")) open++;
+  if (source[open] !== "(") return undefined;
+
+  const close = findClosingParen(source, open);
+  if (close === undefined) return undefined;
+  const raw = source.slice(open + 1, close);
+  const leadingWhitespace = raw.length - raw.trimStart().length;
+  const expression = raw.trim();
+  if (expression.length === 0) return undefined;
+
+  const expressionStart = open + 1 + leadingWhitespace;
+  const position = sourcePosition(source, expressionStart);
+  return {
+    item: {
+      expression,
+      startLine: position.line,
+      startColumn: position.column,
+      ...literalParts(expression),
+    },
+    nextIndex: close + 1,
+  };
+}
+
 /**
  * Small lexical scanner for TS/JS `import(expr)` boundaries. It intentionally does not try to
  * evaluate arbitrary JavaScript: comments and ordinary string/template literals are skipped while
@@ -145,48 +188,16 @@ export function scanDynamicImports(source: string): ScannedDynamicImport[] {
   const result: ScannedDynamicImport[] = [];
   let i = 0;
   while (i < source.length) {
-    const ch = source[i];
-    const next = source[i + 1];
-    if (ch === "/" && next === "/") {
-      i = skipLineComment(source, i);
+    const skipped = skipIgnoredToken(source, i);
+    if (skipped !== undefined) {
+      i = skipped;
       continue;
     }
-    if (ch === "/" && next === "*") {
-      i = skipBlockComment(source, i);
+    const match = scanDynamicImportAt(source, i);
+    if (match) {
+      result.push(match.item);
+      i = match.nextIndex;
       continue;
-    }
-    if (ch === "'" || ch === '"' || ch === "`") {
-      i = skipQuoted(source, i, ch);
-      continue;
-    }
-
-    if (
-      source.startsWith("import", i) &&
-      !isIdentifierChar(source[i - 1]) &&
-      !isIdentifierChar(source[i + 6])
-    ) {
-      let open = i + 6;
-      while (/\s/.test(source[open] ?? "")) open++;
-      if (source[open] === "(") {
-        const close = findClosingParen(source, open);
-        if (close !== undefined) {
-          const raw = source.slice(open + 1, close);
-          const leadingWhitespace = raw.length - raw.trimStart().length;
-          const expression = raw.trim();
-          if (expression.length > 0) {
-            const expressionStart = open + 1 + leadingWhitespace;
-            const position = sourcePosition(source, expressionStart);
-            result.push({
-              expression,
-              startLine: position.line,
-              startColumn: position.column,
-              ...literalParts(expression),
-            });
-          }
-          i = close + 1;
-          continue;
-        }
-      }
     }
     i++;
   }

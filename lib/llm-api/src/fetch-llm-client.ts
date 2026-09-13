@@ -15,6 +15,14 @@ import {
 import { LlmApiHttp } from "./constants/http.js";
 import { LlmApiMessages } from "./constants/messages.js";
 import { LlmApiPaths } from "./constants/paths.js";
+import {
+  parseWireChatCompletionChunk,
+  parseWireChatCompletionResult,
+  type WireChatCompletionChunk,
+  type WireChatCompletionResult,
+  type WireChatMessage,
+  type WireChatToolCall,
+} from "./response-validation.js";
 
 const REQUEST_TIMEOUT_MS = 30000;
 /** Short timeout for `checkAvailability()`'s liveness probe (decision 1e) -- sized for "is a
@@ -59,13 +67,8 @@ export class FetchLlmClient implements ILlmClient {
 
   /**
    * Normalizes `baseUrl` before appending `LlmApiPaths.CHAT_COMPLETIONS`, so a `baseUrl` that
-   * already ends in a trailing `/v1` (e.g. OpenRouter's documented OpenAI-SDK-compatible
-   * convention, `https://openrouter.ai/api/v1`) doesn't produce a doubled `/v1/v1/...` path.
-   * CLIProxyAPI's own convention has no `/v1` in `baseUrl` at all (see
-   * docs/gitbook/adr/llm/LLM-002-cliproxyapi-bridge.md), so this makes the client tolerate both
-   * without the caller needing to know which. Only a trailing `/v1` *segment* (the literal final
-   * path segment, not a substring anywhere else) is stripped -- `https://host/v1beta` and
-   * `https://host/apiv1` are left untouched.
+   * already ends in a trailing `/v1` doesn't produce a doubled `/v1/v1/...` path. Only a
+   * trailing `/v1` path segment is stripped; names such as `/v1beta` and `/apiv1` are preserved.
    */
   private buildCompletionsUrl(baseUrl: string): string {
     const trimmed = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
@@ -135,13 +138,7 @@ export class FetchLlmClient implements ILlmClient {
   }
 
   private fromWireToolCalls(
-    toolCalls:
-      | Array<{
-          id: string;
-          type: typeof CHAT_TOOL_TYPE;
-          function: { name: string; arguments: string };
-        }>
-      | undefined,
+    toolCalls: WireChatToolCall[] | undefined,
   ): ChatToolCall[] | undefined {
     if (!toolCalls) return undefined;
     return toolCalls.map((toolCall) => ({
@@ -151,17 +148,7 @@ export class FetchLlmClient implements ILlmClient {
     }));
   }
 
-  private fromWireMessage(wireMessage: {
-    role: ChatMessage["role"];
-    content: string | null;
-    name?: string;
-    tool_call_id?: string;
-    tool_calls?: Array<{
-      id: string;
-      type: typeof CHAT_TOOL_TYPE;
-      function: { name: string; arguments: string };
-    }>;
-  }): ChatMessage {
+  private fromWireMessage(wireMessage: WireChatMessage): ChatMessage {
     return {
       role: wireMessage.role,
       content: wireMessage.content,
@@ -175,15 +162,9 @@ export class FetchLlmClient implements ILlmClient {
     };
   }
 
-  private fromWireResult(wireResult: {
-    id: string;
-    model: string;
-    choices: Array<{
-      index: number;
-      message: Parameters<FetchLlmClient["fromWireMessage"]>[0];
-      finish_reason: string | null;
-    }>;
-  }): ChatCompletionResult {
+  private fromWireResult(
+    wireResult: WireChatCompletionResult,
+  ): ChatCompletionResult {
     return {
       id: wireResult.id,
       model: wireResult.model,
@@ -195,23 +176,7 @@ export class FetchLlmClient implements ILlmClient {
     };
   }
 
-  private fromWireChunk(wireChunk: {
-    id: string;
-    model: string;
-    choices: Array<{
-      index: number;
-      delta: {
-        role?: ChatMessage["role"];
-        content?: string;
-        tool_calls?: Array<{
-          id: string;
-          type: typeof CHAT_TOOL_TYPE;
-          function: { name: string; arguments: string };
-        }>;
-      };
-      finish_reason: string | null;
-    }>;
-  }): ChatCompletionChunk {
+  private fromWireChunk(wireChunk: WireChatCompletionChunk): ChatCompletionChunk {
     return {
       id: wireChunk.id,
       model: wireChunk.model,
@@ -234,11 +199,8 @@ export class FetchLlmClient implements ILlmClient {
   }
 
   /**
-   * `doctor`'s T7 reachability pre-flight (decision 1e): a lightweight `GET config.baseUrl` --
-   * not `chatCompletion`'s full request/response contract, since this is a reachability probe,
-   * not a functional check. Any received `Response` (regardless of status code) is
-   * `available: true`; any thrown error (network failure, timeout, DNS) is caught and reported as
-   * `available: false` rather than propagating. Never throws.
+   * `doctor`'s T7 reachability pre-flight: a lightweight `GET config.baseUrl`. Any received
+   * Response counts as reachable; only network/timeout failures return `available: false`.
    */
   public async checkAvailability(): Promise<LlmClientAvailability> {
     try {
@@ -257,17 +219,7 @@ export class FetchLlmClient implements ILlmClient {
     }
   }
 
-  /**
-   * Issue #134: the faithful bridge probe — a real POST to the same `/v1/chat/completions` route
-   * with the same auth headers `chatCompletion()` (and so Tier C's drain) uses, but a
-   * `max_tokens: 1` body so it's a route/auth check, not a real extraction. `checkAvailability()`
-   *'s GET on the bare `baseUrl` can PASS while the completions route is broken (a proxy that
-   * answers on `/` but 404s or rejects the API key on `/v1/chat/completions`) — issue #134's live
-   * repro, where `doctor` reported `llm_reachability ✓ PASS` while every Tier C item failed with
-   * `bridge-unreachable`. Unlike `checkAvailability` (any HTTP response = available), a non-2xx
-   * response here is `available: false`: a rejected completions call is exactly the false-PASS
-   * case this probe exists to surface. Never throws.
-   */
+  /** Issue #134's faithful Tier C bridge probe against the actual completions route. */
   public async checkBridgeReachability(
     model: string,
   ): Promise<LlmClientAvailability> {
@@ -326,9 +278,6 @@ export class FetchLlmClient implements ILlmClient {
 
     if (!res.ok) {
       const message = await this.parseErrorBody(res);
-      // Issue #134: classify HTTP errors specifically so Tier C drain can distinguish
-      // transient rate-limit rejections (retry-worthy) from permanent auth failures
-      // or genuine bridge unreachability.
       if (res.status === 429) {
         throw new DocuviaError(
           ErrorCodes.LLM_RATE_LIMITED,
@@ -347,15 +296,23 @@ export class FetchLlmClient implements ILlmClient {
       );
     }
 
+    let body: unknown;
     try {
-      const body = (await res.json()) as Parameters<
-        FetchLlmClient["fromWireResult"]
-      >[0];
-      return this.fromWireResult(body);
+      body = await res.json();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.LLM_INVALID_RESPONSE,
         LlmApiMessages.CHAT_COMPLETION_INVALID_JSON,
+        err,
+      );
+    }
+
+    try {
+      return this.fromWireResult(parseWireChatCompletionResult(body));
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.LLM_INVALID_RESPONSE,
+        LlmApiMessages.CHAT_COMPLETION_INVALID_RESPONSE,
         err,
       );
     }
@@ -408,12 +365,6 @@ export class FetchLlmClient implements ILlmClient {
   }
 }
 
-/**
- * `fetch`es the SSE stream response for `streamChatCompletion`'s `generate`, wrapping a network
- * failure as `DocuviaError` and rejecting a non-OK response with the parsed error body — the
- * request/response-validation portion pulled out of `generate` to keep it under the complexity
- * budget. The returned `Response`'s `.body` may still be `null` (caller's concern).
- */
 async function fetchSseResponse(
   url: string,
   headers: Record<string, string>,
@@ -447,22 +398,14 @@ async function fetchSseResponse(
   return res;
 }
 
-/** One `\n\n`-delimited SSE block from `generate`'s read buffer, parsed into either a decoded
- *  chunk, the `[DONE]` sentinel (stream should stop), or a blank line to skip. */
 type SseBlockResult =
   | { kind: "chunk"; chunk: ChatCompletionChunk }
   | { kind: "done" }
   | { kind: "skip" };
 
-/**
- * Parses a single SSE `block` (already split on `\n\n`) into an `SseBlockResult` — the
- * per-block decoding portion pulled out of `generate`'s inner `while` loop.
- */
 function parseSseBlock(
   block: string,
-  fromWireChunk: (
-    wireChunk: Parameters<FetchLlmClient["fromWireChunk"]>[0],
-  ) => ChatCompletionChunk,
+  fromWireChunk: (wireChunk: WireChatCompletionChunk) => ChatCompletionChunk,
 ): SseBlockResult {
   const line = block.trim();
   if (!line) return { kind: "skip" };
@@ -471,15 +414,26 @@ function parseSseBlock(
     : line;
   if (payload === LlmApiHttp.SSE_DONE_SENTINEL) return { kind: "done" };
 
+  let parsed: unknown;
   try {
-    const wireChunk = JSON.parse(payload) as Parameters<
-      typeof fromWireChunk
-    >[0];
-    return { kind: "chunk", chunk: fromWireChunk(wireChunk) };
+    parsed = JSON.parse(payload);
   } catch (err) {
     throw DocuviaError.wrap(
       ErrorCodes.LLM_STREAM_FAILED,
       LlmApiMessages.CHAT_COMPLETION_STREAM_INVALID_JSON,
+      err,
+    );
+  }
+
+  try {
+    return {
+      kind: "chunk",
+      chunk: fromWireChunk(parseWireChatCompletionChunk(parsed)),
+    };
+  } catch (err) {
+    throw DocuviaError.wrap(
+      ErrorCodes.LLM_STREAM_FAILED,
+      LlmApiMessages.CHAT_COMPLETION_STREAM_INVALID_RESPONSE,
       err,
     );
   }

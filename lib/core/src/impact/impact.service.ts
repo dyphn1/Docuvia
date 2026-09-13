@@ -178,12 +178,7 @@ export class ImpactService implements IImpactService {
         if (dependent.id === fileNodeId || seen.has(dependent.id)) continue;
         seen.add(dependent.id);
         entries.push(
-          this.buildEntry(
-            store,
-            dependent.id,
-            dependent.name,
-            dependent.type,
-          ),
+          this.buildEntry(store, dependent.id, dependent.name, dependent.type),
         );
       }
     }

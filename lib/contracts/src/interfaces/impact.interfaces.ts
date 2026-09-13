@@ -38,16 +38,51 @@ export const EpistemicLevels = {
 export type EpistemicLevel =
   (typeof EpistemicLevels)[keyof typeof EpistemicLevels];
 
+/** Issue #393: persisted status of one runtime dependency expression. `BOUNDED` means static
+ * evidence proves a finite local candidate set; it is still not a confirmed runtime edge.
+ * `UNRESOLVED` means static analysis cannot prove a useful finite candidate set. */
+export const DynamicDependencyStatuses = {
+  BOUNDED: "bounded",
+  UNRESOLVED: "unresolved",
+} as const;
+export type DynamicDependencyStatus =
+  (typeof DynamicDependencyStatuses)[keyof typeof DynamicDependencyStatuses];
+
+export const DynamicDependencyKinds = {
+  DYNAMIC_IMPORT: "dynamic-import",
+} as const;
+export type DynamicDependencyKind =
+  (typeof DynamicDependencyKinds)[keyof typeof DynamicDependencyKinds];
+
 /**
- * Issue #217: which source produced a blast-radius entry. Static entries (`node_links`
- * incoming edges) OMIT the field entirely (omit-when-confident convention); only entries
- * recovered by the `ast_call_sites` reverse lookup -- call sites ScopeResolver could not
- * resolve into an edge at ingestion time -- carry `edgeSource`, so downstream consumers can
- * treat them as lower-confidence ("a call to this name exists here", not "this exact
- * definition is imported").
+ * Issue #393: explicit evidence for a runtime dependency boundary. These records are persisted
+ * separately from `node_links`: candidatePaths are possible targets justified by the expression,
+ * never silently promoted into confirmed graph edges. Source position + raw expression are kept
+ * so impact output can explain exactly why a result is a lower bound.
+ */
+export interface DynamicDependencyEvidence {
+  sourceFile: string;
+  kind: DynamicDependencyKind;
+  expression: string;
+  startLine: number;
+  startColumn: number;
+  literalPrefix?: string;
+  literalSuffix?: string;
+  status: DynamicDependencyStatus;
+  candidatePaths: string[];
+  reason: string;
+}
+
+/**
+ * Issue #217/#393: which source produced a blast-radius entry. Static entries (`node_links`
+ * incoming edges) OMIT the field entirely (omit-when-confident convention). `lsp-fallback`
+ * identifies an unresolved call-site recovery; `dynamic-candidate` identifies a source file that
+ * is only a statically-bounded candidate for a runtime dependency and therefore must retain
+ * lower-bound epistemic semantics.
  */
 export const BlastRadiusEdgeSources = {
   LSP_FALLBACK: "lsp-fallback",
+  DYNAMIC_CANDIDATE: "dynamic-candidate",
 } as const;
 
 export type BlastRadiusEdgeSource =
@@ -56,11 +91,10 @@ export type BlastRadiusEdgeSource =
 export interface BlastRadiusEntry {
   name: string;
   type: string;
-  /**
-   * Issue #217: present ONLY on entries recovered from the `ast_call_sites` reverse lookup
-   * (see `BlastRadiusEdgeSources`). A static-edge entry omits the field.
-   */
+  /** Omitted for confirmed static edges; present for fallback/candidate evidence. */
   edgeSource?: BlastRadiusEdgeSource;
+  /** Issue #393 provenance for a `dynamic-candidate` entry. */
+  dynamicEvidence?: DynamicDependencyEvidence;
   /**
    * L3 "why" data (decisions/context) attached to this node, when any exists — populated by
    * `ImpactService.getBlastRadius` from `IL3NodesRepo.getByL2NodeId`. Omitted (not an empty
@@ -88,4 +122,10 @@ export interface IImpactService {
     store: IGraphStore,
     target: string,
   ): BlastRadiusEntry[] | undefined;
+  /** Issue #393: target-relevant bounded candidates plus globally-unbounded runtime evidence.
+   * Optional for compatibility with test doubles/alternate implementations predating #393. */
+  getDynamicEvidence?(
+    store: IGraphStore,
+    target: string,
+  ): DynamicDependencyEvidence[];
 }

@@ -71,7 +71,8 @@ export class ImpactService extends Phase6ImpactService {
     }
 
     const sourceNode = store.graph.findNodeByName(evidence.sourceFile);
-    if (!sourceNode || sourceNode.name !== evidence.sourceFile) return undefined;
+    if (!sourceNode || sourceNode.name !== evidence.sourceFile)
+      return undefined;
     const l3Rows = store.l3.getByL2NodeId(sourceNode.id);
     const why =
       l3Rows.length > 0

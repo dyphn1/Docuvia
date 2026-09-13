@@ -37,9 +37,7 @@ function makeHydrationService(
   } as unknown as IHydrationService;
 }
 
-function makeQueryService(
-  query: IQueryService["query"],
-): IQueryService {
+function makeQueryService(query: IQueryService["query"]): IQueryService {
   return { query } as unknown as IQueryService;
 }
 
@@ -70,9 +68,7 @@ describe("Phase 8 UI-core orchestration quality", () => {
     docuviaFactory.register(TOKENS.HydrationService, () =>
       makeHydrationService(),
     );
-    docuviaFactory.register(TOKENS.QueryService, () =>
-      makeQueryService(query),
-    );
+    docuviaFactory.register(TOKENS.QueryService, () => makeQueryService(query));
     docuviaFactory.lock();
 
     const first = await new QueryWorkflow(

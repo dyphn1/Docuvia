@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  DocuviaFactory,
-  ErrorCodes,
-  TOKENS,
-} from "@workspace/contracts";
+import { DocuviaFactory, ErrorCodes, TOKENS } from "@workspace/contracts";
 import type { IASTWorkerPool } from "./ast/ast-worker-pool.js";
 import { registerCoreProviders } from "./register.js";
 

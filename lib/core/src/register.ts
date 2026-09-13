@@ -11,10 +11,7 @@ import { FileDiscoveryService } from "./discovery/file-discovery.service.js";
 import { ConfigScannerService } from "./discovery/config-scanner.service.js";
 import { VcsScannerService } from "./discovery/vcs-scanner.service.js";
 import { AstProcessingService } from "./ast/ast-processing.service.js";
-import {
-  AstWorkerPool,
-  type IASTWorkerPool,
-} from "./ast/ast-worker-pool.js";
+import { AstWorkerPool, type IASTWorkerPool } from "./ast/ast-worker-pool.js";
 import { GraphPersisterService } from "./graph/phase6-graph-persister.js";
 import { TempFileManager } from "./temp-files/temp-file-manager.js";
 import { QueryService } from "./query/query.service.js";
@@ -94,18 +91,12 @@ export function registerCoreProviders(
   // creates the pool. This keeps the anti-worker-multiplication invariant without constructing a
   // heavy resource as a module-level registration side effect.
   let sharedAstWorkerPool: IASTWorkerPool | undefined;
-  factory.register(
-    TOKENS.AstProcessor,
-    (_f, params) => {
-      sharedAstWorkerPool ??= createAstWorkerPool();
-      return new AstProcessingService(sharedAstWorkerPool, params?.logger);
-    },
-  );
+  factory.register(TOKENS.AstProcessor, (_f, params) => {
+    sharedAstWorkerPool ??= createAstWorkerPool();
+    return new AstProcessingService(sharedAstWorkerPool, params?.logger);
+  });
 
-  factory.register(
-    TOKENS.GraphPersister,
-    () => new GraphPersisterService(),
-  );
+  factory.register(TOKENS.GraphPersister, () => new GraphPersisterService());
 
   factory.register(
     TOKENS.TempFileManager,
@@ -137,10 +128,7 @@ export function registerCoreProviders(
       ),
   );
 
-  factory.register(
-    TOKENS.TopologyBuilder,
-    () => new TopologyBuilderService(),
-  );
+  factory.register(TOKENS.TopologyBuilder, () => new TopologyBuilderService());
 
   factory.register(
     TOKENS.SnapshotRenderer,

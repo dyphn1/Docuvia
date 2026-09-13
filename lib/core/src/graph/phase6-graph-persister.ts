@@ -139,7 +139,8 @@ export class GraphPersisterService implements IGraphPersister {
     descriptor: ImportDescriptor,
   ): void {
     if (descriptor.viaReexport) return;
-    if (this.hasStrongerSymbolRelationship(result, descriptor.localName)) return;
+    if (this.hasStrongerSymbolRelationship(result, descriptor.localName))
+      return;
 
     const resolved = resolver.resolveCall(result.file, descriptor.localName);
     if (!resolved) return;

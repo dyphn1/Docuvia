@@ -1,7 +1,4 @@
-import type {
-  RemoteL2NodeSummary,
-  SyncPushResult,
-} from "@workspace/contracts";
+import type { RemoteL2NodeSummary, SyncPushResult } from "@workspace/contracts";
 
 function record(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {

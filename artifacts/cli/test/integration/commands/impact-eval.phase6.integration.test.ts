@@ -194,6 +194,27 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192)", () => {
     }
   });
 
+  it("fixes the statically decidable legacy gaps without removing them from the corpus", () => {
+    for (const scenario of ["plain-import-no-call", "child-process-spawn"]) {
+      const result = results.find(
+        (candidate) => candidate.scenario === scenario,
+      );
+      expect(result).toMatchObject({ precision: 1, recall: 1, f1: 1 });
+    }
+  });
+
+  it("keeps irreducible runtime-boundary cases visible for #393", () => {
+    for (const scenario of [
+      "runtime-variable-import",
+      "computed-import-specifier",
+    ]) {
+      const result = results.find(
+        (candidate) => candidate.scenario === scenario,
+      );
+      expect(result).toMatchObject({ status: "ok", f1: 0 });
+    }
+  });
+
   it("produces identical scores across repeated impact evaluation of the same corpus", () => {
     expect(repeatedResults).toEqual(results);
   });

@@ -4,3 +4,9 @@
 # would rewrite it to double quotes/multi-line and break the sync assertion in
 # artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts.
 .claude/hooks/docuvia-hook.js
+
+# Temporary Phase 5 format probe; removed after CI emits Prettier 3.9.5 output.
+lib/core/src/query/phase5-query-quality.integration.test.ts
+lib/schema/src/sqlite/phase5-fts-quality.integration.test.ts
+test/phase5-query-retrieval-tdd-quality.test.ts
+test/phase5-prettier-dump.test.ts

@@ -5,6 +5,7 @@ import {
   CHAT_TOOL_TYPE,
   ChatMessageRoles,
   ChatToolChoiceModes,
+  type ChatCompletionRequest,
 } from "@workspace/contracts";
 import { FetchLlmClient } from "./fetch-llm-client.js";
 
@@ -234,11 +235,11 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
 
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url });
-    const request = {
+    const request: ChatCompletionRequest = {
       model: "gpt-test",
       messages: [{ role: ChatMessageRoles.USER, content: "same" }],
       toolChoice: ChatToolChoiceModes.NONE,
-    } as const;
+    };
 
     const first = await client.chatCompletion(request);
     const second = await client.chatCompletion(request);

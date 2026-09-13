@@ -117,9 +117,9 @@ describe("Phase 5 QueryService quality evidence", () => {
         matchType: "exact",
       }),
     ]);
-    expect(new Set(results.map((result) => `${result.layer}:${result.id}`)).size).toBe(
-      results.length,
-    );
+    expect(
+      new Set(results.map((result) => `${result.layer}:${result.id}`)).size,
+    ).toBe(results.length);
   });
 
   it("returns identical ordered search results across repeated identical input", () => {
@@ -151,89 +151,98 @@ describe("Phase 5 QueryService quality evidence", () => {
     );
   });
 
-  it("falls back to a provenance-free L3 entry when its row vanishes after search", () => {
-    const anchorId = store.graph.insertNode({
-      projectId,
-      name: "src/auth.ts",
-      pathPatterns: ["src/auth.ts"],
-    });
-    store.l3.upsertDecision({
-      projectId,
-      l2NodeId: anchorId,
-      title: "switched to JWT",
-      content: "stateless auth across services",
-      nodeType: "decision",
-      confidence: 0.9,
-      commitSha: "abc1234",
-      extractionModel: null,
-      sourceFiles: ["src/auth.ts"],
-      source: "agent-authored",
-    });
-
-    vi.spyOn(store.l3, "getById").mockReturnValue(undefined);
-
-    expect(queryService.query(store, "JWT").l3).toEqual([
-      {
+  it(
+    "falls back to a provenance-free L3 entry when its row vanishes after search",
+    () => {
+      const anchorId = store.graph.insertNode({
+        projectId,
+        name: "src/auth.ts",
+        pathPatterns: ["src/auth.ts"],
+      });
+      store.l3.upsertDecision({
+        projectId,
+        l2NodeId: anchorId,
         title: "switched to JWT",
         content: "stateless auth across services",
-      },
-    ]);
-  });
+        nodeType: "decision",
+        confidence: 0.9,
+        commitSha: "abc1234",
+        extractionModel: null,
+        sourceFiles: ["src/auth.ts"],
+        source: "agent-authored",
+      });
 
-  it("returns identical complete query results across repeated identical input", () => {
-    const targetId = store.graph.insertNode({
-      projectId,
-      name: "authService",
-      description: "authentication service",
-      pathPatterns: ["src/auth.ts"],
-    });
-    const callerId = store.graph.insertNode({
-      projectId,
-      name: "caller",
-      pathPatterns: ["src/caller.ts"],
-    });
-    store.graph.insertLink({
-      sourceNodeId: callerId,
-      targetNodeId: targetId,
-      linkType: "calls",
-    });
-    store.files.upsertFile({
-      projectId,
-      filePath: "src/auth.ts",
-      contentHash: null,
-    });
-    store.files.markTierBProcessed({
-      projectId,
-      filePath: "src/auth.ts",
-      commitSha: "phase5",
-    });
+      vi.spyOn(store.l3, "getById").mockReturnValue(undefined);
 
-    const first = queryService.query(store, "authService");
-    const second = queryService.query(store, "authService");
+      expect(queryService.query(store, "JWT").l3).toEqual([
+        {
+          title: "switched to JWT",
+          content: "stateless auth across services",
+        },
+      ]);
+    },
+  );
 
-    expect(second).toEqual(first);
-    expect(first.l2).toEqual({
-      name: "authService",
-      type: "module",
-      filePath: "src/auth.ts",
-      matchType: "exact",
-    });
-    expect(first.context).toEqual({
-      incoming: [{ name: "caller", linkType: "calls" }],
-      outgoing: [],
-    });
-  });
+  it(
+    "returns identical complete query results across repeated identical input",
+    () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "authService",
+        description: "authentication service",
+        pathPatterns: ["src/auth.ts"],
+      });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/caller.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.files.upsertFile({
+        projectId,
+        filePath: "src/auth.ts",
+        contentHash: null,
+      });
+      store.files.markTierBProcessed({
+        projectId,
+        filePath: "src/auth.ts",
+        commitSha: "phase5",
+      });
 
-  it("handles punctuation-only and whitespace-only queries as empty results without throwing", () => {
-    expect(queryService.query(store, "   ")).toEqual({
-      l2: null,
-      l3: [],
-      context: null,
-    });
-    expect(queryService.query(store, "!!!")).toEqual({
-      l2: null,
-      l3: [],
-      context: null,
-    });
-  });
+      const first = queryService.query(store, "authService");
+      const second = queryService.query(store, "authService");
+
+      expect(second).toEqual(first);
+      expect(first.l2).toEqual({
+        name: "authService",
+        type: "module",
+        filePath: "src/auth.ts",
+        matchType: "exact",
+      });
+      expect(first.context).toEqual({
+        incoming: [{ name: "caller", linkType: "calls" }],
+        outgoing: [],
+      });
+    },
+  );
+
+  it(
+    "handles punctuation-only and whitespace-only queries as empty results without throwing",
+    () => {
+      expect(queryService.query(store, "   ")).toEqual({
+        l2: null,
+        l3: [],
+        context: null,
+      });
+      expect(queryService.query(store, "!!!")).toEqual({
+        l2: null,
+        l3: [],
+        context: null,
+      });
+    },
+  );
 });

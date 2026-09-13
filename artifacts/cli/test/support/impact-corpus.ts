@@ -95,13 +95,11 @@ export const CORPUS_FILES: Record<string, string> = {
     "",
   ].join("\n"),
 
-  // ── Case 7 (open gap): receiver-method call ScopeResolver can't type-resolve ──
-  // `engine` has no resolvable type, so no `calls` edge is built from render-host.ts to
-  // EvalRenderer.evalRenderTemplate. Issue #217's fallback is supposed to recover this, and
-  // currently does NOT: Tier A stores the call site's target_function as the full dotted text
-  // `engine.evalRenderTemplate`, while ImpactService.resolveCallSiteFallback looks up the
-  // node's bare name `evalRenderTemplate` with an exact IN (...) match, so the two never meet.
-  // Verified against a live `docuvia init` + `impact` run, 2026-08-25.
+  // ── Case 7 (fallback-covered): receiver-method call ScopeResolver can't type-resolve ──
+  // `engine` has no resolvable type, so no confirmed `calls` edge is built from render-host.ts
+  // to EvalRenderer.evalRenderTemplate. Issue #217's fallback recovers this through the persisted
+  // terminal `callee_name` while retaining raw `target_function` (`engine.evalRenderTemplate`)
+  // for provenance. Phase 6 measures this through the shipped `docuvia impact` path.
   "src/renderer.ts": [
     "export class EvalRenderer {",
     "  evalRenderTemplate(): string {",

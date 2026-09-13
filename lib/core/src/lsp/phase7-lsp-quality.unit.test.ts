@@ -3,12 +3,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolveNpmNpxBinary } from "./lsp-binary-resolver-strategies.js";
 import { resolveLspWorkspacePath } from "./lsp-workspace-path.js";
+import { partitionTierBBucket } from "./tier-b-project-partitioner.js";
 
 // TDD-SOURCE: lib/contracts/src/interfaces/edge-resolution.interfaces.ts#IEdgeResolutionProvider
 // TDD-SOURCE: lib/contracts/src/interfaces/edge-resolution.interfaces.ts#EdgeResolutionProviderConfig
+// TDD-SOURCE: lib/core/src/lsp/tier-b-project-partitioner.ts#partitionTierBBucket (PRJ-001/PRJ-003)
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = path.join(
@@ -23,6 +26,16 @@ function tempWorkspace(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-phase7-lsp-"));
   tempDirs.push(dir);
   return dir;
+}
+
+function writeWorkspaceFile(
+  workspaceRoot: string,
+  relativePath: string,
+  content: string,
+): void {
+  const absolutePath = path.join(workspaceRoot, relativePath);
+  fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+  fs.writeFileSync(absolutePath, content, "utf8");
 }
 
 afterEach(() => {
@@ -55,6 +68,30 @@ describe("Phase 7 LSP provider quality", () => {
     expect(() =>
       resolveLspWorkspacePath(workspaceRoot, "../outside.ts"),
     ).toThrow(/outside the configured workspace root/);
+  });
+
+  it("treats malformed TypeScript project metadata as no local dependency instead of throwing", () => {
+    const workspaceRoot = tempWorkspace();
+    writeWorkspaceFile(workspaceRoot, "proj/package.json", "{not-json");
+    writeWorkspaceFile(workspaceRoot, "proj/tsconfig.json", "{also-not-json");
+    writeWorkspaceFile(workspaceRoot, "proj/src/index.ts", "export {};");
+
+    const partition = partitionTierBBucket({
+      workspaceRoot,
+      languageId: TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+      files: ["proj/src/index.ts"],
+    });
+
+    expect(partition.groups).toEqual([
+      {
+        root: path.join(workspaceRoot, "proj"),
+        files: ["proj/src/index.ts"],
+        deps: [],
+      },
+    ]);
+    expect(partition.fileToProjectRoot.get("proj/src/index.ts")).toBe(
+      path.join(workspaceRoot, "proj"),
+    );
   });
 
   it("returns identical JSON-RPC results across repeated identical requests", async () => {

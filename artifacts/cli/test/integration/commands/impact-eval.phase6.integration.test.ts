@@ -23,8 +23,20 @@ interface NodePathRow {
   path_patterns: string | null;
 }
 
+interface DynamicEvidenceJson {
+  sourceFile: string;
+  status: string;
+  candidatePaths: string[];
+  reason: string;
+}
+
 interface ImpactJsonResult {
-  blastRadius: Array<{ name: string }>;
+  blastRadius: Array<{ name: string; edgeSource?: string }>;
+  dynamicEvidence?: DynamicEvidenceJson[];
+}
+
+interface DynamicEvidenceMetaRow {
+  value: string;
 }
 
 function parsePathPatterns(raw: string | null): string[] {
@@ -121,6 +133,7 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192/#393)", ()
   let db: Database.Database;
   let results: ImpactEvalCaseResult[];
   let repeatedResults: ImpactEvalCaseResult[];
+  let persistedDynamicEvidence: DynamicEvidenceJson[];
 
   beforeAll(async () => {
     sandbox = new TestSandbox();
@@ -134,6 +147,14 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192/#393)", ()
     db = new Database(join(sandbox.dir, ".docuvia/local.db"), {
       readonly: true,
     });
+    const metaRow = db
+      .prepare(
+        "SELECT value FROM docuvia_meta WHERE key LIKE 'impact.dynamic-dependencies.v1:%' LIMIT 1",
+      )
+      .get() as DynamicEvidenceMetaRow | undefined;
+    persistedDynamicEvidence = metaRow
+      ? (JSON.parse(metaRow.value) as DynamicEvidenceJson[])
+      : [];
 
     results = await evaluateCorpus(sandbox, db);
     repeatedResults = await evaluateCorpus(sandbox, db);
@@ -201,6 +222,50 @@ describe("Phase 6: real docuvia impact accuracy regression gate (#192/#393)", ()
       );
       expect(result).toMatchObject({ precision: 1, recall: 1, f1: 1 });
     }
+  });
+
+  it("persists bounded dynamic-import evidence during real init (#393)", () => {
+    expect(persistedDynamicEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFile: "src/plugin-loader.ts",
+          status: "bounded",
+          candidatePaths: ["src/plugins/cleanup-plugin.ts"],
+        }),
+        expect.objectContaining({
+          sourceFile: "src/i18n.ts",
+          status: "bounded",
+          candidatePaths: ["src/locales/en-messages.ts"],
+        }),
+      ]),
+    );
+  });
+
+  it("surfaces bounded evidence and candidate caller through the shipped impact command (#393)", async () => {
+    const run = await sandbox.runCli(
+      ["impact", "runCleanupPlugin", "--format=json"],
+      { reject: false },
+    );
+    expect(run.exitCode).toBe(0);
+    const result = JSON.parse(run.stdout.trim()) as ImpactJsonResult;
+
+    expect(result.dynamicEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceFile: "src/plugin-loader.ts",
+          status: "bounded",
+          candidatePaths: ["src/plugins/cleanup-plugin.ts"],
+        }),
+      ]),
+    );
+    expect(result.blastRadius).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "src/plugin-loader.ts",
+          edgeSource: "dynamic-candidate",
+        }),
+      ]),
+    );
   });
 
   it("recovers bounded runtime import candidates without sacrificing precision (#393)", () => {

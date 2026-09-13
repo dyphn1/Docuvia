@@ -52,9 +52,9 @@ describe("Phase 7 LSP provider quality", () => {
   it("rejects workspace traversal outside the LSP root", () => {
     const workspaceRoot = tempWorkspace();
 
-    expect(() => resolveLspWorkspacePath(workspaceRoot, "../outside.ts")).toThrow(
-      /outside the configured workspace root/,
-    );
+    expect(() =>
+      resolveLspWorkspacePath(workspaceRoot, "../outside.ts"),
+    ).toThrow(/outside the configured workspace root/);
   });
 
   it("returns identical JSON-RPC results across repeated identical requests", async () => {

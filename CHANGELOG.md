@@ -2,6 +2,15 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.8.13](https://github.com/dyphn1/Docuvia/compare/v1.8.12...v1.8.13) (2026-09-13)
+
+### Bug Fixes
+
+- **impact:** include file-level dependents in symbol blast radius ([15ba317](https://github.com/dyphn1/Docuvia/commit/15ba317931cdc9579cb41d2030b4f319deff10e7))
+- **impact:** persist statically provable import and process dependencies ([b00ffaf](https://github.com/dyphn1/Docuvia/commit/b00ffaf7b7751fd53e7d8d888f8ae709f64c355e))
+- **impact:** wire phase6 static dependency services ([d26ff78](https://github.com/dyphn1/Docuvia/commit/d26ff7828fa0d51806368fc8c569f7bf592b1489))
+- restore root typescript language server dependency ([7c88c21](https://github.com/dyphn1/Docuvia/commit/7c88c2162df5ae5fa5f6ae6e11f41b88c5a0865a))
+
 ## [1.8.12](https://github.com/dyphn1/Docuvia/compare/v1.8.11...v1.8.12) (2026-09-12)
 
 ### Bug Fixes

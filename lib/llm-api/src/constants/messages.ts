@@ -7,11 +7,15 @@ export const LlmApiMessages = {
     `Chat completion failed: ${message}`,
   CHAT_COMPLETION_INVALID_JSON:
     "Chat completion failed: response body was not valid JSON",
+  CHAT_COMPLETION_INVALID_RESPONSE:
+    "Chat completion failed: response body did not match the chat-completion contract",
   CHAT_COMPLETION_STREAM_FAILED: "Chat completion stream failed",
   chatCompletionStreamFailedWithReason: (message: string) =>
     `Chat completion stream failed: ${message}`,
   CHAT_COMPLETION_STREAM_INVALID_JSON:
     "Chat completion stream failed: chunk was not valid JSON",
+  CHAT_COMPLETION_STREAM_INVALID_RESPONSE:
+    "Chat completion stream failed: chunk did not match the chat-completion contract",
   /** `checkAvailability()`'s reachability probe (decision 1e) -- a network-level failure
    *  (connection refused, DNS failure, timeout), not a chat-completion failure. */
   AVAILABILITY_CHECK_FAILED: "Reachability check failed",

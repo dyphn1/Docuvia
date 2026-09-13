@@ -45,11 +45,6 @@ jobs:
       - name: Build (all packages)
         run: pnpm run build
 
-      - name: Diagnose exact Prettier output
-        run: |
-          pnpm exec prettier --write artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts test/phase6-impact-reliability-tdd-quality.test.ts
-          git diff -- artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts test/phase6-impact-reliability-tdd-quality.test.ts
-
       - name: Run gated impact-accuracy eval over the regression corpus
         run: pnpm run eval:impact
 

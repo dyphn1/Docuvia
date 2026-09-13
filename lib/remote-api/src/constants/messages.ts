@@ -7,7 +7,11 @@ export const RemoteApiMessages = {
     `Failed to fetch remote L2 nodes: ${message}`,
   FETCH_L2_NODES_INVALID_JSON:
     "Failed to fetch remote L2 nodes: response body was not valid JSON",
+  FETCH_L2_NODES_INVALID_RESPONSE:
+    "Failed to fetch remote L2 nodes: response body did not match the remote-node contract",
   SYNC_PUSH_FAILED: "Sync push failed",
   syncPushFailedWithReason: (message: string) => `Sync push failed: ${message}`,
   SYNC_PUSH_INVALID_JSON: "Sync push failed: response body was not valid JSON",
+  SYNC_PUSH_INVALID_RESPONSE:
+    "Sync push failed: response body did not match the sync-push contract",
 } as const;

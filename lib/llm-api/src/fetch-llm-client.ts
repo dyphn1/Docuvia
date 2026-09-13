@@ -176,7 +176,9 @@ export class FetchLlmClient implements ILlmClient {
     };
   }
 
-  private fromWireChunk(wireChunk: WireChatCompletionChunk): ChatCompletionChunk {
+  private fromWireChunk(
+    wireChunk: WireChatCompletionChunk,
+  ): ChatCompletionChunk {
     return {
       id: wireChunk.id,
       model: wireChunk.model,

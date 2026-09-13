@@ -19,12 +19,16 @@ interface CapabilityEvidence {
   dimensions: Record<TddQualityDimension, DimensionEvidenceSpec>;
 }
 
+const phase6CoreEvidence =
+  "../lib/core/src/impact/phase6-impact-quality.integration.test.ts";
+
 const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Impact target resolution and blast radius",
     files: [
       "../lib/core/src/impact/impact.service.unit.test.ts",
       "../lib/core/src/impact/impact.service.ts",
+      phase6CoreEvidence,
     ],
     dimensions: {
       positiveParameters: {
@@ -61,6 +65,7 @@ const capabilities: readonly CapabilityEvidence[] = [
       "../lib/core/src/impact/impact.service.unit.test.ts",
       "../lib/core/src/impact/impact.service.ts",
       "../lib/schema/src/sqlite/repos/call-sites-repo.ts",
+      phase6CoreEvidence,
     ],
     dimensions: {
       positiveParameters: {
@@ -96,6 +101,7 @@ const capabilities: readonly CapabilityEvidence[] = [
     files: [
       "../lib/core/src/impact/impact.service.unit.test.ts",
       "../lib/core/src/impact/impact.service.ts",
+      phase6CoreEvidence,
     ],
     dimensions: {
       positiveParameters: {
@@ -129,8 +135,9 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Impact accuracy benchmark and regression gate",
     files: [
-      "../artifacts/cli/test/integration/commands/impact-eval.integration.test.ts",
+      "../artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts",
       "../artifacts/cli/test/support/impact-eval-scorer.ts",
+      "../artifacts/cli/test/support/impact-eval-scorer.phase6.unit.test.ts",
       "../artifacts/cli/test/support/impact-corpus.ts",
       "../.github/workflows/eval.yml",
     ],
@@ -166,7 +173,10 @@ const capabilities: readonly CapabilityEvidence[] = [
 function readEvidenceFiles(files: readonly string[]): string {
   return files
     .map((relativePath) =>
-      readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), "utf8"),
+      readFileSync(
+        fileURLToPath(new URL(relativePath, import.meta.url)),
+        "utf8",
+      ),
     )
     .join("\n");
 }
@@ -177,13 +187,15 @@ function evaluateCapability(capability: CapabilityEvidence) {
     Object.entries(capability.dimensions).map(([dimension, spec]) => [
       dimension,
       {
-        passed: spec.evidence.filter((item) => combinedSource.includes(item)).length,
+        passed: spec.evidence.filter((item) => combinedSource.includes(item))
+          .length,
         required: spec.evidence.length,
         naReason: spec.naReason,
       },
     ]),
   ) as TddQualityEvidence["dimensions"];
-  const skippedTests = (combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? []).length;
+  const skippedTests = (combinedSource.match(/\b(?:it|test)\.skip\s*\(/g) ?? [])
+    .length;
 
   return evaluateTddQuality({
     dimensions,
@@ -197,7 +209,10 @@ describe("Phase 6 impact and reliability quantitative TDD quality matrix", () =>
     "$name meets the capability floor with every mandatory evidence gate",
     (capability) => {
       const result = evaluateCapability(capability);
-      expect(result.score).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
+
+      expect(result.score).toBeGreaterThanOrEqual(
+        TDD_QUALITY_MINIMUM_PASS_SCORE,
+      );
       expect(result.result).toBe("PASS");
       expect(result.gates.allApplicableDimensionsHaveEvidence).toBe(true);
       expect(result.gates.allRequiredChecksPass).toBe(true);
@@ -213,6 +228,8 @@ describe("Phase 6 impact and reliability quantitative TDD quality matrix", () =>
 
     expect(aggregate).toBeGreaterThanOrEqual(TDD_QUALITY_MINIMUM_PASS_SCORE);
     expect(results.every((result) => result.result === "PASS")).toBe(true);
-    expect(results.every((result) => result.gates.allRequiredChecksPass)).toBe(true);
+    expect(results.every((result) => result.gates.allRequiredChecksPass)).toBe(
+      true,
+    );
   });
 });

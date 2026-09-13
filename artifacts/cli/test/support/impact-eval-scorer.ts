@@ -11,7 +11,7 @@
  * TDD-SOURCE: issue #192 impact accuracy acceptance criteria
  */
 
-export const IMPACT_EVAL_MIN_MEAN_F1 = 0.5;
+export const IMPACT_EVAL_MIN_MEAN_F1 = 0.75;
 
 export interface ImpactEvalCaseResult {
   scenario: string;
@@ -118,9 +118,10 @@ export function aggregateCases(
 
 /**
  * Phase 6 regression gate. Error rows fail independently of F1 so a crashed case can never be
- * hidden by the aggregate. The 0.500 floor is the corrected-product-path floor: the historical
- * raw-node_links report was 0.250, while the shipped impact fallback is required to recover the
- * two receiver/method-call cases in addition to the static-call and re-export controls.
+ * hidden by the aggregate. The 0.750 floor is the corrected-product-path floor after fixing the
+ * statically decidable value-import and literal child-process gaps in addition to static calls,
+ * re-exports and the receiver/method fallback cases. Runtime-variable/computed import boundaries
+ * deliberately remain in the corpus and are tracked separately by #393 rather than guessed.
  */
 export function assertImpactEvalRegressionFloor(
   aggregate: ImpactEvalAggregate,

@@ -12,6 +12,17 @@ export const IMPACT_MESSAGES = {
    *  -- the graph hasn't looked at every file yet, so "zero dependents" means unknown, not zero. */
   RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE: (processed: number, total: number) =>
     `No dependents found, but only ${processed} of ${total} workspace files have been analyzed -- this is UNKNOWN, not confirmed zero. Run "docuvia analyze" for fuller coverage.`,
+  /** Issue #393: target-relevant runtime dependency evidence exists. The sample includes raw
+   *  source provenance so a user can inspect why the result is lower-bound. Bounded candidates
+   *  are possible runtime targets, not confirmed static edges. */
+  RISK_NOTE_DYNAMIC_DEPENDENCY: (
+    count: number,
+    sourceFile: string,
+    line: number,
+    expression: string,
+    reason: string,
+  ) =>
+    `Observed ${count} target-relevant runtime dependency evidence record(s); e.g. ${sourceFile}:${line} uses import(${expression}) [${reason}]. Dynamic candidates are possible targets, not confirmed runtime edges, so this result is a lower bound.`,
   /** Issue #192: attached to an empty blast radius even at full Tier B coverage -- the static
    *  edge graph only models calls/implements/extends, so dynamic-loading patterns produce no
    *  edge no matter how complete ingestion was (AGENTS.md's documented impact blind spots). */

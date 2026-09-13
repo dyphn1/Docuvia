@@ -27,52 +27,60 @@ describe("Phase 5 SQLite FTS retrieval quality evidence", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("neutralizes FTS operator-like and quote-only input instead of treating it as query syntax", () => {
-    const nodeId = store.graph.insertNode({
-      projectId,
-      name: "operatorLiteral",
-      description: "OR auth operator literal",
-      pathPatterns: ["src/operator.ts"],
-    });
+  it(
+    "neutralizes FTS operator-like and quote-only input instead of treating it as query syntax",
+    () => {
+      const nodeId = store.graph.insertNode({
+        projectId,
+        name: "operatorLiteral",
+        description: "OR auth operator literal",
+        pathPatterns: ["src/operator.ts"],
+      });
 
-    expect(store.fts.searchL2Nodes(["OR"], 10).map((row) => row.id)).toEqual([
-      nodeId,
-    ]);
-    expect(store.fts.searchL2Nodes(['"'], 10)).toEqual([]);
-    expect(() => store.fts.searchL2Nodes(["auth*"], 10)).not.toThrow();
-    expect(() => store.fts.searchL2Nodes(["auth OR operator"], 10)).not.toThrow();
-  });
+      expect(
+        store.fts.searchL2Nodes(["OR"], 10).map((row) => row.id),
+      ).toEqual([nodeId]);
+      expect(store.fts.searchL2Nodes(['"'], 10)).toEqual([]);
+      expect(() => store.fts.searchL2Nodes(["auth*"], 10)).not.toThrow();
+      expect(() =>
+        store.fts.searchL2Nodes(["auth OR operator"], 10),
+      ).not.toThrow();
+    },
+  );
 
-  it("returns the complete mapped L2 row contract rather than the FTS virtual-table shape", () => {
-    const nodeId = store.graph.insertNode({
-      projectId,
-      name: "authService",
-      description: "authentication service",
-      pathPatterns: ["src/auth.ts"],
-      nodeKey: "src/auth.ts#authService",
-    });
+  it(
+    "returns the complete mapped L2 row contract rather than the FTS virtual-table shape",
+    () => {
+      const nodeId = store.graph.insertNode({
+        projectId,
+        name: "authService",
+        description: "authentication service",
+        pathPatterns: ["src/auth.ts"],
+        nodeKey: "src/auth.ts#authService",
+      });
 
-    const [row] = store.fts.searchL2Nodes(["authentication"], 10);
+      const [row] = store.fts.searchL2Nodes(["authentication"], 10);
 
-    expect(row).toMatchObject({
-      id: nodeId,
-      project_id: projectId,
-      name: "authService",
-      type: "module",
-      description: "authentication service",
-      path_patterns: JSON.stringify(["src/auth.ts"]),
-      node_key: "src/auth.ts#authService",
-    });
-    expect(row).toEqual(
-      expect.objectContaining({
-        is_system: expect.any(Number),
-        ai_generated: expect.any(Number),
-        needs_review: expect.any(Number),
-        created_at: expect.any(String),
-        updated_at: expect.any(String),
-      }),
-    );
-  });
+      expect(row).toMatchObject({
+        id: nodeId,
+        project_id: projectId,
+        name: "authService",
+        type: "module",
+        description: "authentication service",
+        path_patterns: JSON.stringify(["src/auth.ts"]),
+        node_key: "src/auth.ts#authService",
+      });
+      expect(row).toEqual(
+        expect.objectContaining({
+          is_system: expect.any(Number),
+          ai_generated: expect.any(Number),
+          needs_review: expect.any(Number),
+          created_at: expect.any(String),
+          updated_at: expect.any(String),
+        }),
+      );
+    },
+  );
 
   it("returns identical ranked L2 order across repeated identical searches", () => {
     for (const name of ["alphaAuth", "betaAuth", "gammaAuth"]) {
@@ -101,12 +109,16 @@ describe("Phase 5 SQLite FTS retrieval quality evidence", () => {
       name: "src/auth.ts",
       pathPatterns: ["src/auth.ts"],
     });
-    for (const title of ["JWT decision A", "JWT decision B", "JWT decision C"]) {
+    for (const title of [
+      "JWT decision A",
+      "JWT decision B",
+      "JWT decision C",
+    ]) {
       store.l3.upsertDecision({
         projectId,
         l2NodeId: anchorId,
         title,
-        content: "shared JWT authentication decision",
+        content: `shared JWT authentication decision ${title}`,
         nodeType: "decision",
         confidence: 0.9,
         commitSha: "phase5",

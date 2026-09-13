@@ -89,7 +89,8 @@ export class ImpactWorkflow {
         return null;
       }
 
-      const dynamicEvidence = impactService.getDynamicEvidence?.(store, target) ?? [];
+      const dynamicEvidence =
+        impactService.getDynamicEvidence?.(store, target) ?? [];
       // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
       // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
       // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
@@ -136,11 +137,7 @@ export class ImpactWorkflow {
     dynamicEvidence: DynamicDependencyEvidence[],
   ): Promise<Omit<ImpactResult, "blastRadius" | "dynamicEvidence">> {
     const { tierBCoverage, registryMediated, targetFileResolution } =
-      await this.resolveTargetContext(
-        store,
-        target,
-        confirmedBlastRadiusCount,
-      );
+      await this.resolveTargetContext(store, target, confirmedBlastRadiusCount);
 
     // Issue #192: raw workspace Tier B counts feed the epistemic verdict directly (unlike
     // `tierBCoverage`, which only fires on empty results) so a non-empty-but-partial graph is

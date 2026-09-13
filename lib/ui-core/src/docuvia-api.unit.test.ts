@@ -2,9 +2,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import crypto from "node:crypto";
 import {
   docuviaMemory,
+  ErrorCodes,
   MemoryKeys,
   createMockLogger,
 } from "@workspace/contracts";
+
+// TDD-SOURCE: docs/gitbook/architecture/application-lifecycle-and-state.md#2-roles--state-management-boundaries
+// TDD-SOURCE: docs/gitbook/architecture/virtual-contracts-architecture.md
+// TDD-SOURCE: lib/ui-core/src/docuvia-api.ts#docuviaApi
 
 // Isolates docuviaApi.analyze()'s own memory-key dispatch logic (issue #42's new pre-LLM-branch
 // check) from AnalyzeWorkflow's real (heavier) implementation, already covered by
@@ -70,6 +75,49 @@ describe("docuviaApi.analyze() -- agent-authored pre-LLM-branch dispatch (issue 
     expect(AnalyzeWorkflowMock).not.toHaveBeenCalled();
   });
 
+  it("fails with INVALID_INPUT before constructing a workflow when WORKSPACE_ROOT is missing", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    docuviaMemory.deleteScope(scopeId);
+    docuviaMemory.createScope(scopeId);
+
+    await expect(
+      docuviaApi.analyze(scopeId, createMockLogger()),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.INVALID_INPUT,
+      message: expect.stringContaining(MemoryKeys.WORKSPACE_ROOT),
+    });
+    expect(AnalyzeWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it("returns equivalent results and workflow options across repeated identical dispatch", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    const decisions = [
+      {
+        title: "Stable decision",
+        nodeType: "decision" as const,
+        content: "same input",
+        confidence: 0.8,
+      },
+    ];
+    docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, "sample.ts");
+    docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED_DECISIONS, decisions);
+
+    const first = await docuviaApi.analyze(scopeId, createMockLogger());
+    const firstOptions = AnalyzeWorkflowMock.mock.calls[0]?.[2];
+    const second = await docuviaApi.analyze(scopeId, createMockLogger());
+    const secondOptions = AnalyzeWorkflowMock.mock.calls[1]?.[2];
+
+    expect(second).toEqual(first);
+    expect(secondOptions).toEqual(firstOptions);
+    expect(first).toEqual({
+      kind: "decisionExtraction",
+      targetPath: "sample.ts",
+      decisions: [],
+      persisted: 0,
+      deduped: 0,
+    });
+  });
+
   it("passes llmApiKey through as an explicit argument instead of reading it from docuviaMemory (issue #109)", async () => {
     const { docuviaApi } = await import("./docuvia-api.js");
     docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, "sample.ts");
@@ -124,7 +172,6 @@ describe("docuviaApi.stageAgentAuthoredDecisions() -- input-time target existenc
 
   it("throws FS_READ_FAILED for a nonexistent target instead of leaving an entry pending", async () => {
     const { docuviaApi } = await import("./docuvia-api.js");
-    const { ErrorCodes } = await import("@workspace/contracts");
     docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, "does-not-exist.ts");
     docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED_DECISIONS, [
       {

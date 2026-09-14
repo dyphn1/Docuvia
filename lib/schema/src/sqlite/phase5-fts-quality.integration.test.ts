@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { ErrorCodes } from "@workspace/contracts";
 import { GraphStore } from "./graph-store.js";
 
 // TDD-SOURCE: lib/contracts/src/interfaces/graph-store.interfaces.ts#IFtsRepo
@@ -28,7 +29,7 @@ describe("Phase 5 SQLite FTS retrieval quality evidence", () => {
   });
 
   it(
-    "neutralizes FTS operator-like and quote-only input instead of treating it as query syntax",
+    "[invalid-input] neutralizes FTS operator-like and quote-only input instead of treating it as query syntax",
     () => {
       const nodeId = store.graph.insertNode({
         projectId,
@@ -48,8 +49,27 @@ describe("Phase 5 SQLite FTS retrieval quality evidence", () => {
     },
   );
 
+  it("[error-handling] wraps a closed SQLite handle as DB_QUERY_FAILED", async () => {
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    await store.close();
+
+    let failure: unknown;
+    try {
+      store.fts.searchL2Nodes(["authentication"], 10);
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({
+      code: ErrorCodes.DB_QUERY_FAILED,
+      message: expect.stringContaining("Failed to search l2 nodes via FTS"),
+    });
+
+    store = await GraphStore.open({ dbPath });
+  });
+
   it(
-    "returns the complete mapped L2 row contract rather than the FTS virtual-table shape",
+    "[happy] returns the complete mapped L2 row contract rather than the FTS virtual-table shape",
     () => {
       const nodeId = store.graph.insertNode({
         projectId,
@@ -81,6 +101,49 @@ describe("Phase 5 SQLite FTS retrieval quality evidence", () => {
       );
     },
   );
+
+  it("[state-diff] keeps the FTS index synchronized across node insert and delete", () => {
+    expect(store.fts.searchL2Nodes(["indexdelta"], 10)).toEqual([]);
+
+    const nodeId = store.graph.insertNode({
+      projectId,
+      name: "indexDeltaNode",
+      description: "indexdelta searchable content",
+      pathPatterns: ["src/index-delta.ts"],
+      nodeKey: "src/index-delta.ts#indexDeltaNode",
+    });
+
+    expect(
+      store.fts.searchL2Nodes(["indexdelta"], 10).map((row) => row.id),
+    ).toEqual([nodeId]);
+
+    expect(store.graph.deleteNodesForPath("src/index-delta.ts")).toEqual([
+      nodeId,
+    ]);
+    expect(store.fts.searchL2Nodes(["indexdelta"], 10)).toEqual([]);
+  });
+
+  it("[stress] returns a bounded deterministic result set across 250 indexed nodes", () => {
+    const insertedIds = store.withTransaction(() =>
+      Array.from({ length: 250 }, (_, index) =>
+        store.graph.insertNode({
+          projectId,
+          name: `stressNode${index}`,
+          description: "stress shared searchable token",
+          pathPatterns: [`src/stress-${index}.ts`],
+          nodeKey: `src/stress-${index}.ts#stressNode${index}`,
+        }),
+      ),
+    );
+
+    const first = store.fts.searchL2Nodes(["stress"], 25).map((row) => row.id);
+    const second = store.fts.searchL2Nodes(["stress"], 25).map((row) => row.id);
+
+    expect(first).toHaveLength(25);
+    expect(new Set(first).size).toBe(25);
+    expect(first.every((id) => insertedIds.includes(id))).toBe(true);
+    expect(second).toEqual(first);
+  });
 
   it("returns identical ranked L2 order across repeated identical searches", () => {
     for (const name of ["alphaAuth", "betaAuth", "gammaAuth"]) {

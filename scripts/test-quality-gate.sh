@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # test-quality-gate.sh — Quantified test quality gate for CI
 #
-# Counts weak assertion patterns that pass even when code is wrong.
-# Fails the build when the count exceeds the allowed baseline.
+# Axis 2 counts weak assertions that pass even when code is wrong.
+# Axis 1 delegates to the #263 functional-category ratchet after Axis 2 passes.
 #
 # Exit codes:
-#   0 — quality gate passed
-#   1 — quality gate failed (too many weak assertions)
+#   0 — quality gates passed
+#   1 — a quality gate failed
 
 set -euo pipefail
 
@@ -31,13 +31,8 @@ else
 fi
 
 # ─── Sum the counts out of "path:count" lines ────────────────────────────
-# On Windows, `path` itself can contain a colon (the drive letter, e.g.
-# "C:\Users\...\file.ts"), so a naive `awk -F: '{...$1...}'` split on the FIRST colon would
-# truncate every path down to "C" and silently misattribute every count (issue found in review:
-# totals still came out right by luck -- summing one bogus "C" bucket equals summing the real
-# ones -- but the per-file breakdown below was garbage on Windows). The count is always the
-# LAST field, so anchor there ($NF) instead -- safe regardless of how many colons appear
-# earlier in the path.
+# On Windows, `path` itself can contain a colon (the drive letter), so the count is always read
+# from the LAST field rather than assuming the first colon separates path and count.
 sum_counts() {
   awk -F: '{ n = $NF; if (n ~ /^[0-9]+$/) total += n } END { print total + 0 }'
 }
@@ -64,7 +59,7 @@ fi
 
 # ─── Per-file breakdown (top 15 offenders) ─────────────────────────────
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║              TEST QUALITY GATE                              ║"
+echo "║              TEST QUALITY GATE — AXIS 2                     ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Weak assertions:     $WEAK_COUNT / $TOTAL_ASSERTIONS total (${RATIO}%)"
 echo "║  Threshold:           220 (static ceiling — lower it as the count drops)"
@@ -85,24 +80,27 @@ echo "║  Top offenders (weak assertion count per file):"
     done || true
 echo "╠══════════════════════════════════════════════════════════════╣"
 
-# ─── Threshold check ────────────────────────────────────────────────────
+# ─── Axis 2 threshold check ─────────────────────────────────────────────
 THRESHOLD=220
 
-if [ "$WEAK_COUNT" -le "$THRESHOLD" ]; then
-  echo "║  ✅ PASSED — $WEAK_COUNT weak assertions (≤ $THRESHOLD)"
-  echo "╚══════════════════════════════════════════════════════════════╝"
-  exit 0
-else
+if [ "$WEAK_COUNT" -gt "$THRESHOLD" ]; then
   echo "║  ❌ FAILED — $WEAK_COUNT weak assertions (>$THRESHOLD)"
   echo "║"
   echo "║  To fix: replace weak assertions with content-verifying ones:"
-  echo "║    toBeDefined()    → toEqual(expectedValue)"
-  echo "║    toBeUndefined()  → not.toHaveProperty('key') or toBeNull()"
-  echo "║    toBeTruthy()     → toBe(true) or toEqual(expected)"
-  echo "║    toBeFalsy()      → toBe(false) or toBeNull()"
+  echo "║    toBeDefined()      → toEqual(expectedValue)"
+  echo "║    toBeUndefined()    → not.toHaveProperty('key') or toBeNull()"
+  echo "║    toBeTruthy()       → toBe(true) or toEqual(expected)"
+  echo "║    toBeFalsy()        → toBe(false) or toBeNull()"
   echo "║    toBeGreaterThan(0) → toBe(n) or toHaveLength(n)"
-  echo "║"
-  echo "║  Run: grep -rn \"$WEAK_PATTERNS\" --include='*.test.ts' to find them"
   echo "╚══════════════════════════════════════════════════════════════╝"
   exit 1
 fi
+
+echo "║  ✅ PASSED — $WEAK_COUNT weak assertions (≤ $THRESHOLD)"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo
+
+# ─── Axis 1 category coverage ratchet (#263) ───────────────────────────
+# Recompute base and HEAD every run; never trust the historical FAIL_COUNT=203 claim as a static
+# baseline. The ratchet allows existing debt to remain temporarily but rejects any increase.
+bash "$REPO_ROOT/scripts/test-category-ratchet.sh"

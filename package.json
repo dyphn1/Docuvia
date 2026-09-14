@@ -18,7 +18,7 @@
     "test": "rimraf coverage && vitest run --coverage --testTimeout=120000 --hookTimeout=120000",
     "eval:impact": "vitest run artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts artifacts/cli/test/support/impact-eval-scorer.phase6.unit.test.ts --testTimeout=240000 --hookTimeout=240000",
     "format": "prettier --write .",
-    "prepare": "prettier --write lib/git-local/test/phase2-git-local-quality.integration.test.ts && git diff -- lib/git-local/test/phase2-git-local-quality.integration.test.ts && husky"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",

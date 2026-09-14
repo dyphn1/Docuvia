@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/migration-runner.contract.integration.test.ts#anonymous@L79
+id: lib/schema/src/sqlite/migration-runner.contract.integration.test.ts#anonymous@L54
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/migration-runner.contract.integration.test.ts

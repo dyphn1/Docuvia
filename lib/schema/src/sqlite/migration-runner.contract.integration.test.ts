@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { applyMigrations } from "./migration-runner.js";
 
 // TDD-SOURCE: docs/gitbook/architecture/testing-and-quality-architecture.md
+// TDD-SOURCE: https://github.com/dyphn1/Docuvia/issues/263
 
 const tempDirs: string[] = [];
 
@@ -40,7 +41,7 @@ afterEach(() => {
 });
 
 describe("applyMigrations contract", () => {
-  it("handles an empty migration directory and creates an empty migration ledger", () => {
+  it("[invalid-input] handles an empty migration directory and creates an empty migration ledger", () => {
     const migrationsDir = makeTempDir("docuvia-migrations-empty-");
     const { db } = openTempDatabase();
 
@@ -52,7 +53,7 @@ describe("applyMigrations contract", () => {
     }
   });
 
-  it("ignores non-SQL files instead of recording or executing them", () => {
+  it("[invalid-input] ignores non-SQL files instead of recording or executing them", () => {
     const migrationsDir = makeTempDir("docuvia-migrations-nonsql-");
     fs.writeFileSync(
       path.join(migrationsDir, "README.md"),
@@ -77,7 +78,7 @@ describe("applyMigrations contract", () => {
     }
   });
 
-  it("applies pending migrations in deterministic filename order", () => {
+  it("[happy] applies pending migrations in deterministic filename order", () => {
     const migrationsDir = makeTempDir("docuvia-migrations-order-");
     writeMigration(
       migrationsDir,
@@ -106,7 +107,7 @@ describe("applyMigrations contract", () => {
     }
   });
 
-  it("rolls back all pending migration effects and ledger writes when a later migration fails", () => {
+  it("[error-handling] rolls back all pending migration effects and ledger writes when a later migration fails", () => {
     const migrationsDir = makeTempDir("docuvia-migrations-rollback-");
     writeMigration(
       migrationsDir,
@@ -170,5 +171,86 @@ describe("applyMigrations contract", () => {
     };
 
     expect(run()).toEqual(run());
+  });
+
+  it("[state-diff] applies a newly added migration exactly once without replaying the existing ledger", () => {
+    const migrationsDir = makeTempDir("docuvia-migrations-state-diff-");
+    writeMigration(
+      migrationsDir,
+      "0001_create.sql",
+      "CREATE TABLE state_probe (id INTEGER PRIMARY KEY, value TEXT NOT NULL); INSERT INTO state_probe (value) VALUES ('initial');",
+    );
+    const { db } = openTempDatabase();
+
+    try {
+      applyMigrations(db, migrationsDir);
+      const before = {
+        ledger: migrationLedger(db),
+        rows: db.prepare("SELECT value FROM state_probe ORDER BY id").all(),
+      };
+
+      writeMigration(
+        migrationsDir,
+        "0002_append.sql",
+        "INSERT INTO state_probe (value) VALUES ('added');",
+      );
+      applyMigrations(db, migrationsDir);
+      const after = {
+        ledger: migrationLedger(db),
+        rows: db.prepare("SELECT value FROM state_probe ORDER BY id").all(),
+      };
+
+      applyMigrations(db, migrationsDir);
+      const afterRepeat = {
+        ledger: migrationLedger(db),
+        rows: db.prepare("SELECT value FROM state_probe ORDER BY id").all(),
+      };
+
+      expect(before).toEqual({
+        ledger: ["0001_create.sql"],
+        rows: [{ value: "initial" }],
+      });
+      expect(after).toEqual({
+        ledger: ["0001_create.sql", "0002_append.sql"],
+        rows: [{ value: "initial" }, { value: "added" }],
+      });
+      expect(afterRepeat).toEqual(after);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("[stress] applies a long deterministic chain of migrations without dropping or duplicating ledger entries", () => {
+    const migrationsDir = makeTempDir("docuvia-migrations-stress-");
+    const migrationCount = 100;
+    writeMigration(
+      migrationsDir,
+      "0000_create.sql",
+      "CREATE TABLE stress_probe (id INTEGER PRIMARY KEY, value INTEGER NOT NULL);",
+    );
+    for (let index = 1; index <= migrationCount; index++) {
+      writeMigration(
+        migrationsDir,
+        `${String(index).padStart(4, "0")}_insert.sql`,
+        `INSERT INTO stress_probe (value) VALUES (${index});`,
+      );
+    }
+    const { db } = openTempDatabase();
+
+    try {
+      applyMigrations(db, migrationsDir);
+
+      expect(migrationLedger(db)).toHaveLength(migrationCount + 1);
+      expect(
+        db.prepare("SELECT COUNT(*) AS count FROM stress_probe").get(),
+      ).toEqual({ count: migrationCount });
+      expect(
+        db
+          .prepare("SELECT value FROM stress_probe ORDER BY id DESC LIMIT 1")
+          .get(),
+      ).toEqual({ value: migrationCount });
+    } finally {
+      db.close();
+    }
   });
 });

@@ -84,7 +84,7 @@ describe("call-site persistence category coverage", () => {
     expect(outgoingCallsFromFoo()).toEqual(["bar"]);
   });
 
-  it("[invalid-input] preserves an unresolved call-site without inventing a graph edge", async () => {
+  it("[invalid-input] preserves an unknown bare call-site without inventing a graph edge", async () => {
     const result = await persister.persist({
       store,
       workspaceRoot: tmpDir,
@@ -104,13 +104,13 @@ describe("call-site persistence category coverage", () => {
       resolved: 0,
       selfDiscarded: 0,
       unresolvable: 0,
-      external: 0,
+      external: 1,
       unknownReceiver: 0,
-      unresolved: 1,
+      unresolved: 0,
     });
   });
 
-  it("[error-handling] reports unresolved resolution state instead of silently claiming success", async () => {
+  it("[error-handling] reports the structural external classification instead of claiming a resolved edge", async () => {
     const result = await persister.persist({
       store,
       workspaceRoot: tmpDir,
@@ -126,9 +126,9 @@ describe("call-site persistence category coverage", () => {
         resolved: 0,
         selfDiscarded: 0,
         unresolvable: 0,
-        external: 0,
+        external: 1,
         unknownReceiver: 0,
-        unresolved: 1,
+        unresolved: 0,
       },
     });
   });

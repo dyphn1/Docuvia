@@ -28,8 +28,7 @@ test("requires all five categories for persistence tests", () => {
   const report = scanEntries([
     {
       file: "lib/core/foo.integration.test.ts",
-      source:
-        '[happy] [invalid-input] [error-handling] [stress] [state-diff]',
+      source: "[happy] [invalid-input] [error-handling] [stress] [state-diff]",
     },
   ]);
   assert.equal(report.failCount, 0);

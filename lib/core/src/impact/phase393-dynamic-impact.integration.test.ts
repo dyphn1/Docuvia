@@ -75,7 +75,7 @@ describe("issue #393 dynamic dependency evidence", () => {
     );
   }
 
-  it("persists bounded template-import candidates deterministically without confirmed graph edges", async () => {
+  it("[happy] persists bounded template-import candidates deterministically without confirmed graph edges", async () => {
     const targetFile = "src/plugins/cleanup-plugin.ts";
     const sourceFile = "src/plugin-loader.ts";
     write(
@@ -144,10 +144,10 @@ describe("issue #393 dynamic dependency evidence", () => {
     expect(secondCandidates).toEqual(firstCandidates);
 
     const targetNode = store.graph.findNodeByName("runCleanupPlugin");
-    expect(targetNode).toBeDefined();
+    if (!targetNode) throw new Error("Expected persisted runCleanupPlugin node");
     expect(
       store.graph
-        .getIncomingRelations(targetNode!.id)
+        .getIncomingRelations(targetNode.id)
         .filter(({ linkType }) => linkType !== "contains"),
     ).toEqual([]);
   });
@@ -199,7 +199,7 @@ describe("issue #393 dynamic dependency evidence", () => {
     expect(dynamicCandidates("OTHER")).toEqual([]);
   });
 
-  it("persists unbounded runtime expressions with provenance but never invents a dependent", async () => {
+  it("[invalid-input] persists unbounded runtime expressions with provenance but never invents a dependent", async () => {
     const targetFile = "src/plugins/cleanup-plugin.ts";
     const sourceFile = "src/runtime-loader.ts";
     write(
@@ -240,6 +240,122 @@ describe("issue #393 dynamic dependency evidence", () => {
         candidatePaths: [],
         reason: "unbounded-runtime-expression",
         startLine: 1,
+      }),
+    ]);
+  });
+
+  it("[error-handling] degrades corrupted persisted evidence to an empty evidence set", () => {
+    store.meta.set(`impact.dynamic-dependencies.v1:${projectId}`, "{not-json");
+
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([]);
+  });
+
+  it("[state-diff] replaces a stale bounded candidate when reparsing the source as unbounded", async () => {
+    const targetFile = "src/plugins/cleanup-plugin.ts";
+    const sourceFile = "src/plugin-loader.ts";
+    write(
+      targetFile,
+      'export function runCleanupPlugin() { return "cleaned"; }\n',
+    );
+    write(
+      sourceFile,
+      [
+        "export async function loadPlugin(pluginName: string) {",
+        "  return import(`./plugins/${pluginName}`);",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(targetFile, {
+          functions: [{ name: "runCleanupPlugin", startLine: 0, endLine: 0 }],
+        }),
+        parsed(sourceFile, {
+          functions: [{ name: "loadPlugin", startLine: 0, endLine: 2 }],
+        }),
+      ],
+      tags: [],
+    });
+    expect(dynamicCandidates("runCleanupPlugin")).toEqual([
+      expect.objectContaining({ name: sourceFile }),
+    ]);
+
+    write(
+      sourceFile,
+      [
+        "export async function loadPlugin(moduleName: string) {",
+        "  return import(moduleName);",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(sourceFile, {
+          functions: [{ name: "loadPlugin", startLine: 0, endLine: 2 }],
+        }),
+      ],
+      tags: [],
+    });
+
+    expect(dynamicCandidates("runCleanupPlugin")).toEqual([]);
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile,
+        expression: "moduleName",
+        status: DynamicDependencyStatuses.UNRESOLVED,
+        candidatePaths: [],
+        reason: "unbounded-runtime-expression",
+      }),
+    ]);
+  });
+
+  it("[stress] keeps the maximum 64-candidate local pattern bounded and deterministic", async () => {
+    const sourceFile = "src/plugin-loader.ts";
+    const candidateFiles = Array.from(
+      { length: 64 },
+      (_, index) => `src/plugins/plugin-${String(index).padStart(2, "0")}.ts`,
+    );
+    for (const candidateFile of candidateFiles) {
+      write(candidateFile, `export const plugin = ${JSON.stringify(candidateFile)};\n`);
+    }
+    write(
+      sourceFile,
+      [
+        "export async function loadPlugin(pluginName: string) {",
+        "  return import(`./plugins/${pluginName}`);",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        ...candidateFiles.map((file) => parsed(file)),
+        parsed(sourceFile, {
+          functions: [{ name: "loadPlugin", startLine: 0, endLine: 2 }],
+        }),
+      ],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile,
+        status: DynamicDependencyStatuses.BOUNDED,
+        candidatePaths: candidateFiles,
+        reason: "bounded-local-pattern",
       }),
     ]);
   });

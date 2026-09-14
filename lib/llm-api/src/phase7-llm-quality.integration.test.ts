@@ -5,6 +5,8 @@ import {
   CHAT_TOOL_TYPE,
   ChatMessageRoles,
   ChatToolChoiceModes,
+  DocuviaError,
+  ErrorCodes,
   type ChatCompletionRequest,
 } from "@workspace/contracts";
 import { FetchLlmClient } from "./fetch-llm-client.js";
@@ -34,6 +36,18 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+async function captureDocuviaError(
+  promise: Promise<unknown>,
+): Promise<DocuviaError> {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof DocuviaError) return error;
+    throw error;
+  }
+  throw new Error("Expected DocuviaError");
+}
+
 describe("Phase 7 FetchLlmClient contract quality", () => {
   let close: (() => Promise<void>) | undefined;
 
@@ -42,7 +56,7 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     close = undefined;
   });
 
-  it("preserves optional request fields and returns the complete validated tool-call response shape", async () => {
+  it("[happy] preserves optional request fields and returns the complete validated tool-call response shape", async () => {
     let receivedBody = "";
     const server = await startServer(async (req, res) => {
       receivedBody = await readBody(req);
@@ -117,20 +131,39 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     });
 
     const wire = JSON.parse(receivedBody);
-    expect(wire).toMatchObject({
+    expect(wire).toEqual({
       model: "gpt-test",
+      messages: [
+        { role: "system", content: "rules" },
+        { role: "user", content: "lookup", name: "caller" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "call-0",
+              type: "function",
+              function: { name: "lookup", arguments: '{"id":6}' },
+            },
+          ],
+        },
+        { role: "tool", content: '{"ok":true}', tool_call_id: "call-0" },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "lookup",
+            description: "lookup a record",
+            parameters: { type: "object" },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "lookup" } },
       temperature: 0,
       max_tokens: 7,
       stream: false,
-      tool_choice: { type: "function", function: { name: "lookup" } },
     });
-    expect(wire.messages[1]).toEqual({
-      role: "user",
-      content: "lookup",
-      name: "caller",
-    });
-    expect(wire.messages[2].tool_calls[0].id).toBe("call-0");
-    expect(wire.messages[3].tool_call_id).toBe("call-0");
     expect(result).toEqual({
       id: "chatcmpl-tool",
       model: "gpt-test",
@@ -155,7 +188,7 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     });
   });
 
-  it("rejects valid JSON with wrong required completion field types as LLM_INVALID_RESPONSE", async () => {
+  it("[invalid-input] rejects valid JSON with wrong required completion field types as LLM_INVALID_RESPONSE", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ id: 42, model: "gpt-test", choices: [] }));
@@ -165,17 +198,18 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url });
 
-    await expect(
+    const error = await captureDocuviaError(
       client.chatCompletion({
         model: "gpt-test",
         messages: [{ role: ChatMessageRoles.USER, content: "hello" }],
       }),
-    ).rejects.toMatchObject({
-      code: "LLM_INVALID_RESPONSE",
-      message: expect.stringContaining(
-        "did not match the chat-completion contract",
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_INVALID_RESPONSE);
+    expect(
+      error.message.startsWith(
+        "Chat completion failed: response body did not match the chat-completion contract",
       ),
-    });
+    ).toBe(true);
   });
 
   it("rejects a valid-JSON SSE chunk with wrong required field types", async () => {
@@ -201,19 +235,42 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url });
 
-    await expect(async () => {
-      for await (const _chunk of client.streamChatCompletion({
+    const error = await captureDocuviaError(
+      (async () => {
+        for await (const _chunk of client.streamChatCompletion({
+          model: "gpt-test",
+          messages: [{ role: ChatMessageRoles.USER, content: "hello" }],
+        })) {
+          // drain
+        }
+      })(),
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_STREAM_FAILED);
+    expect(
+      error.message.startsWith(
+        "Chat completion stream failed: chunk did not match the chat-completion contract",
+      ),
+    ).toBe(true);
+  });
+
+  it("[error-handling] preserves an exact HTTP failure reason and error code", async () => {
+    const server = await startServer((_req, res) => {
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "maintenance-window" }));
+    });
+    close = server.close;
+
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: server.url });
+
+    const error = await captureDocuviaError(
+      client.chatCompletion({
         model: "gpt-test",
         messages: [{ role: ChatMessageRoles.USER, content: "hello" }],
-      })) {
-        // drain
-      }
-    }).rejects.toMatchObject({
-      code: "LLM_STREAM_FAILED",
-      message: expect.stringContaining(
-        "did not match the chat-completion contract",
-      ),
-    });
+      }),
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_HTTP_FAILED);
+    expect(error.message).toBe("Chat completion failed: maintenance-window");
   });
 
   it("returns identical completion results and wire bodies across repeated identical input", async () => {
@@ -251,5 +308,92 @@ describe("Phase 7 FetchLlmClient contract quality", () => {
     expect(second).toEqual(first);
     expect(bodies).toHaveLength(2);
     expect(bodies[1]).toBe(bodies[0]);
+  });
+
+  it("[state-diff] observes changed completion state instead of serving a stale prior response", async () => {
+    let content = "before";
+    const server = await startServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "chatcmpl-changing",
+          model: "gpt-test",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+      );
+    });
+    close = server.close;
+
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: server.url });
+    const request: ChatCompletionRequest = {
+      model: "gpt-test",
+      messages: [{ role: ChatMessageRoles.USER, content: "state" }],
+    };
+
+    const before = await client.chatCompletion(request);
+    expect(before.choices[0]?.message.content).toBe("before");
+
+    content = "after";
+    const after = await client.chatCompletion(request);
+    expect(after.choices[0]?.message.content).toBe("after");
+    expect(after).not.toEqual(before);
+  });
+
+  it("[stress] preserves all 250 completion choices with unique indexes and deterministic repeated reads", async () => {
+    const wireChoices = Array.from({ length: 250 }, (_, index) => ({
+      index,
+      message: {
+        role: "assistant",
+        content: `choice-${index.toString().padStart(3, "0")}`,
+      },
+      finish_reason: "stop",
+    }));
+    const expectedChoices = wireChoices.map((choice) => ({
+      index: choice.index,
+      message: {
+        role: ChatMessageRoles.ASSISTANT,
+        content: choice.message.content,
+      },
+      finishReason: choice.finish_reason,
+    }));
+    const server = await startServer((_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "chatcmpl-stress",
+          model: "gpt-test",
+          choices: wireChoices,
+        }),
+      );
+    });
+    close = server.close;
+
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: server.url });
+    const request: ChatCompletionRequest = {
+      model: "gpt-test",
+      messages: [{ role: ChatMessageRoles.USER, content: "stress" }],
+    };
+
+    const first = await client.chatCompletion(request);
+    const second = await client.chatCompletion(request);
+
+    expect(first).toEqual({
+      id: "chatcmpl-stress",
+      model: "gpt-test",
+      choices: expectedChoices,
+    });
+    expect(second).toEqual(first);
+    expect(new Set(first.choices.map((choice) => choice.index)).size).toBe(250);
+    expect(
+      new Set(first.choices.map((choice) => choice.message.content)).size,
+    ).toBe(250);
   });
 });

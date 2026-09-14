@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { ErrorCodes } from "@workspace/contracts";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { buildFastImportData } from "../src/fast-import.js";
 import {
@@ -24,7 +25,7 @@ describe("Phase 2 git-local acquisition quality", () => {
     await removeTempDir(repo.dir);
   });
 
-  it("buildFastImportData is byte-for-byte deterministic for identical fixed inputs", () => {
+  it("[happy] buildFastImportData is byte-for-byte deterministic for identical fixed inputs", () => {
     const files = new Map<string, string>([
       ["README.md", "# Docuvia\n"],
       ["src/index.ts", "export const x = 1;\n"],
@@ -83,7 +84,7 @@ describe("Phase 2 git-local acquisition quality", () => {
     expect(firstChanges).toContain("src/index.ts");
   });
 
-  it("missing refs remain stable empty/undefined acquisition results instead of throwing", async () => {
+  it("[invalid-input] missing refs remain stable empty/undefined acquisition results instead of throwing", async () => {
     const firstFile = await repo.provider.readFileAtRef(
       repo.dir,
       "does-not-exist",
@@ -105,9 +106,88 @@ describe("Phase 2 git-local acquisition quality", () => {
       "knowledge/_l3",
     );
 
-    expect(firstFile).toBeUndefined();
+    expect(firstFile).toEqual(undefined);
     expect(secondFile).toBe(firstFile);
     expect(firstList).toEqual([]);
     expect(secondList).toEqual(firstList);
   });
+
+  it("[error-handling] wraps a tracked-file acquisition failure as GIT_COMMAND_FAILED", async () => {
+    const missingCwd = path.join(repo.dir, "directory-that-does-not-exist");
+
+    await expect(
+      repo.provider.listTrackedFilesWithBlobHash(missingCwd),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.GIT_COMMAND_FAILED,
+      message: expect.stringContaining("git ls-files -s failed"),
+    });
+  });
+
+  it("[state-diff] exposes the exact new HEAD and blob hash after a second committed revision", async () => {
+    const filePath = path.join(repo.dir, "state.ts");
+    fs.writeFileSync(filePath, "export const state = 1;\n");
+    await git(repo.dir, ["add", "state.ts"]);
+    await git(repo.dir, ["commit", "-m", "state one"]);
+
+    const firstHead = await repo.provider.getHeadSha(repo.dir);
+    const firstTracked = await repo.provider.listTrackedFilesWithBlobHash(
+      repo.dir,
+    );
+    const firstBlob = firstTracked.get("state.ts");
+
+    fs.writeFileSync(filePath, "export const state = 2;\n");
+    await git(repo.dir, ["add", "state.ts"]);
+    await git(repo.dir, ["commit", "-m", "state two"]);
+
+    const secondHead = await repo.provider.getHeadSha(repo.dir);
+    const secondTracked = await repo.provider.listTrackedFilesWithBlobHash(
+      repo.dir,
+    );
+    const secondBlob = secondTracked.get("state.ts");
+
+    expect(firstHead).toMatch(/^[0-9a-f]{40}$/);
+    expect(secondHead).toMatch(/^[0-9a-f]{40}$/);
+    expect(secondHead).not.toBe(firstHead);
+    expect(firstBlob).toMatch(/^[0-9a-f]{40}$/);
+    expect(secondBlob).toMatch(/^[0-9a-f]{40}$/);
+    expect(secondBlob).not.toBe(firstBlob);
+    expect(await repo.provider.getRecentChangedFilePaths(repo.dir, 1)).toEqual([
+      "state.ts",
+    ]);
+  });
+
+  it(
+    "[stress] returns all 200 tracked files with unique blob hashes deterministically across repeated reads",
+    async () => {
+      const expectedPaths: string[] = [];
+      for (let index = 0; index < 200; index++) {
+        const relativePath = `src/stress/file-${index.toString().padStart(3, "0")}.ts`;
+        expectedPaths.push(relativePath);
+        const absolutePath = path.join(repo.dir, relativePath);
+        fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+        fs.writeFileSync(
+          absolutePath,
+          `export const value${index} = ${index};\n`,
+        );
+      }
+      await git(repo.dir, ["add", "src/stress"]);
+      await git(repo.dir, ["commit", "-m", "stress corpus"]);
+
+      const first = Array.from(
+        (await repo.provider.listTrackedFilesWithBlobHash(repo.dir)).entries(),
+      ).sort(([left], [right]) => left.localeCompare(right));
+      const second = Array.from(
+        (await repo.provider.listTrackedFilesWithBlobHash(repo.dir)).entries(),
+      ).sort(([left], [right]) => left.localeCompare(right));
+
+      expect(second).toEqual(first);
+      expect(first).toHaveLength(200);
+      expect(first.map(([filePath]) => filePath)).toEqual(expectedPaths);
+      expect(new Set(first.map(([, blobHash]) => blobHash)).size).toBe(200);
+      expect(
+        first.every(([, blobHash]) => /^[0-9a-f]{40}$/.test(blobHash)),
+      ).toBe(true);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

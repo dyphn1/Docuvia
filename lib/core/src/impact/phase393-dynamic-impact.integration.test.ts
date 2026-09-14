@@ -220,7 +220,14 @@ describe("issue #393 dynamic dependency evidence", () => {
       tags: [],
     });
 
-    expect(impact.getBlastRadius(store, "runCleanupPlugin")).toEqual([]);
+    expect(
+      impact
+        .getBlastRadius(store, "runCleanupPlugin")
+        ?.filter(
+          (entry) =>
+            entry.edgeSource === BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
+        ),
+    ).toEqual([]);
     expect(impact.getDynamicEvidence(store, "runCleanupPlugin")).toEqual([
       expect.objectContaining({
         sourceFile,

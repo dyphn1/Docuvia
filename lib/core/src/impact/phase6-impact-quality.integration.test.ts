@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { ErrorCodes } from "@workspace/contracts";
 import { GraphStore } from "@workspace/schema";
 import { ImpactService } from "./impact.service.js";
 
@@ -9,15 +10,15 @@ import { ImpactService } from "./impact.service.js";
 
 describe("Phase 6 impact quality evidence", () => {
   let tmpDir: string;
+  let dbPath: string;
   let store: GraphStore;
   let projectId: number;
   let impactService: ImpactService;
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-phase6-impact-"));
-    store = await GraphStore.open({
-      dbPath: path.join(tmpDir, ".docuvia", "local.db"),
-    });
+    dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    store = await GraphStore.open({ dbPath });
     projectId = store.projects.insert({
       name: "phase6-impact",
       repoUrl: "file:///phase6-impact",
@@ -30,7 +31,7 @@ describe("Phase 6 impact quality evidence", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns identical blast-radius entries across repeated identical reads", () => {
+  it("[happy] returns identical blast-radius entries across repeated identical reads", () => {
     const targetId = store.graph.insertNode({
       projectId,
       name: "sharedUtil",
@@ -52,6 +53,88 @@ describe("Phase 6 impact quality evidence", () => {
 
     expect(second).toEqual(first);
     expect(first).toEqual([{ name: "caller", type: "module" }]);
+  });
+
+  it("[invalid-input] returns undefined for a target that cannot resolve to a graph node", () => {
+    expect(impactService.getBlastRadius(store, "missing-target")).toEqual(
+      undefined,
+    );
+  });
+
+  it("[error-handling] preserves the wrapped DB error when impact lookup runs on a closed store", async () => {
+    await store.close();
+
+    let failure: unknown;
+    try {
+      impactService.getBlastRadius(store, "sharedUtil");
+    } catch (error) {
+      failure = error;
+    }
+
+    expect(failure).toMatchObject({
+      code: ErrorCodes.DB_QUERY_FAILED,
+      message: expect.stringContaining(
+        "Failed to find node by name: sharedUtil",
+      ),
+    });
+
+    store = await GraphStore.open({ dbPath });
+  });
+
+  it("[state-diff] reflects the exact caller added to a previously empty blast radius", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "statefulTarget",
+      pathPatterns: ["src/target.ts"],
+    });
+    const before = impactService.getBlastRadius(store, "statefulTarget");
+
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "statefulCaller",
+      pathPatterns: ["src/caller.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: targetId,
+      linkType: "calls",
+    });
+
+    const after = impactService.getBlastRadius(store, "statefulTarget");
+
+    expect(before).toEqual([]);
+    expect(after).toEqual([{ name: "statefulCaller", type: "module" }]);
+  });
+
+  it("[stress] resolves 250 distinct static callers without dropping or duplicating dependents", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "hotTarget",
+      pathPatterns: ["src/hot-target.ts"],
+    });
+    const expectedNames = store.withTransaction(() =>
+      Array.from({ length: 250 }, (_, index) => {
+        const name = `caller-${index}`;
+        const callerId = store.graph.insertNode({
+          projectId,
+          name,
+          pathPatterns: [`src/caller-${index}.ts`],
+        });
+        store.graph.insertLink({
+          sourceNodeId: callerId,
+          targetNodeId: targetId,
+          linkType: "calls",
+        });
+        return name;
+      }),
+    );
+
+    const blastRadius = impactService.getBlastRadius(store, "hotTarget");
+    const actualNames = (blastRadius ?? []).map((entry) => entry.name).sort();
+
+    expect(blastRadius).toHaveLength(250);
+    expect(new Set(actualNames).size).toBe(250);
+    expect(actualNames).toEqual([...expectedNames].sort());
   });
 
   it("recovers unresolved receiver calls through the terminal callee name", () => {

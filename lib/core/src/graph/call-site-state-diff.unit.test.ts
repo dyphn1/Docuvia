@@ -104,13 +104,13 @@ describe("call-site persistence category coverage", () => {
       resolved: 0,
       selfDiscarded: 0,
       unresolvable: 0,
-      external: 1,
+      external: 0,
       unknownReceiver: 0,
-      unresolved: 0,
+      unresolved: 1,
     });
   });
 
-  it("[error-handling] reports the structural external classification instead of claiming a resolved edge", async () => {
+  it("[error-handling] reports unresolved classification instead of claiming a resolved edge", async () => {
     const result = await persister.persist({
       store,
       workspaceRoot: tmpDir,
@@ -126,9 +126,9 @@ describe("call-site persistence category coverage", () => {
         resolved: 0,
         selfDiscarded: 0,
         unresolvable: 0,
-        external: 1,
+        external: 0,
         unknownReceiver: 0,
-        unresolved: 0,
+        unresolved: 1,
       },
     });
   });

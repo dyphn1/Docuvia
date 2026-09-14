@@ -47,26 +47,26 @@ When adding or strengthening a test, prefer a real category test over a label-on
 
 ### P0 — High risk
 
-| Pattern | Problem | Preferred replacement |
-| --- | --- | --- |
-| `toBeDefined()` | proves only existence | exact `toEqual(...)`, `toHaveProperty(key, value)`, or exact type/value |
-| `toBeUndefined()` | proves only absence | exact result shape or explicit null/absence contract |
-| `toBeTruthy()` / `toBeFalsy()` | loses type/value information | exact boolean/value assertion |
+| Pattern                        | Problem                      | Preferred replacement                                                   |
+| ------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
+| `toBeDefined()`                | proves only existence        | exact `toEqual(...)`, `toHaveProperty(key, value)`, or exact type/value |
+| `toBeUndefined()`              | proves only absence          | exact result shape or explicit null/absence contract                    |
+| `toBeTruthy()` / `toBeFalsy()` | loses type/value information | exact boolean/value assertion                                           |
 
 ### P1 — Medium risk
 
-| Pattern | Problem | Preferred replacement |
-| --- | --- | --- |
-| `toHaveBeenCalled()` | args may be wrong | `toHaveBeenCalledWith(...)` |
-| `toHaveBeenCalledTimes(n)` only | proves count, not content | verify exact args/result too |
-| `not.toHaveBeenCalled()` only | does not prove alternative behavior | assert the intended result/path |
+| Pattern                         | Problem                             | Preferred replacement           |
+| ------------------------------- | ----------------------------------- | ------------------------------- |
+| `toHaveBeenCalled()`            | args may be wrong                   | `toHaveBeenCalledWith(...)`     |
+| `toHaveBeenCalledTimes(n)` only | proves count, not content           | verify exact args/result too    |
+| `not.toHaveBeenCalled()` only   | does not prove alternative behavior | assert the intended result/path |
 
 ### P2 — Low risk
 
-| Pattern | Problem | Preferred replacement |
-| --- | --- | --- |
-| `toBeGreaterThan(0)` | only proves positive | exact count / exact collection |
-| `arrayContaining(...)` only | extra unexpected items still pass | pair with exact length/shape |
+| Pattern                     | Problem                           | Preferred replacement          |
+| --------------------------- | --------------------------------- | ------------------------------ |
+| `toBeGreaterThan(0)`        | only proves positive              | exact count / exact collection |
+| `arrayContaining(...)` only | extra unexpected items still pass | pair with exact length/shape   |
 
 ## Audit procedure
 

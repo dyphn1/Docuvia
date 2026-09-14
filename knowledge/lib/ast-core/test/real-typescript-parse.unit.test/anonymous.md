@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/real-typescript-parse.unit.test.ts#anonymous@L55
+id: lib/ast-core/test/real-typescript-parse.unit.test.ts#anonymous@L48
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/real-typescript-parse.unit.test.ts

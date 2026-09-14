@@ -56,7 +56,9 @@ describe("Phase 6 impact quality evidence", () => {
   });
 
   it("[invalid-input] returns undefined for a target that cannot resolve to a graph node", () => {
-    expect(impactService.getBlastRadius(store, "missing-target")).toBeUndefined();
+    expect(impactService.getBlastRadius(store, "missing-target")).toEqual(
+      undefined,
+    );
   });
 
   it("[error-handling] preserves the wrapped DB error when impact lookup runs on a closed store", async () => {

@@ -1,9 +1,11 @@
 import {
+  BlastRadiusEdgeSources,
   docuviaFactory,
   TOKENS,
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
+  type DynamicDependencyEvidence,
   type IGraphStore,
   type ILogger,
   type RiskLevel,
@@ -87,9 +89,19 @@ export class ImpactWorkflow {
         return null;
       }
 
+      const dynamicEvidence =
+        impactService.getDynamicEvidence?.(store, target) ?? [];
+      // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
+      // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
+      // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
+      // dependency that may not occur at runtime.
+      const confirmedBlastRadiusCount = blastRadius.filter(
+        (entry) =>
+          entry.edgeSource !== BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
+      ).length;
       const riskLevel = impactService.computeRiskLevel(
         store,
-        blastRadius.length,
+        confirmedBlastRadiusCount,
       );
       await appendImpactLogLine(workspaceRoot, {
         event: IMPACT_EVENTS.SUMMARY,
@@ -101,11 +113,13 @@ export class ImpactWorkflow {
 
       return {
         blastRadius,
+        ...(dynamicEvidence.length > 0 ? { dynamicEvidence } : {}),
         ...(await this.resolveEpistemicFields(
           store,
           target,
-          blastRadius.length,
+          confirmedBlastRadiusCount,
           riskLevel,
+          dynamicEvidence,
         )),
       };
     } finally {
@@ -113,18 +127,17 @@ export class ImpactWorkflow {
     }
   }
 
-  /** Issue #192/#136: resolves every confidence-adjacent field of the result -- the epistemic
-   *  verdict (`riskLevel` override / `epistemic` / `riskNote`), the back-compat `coverageNote`,
-   *  and `tierBCoverage`. Extracted out of `execute()` to keep its cyclomatic complexity under
-   *  the ESLint budget (same refactor precedent as the old `resolveCoverageNote`). */
+  /** Issue #192/#136/#393: resolves every confidence-adjacent field of the result -- the
+   *  epistemic verdict, back-compat coverage note, Tier B coverage, and dynamic evidence. */
   private async resolveEpistemicFields(
     store: IGraphStore,
     target: string,
-    blastRadiusLength: number,
+    confirmedBlastRadiusCount: number,
     computedRiskLevel: RiskLevel,
-  ): Promise<Omit<ImpactResult, "blastRadius">> {
+    dynamicEvidence: DynamicDependencyEvidence[],
+  ): Promise<Omit<ImpactResult, "blastRadius" | "dynamicEvidence">> {
     const { tierBCoverage, registryMediated, targetFileResolution } =
-      await this.resolveTargetContext(store, target, blastRadiusLength);
+      await this.resolveTargetContext(store, target, confirmedBlastRadiusCount);
 
     // Issue #192: raw workspace Tier B counts feed the epistemic verdict directly (unlike
     // `tierBCoverage`, which only fires on empty results) so a non-empty-but-partial graph is
@@ -132,17 +145,18 @@ export class ImpactWorkflow {
     const coverage = store.files.getTierBCoverage();
 
     const epistemicResult = resolveImpactEpistemic({
-      blastRadiusCount: blastRadiusLength,
+      blastRadiusCount: confirmedBlastRadiusCount,
       computedRiskLevel,
       workspaceFilesProcessed: coverage?.processedFiles,
       workspaceFilesTotal: coverage?.totalFiles,
       registryMediated,
       targetFileResolution,
+      dynamicEvidence,
     });
 
-    // Issue #192: partialCoverage flag -- true when Tier B coverage is incomplete
-    // (processed < total) and we have a non-empty blast radius, or when empty blast radius
-    // but Tier B is incomplete. This flag indicates the edge graph has known gaps.
+    // Issue #192: partialCoverage flag -- true when Tier B coverage is incomplete. This remains
+    // distinct from #393 dynamic evidence: one is ingestion completeness, the other is a modeled
+    // runtime-analysis boundary.
     const hasPartialCoverage =
       coverage != null &&
       coverage.totalFiles > 0 &&
@@ -169,38 +183,27 @@ export class ImpactWorkflow {
 
   /** Resolves the target's node metadata: the Tier B hint (empty-result-only gating lives in
    *  `resolveTierBCoverageHint`), the issue #136 registry-mediated signal, and issue #221 P2''s
-   *  own-file call-resolution counters. Extracted from `resolveEpistemicFields` for the ESLint
-   *  complexity budget. */
+   *  own-file call-resolution counters. */
   private async resolveTargetContext(
     store: IGraphStore,
     target: string,
-    blastRadiusLength: number,
+    confirmedBlastRadiusCount: number,
   ): Promise<{
     tierBCoverage?: TierBCoverageHint;
     registryMediated: boolean;
     targetFileResolution?: TargetFileResolution;
   }> {
-    // `impact` only ever reports the incoming/blast-radius direction -- `outgoingEmpty` is
-    // hardcoded `false` so the "own file's outgoing calls" half of the hint never applies here
-    // (see `resolveTierBCoverageHint`'s doc comment). Re-resolves the node by name (mirrors
-    // `query.service.ts`'s own "re-resolve for metadata" precedent) since `IImpactService`
-    // doesn't expose the resolved node's `filePath` today.
     const node = store.graph.findNodeByName(target);
     const tierBCoverage = docuviaFactory
       .resolve(TOKENS.TierBCoverageHintProvider)
-      .resolve(store, node?.filePath, blastRadiusLength === 0, false);
+      .resolve(store, node?.filePath, confirmedBlastRadiusCount === 0, false);
 
-    // Issue #136: a factory/registry-mediated dependency (docuviaFactory.register/resolve,
-    // TOKENS.*) is invisible to the static edge graph -- an empty blast radius for such a
-    // symbol is "partial coverage", never a confident LOW.
+    // Issue #136: a factory/registry-mediated dependency is invisible to the static edge graph.
     const registryMediated =
-      blastRadiusLength === 0 &&
+      confirmedBlastRadiusCount === 0 &&
       !!node?.filePath &&
       (await this.fileUsesFactoryRegistry(node.filePath));
 
-    // Issue #221 P2': the target's own file's Tier A call-site resolution counters -- an empty
-    // blast radius whose own file left most call sites unresolved is even less trustworthy
-    // than the generic static-edges-only caveat. Absent stats degrade to `undefined`.
     let targetFileResolution: TargetFileResolution | undefined;
     if (node?.filePath) {
       const stats = readCallResolution(store)[node.filePath];
@@ -215,10 +218,7 @@ export class ImpactWorkflow {
     return { tierBCoverage, registryMediated, targetFileResolution };
   }
 
-  /** Issue #136: `true` when `filePath` (workspace-relative) contains the docuviaFactory registry
-   *  pattern (`docuviaFactory`, `TOKENS.`) -- a heuristic for "this symbol's dependents may be
-   *  registry-mediated and thus invisible to the static edge graph". An unreadable file (deleted
-   *  on disk, path mismatch) is `false`, never an error. */
+  /** Issue #136: `true` when `filePath` contains the docuviaFactory registry pattern. */
   private async fileUsesFactoryRegistry(filePath: string): Promise<boolean> {
     let content: string;
     try {

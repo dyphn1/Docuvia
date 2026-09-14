@@ -78,9 +78,9 @@ describe("call-site persistence category coverage", () => {
       tags: [],
     });
 
-    expect(store.callSites.getForFiles(projectId, ["src/a.ts"]).get("src/a.ts")).toEqual([
-      { targetFunction: "bar", startLine: 1, startColumn: 2 },
-    ]);
+    expect(
+      store.callSites.getForFiles(projectId, ["src/a.ts"]).get("src/a.ts"),
+    ).toEqual([{ targetFunction: "bar", startLine: 1, startColumn: 2 }]);
     expect(outgoingCallsFromFoo()).toEqual(["bar"]);
   });
 
@@ -93,7 +93,9 @@ describe("call-site persistence category coverage", () => {
       tags: [],
     });
 
-    expect(store.callSites.getForFiles(projectId, ["src/a.ts"]).get("src/a.ts")).toEqual([
+    expect(
+      store.callSites.getForFiles(projectId, ["src/a.ts"]).get("src/a.ts"),
+    ).toEqual([
       { targetFunction: "missingSymbol", startLine: 1, startColumn: 2 },
     ]);
     expect(outgoingCallsFromFoo()).toEqual([]);

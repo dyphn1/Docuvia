@@ -74,7 +74,7 @@ Initial rollout is deliberately **ratchet-only**:
 - The repository is not forced to reach 5/5 everywhere in one migration PR.
 - The base result is recomputed every run; no historical hand-entered baseline is trusted.
 
-CI uploads both base/head JSON reports as evidence. As category coverage improves, the executable baseline automatically tightens with main.
+CI generates both base/head JSON reports and publishes the aggregate comparison in the GitHub step summary. As category coverage improves, the executable baseline automatically tightens with main.
 
 ## `[state-diff]` requirement
 

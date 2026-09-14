@@ -24,7 +24,7 @@ describe("Phase 4 GraphStore hardening", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("round-trips graph nodes and links identically through a readonly reopen", async () => {
+  it("[happy] round-trips graph nodes and links identically through a readonly reopen", async () => {
     store = await GraphStore.open({ dbPath });
     const projectId = store.projects.insert({
       name: "phase4",
@@ -62,13 +62,23 @@ describe("Phase 4 GraphStore hardening", () => {
     }).toEqual(before);
   });
 
-  it("rolls back the complete graph write when a transaction callback throws", async () => {
+  it("[invalid-input] rejects a malformed database path before opening SQLite", async () => {
+    await expect(GraphStore.open({ dbPath: "" })).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
+  });
+
+  it("[error-handling][state-diff] rolls back the complete graph write when a transaction callback throws", async () => {
     store = await GraphStore.open({ dbPath });
     const projectId = store.projects.insert({
       name: "phase4",
       repoUrl: "file:///phase4",
     }).id;
-    const before = store.graph.count();
+    const beforeCount = store.graph.count();
+    const beforeNodeKeys = store.graph
+      .getAllNodes()
+      .map((node) => node.node_key)
+      .sort();
 
     expect(() =>
       store!.withTransaction(() => {
@@ -82,11 +92,19 @@ describe("Phase 4 GraphStore hardening", () => {
       }),
     ).toThrow("phase4 rollback probe");
 
-    expect(store.graph.count()).toEqual(before);
-    expect(store.graph.findNodeIdByNodeKey("src/rollback.ts")).toBeUndefined();
+    expect(store.graph.count()).toEqual(beforeCount);
+    expect(
+      store.graph
+        .getAllNodes()
+        .map((node) => node.node_key)
+        .sort(),
+    ).toEqual(beforeNodeKeys);
+    expect(
+      store.graph.getAllNodes().map((node) => node.node_key),
+    ).not.toContain("src/rollback.ts");
   });
 
-  it("serializes queued GraphStore writers deterministically and releases the lock", async () => {
+  it("[stress] serializes queued GraphStore writers deterministically and releases the lock", async () => {
     store = await GraphStore.open({ dbPath });
     const events: string[] = [];
     let releaseFirst!: () => void;

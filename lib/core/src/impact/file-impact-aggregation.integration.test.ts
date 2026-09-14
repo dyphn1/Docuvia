@@ -105,7 +105,9 @@ describe("file-level impact aggregation", () => {
 
     expect(failure).toMatchObject({
       code: ErrorCodes.DB_QUERY_FAILED,
-      message: expect.stringContaining("Failed to find node by name: src/target.ts"),
+      message: expect.stringContaining(
+        "Failed to find node by name: src/target.ts",
+      ),
     });
 
     store = await GraphStore.open({ dbPath });

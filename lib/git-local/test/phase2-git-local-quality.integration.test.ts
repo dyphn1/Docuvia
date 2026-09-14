@@ -130,7 +130,9 @@ describe("Phase 2 git-local acquisition quality", () => {
     await git(repo.dir, ["commit", "-m", "state one"]);
 
     const firstHead = await repo.provider.getHeadSha(repo.dir);
-    const firstTracked = await repo.provider.listTrackedFilesWithBlobHash(repo.dir);
+    const firstTracked = await repo.provider.listTrackedFilesWithBlobHash(
+      repo.dir,
+    );
     const firstBlob = firstTracked.get("state.ts");
 
     fs.writeFileSync(filePath, "export const state = 2;\n");
@@ -138,7 +140,9 @@ describe("Phase 2 git-local acquisition quality", () => {
     await git(repo.dir, ["commit", "-m", "state two"]);
 
     const secondHead = await repo.provider.getHeadSha(repo.dir);
-    const secondTracked = await repo.provider.listTrackedFilesWithBlobHash(repo.dir);
+    const secondTracked = await repo.provider.listTrackedFilesWithBlobHash(
+      repo.dir,
+    );
     const secondBlob = secondTracked.get("state.ts");
 
     expect(firstHead).toMatch(/^[0-9a-f]{40}$/);
@@ -180,9 +184,9 @@ describe("Phase 2 git-local acquisition quality", () => {
       expect(first).toHaveLength(200);
       expect(first.map(([filePath]) => filePath)).toEqual(expectedPaths);
       expect(new Set(first.map(([, blobHash]) => blobHash)).size).toBe(200);
-      expect(first.every(([, blobHash]) => /^[0-9a-f]{40}$/.test(blobHash))).toBe(
-        true,
-      );
+      expect(
+        first.every(([, blobHash]) => /^[0-9a-f]{40}$/.test(blobHash)),
+      ).toBe(true);
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

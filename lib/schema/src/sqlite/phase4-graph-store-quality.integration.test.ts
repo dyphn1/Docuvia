@@ -99,9 +99,9 @@ describe("Phase 4 GraphStore hardening", () => {
         .map((node) => node.node_key)
         .sort(),
     ).toEqual(beforeNodeKeys);
-    expect(store.graph.getAllNodes().map((node) => node.node_key)).not.toContain(
-      "src/rollback.ts",
-    );
+    expect(
+      store.graph.getAllNodes().map((node) => node.node_key),
+    ).not.toContain("src/rollback.ts");
   });
 
   it("[stress] serializes queued GraphStore writers deterministically and releases the lock", async () => {

@@ -1,8 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { DocuviaError } from "@workspace/contracts";
+import { DocuviaError, ErrorCodes } from "@workspace/contracts";
 import { FetchLlmClient } from "./fetch-llm-client.js";
+
+// TDD-SOURCE: lib/contracts/src/interfaces/llm-client.interfaces.ts#ILlmClient
 
 function startServer(
   handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
@@ -27,14 +29,27 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+async function captureDocuviaError(
+  promise: Promise<unknown>,
+): Promise<DocuviaError> {
+  try {
+    await promise;
+  } catch (error) {
+    if (error instanceof DocuviaError) return error;
+    throw error;
+  }
+  throw new Error("Expected DocuviaError");
+}
+
 describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
-  let close: () => Promise<void>;
+  let close: (() => Promise<void>) | undefined;
 
   afterEach(async () => {
     if (close) await close();
+    close = undefined;
   });
 
-  it("chatCompletion POSTs to /v1/chat/completions with the mapped body and a Bearer auth header, and returns the parsed camelCased result", async () => {
+  it("[happy] chatCompletion POSTs the exact mapped body/auth header and returns the parsed camelCased result", async () => {
     let receivedPath: string | undefined;
     let receivedAuth: string | undefined;
     let receivedBody = "";
@@ -116,10 +131,10 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
       messages: [{ role: "user", content: "hello" }],
     });
 
-    expect(receivedAuth).toBeUndefined();
+    expect(receivedAuth).toEqual(undefined);
   });
 
-  it("chatCompletion throws LLM_AUTH_FAILED for a 401 response (issue #134 error classification)", async () => {
+  it("[error-handling] chatCompletion preserves the exact 401 auth failure code and reason", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "unauthorized" }));
@@ -129,18 +144,17 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url, apiKey: "bad-key" });
 
-    await expect(
+    const error = await captureDocuviaError(
       client.chatCompletion({
         model: "gpt-test",
         messages: [{ role: "user", content: "hello" }],
       }),
-    ).rejects.toMatchObject({
-      code: "LLM_AUTH_FAILED",
-      message: expect.stringContaining("unauthorized"),
-    });
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_AUTH_FAILED);
+    expect(error.message).toBe("Chat completion failed: unauthorized");
   });
 
-  it("chatCompletion throws LLM_HTTP_FAILED for a 500 response (issue #134 error classification)", async () => {
+  it("chatCompletion preserves the exact 500 HTTP failure code and reason", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "internal error" }));
@@ -150,18 +164,17 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url, apiKey: "secret-key" });
 
-    await expect(
+    const error = await captureDocuviaError(
       client.chatCompletion({
         model: "gpt-test",
         messages: [{ role: "user", content: "hello" }],
       }),
-    ).rejects.toMatchObject({
-      code: "LLM_HTTP_FAILED",
-      message: expect.stringContaining("internal error"),
-    });
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_HTTP_FAILED);
+    expect(error.message).toBe("Chat completion failed: internal error");
   });
 
-  it("chatCompletion throws a DocuviaError (not a raw SyntaxError) on a 200 response with a non-JSON body", async () => {
+  it("[invalid-input] chatCompletion wraps a non-JSON 200 response instead of leaking SyntaxError", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end("<html>not json, e.g. a misconfigured proxy</html>");
@@ -171,21 +184,18 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url, apiKey: "secret-key" });
 
-    await expect(
+    const error = await captureDocuviaError(
       client.chatCompletion({
         model: "gpt-test",
         messages: [{ role: "user", content: "hello" }],
       }),
-    ).rejects.toBeInstanceOf(DocuviaError);
-    await expect(
-      client.chatCompletion({
-        model: "gpt-test",
-        messages: [{ role: "user", content: "hello" }],
-      }),
-    ).rejects.toMatchObject({
-      code: "LLM_INVALID_RESPONSE",
-      message: expect.stringContaining("not valid JSON"),
-    });
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_INVALID_RESPONSE);
+    expect(
+      error.message.startsWith(
+        "Chat completion failed: response body was not valid JSON",
+      ),
+    ).toBe(true);
   });
 
   it("streamChatCompletion yields parsed, camelCased chunks from an SSE response and stops cleanly at [DONE]", async () => {
@@ -263,7 +273,7 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     ]);
   });
 
-  it("streamChatCompletion throws a DocuviaError with LLM_CHAT_COMPLETION_FAILED on a non-2xx response", async () => {
+  it("streamChatCompletion preserves the exact non-2xx failure contract", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "internal error" }));
@@ -273,16 +283,107 @@ describe("FetchLlmClient (integration, real HTTP over loopback)", () => {
     const client = new FetchLlmClient();
     client.initialize({ baseUrl: server.url, apiKey: "secret-key" });
 
-    await expect(async () => {
-      for await (const _chunk of client.streamChatCompletion({
-        model: "gpt-test",
-        messages: [{ role: "user", content: "hello" }],
-      })) {
-        // no-op
-      }
-    }).rejects.toMatchObject({
-      code: "LLM_CHAT_COMPLETION_FAILED",
-      message: expect.stringContaining("internal error"),
+    const error = await captureDocuviaError(
+      (async () => {
+        for await (const _chunk of client.streamChatCompletion({
+          model: "gpt-test",
+          messages: [{ role: "user", content: "hello" }],
+        })) {
+          // drain
+        }
+      })(),
+    );
+    expect(error.code).toBe(ErrorCodes.LLM_CHAT_COMPLETION_FAILED);
+    expect(error.message).toBe("Chat completion stream failed: internal error");
+  });
+
+  it("[state-diff] reinitialize replaces the observable authorization state for subsequent requests", async () => {
+    const receivedAuth: Array<string | undefined> = [];
+    const server = await startServer((req, res) => {
+      receivedAuth.push(req.headers.authorization);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "chatcmpl-config",
+          model: "gpt-test",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: "ok" },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+      );
+    });
+    close = server.close;
+
+    const client = new FetchLlmClient();
+    const request = {
+      model: "gpt-test",
+      messages: [{ role: "user" as const, content: "hello" }],
+    };
+
+    client.initialize({ baseUrl: server.url, apiKey: "first-key" });
+    const first = await client.chatCompletion(request);
+    client.initialize({ baseUrl: server.url, apiKey: "second-key" });
+    const second = await client.chatCompletion(request);
+
+    expect(receivedAuth).toEqual(["Bearer first-key", "Bearer second-key"]);
+    expect(second).toEqual(first);
+  });
+
+  it("[stress] serializes all 250 request messages without drops or duplicates", async () => {
+    let receivedBody = "";
+    const server = await startServer(async (req, res) => {
+      receivedBody = await readBody(req);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "chatcmpl-stress",
+          model: "gpt-test",
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: "accepted" },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+      );
+    });
+    close = server.close;
+
+    const messages = Array.from({ length: 250 }, (_, index) => ({
+      role: "user" as const,
+      content: `message-${index.toString().padStart(3, "0")}`,
+    }));
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: server.url, apiKey: "stress-key" });
+
+    const result = await client.chatCompletion({
+      model: "gpt-test",
+      messages,
+    });
+
+    const wire = JSON.parse(receivedBody) as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(wire.messages).toEqual(messages);
+    expect(wire.messages).toHaveLength(250);
+    expect(new Set(wire.messages.map((message) => message.content)).size).toBe(
+      250,
+    );
+    expect(result).toEqual({
+      id: "chatcmpl-stress",
+      model: "gpt-test",
+      choices: [
+        {
+          index: 0,
+          message: { role: "assistant", content: "accepted" },
+          finishReason: "stop",
+        },
+      ],
     });
   });
 });

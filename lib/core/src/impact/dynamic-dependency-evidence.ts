@@ -224,7 +224,9 @@ function resolveLocalPatternPrefix(
   const normalized = path.posix.normalize(
     path.posix.join(sourceDir, normalizeWorkspacePath(literalPrefix)),
   );
-  return literalPrefix.endsWith("/") ? `${normalized}/` : normalized;
+  return literalPrefix.endsWith("/") && !normalized.endsWith("/")
+    ? `${normalized}/`
+    : normalized;
 }
 
 function patternCouldMatchTarget(

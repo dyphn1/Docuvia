@@ -64,6 +64,17 @@ describe("issue #393 dynamic dependency evidence", () => {
     };
   }
 
+  function dynamicCandidates(target: string) {
+    return (
+      impact
+        .getBlastRadius(store, target)
+        ?.filter(
+          (entry) =>
+            entry.edgeSource === BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
+        ) ?? []
+    );
+  }
+
   it("persists bounded template-import candidates deterministically without confirmed graph edges", async () => {
     const targetFile = "src/plugins/cleanup-plugin.ts";
     const sourceFile = "src/plugin-loader.ts";
@@ -98,7 +109,7 @@ describe("issue #393 dynamic dependency evidence", () => {
       tags: [],
     });
     const firstEvidence = readDynamicDependencyEvidence(store, projectId);
-    const firstRadius = impact.getBlastRadius(store, "runCleanupPlugin");
+    const firstCandidates = dynamicCandidates("runCleanupPlugin");
 
     await persister.persist({
       store,
@@ -108,7 +119,7 @@ describe("issue #393 dynamic dependency evidence", () => {
       tags: [],
     });
     const secondEvidence = readDynamicDependencyEvidence(store, projectId);
-    const secondRadius = impact.getBlastRadius(store, "runCleanupPlugin");
+    const secondCandidates = dynamicCandidates("runCleanupPlugin");
 
     expect(firstEvidence).toEqual([
       expect.objectContaining({
@@ -122,7 +133,7 @@ describe("issue #393 dynamic dependency evidence", () => {
       }),
     ]);
     expect(secondEvidence).toEqual(firstEvidence);
-    expect(firstRadius).toEqual([
+    expect(firstCandidates).toEqual([
       expect.objectContaining({
         name: sourceFile,
         type: "module",
@@ -130,7 +141,7 @@ describe("issue #393 dynamic dependency evidence", () => {
         dynamicEvidence: firstEvidence[0],
       }),
     ]);
-    expect(secondRadius).toEqual(firstRadius);
+    expect(secondCandidates).toEqual(firstCandidates);
 
     const targetNode = store.graph.findNodeByName("runCleanupPlugin");
     expect(targetNode).toBeDefined();
@@ -185,7 +196,7 @@ describe("issue #393 dynamic dependency evidence", () => {
         status: DynamicDependencyStatuses.BOUNDED,
       }),
     ]);
-    expect(impact.getBlastRadius(store, "OTHER")).toEqual([]);
+    expect(dynamicCandidates("OTHER")).toEqual([]);
   });
 
   it("persists unbounded runtime expressions with provenance but never invents a dependent", async () => {
@@ -220,14 +231,7 @@ describe("issue #393 dynamic dependency evidence", () => {
       tags: [],
     });
 
-    expect(
-      impact
-        .getBlastRadius(store, "runCleanupPlugin")
-        ?.filter(
-          (entry) =>
-            entry.edgeSource === BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
-        ),
-    ).toEqual([]);
+    expect(dynamicCandidates("runCleanupPlugin")).toEqual([]);
     expect(impact.getDynamicEvidence(store, "runCleanupPlugin")).toEqual([
       expect.objectContaining({
         sourceFile,

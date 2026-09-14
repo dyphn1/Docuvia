@@ -229,7 +229,7 @@ const capabilities: readonly CapabilityEvidence[] = [
     dimensions: {
       positiveParameters: {
         evidence: [
-          "chatCompletion POSTs to /v1/chat/completions with the mapped body and a Bearer auth header, and returns the parsed camelCased result",
+          "chatCompletion POSTs the exact mapped body/auth header and returns the parsed camelCased result",
         ],
       },
       negativeParameters: {
@@ -244,7 +244,9 @@ const capabilities: readonly CapabilityEvidence[] = [
         evidence: ["returns the complete validated tool-call response shape"],
       },
       errorHandling: {
-        evidence: ["throws LLM_AUTH_FAILED for a 401 response"],
+        evidence: [
+          "chatCompletion preserves the exact 401 auth failure code and reason",
+        ],
       },
       unexpectedInput: {
         evidence: [

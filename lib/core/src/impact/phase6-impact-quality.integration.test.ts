@@ -73,7 +73,9 @@ describe("Phase 6 impact quality evidence", () => {
 
     expect(failure).toMatchObject({
       code: ErrorCodes.DB_QUERY_FAILED,
-      message: expect.stringContaining("Failed to find node by name: sharedUtil"),
+      message: expect.stringContaining(
+        "Failed to find node by name: sharedUtil",
+      ),
     });
 
     store = await GraphStore.open({ dbPath });

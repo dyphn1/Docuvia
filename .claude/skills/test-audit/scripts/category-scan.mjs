@@ -19,7 +19,8 @@ export const TIER_REQUIREMENTS = {
 };
 
 const TEST_FILE_PATTERN = /(?:^|\/).+\.(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
-const CATEGORY_PATTERN = /\[(happy|invalid-input|error-handling|stress|state-diff)\]/gi;
+const CATEGORY_PATTERN =
+  /\[(happy|invalid-input|error-handling|stress|state-diff)\]/gi;
 
 function normalize(file) {
   return file.replaceAll("\\", "/");
@@ -28,7 +29,10 @@ function normalize(file) {
 export function classifyTier(filePath) {
   const file = normalize(filePath).toLowerCase();
   if (/\.integration\.(?:test|spec)\./.test(file)) return "persistence";
-  if (file.includes("/workflows/") || /workflow[^/]*\.(?:test|spec)\./.test(file)) {
+  if (
+    file.includes("/workflows/") ||
+    /workflow[^/]*\.(?:test|spec)\./.test(file)
+  ) {
     return "workflow";
   }
   return "utility";
@@ -50,7 +54,9 @@ export function scanEntries(entries, ref = "working-tree") {
       const tier = classifyTier(normalizedFile);
       const observed = categoriesInSource(source);
       const required = TIER_REQUIREMENTS[tier];
-      const missingRequired = required.filter((category) => !observed.includes(category));
+      const missingRequired = required.filter(
+        (category) => !observed.includes(category),
+      );
       return {
         file: normalizedFile,
         tier,
@@ -166,11 +172,18 @@ function main() {
   const report = scanRepository(args.root, args.ref);
   if (args.jsonOut) {
     fs.mkdirSync(path.dirname(args.jsonOut), { recursive: true });
-    fs.writeFileSync(args.jsonOut, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    fs.writeFileSync(
+      args.jsonOut,
+      `${JSON.stringify(report, null, 2)}\n`,
+      "utf8",
+    );
   }
   process.stdout.write(formatReport(report));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main();
 }

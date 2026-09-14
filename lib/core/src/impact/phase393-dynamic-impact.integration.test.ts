@@ -144,7 +144,8 @@ describe("issue #393 dynamic dependency evidence", () => {
     expect(secondCandidates).toEqual(firstCandidates);
 
     const targetNode = store.graph.findNodeByName("runCleanupPlugin");
-    if (!targetNode) throw new Error("Expected persisted runCleanupPlugin node");
+    if (!targetNode)
+      throw new Error("Expected persisted runCleanupPlugin node");
     expect(
       store.graph
         .getIncomingRelations(targetNode.id)
@@ -325,7 +326,10 @@ describe("issue #393 dynamic dependency evidence", () => {
       (_, index) => `src/plugins/plugin-${String(index).padStart(2, "0")}.ts`,
     );
     for (const candidateFile of candidateFiles) {
-      write(candidateFile, `export const plugin = ${JSON.stringify(candidateFile)};\n`);
+      write(
+        candidateFile,
+        `export const plugin = ${JSON.stringify(candidateFile)};\n`,
+      );
     }
     write(
       sourceFile,

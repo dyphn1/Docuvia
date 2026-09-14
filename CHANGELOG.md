@@ -2,6 +2,25 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.9.0](https://github.com/dyphn1/Docuvia/compare/v1.8.15...v1.9.0) (2026-09-14)
+
+### Bug Fixes
+
+- **contracts:** export dynamic dependency evidence types ([fcd1275](https://github.com/dyphn1/Docuvia/commit/fcd1275cff57ccc62f236aef42cac170d57aaf3f))
+- **impact:** preserve single trailing slash in dynamic import prefixes ([922561a](https://github.com/dyphn1/Docuvia/commit/922561a1919873609f3313202696cb6f1795af7e))
+
+### Features
+
+- **core:** register phase393 evidence services ([9672113](https://github.com/dyphn1/Docuvia/commit/9672113a0c5423ad7247083b5b4949b4a99d6fba))
+- **graph:** persist dynamic dependency evidence after phase6 ([291ebfd](https://github.com/dyphn1/Docuvia/commit/291ebfd5c76f7e08d54c7a70acd005ae0be11564))
+- **impact:** define dynamic dependency evidence contract ([b14e2cf](https://github.com/dyphn1/Docuvia/commit/b14e2cf622bad2e7d28505560e86dbc22d4910d4))
+- **impact:** explain dynamic dependency uncertainty ([32d179c](https://github.com/dyphn1/Docuvia/commit/32d179c3854fa51d9d925f687f09c9cdd7e837a2))
+- **impact:** expose dynamic dependency evidence in results ([c6e8c83](https://github.com/dyphn1/Docuvia/commit/c6e8c83f6e693a2b4a8d58e7a64dd40d21ca1352))
+- **impact:** fold dynamic evidence into epistemic verdict ([89e4d7a](https://github.com/dyphn1/Docuvia/commit/89e4d7a86f3e25bd393077470529fe88c439c030))
+- **impact:** make dynamic candidates lower-bound evidence ([b4c801b](https://github.com/dyphn1/Docuvia/commit/b4c801b00c93fef8da1ffe4d1e5d5eccd6cffbd4))
+- **impact:** persist deterministic dynamic dependency evidence ([b471775](https://github.com/dyphn1/Docuvia/commit/b471775bf6a1e7f44739a2d9d6924081377c70dd))
+- **impact:** surface bounded dynamic dependency candidates ([7bfd0f0](https://github.com/dyphn1/Docuvia/commit/7bfd0f067a80d303d0d355e5054e18a63a57aea0))
+
 ## [1.8.15](https://github.com/dyphn1/Docuvia/compare/v1.8.14...v1.8.15) (2026-09-13)
 
 ### Bug Fixes

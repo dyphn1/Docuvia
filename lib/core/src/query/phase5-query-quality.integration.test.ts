@@ -152,7 +152,7 @@ describe("Phase 5 QueryService quality evidence", () => {
   });
 
   it(
-    "falls back to a provenance-free L3 entry when its row vanishes after search",
+    "[error-handling] falls back to a provenance-free L3 entry when its row vanishes after search",
     () => {
       const anchorId = store.graph.insertNode({
         projectId,
@@ -184,7 +184,7 @@ describe("Phase 5 QueryService quality evidence", () => {
   );
 
   it(
-    "returns identical complete query results across repeated identical input",
+    "[happy] returns identical complete query results across repeated identical input",
     () => {
       const targetId = store.graph.insertNode({
         projectId,
@@ -231,7 +231,7 @@ describe("Phase 5 QueryService quality evidence", () => {
   );
 
   it(
-    "handles punctuation-only and whitespace-only queries as empty results without throwing",
+    "[invalid-input] handles punctuation-only and whitespace-only queries as empty results without throwing",
     () => {
       expect(queryService.query(store, "   ")).toEqual({
         l2: null,
@@ -245,4 +245,64 @@ describe("Phase 5 QueryService quality evidence", () => {
       });
     },
   );
+
+  it("[state-diff] reflects a newly persisted caller edge in structural context", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "statefulAuthService",
+      pathPatterns: ["src/stateful-auth.ts"],
+    });
+    store.files.upsertFile({
+      projectId,
+      filePath: "src/stateful-auth.ts",
+      contentHash: null,
+    });
+    store.files.markTierBProcessed({
+      projectId,
+      filePath: "src/stateful-auth.ts",
+      commitSha: "phase5-state-before",
+    });
+
+    expect(queryService.getContext(store, "statefulAuthService")).toEqual({
+      incoming: [],
+      outgoing: [],
+    });
+
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "statefulCaller",
+      pathPatterns: ["src/stateful-caller.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: targetId,
+      linkType: "calls",
+    });
+
+    expect(queryService.getContext(store, "statefulAuthService")).toEqual({
+      incoming: [{ name: "statefulCaller", linkType: "calls" }],
+      outgoing: [],
+    });
+  });
+
+  it("[stress] bounds 250 matching nodes to 25 unique deterministic search results", () => {
+    for (let index = 0; index < 250; index++) {
+      store.graph.insertNode({
+        projectId,
+        name: `stressAuthService${index.toString().padStart(3, "0")}`,
+        description: "shared authentication stress candidate",
+        pathPatterns: [`src/stress-auth-${index}.ts`],
+      });
+    }
+
+    const first = queryService.search(store, "authentication", 25);
+    const second = queryService.search(store, "authentication", 25);
+
+    expect(second).toEqual(first);
+    expect(first).toHaveLength(25);
+    expect(new Set(first.map((result) => result.id)).size).toBe(25);
+    expect(
+      first.every((result) => result.title.startsWith("stressAuthService")),
+    ).toBe(true);
+  });
 });

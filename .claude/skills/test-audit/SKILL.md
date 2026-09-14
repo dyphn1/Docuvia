@@ -1,160 +1,118 @@
 ---
 name: test-audit
-description: Audits test files against 3A content-verification standards, flagging weak assertions that don't verify correctness. Use when strengthening tests, reviewing test quality, or checking if tests actually validate data structures.
+description: Audits tests on two independent axes: functional-category coverage and 3A content-verification honesty. Use when strengthening tests, reviewing test quality, or validating launch-gate evidence.
 ---
 
-# Test Audit — 3A Content Verification
+# Test Audit — Coverage Shape + 3A Honesty
 
 ## Purpose
 
-Scan test files and flag assertions that verify **existence** rather than **correctness**. These "weak assertions" pass even when the code under test silently returns wrong data, drops fields, or degrades to an empty result.
+A green suite can still be wrong in two different ways:
 
-## When to Use
+1. **The right kind of test never existed.** A feature may have happy-path tests but no invalid-input, error-handling, stress, or persisted state-diff evidence.
+2. **The test exists but proves too little.** Weak assertions such as `toBeDefined()` can pass while values, fields, or persisted state are wrong.
 
-- Before merging a PR with test changes
-- When strengthening a test suite
-- When reviewing test coverage beyond line-count
-- When a feature is reported as "tests pass but doesn't work"
+Treat these as independent axes. Do not convert category coverage into the #371 contract-quality score, and do not convert #192 precision/recall/F1 into test coverage.
 
-## Weak Assertion Patterns (Priority-Ordered)
+The full category/tier rules are defined in `references/test-standard.md`.
 
-### P0 — High Risk (data can be wrong, test still passes)
+## Axis 1 — Functional category coverage
 
-| Pattern                     | Problem                                              | Replacement                                                            |
-| --------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
-| `expect(x).toBeDefined()`   | Passes for `""`, `0`, `false`, `[]`, `{}`            | `expect(x).toEqual(expectedValue)`                                     |
-| `expect(x).toBeUndefined()` | Only proves absence, not what should be there        | `expect(x).toBeNull()` or `expect(result).toEqual({...without field})` |
-| `expect(x).toBeTruthy()`    | Passes for any truthy value — `1`, `"x"`, `[]`, `{}` | `expect(x).toBe(true)` or `expect(x).toEqual(expected)`                |
-| `expect(x).toBeFalsy()`     | Passes for `0`, `""`, `null`, `undefined`, `false`   | `expect(x).toBe(false)` or `expect(x).toBeNull()`                      |
+Canonical markers:
 
-### P1 — Medium Risk (mock called but wrong args/return)
+- `[happy]`
+- `[invalid-input]`
+- `[error-handling]`
+- `[stress]`
+- `[state-diff]`
 
-| Pattern                                | Problem                                         | Replacement                                      |
-| -------------------------------------- | ----------------------------------------------- | ------------------------------------------------ |
-| `expect(spy).toHaveBeenCalled()`       | Doesn't check arguments                         | `expect(spy).toHaveBeenCalledWith(expectedArgs)` |
-| `expect(spy).toHaveBeenCalledTimes(n)` | Doesn't check what was called with              | Add `toHaveBeenCalledWith` alongside             |
-| `expect(spy).not.toHaveBeenCalled()`   | Only proves non-call, not what happened instead | Verify the alternative path's result             |
-
-### P2 — Low Risk (numeric/existence checks)
-
-| Pattern                                            | Problem                                     | Replacement                               |
-| -------------------------------------------------- | ------------------------------------------- | ----------------------------------------- |
-| `expect(x).toBeGreaterThan(0)`                     | Only proves positive, not the actual value  | `expect(x).toBe(expectedCount)`           |
-| `expect(x.length).toBeGreaterThan(0)`              | Same as above                               | `expect(x).toHaveLength(expected)`        |
-| `expect(x).toEqual(expect.arrayContaining([...]))` | Partial match — extra unexpected items pass | Add `expect(x).toHaveLength(n)` alongside |
-
-## Audit Procedure
-
-### Step 1: Scan for weak assertions
+Run the deterministic scanner:
 
 ```bash
-# Find all weak assertion patterns in test files
-rg -n "toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)|toBeGreaterThan\(0\)" --type ts -g "*.test.ts" -g "*.spec.ts"
+bash .claude/skills/test-audit/scripts/category-scan.sh
 ```
 
-### Step 2: Classify by risk
+Write machine-readable evidence when needed:
 
-For each match, determine:
-
-1. **What is being tested?** (mock call vs real data vs workflow result)
-2. **What could go wrong silently?** (field drop, wrong value, empty result)
-3. **Is there a real assertion nearby?** (sometimes `toBeDefined` is followed by `toEqual` — the `toBeDefined` is redundant but harmless)
-
-### Step 3: Prioritize strengthening
-
-Focus on:
-
-1. **Workflow tests** (`*-workflow.unit.test.ts`) — these verify data flowing through the orchestration layer
-2. **Integration tests** (`*.integration.test.ts`) — these verify real DB/file/network behavior
-3. **Service tests** (`*.service.unit.test.ts`) — these verify core business logic
-4. **Mock-heavy tests** — where `toHaveBeenCalled` without `toHaveBeenCalledWith` means the test proves nothing about correctness
-
-### Step 4: Strengthen
-
-For each weak assertion, apply the replacement pattern. When strengthening:
-
-1. **Verify the full data structure** — use `toEqual` with the complete expected object
-2. **Verify field existence AND value** — `toHaveProperty("field", value)` not just `toHaveProperty("field")`
-3. **Verify array lengths** — `toHaveLength(n)` not just `toBeGreaterThan(0)`
-4. **Verify no extra fields** — check `Object.keys(result)` matches expected shape
-5. **Verify mock arguments** — `toHaveBeenCalledWith` with the exact expected args
-
-## Output Format
-
-```
-## Test Audit Report
-
-### Summary
-- Files scanned: N
-- Weak assertions found: N
-- P0 (high risk): N
-- P1 (medium risk): N
-- P2 (low risk): N
-
-### P0 — High Risk (fix first)
-| File | Line | Pattern | Fix |
-|------|------|---------|-----|
-| foo.test.ts:42 | `toBeDefined()` | Replace with `toEqual(expectedValue)` |
-
-### P1 — Medium Risk
-| File | Line | Pattern | Fix |
-|------|------|---------|-----|
-
-### P2 — Low Risk
-| File | Line | Pattern | Fix |
-|------|------|---------|-----|
+```bash
+bash .claude/skills/test-audit/scripts/category-scan.sh \
+  --json-out /tmp/test-category.json
 ```
 
-## Examples
+The report ends with `FAIL_COUNT=N`. CI does **not** trust a historical hand-entered baseline: `scripts/test-category-ratchet.sh` re-scans the exact base and HEAD and rejects only increases while legacy debt is being reduced.
 
-### Before (weak)
+When adding or strengthening a test, prefer a real category test over a label-only edit. In particular, `[state-diff]` must assert exact before/after persisted or externally visible state.
+
+## Axis 2 — 3A content verification
+
+### P0 — High risk
+
+| Pattern                        | Problem                      | Preferred replacement                                                   |
+| ------------------------------ | ---------------------------- | ----------------------------------------------------------------------- |
+| `toBeDefined()`                | proves only existence        | exact `toEqual(...)`, `toHaveProperty(key, value)`, or exact type/value |
+| `toBeUndefined()`              | proves only absence          | exact result shape or explicit null/absence contract                    |
+| `toBeTruthy()` / `toBeFalsy()` | loses type/value information | exact boolean/value assertion                                           |
+
+### P1 — Medium risk
+
+| Pattern                         | Problem                             | Preferred replacement           |
+| ------------------------------- | ----------------------------------- | ------------------------------- |
+| `toHaveBeenCalled()`            | args may be wrong                   | `toHaveBeenCalledWith(...)`     |
+| `toHaveBeenCalledTimes(n)` only | proves count, not content           | verify exact args/result too    |
+| `not.toHaveBeenCalled()` only   | does not prove alternative behavior | assert the intended result/path |
+
+### P2 — Low risk
+
+| Pattern                     | Problem                           | Preferred replacement          |
+| --------------------------- | --------------------------------- | ------------------------------ |
+| `toBeGreaterThan(0)`        | only proves positive              | exact count / exact collection |
+| `arrayContaining(...)` only | extra unexpected items still pass | pair with exact length/shape   |
+
+## Audit procedure
+
+1. Run the category scanner and record missing category classes by tier.
+2. Scan for weak assertions:
+
+   ```bash
+   rg -n "toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)|toBeGreaterThan\(0\)" \
+     --type ts -g "*.test.ts" -g "*.spec.ts"
+   ```
+
+3. For every finding, identify the authoritative source/contract and the silent-failure mode.
+4. Add the smallest missing behavioral category with exact assertions.
+5. Re-run identical inputs where determinism matters.
+6. Re-run both repository gates:
+
+   ```bash
+   bash scripts/test-quality-gate.sh
+   ```
+
+## Priority order
+
+1. persistence/integration tests — real DB/files/process boundaries and `[state-diff]` evidence;
+2. workflows — input/output/error/state propagation across orchestration layers;
+3. services/core logic;
+4. mock-heavy utilities.
+
+## Example — weak vs strong
+
+Weak:
 
 ```typescript
-it("returns blast radius", () => {
+it("[happy] returns blast radius", () => {
   const result = impactService.getBlastRadius(store, "target");
   expect(result).toBeDefined();
   expect(result.length).toBeGreaterThan(0);
 });
 ```
 
-### After (strong)
+Strong:
 
 ```typescript
-it("returns blast radius with correct structure", () => {
+it("[happy] returns the exact dependent set", () => {
   const result = impactService.getBlastRadius(store, "target");
   expect(result).toEqual([{ name: "caller", type: "module" }]);
-  expect(result).toHaveLength(1);
 });
 ```
 
-### Before (mock-only)
-
-```typescript
-it("calls the service", async () => {
-  await workflow.execute("target");
-  expect(service.getBlastRadius).toHaveBeenCalled();
-});
-```
-
-### After (verifies data)
-
-```typescript
-it("calls the service and returns correct result", async () => {
-  const result = await workflow.execute("target");
-  expect(service.getBlastRadius).toHaveBeenCalledWith(store, "target");
-  expect(result).toEqual({
-    blastRadius: [{ name: "caller", type: "module" }],
-    riskLevel: "MEDIUM",
-  });
-});
-```
-
-## Integration with CI
-
-Add to pre-push hook or CI:
-
-```bash
-# Count weak assertions — fail if count increases
-WEAK_COUNT=$(rg -c "toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)" --type ts -g "*.test.ts" | awk -F: '{sum+=$2} END {print sum}')
-echo "Weak assertions: $WEAK_COUNT"
-```
+A `5/5` category file can still fail Axis 2 or #371 mandatory gates. Category labels are coverage-shape evidence, not proof of correctness.

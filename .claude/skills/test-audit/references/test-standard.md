@@ -23,11 +23,11 @@ Markers are evidence labels only. A marker does not prove the test is good; asse
 
 The scanner classifies each tracked `*.test.*` / `*.spec.*` file deterministically.
 
-| Tier | Detection | Required categories |
-| --- | --- | --- |
-| persistence | `*.integration.test.*` or `*.integration.spec.*` | all five |
-| workflow | path contains `/workflows/` or filename contains `workflow` | happy, invalid-input, error-handling, state-diff |
-| utility | all other test/spec files | happy, invalid-input, error-handling |
+| Tier        | Detection                                                   | Required categories                              |
+| ----------- | ----------------------------------------------------------- | ------------------------------------------------ |
+| persistence | `*.integration.test.*` or `*.integration.spec.*`            | all five                                         |
+| workflow    | path contains `/workflows/` or filename contains `workflow` | happy, invalid-input, error-handling, state-diff |
+| utility     | all other test/spec files                                   | happy, invalid-input, error-handling             |
 
 `stress` remains optional for workflow/utility files because requiring synthetic load tests for every narrow pure contract would create noise rather than useful signal. A persistence integration test has no such exemption: the launch-gate target is 5/5.
 
@@ -89,7 +89,7 @@ This directly targets the class of defect described by #230: parsing may find ca
 
 ## Relationship to other quality metrics
 
-- **#263 category coverage**: whether the repository has the right *kinds* of tests.
+- **#263 category coverage**: whether the repository has the right _kinds_ of tests.
 - **#371 phase score**: whether tests validate the complete contract honestly, deterministically, and with source traceability.
 - **#192 impact eval**: behavioral accuracy measured by precision/recall/F1.
 

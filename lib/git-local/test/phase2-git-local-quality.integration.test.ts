@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import {
-  ErrorCodes,
-  SUBPROCESS_TEST_TIMEOUT_MS,
-} from "@workspace/contracts";
+import { ErrorCodes } from "@workspace/contracts";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { buildFastImportData } from "../src/fast-import.js";
 import {
   createTempGitRepo,

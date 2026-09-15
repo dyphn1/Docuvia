@@ -177,6 +177,8 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
 
     expect(result.exitCode).toBe(0);
     expect(tagsLine).toBeDefined();
+    if (!tagsLine) throw new Error("Expected Suggested Tags output");
+
     expect(tagsLine).toContain("react");
     expect(tagsLine).toContain("express");
     expect(tagsLine).toContain("vue");
@@ -187,10 +189,10 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     expect(tagsLine).toContain("typescript");
 
     const renderedTags = tagsLine
-      ?.slice(tagsLine.indexOf("Suggested Tags: ") + "Suggested Tags: ".length)
+      .slice(tagsLine.indexOf("Suggested Tags: ") + "Suggested Tags: ".length)
       .split(",")
       .map((tag) => tag.trim());
-    expect(new Set(renderedTags).size).toBe(renderedTags?.length);
+    expect(new Set(renderedTags).size).toBe(renderedTags.length);
 
     // Cleanup the large fixture eagerly so Windows teardown has less work after the subprocess.
     rmSync(packagesRoot, { recursive: true, force: true });

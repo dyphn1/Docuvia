@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { DocuviaError } from "@workspace/contracts";
+import {
+  DocuviaError,
+  type SyncPushEvent,
+} from "@workspace/contracts";
 import { FetchRemoteSyncClient } from "./fetch-remote-sync-client.js";
 
 /** Minimal real HTTP server standing in for the remote Docuvia backend — real network I/O over
@@ -22,14 +25,25 @@ function startServer(
   });
 }
 
+async function captureDocuviaError(action: () => Promise<unknown>): Promise<DocuviaError> {
+  try {
+    await action();
+  } catch (error) {
+    expect(error).toBeInstanceOf(DocuviaError);
+    return error as DocuviaError;
+  }
+  throw new Error("Expected action to reject with DocuviaError");
+}
+
 describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
-  let close: () => Promise<void>;
+  let close: (() => Promise<void>) | undefined;
 
   afterEach(async () => {
     if (close) await close();
+    close = undefined;
   });
 
-  it("fetchRemoteL2Nodes GETs /projects/:id/l2-nodes with a Bearer token and parses the JSON response", async () => {
+  it("[happy] fetchRemoteL2Nodes GETs /projects/:id/l2-nodes with a Bearer token and parses the JSON response", async () => {
     let receivedPath: string | undefined;
     let receivedAuth: string | undefined;
     const server = await startServer((req, res) => {
@@ -60,13 +74,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "bad-pat" });
 
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toMatchObject({
-      code: "SYNC_FETCH_FAILED",
-      message: expect.stringContaining("unauthorized"),
-    });
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(
-      DocuviaError,
-    );
+    const error = await captureDocuviaError(() => client.fetchRemoteL2Nodes("42"));
+    expect(error.code).toBe("SYNC_FETCH_FAILED");
+    expect(error.message).toBe("Failed to fetch remote L2 nodes: unauthorized");
   });
 
   it("pushSyncEvents POSTs to /sync/push with the events body and returns the parsed result", async () => {
@@ -98,7 +108,7 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     });
   });
 
-  it("pushSyncEvents throws a DocuviaError with SYNC_PUSH_FAILED on a non-2xx response", async () => {
+  it("[error-handling] pushSyncEvents throws a DocuviaError with SYNC_PUSH_FAILED on a non-2xx response", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "internal error" }));
@@ -108,13 +118,12 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    await expect(client.pushSyncEvents("42", [])).rejects.toMatchObject({
-      code: "SYNC_PUSH_FAILED",
-      message: expect.stringContaining("internal error"),
-    });
+    const error = await captureDocuviaError(() => client.pushSyncEvents("42", []));
+    expect(error.code).toBe("SYNC_PUSH_FAILED");
+    expect(error.message).toBe("Sync push failed: internal error");
   });
 
-  it("fetchRemoteL2Nodes throws a DocuviaError (not a raw SyntaxError) when a 200 response body isn't valid JSON", async () => {
+  it("[invalid-input] fetchRemoteL2Nodes throws a DocuviaError (not a raw SyntaxError) when a 200 response body isn't valid JSON", async () => {
     const server = await startServer((_req, res) => {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end("<html>not json, e.g. a misconfigured proxy</html>");
@@ -124,13 +133,13 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(
-      DocuviaError,
-    );
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toMatchObject({
-      code: "SYNC_FETCH_FAILED",
-      message: expect.stringContaining("not valid JSON"),
-    });
+    const error = await captureDocuviaError(() => client.fetchRemoteL2Nodes("42"));
+    expect(error.code).toBe("SYNC_FETCH_FAILED");
+    expect(
+      error.message.startsWith(
+        "Failed to fetch remote L2 nodes: response body was not valid JSON:",
+      ),
+    ).toBe(true);
   });
 
   it("pushSyncEvents throws a DocuviaError (not a raw SyntaxError) when a 200 response body isn't valid JSON", async () => {
@@ -143,12 +152,66 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    await expect(client.pushSyncEvents("42", [])).rejects.toBeInstanceOf(
-      DocuviaError,
-    );
-    await expect(client.pushSyncEvents("42", [])).rejects.toMatchObject({
-      code: "SYNC_PUSH_FAILED",
-      message: expect.stringContaining("not valid JSON"),
+    const error = await captureDocuviaError(() => client.pushSyncEvents("42", []));
+    expect(error.code).toBe("SYNC_PUSH_FAILED");
+    expect(
+      error.message.startsWith(
+        "Sync push failed: response body was not valid JSON:",
+      ),
+    ).toBe(true);
+  });
+
+  it("[state-diff] re-initialize changes the Bearer token used by the next real HTTP request", async () => {
+    const receivedAuth: Array<string | undefined> = [];
+    const server = await startServer((req, res) => {
+      receivedAuth.push(req.headers.authorization);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify([{ id: receivedAuth.length, name: "src/state.ts" }]));
     });
+    close = server.close;
+
+    const client = new FetchRemoteSyncClient();
+    client.initialize({ apiUrl: server.url, pat: "first-pat" });
+    const first = await client.fetchRemoteL2Nodes("7");
+
+    client.initialize({ apiUrl: server.url, pat: "second-pat" });
+    const second = await client.fetchRemoteL2Nodes("7");
+
+    expect(receivedAuth).toEqual(["Bearer first-pat", "Bearer second-pat"]);
+    expect(first).toEqual([{ id: 1, name: "src/state.ts" }]);
+    expect(second).toEqual([{ id: 2, name: "src/state.ts" }]);
+  });
+
+  it("[stress] serializes 250 unique sync events completely over real HTTP without dropping or duplicating entries", async () => {
+    let receivedBody = "";
+    const server = await startServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (chunk) => chunks.push(chunk));
+      req.on("end", () => {
+        receivedBody = Buffer.concat(chunks).toString("utf8");
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, processed: 250 }));
+      });
+    });
+    close = server.close;
+
+    const client = new FetchRemoteSyncClient();
+    client.initialize({ apiUrl: server.url, pat: "stress-pat" });
+    const events: SyncPushEvent[] = Array.from({ length: 250 }, (_, index) => ({
+      type: "CREATE_L3",
+      payload: { l2NodeId: index + 1, title: `decision-${index}` },
+    }));
+
+    const result = await client.pushSyncEvents("99", events);
+    const wire = JSON.parse(receivedBody) as {
+      projectId: number;
+      events: SyncPushEvent[];
+    };
+
+    expect(result).toEqual({ success: true, processed: 250 });
+    expect(wire.projectId).toBe(99);
+    expect(wire.events).toEqual(events);
+    expect(wire.events).toHaveLength(250);
+    expect(new Set(wire.events.map((event) => event.payload.title)).size).toBe(250);
   });
 });

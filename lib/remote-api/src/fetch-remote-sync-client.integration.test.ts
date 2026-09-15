@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import {
-  DocuviaError,
-  type SyncPushEvent,
-} from "@workspace/contracts";
+import { DocuviaError, type SyncPushEvent } from "@workspace/contracts";
 import { FetchRemoteSyncClient } from "./fetch-remote-sync-client.js";
 
 /** Minimal real HTTP server standing in for the remote Docuvia backend — real network I/O over
@@ -25,7 +22,9 @@ function startServer(
   });
 }
 
-async function captureDocuviaError(action: () => Promise<unknown>): Promise<DocuviaError> {
+async function captureDocuviaError(
+  action: () => Promise<unknown>,
+): Promise<DocuviaError> {
   try {
     await action();
   } catch (error) {
@@ -74,7 +73,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "bad-pat" });
 
-    const error = await captureDocuviaError(() => client.fetchRemoteL2Nodes("42"));
+    const error = await captureDocuviaError(() =>
+      client.fetchRemoteL2Nodes("42"),
+    );
     expect(error.code).toBe("SYNC_FETCH_FAILED");
     expect(error.message).toBe("Failed to fetch remote L2 nodes: unauthorized");
   });
@@ -118,7 +119,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    const error = await captureDocuviaError(() => client.pushSyncEvents("42", []));
+    const error = await captureDocuviaError(() =>
+      client.pushSyncEvents("42", []),
+    );
     expect(error.code).toBe("SYNC_PUSH_FAILED");
     expect(error.message).toBe("Sync push failed: internal error");
   });
@@ -133,7 +136,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    const error = await captureDocuviaError(() => client.fetchRemoteL2Nodes("42"));
+    const error = await captureDocuviaError(() =>
+      client.fetchRemoteL2Nodes("42"),
+    );
     expect(error.code).toBe("SYNC_FETCH_FAILED");
     expect(
       error.message.startsWith(
@@ -152,7 +157,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    const error = await captureDocuviaError(() => client.pushSyncEvents("42", []));
+    const error = await captureDocuviaError(() =>
+      client.pushSyncEvents("42", []),
+    );
     expect(error.code).toBe("SYNC_PUSH_FAILED");
     expect(
       error.message.startsWith(
@@ -212,6 +219,8 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     expect(wire.projectId).toBe(99);
     expect(wire.events).toEqual(events);
     expect(wire.events).toHaveLength(250);
-    expect(new Set(wire.events.map((event) => event.payload.title)).size).toBe(250);
+    expect(new Set(wire.events.map((event) => event.payload.title)).size).toBe(
+      250,
+    );
   });
 });

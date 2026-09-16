@@ -41,8 +41,11 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
     );
     const results = await Promise.all(runs);
 
-    for (const result of results) {
-      expect(result.exitCode).toBe(0);
+    for (const [index, result] of results.entries()) {
+      expect(
+        result.exitCode,
+        `concurrent analyze run ${index} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      ).toBe(0);
     }
 
     const logPath = resolve(sandbox.dir, ".docuvia/logs/analyze.log");

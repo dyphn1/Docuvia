@@ -4,7 +4,11 @@
 # doctor). Let git rediscover the repo from cwd via core.hooksPath discovery.
 unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
 
-# Skip the lint/typecheck/build/test/quality-gate below when every ref in this push is a
+# Fail fast for repository quality gates. The Tier B / knowledge-sync tail below remains
+# intentionally non-blocking, but formatting/lint/typecheck/build/test failures must stop pushes.
+set -e
+
+# Skip the formatting/lint/typecheck/build/test/quality-gate below when every ref in this push is a
 # deletion (e.g. `git push origin --delete branch1 branch2`) -- there's no new code to verify,
 # and the ~3min suite only adds flake risk (e.g. hookTimeout-sensitive LSP preflight tests) for
 # zero benefit. Git feeds pre-push one line per ref on stdin: "<local ref> <local sha1> <remote
@@ -19,8 +23,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 done
 
 if [ "$delete_only" = "1" ]; then
-  echo "Push is branch deletion(s) only -- skipping lint/typecheck/build/test/quality-gate."
+  echo "Push is branch deletion(s) only -- skipping formatting/lint/typecheck/build/test/quality-gate."
 else
+  echo "Checking repository formatting..."
+  pnpm exec prettier --check .
+
   echo "Running lint and complexity budget checks (fail-fast)..."
   pnpm run lint
 
@@ -36,11 +43,14 @@ else
   echo "Running test quality gate..."
   bash scripts/test-quality-gate.sh
 fi
+
 #!/bin/bash
 # Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)
 # Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see
 # docs/gitbook/analysis/phase1-decision-integration.md §8h and
 # docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.
+# This section is deliberately non-blocking: disable fail-fast only for the Tier B tail.
+set +e
 if command -v npx > /dev/null 2>&1; then
   npx --no-install docuvia hooks check tier-b-c-prepush && npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge
 fi

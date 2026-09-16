@@ -161,7 +161,7 @@ const capabilities: readonly CapabilityEvidence[] = [
       },
       determinism: {
         evidence: [
-          "is idempotent: running analyze twice never duplicates the project row",
+          "keeps identical re-analysis deterministic without duplicating the project row",
         ],
       },
       sourceTraceability: {

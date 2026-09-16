@@ -20,5 +20,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - name: Run full suite with concurrency diagnostics
-        run: pnpm run test
+      - name: Run 20-process analyze concurrency stress
+        run: pnpm exec vitest run artifacts/cli/test/integration/commands/analyze-concurrency.test.ts --testTimeout=120000 --hookTimeout=120000

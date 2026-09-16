@@ -111,7 +111,7 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     expect(existsSync(resolve(sandbox.dir, ".docuvia/local.db"))).toBe(false);
   }, 35000);
 
-  it("[state-diff] re-scans changed package metadata on the next full ingestion without duplicating the project row", async () => {
+  it("[state-diff] re-scans changed package metadata and keeps identical re-analysis deterministic without duplicating the project row", async () => {
     const first = await sandbox.runCli(["analyze"]);
     expect(first.exitCode).toBe(0);
     expect(first.stdout || first.stderr).toContain("react");
@@ -133,8 +133,22 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     expect(secondOutput).not.toContain("react");
     expect(secondOutput).not.toContain("typescript");
 
+    const third = await sandbox.runCli(["analyze"]);
+    const thirdOutput = third.stdout || third.stderr;
+    expect(third.exitCode).toBe(0);
+
+    const configSummary = (output: string) =>
+      output
+        .split(/\r?\n/)
+        .filter(
+          (line) =>
+            line.includes("Project Type: ") || line.includes("Suggested Tags: "),
+        );
+    expect(configSummary(thirdOutput)).toEqual(configSummary(secondOutput));
+
     // This fixture still has no source files, so the empty-graph rule re-runs full ingestion.
-    // seedProjectRow/getOrInsert must retain one project while the config-derived state changes.
+    // seedProjectRow/getOrInsert must retain one project while config-derived state changes and
+    // across an identical re-analysis.
     const db = sandbox.getDb();
     try {
       const { count } = db

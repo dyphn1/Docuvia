@@ -41,6 +41,14 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
     );
     const results = await Promise.all(runs);
 
+    results.forEach((result, index) => {
+      if (result.exitCode !== 0) {
+        console.error(
+          `[analyze-concurrency] run ${index} failed (exit=${result.exitCode})\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`,
+        );
+      }
+    });
+
     for (const result of results) {
       expect(result.exitCode).toBe(0);
     }

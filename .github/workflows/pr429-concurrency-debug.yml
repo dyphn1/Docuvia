@@ -1,0 +1,30 @@
+name: PR429 Concurrency Debug
+
+on:
+  push:
+    branches:
+      - debug/pr429-concurrency
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Repeat analyze concurrency regression
+        shell: bash
+        run: |
+          set -o pipefail
+          for i in $(seq 1 10); do
+            echo "========== iteration $i =========="
+            pnpm exec vitest run artifacts/cli/test/integration/commands/analyze-concurrency.test.ts --testTimeout=120000 --hookTimeout=120000
+          done

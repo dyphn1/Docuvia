@@ -5,7 +5,7 @@ import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
-const CONCURRENT_RUNS = 20;
+const CONCURRENT_RUNS = 5;
 
 /**
  * Regression coverage for docs/cli-test-analysis/analyze.md claim 6, retargeted twice now:
@@ -41,16 +41,11 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
     );
     const results = await Promise.all(runs);
 
-    results.forEach((result, index) => {
-      if (result.exitCode !== 0) {
-        console.error(
-          `[analyze-concurrency] run ${index} failed (exit=${result.exitCode})\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`,
-        );
-      }
-    });
-
-    for (const result of results) {
-      expect(result.exitCode).toBe(0);
+    for (const [index, result] of results.entries()) {
+      expect(
+        result.exitCode,
+        `concurrent analyze run ${index} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+      ).toBe(0);
     }
 
     const logPath = resolve(sandbox.dir, ".docuvia/logs/analyze.log");

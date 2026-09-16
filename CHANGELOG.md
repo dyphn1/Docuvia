@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.10.1](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.10.1) (2026-09-16)
+
+### Bug Fixes
+
+- **ci:** enforce hooks and harden analyze integration tests ([f30e637](https://github.com/dyphn1/Docuvia/commit/f30e6374dfe0692df51a6e178ab8eec0df76b3b1))
+
 # [1.10.0](https://github.com/dyphn1/Docuvia/compare/v1.9.0...v1.10.0) (2026-09-14)
 
 ### Features

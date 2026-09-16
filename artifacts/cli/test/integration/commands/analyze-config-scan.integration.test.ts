@@ -142,7 +142,8 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
         .split(/\r?\n/)
         .filter(
           (line) =>
-            line.includes("Project Type: ") || line.includes("Suggested Tags: "),
+            line.includes("Project Type: ") ||
+            line.includes("Suggested Tags: "),
         );
     expect(configSummary(thirdOutput)).toEqual(configSummary(secondOutput));
 

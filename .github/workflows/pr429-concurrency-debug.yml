@@ -6,7 +6,7 @@ on:
       - debug/pr429-concurrency
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   reproduce:
@@ -20,5 +20,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - name: Run 20-process analyze concurrency stress
-        run: pnpm exec vitest run artifacts/cli/test/integration/commands/analyze-concurrency.test.ts --testTimeout=120000 --hookTimeout=120000
+      - name: Format and verify concurrency diagnostic
+        shell: bash
+        run: |
+          pnpm exec prettier --write artifacts/cli/test/integration/commands/analyze-concurrency.test.ts
+          pnpm exec vitest run artifacts/cli/test/integration/commands/analyze-concurrency.test.ts --testTimeout=120000 --hookTimeout=120000
+      - name: Persist exact formatted diagnostic
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/cli/test/integration/commands/analyze-concurrency.test.ts
+          if git diff --cached --quiet; then
+            echo "No changes to persist"
+            exit 0
+          fi
+          git commit -m "chore(debug): persist formatted concurrency diagnostic" --no-verify
+          git push --no-verify

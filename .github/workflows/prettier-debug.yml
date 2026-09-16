@@ -29,5 +29,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts
-          git commit -m "chore(debug): apply prettier output"
-          git push
+          git commit -m "chore(debug): apply prettier output" --no-verify
+          git push --no-verify

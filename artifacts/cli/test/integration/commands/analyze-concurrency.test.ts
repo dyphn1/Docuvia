@@ -5,7 +5,7 @@ import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
-const CONCURRENT_RUNS = 5;
+const CONCURRENT_RUNS = 20;
 
 /**
  * Regression coverage for docs/cli-test-analysis/analyze.md claim 6, retargeted twice now:

@@ -20,11 +20,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - name: Repeat analyze concurrency regression
-        shell: bash
-        run: |
-          set -o pipefail
-          for i in $(seq 1 10); do
-            echo "========== iteration $i =========="
-            pnpm exec vitest run artifacts/cli/test/integration/commands/analyze-concurrency.test.ts --testTimeout=120000 --hookTimeout=120000
-          done
+      - name: Run full suite with concurrency diagnostics
+        run: pnpm run test

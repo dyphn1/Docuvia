@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolve } from "path";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
@@ -57,8 +51,12 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
       .split("\n")
       .filter(Boolean)
       .map((line) => JSON.parse(line));
-    expect(lines.some((line) => line.event === "analyze.auto.start")).toBe(true);
-    expect(lines.some((line) => line.event === "analyze.full.start")).toBe(true);
+    expect(lines.some((line) => line.event === "analyze.auto.start")).toBe(
+      true,
+    );
+    expect(lines.some((line) => line.event === "analyze.full.start")).toBe(
+      true,
+    );
     const summary = lines.find((line) => line.event === "analyze.full.summary");
     expect(summary?.projectType).toBe("javascript");
     expect(summary?.filesRequested).toBe(0);
@@ -78,15 +76,18 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     }
   }, 35000);
 
-  it("[invalid-input] degrades a malformed package.json to generic/general without crashing full ingestion", async () => {
-    writeFileSync(resolve(sandbox.dir, "package.json"), "{", "utf8");
+  it("[invalid-input] skips a malformed nested package.json without crashing full ingestion", async () => {
+    const brokenPackageDir = resolve(sandbox.dir, "packages", "broken");
+    mkdirSync(brokenPackageDir, { recursive: true });
+    writeFileSync(resolve(brokenPackageDir, "package.json"), "{", "utf8");
 
     const result = await sandbox.runCli(["analyze"]);
     const output = result.stdout || result.stderr;
 
     expect(result.exitCode).toBe(0);
-    expect(output).toContain("Project Type: generic");
-    expect(output).toContain("Suggested Tags: general");
+    expect(output).toContain("javascript");
+    expect(output).toContain("react");
+    expect(output).toContain("typescript");
 
     const db = sandbox.getDb();
     try {
@@ -99,18 +100,18 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     }
   }, 35000);
 
-  it("[error-handling] exits non-zero with the stable fatal-error boundary when persistence cannot create .docuvia", async () => {
+  it("[error-handling] exits non-zero with the stable analyze-error boundary when persistence cannot create .docuvia", async () => {
     writeFileSync(resolve(sandbox.dir, ".docuvia"), "not-a-directory", "utf8");
 
     const result = await sandbox.runCli(["analyze"], { reject: false });
     const output = `${result.stdout}\n${result.stderr}`;
 
     expect(result.exitCode).toBe(1);
-    expect(output).toContain("Fatal error:");
+    expect(output).toContain("Analysis failed:");
     expect(existsSync(resolve(sandbox.dir, ".docuvia/local.db"))).toBe(false);
   }, 35000);
 
-  it("[state-diff] re-scans changed package metadata on the next full ingestion without duplicating the project row", async () => {
+  it("[state-diff] re-scans changed package metadata and keeps identical re-analysis deterministic without duplicating the project row", async () => {
     const first = await sandbox.runCli(["analyze"]);
     expect(first.exitCode).toBe(0);
     expect(first.stdout || first.stderr).toContain("react");
@@ -132,8 +133,23 @@ describe("Command: docuvia analyze (auto mode, empty graph -> full ingestion, re
     expect(secondOutput).not.toContain("react");
     expect(secondOutput).not.toContain("typescript");
 
+    const third = await sandbox.runCli(["analyze"]);
+    const thirdOutput = third.stdout || third.stderr;
+    expect(third.exitCode).toBe(0);
+
+    const configSummary = (output: string) =>
+      output
+        .split(/\r?\n/)
+        .filter(
+          (line) =>
+            line.includes("Project Type: ") ||
+            line.includes("Suggested Tags: "),
+        );
+    expect(configSummary(thirdOutput)).toEqual(configSummary(secondOutput));
+
     // This fixture still has no source files, so the empty-graph rule re-runs full ingestion.
-    // seedProjectRow/getOrInsert must retain one project while the config-derived state changes.
+    // seedProjectRow/getOrInsert must retain one project while config-derived state changes and
+    // across an identical re-analysis.
     const db = sandbox.getDb();
     try {
       const { count } = db

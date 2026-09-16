@@ -35,6 +35,8 @@ jobs:
           pnpm exec prettier --write \
             artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts \
             test/phase9-cli-tdd-quality.test.ts
+      - name: Build workspace dependencies
+        run: pnpm run build
       - name: Run targeted regression tests
         run: pnpm exec vitest run test/phase9-cli-tdd-quality.test.ts artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts --testTimeout=120000 --hookTimeout=120000
       - name: Persist verified exact files

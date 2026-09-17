@@ -6,10 +6,12 @@ import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import { partitionTierBBucket } from "./tier-b-project-partitioner.js";
 
 describe("partitionTierBBucket() path containment", () => {
-  it("drops a project reference whose in-workspace symlink resolves outside", () => {
+  it("drops symlinked project references that escape workspace", () => {
     if (process.platform === "win32") return;
 
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-tierb-symlink-"));
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-symlink-"),
+    );
     const outside = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierb-outside-"),
     );

@@ -5,6 +5,16 @@ import * as fs from "fs";
 import { LanguageRegistry } from "./language-registry.js";
 import { UTF8_ENCODING } from "@workspace/contracts";
 
+const VALID_CUSTOM_LANGUAGE_TOML = `
+[languages.custom]
+extensions = [".custom"]
+wasm_file = "tree-sitter-custom.wasm"
+imports = ["import_statement"]
+classes = ["class_declaration"]
+functions = ["function_declaration"]
+calls = ["call_expression"]
+`;
+
 describe("LanguageRegistry.load() graceful fallback", () => {
   let tmpDir: string;
 
@@ -19,6 +29,18 @@ describe("LanguageRegistry.load() graceful fallback", () => {
     vi.restoreAllMocks();
   });
 
+  it("loads a valid languages.toml inside the project root", async () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "languages.toml"),
+      VALID_CUSTOM_LANGUAGE_TOML,
+      UTF8_ENCODING,
+    );
+
+    const registry = await LanguageRegistry.load(tmpDir);
+
+    expect(registry.getProviderForExtension(".custom")).toBeDefined();
+  });
+
   it("gracefully falls back to defaults when languages.toml is missing", async () => {
     const registry = await LanguageRegistry.load(tmpDir);
     expect(registry).toBeDefined();
@@ -31,6 +53,43 @@ describe("LanguageRegistry.load() graceful fallback", () => {
 
     const registry = await LanguageRegistry.load(tmpDir);
     expect(registry).toBeDefined();
+    expect(registry.getConfig()).toEqual({ languages: {} });
+  });
+
+  it("rejects a languages.toml symlink that escapes the project root", async () => {
+    if (process.platform === "win32") return;
+
+    const outsidePath = path.join(
+      path.dirname(tmpDir),
+      `${path.basename(tmpDir)}-outside.toml`,
+    );
+    try {
+      fs.writeFileSync(outsidePath, VALID_CUSTOM_LANGUAGE_TOML, UTF8_ENCODING);
+      fs.symlinkSync(outsidePath, path.join(tmpDir, "languages.toml"));
+
+      const registry = await LanguageRegistry.load(tmpDir);
+
+      expect(registry.getProviderForExtension(".custom")).toBeUndefined();
+      expect(registry.getConfig()).toEqual({ languages: {} });
+    } finally {
+      fs.rmSync(outsidePath, { force: true });
+    }
+  });
+
+  it("rejects an oversized languages.toml before parsing", async () => {
+    const oversizedToml = `${"# padding\n".repeat(30_000)}${VALID_CUSTOM_LANGUAGE_TOML}`;
+    fs.writeFileSync(
+      path.join(tmpDir, "languages.toml"),
+      oversizedToml,
+      UTF8_ENCODING,
+    );
+
+    const registry = await LanguageRegistry.load(tmpDir);
+
+    expect(Buffer.byteLength(oversizedToml, UTF8_ENCODING)).toBeGreaterThan(
+      256 * 1024,
+    );
+    expect(registry.getProviderForExtension(".custom")).toBeUndefined();
     expect(registry.getConfig()).toEqual({ languages: {} });
   });
 });

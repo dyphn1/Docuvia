@@ -144,13 +144,18 @@ export class LanguageRegistry {
             return new LanguageRegistry(base);
           }
 
-          const stat = await fs.stat(realTarget);
-          if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
-            return new LanguageRegistry(base);
-          }
+          const handle = await fs.open(realTarget, "r");
+          try {
+            const stat = await handle.stat();
+            if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
+              return new LanguageRegistry(base);
+            }
 
-          const content = await fs.readFile(realTarget, UTF8_ENCODING);
-          return LanguageRegistry.loadFromString(content, base);
+            const content = await handle.readFile(UTF8_ENCODING);
+            return LanguageRegistry.loadFromString(content, base);
+          } finally {
+            await handle.close();
+          }
         } catch (fileErr: unknown) {
           // Gracefully fall back to defaults if file is not accessible or safe to load
         }

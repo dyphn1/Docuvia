@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { parse } from "smol-toml";
 import { UTF8_ENCODING } from "@workspace/contracts";
 import {
@@ -11,6 +9,9 @@ import {
 const DEFAULT_LANGUAGES_CONFIG_FILENAME = "languages.toml";
 /** Bounds both file I/O and TOML parser work for repository-controlled language configuration. */
 const MAX_LANGUAGES_CONFIG_BYTES = 256 * 1024;
+
+type FsPromisesModule = typeof import("node:fs/promises");
+type PathModule = typeof import("node:path");
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -67,13 +68,17 @@ function validateLanguageRegistryData(
 }
 
 /** True when `candidate` is `root` itself or a descendant after realpath resolution. */
-function isPathInsideRoot(root: string, candidate: string): boolean {
-  const relative = path.relative(root, candidate);
+function isPathInsideRoot(
+  pathModule: PathModule,
+  root: string,
+  candidate: string,
+): boolean {
+  const relative = pathModule.relative(root, candidate);
   return (
     relative === "" ||
     (relative !== ".." &&
-      !relative.startsWith(`..${path.sep}`) &&
-      !path.isAbsolute(relative))
+      !relative.startsWith(`..${pathModule.sep}`) &&
+      !pathModule.isAbsolute(relative))
   );
 }
 
@@ -82,6 +87,8 @@ function isPathInsideRoot(root: string, candidate: string): boolean {
  * through the same FileHandle so the file checked for type/size is the file that gets parsed.
  */
 async function readSafeLanguagesConfig(
+  fs: FsPromisesModule,
+  path: PathModule,
   rootPath: string,
 ): Promise<string | undefined> {
   const targetPath = path.join(rootPath, DEFAULT_LANGUAGES_CONFIG_FILENAME);
@@ -90,7 +97,7 @@ async function readSafeLanguagesConfig(
       fs.realpath(rootPath),
       fs.realpath(targetPath),
     ]);
-    if (!isPathInsideRoot(realRoot, realTarget)) return undefined;
+    if (!isPathInsideRoot(path, realRoot, realTarget)) return undefined;
 
     const handle = await fs.open(realTarget, "r");
     try {
@@ -160,8 +167,10 @@ export class LanguageRegistry {
         processLike.versions.node &&
         processLike.cwd
       ) {
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
         const rootPath = path.resolve(projectRoot ?? processLike.cwd());
-        const content = await readSafeLanguagesConfig(rootPath);
+        const content = await readSafeLanguagesConfig(fs, path, rootPath);
         return LanguageRegistry.loadFromString(content, base);
       }
     } catch (err: unknown) {

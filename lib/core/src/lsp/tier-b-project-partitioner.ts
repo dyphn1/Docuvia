@@ -155,7 +155,10 @@ function findOwningProjectRoot(
 }
 
 /** True when `candidate` is `workspaceRoot` itself or a lexical descendant of it. */
-function isPathInsideWorkspace(workspaceRoot: string, candidate: string): boolean {
+function isPathInsideWorkspace(
+  workspaceRoot: string,
+  candidate: string,
+): boolean {
   const relative = path.relative(path.resolve(workspaceRoot), candidate);
   return (
     relative === "" ||
@@ -276,7 +279,10 @@ function expandWorkspacePattern(
 }
 
 /** Local `workspaces` package directories of a root package.json. */
-function readTypeScriptWorkspaces(root: string, workspaceRoot: string): string[] {
+function readTypeScriptWorkspaces(
+  root: string,
+  workspaceRoot: string,
+): string[] {
   const packageJson = readJson(root, ConfigFilenames.PACKAGE_JSON);
   if (packageJson === undefined) return [];
   const workspaces: unknown = packageJson.workspaces;

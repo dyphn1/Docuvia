@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { parse } from "smol-toml";
 import { UTF8_ENCODING } from "@workspace/contracts";
 import {
@@ -7,6 +9,8 @@ import {
 } from "./language-provider.js";
 
 const DEFAULT_LANGUAGES_CONFIG_FILENAME = "languages.toml";
+/** Bounds both file I/O and TOML parser work for repository-controlled language configuration. */
+const MAX_LANGUAGES_CONFIG_BYTES = 256 * 1024;
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -62,6 +66,17 @@ function validateLanguageRegistryData(
   return true;
 }
 
+/** True when `candidate` is `root` itself or a descendant after realpath resolution. */
+function isPathInsideRoot(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
 export class LanguageRegistry {
   private config: LanguageRegistryData;
   private extToProviderMap: Map<string, LanguageProvider>;
@@ -115,19 +130,29 @@ export class LanguageRegistry {
         processLike.versions.node &&
         processLike.cwd
       ) {
-        // @ts-ignore
-        const fs = await import("fs/promises");
-        // @ts-ignore
-        const path = await import("path");
-        const targetPath = projectRoot
-          ? path.resolve(projectRoot, DEFAULT_LANGUAGES_CONFIG_FILENAME)
-          : path.resolve(processLike.cwd(), DEFAULT_LANGUAGES_CONFIG_FILENAME);
+        const rootPath = path.resolve(projectRoot ?? processLike.cwd());
+        const targetPath = path.join(
+          rootPath,
+          DEFAULT_LANGUAGES_CONFIG_FILENAME,
+        );
         try {
-          await fs.access(targetPath);
-          const content = await fs.readFile(targetPath, UTF8_ENCODING);
+          const [realRoot, realTarget] = await Promise.all([
+            fs.realpath(rootPath),
+            fs.realpath(targetPath),
+          ]);
+          if (!isPathInsideRoot(realRoot, realTarget)) {
+            return new LanguageRegistry(base);
+          }
+
+          const stat = await fs.stat(realTarget);
+          if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
+            return new LanguageRegistry(base);
+          }
+
+          const content = await fs.readFile(realTarget, UTF8_ENCODING);
           return LanguageRegistry.loadFromString(content, base);
         } catch (fileErr: unknown) {
-          // Gracefully fall back to defaults if file is not accessible
+          // Gracefully fall back to defaults if file is not accessible or safe to load
         }
       }
     } catch (err: unknown) {

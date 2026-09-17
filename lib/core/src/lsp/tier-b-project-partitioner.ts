@@ -480,9 +480,7 @@ export function partitionTierBBucket(
     groups.push({
       root,
       files,
-      deps: rule
-        ? readProjectDeps(root, input.languageId, workspaceRoot)
-        : [],
+      deps: rule ? readProjectDeps(root, input.languageId, workspaceRoot) : [],
     });
   }
 

@@ -154,7 +154,7 @@ function findOwningProjectRoot(
   }
 }
 
-/** True when `candidate` is `workspaceRoot` itself or a lexical descendant of it. */
+/** True when `candidate` is `workspaceRoot` itself or a native-path descendant of it. */
 function isPathInsideWorkspace(
   workspaceRoot: string,
   candidate: string,
@@ -168,14 +168,28 @@ function isPathInsideWorkspace(
   );
 }
 
-/** Resolves a project-file supplied path without allowing it to escape the analysis workspace. */
+/**
+ * Resolves a project-file supplied path without allowing lexical or symlink escapes from the
+ * analysis workspace. The lexical path is retained so it still matches project-group roots.
+ */
 function resolveWithinWorkspace(
   workspaceRoot: string,
   baseDir: string,
   candidatePath: string,
 ): string | undefined {
+  const resolvedWorkspace = path.resolve(workspaceRoot);
   const resolved = path.normalize(path.resolve(baseDir, candidatePath));
-  return isPathInsideWorkspace(workspaceRoot, resolved) ? resolved : undefined;
+  if (!isPathInsideWorkspace(resolvedWorkspace, resolved)) return undefined;
+
+  try {
+    const realWorkspace = fs.realpathSync(resolvedWorkspace);
+    const realCandidate = fs.realpathSync(resolved);
+    return isPathInsideWorkspace(realWorkspace, realCandidate)
+      ? resolved
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function resolveDependencyPaths(
@@ -272,7 +286,8 @@ function expandWorkspacePattern(
         (entry) =>
           base === "*" || entry.includes(base.slice(0, base.indexOf("*"))),
       )
-      .map((entry) => path.join(parent, entry));
+      .map((entry) => resolveWithinWorkspace(workspaceRoot, parent, entry))
+      .filter((entry): entry is string => entry !== undefined);
   } catch {
     return [];
   }

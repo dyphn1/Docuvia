@@ -77,6 +77,36 @@ function isPathInsideRoot(root: string, candidate: string): boolean {
   );
 }
 
+/**
+ * Opens the project-local languages.toml only after realpath containment, then validates and reads
+ * through the same FileHandle so the file checked for type/size is the file that gets parsed.
+ */
+async function readSafeLanguagesConfig(
+  rootPath: string,
+): Promise<string | undefined> {
+  const targetPath = path.join(rootPath, DEFAULT_LANGUAGES_CONFIG_FILENAME);
+  try {
+    const [realRoot, realTarget] = await Promise.all([
+      fs.realpath(rootPath),
+      fs.realpath(targetPath),
+    ]);
+    if (!isPathInsideRoot(realRoot, realTarget)) return undefined;
+
+    const handle = await fs.open(realTarget, "r");
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
+        return undefined;
+      }
+      return await handle.readFile(UTF8_ENCODING);
+    } finally {
+      await handle.close();
+    }
+  } catch (fileErr: unknown) {
+    return undefined;
+  }
+}
+
 export class LanguageRegistry {
   private config: LanguageRegistryData;
   private extToProviderMap: Map<string, LanguageProvider>;
@@ -131,34 +161,8 @@ export class LanguageRegistry {
         processLike.cwd
       ) {
         const rootPath = path.resolve(projectRoot ?? processLike.cwd());
-        const targetPath = path.join(
-          rootPath,
-          DEFAULT_LANGUAGES_CONFIG_FILENAME,
-        );
-        try {
-          const [realRoot, realTarget] = await Promise.all([
-            fs.realpath(rootPath),
-            fs.realpath(targetPath),
-          ]);
-          if (!isPathInsideRoot(realRoot, realTarget)) {
-            return new LanguageRegistry(base);
-          }
-
-          const handle = await fs.open(realTarget, "r");
-          try {
-            const stat = await handle.stat();
-            if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
-              return new LanguageRegistry(base);
-            }
-
-            const content = await handle.readFile(UTF8_ENCODING);
-            return LanguageRegistry.loadFromString(content, base);
-          } finally {
-            await handle.close();
-          }
-        } catch (fileErr: unknown) {
-          // Gracefully fall back to defaults if file is not accessible or safe to load
-        }
+        const content = await readSafeLanguagesConfig(rootPath);
+        return LanguageRegistry.loadFromString(content, base);
       }
     } catch (err: unknown) {
       // Gracefully fall back to defaults on loading errors

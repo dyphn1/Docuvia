@@ -83,8 +83,11 @@ All model-specific artifacts belong only to `lib/semantic-decision`, including f
 - model loading/cache details;
 - model-specific preprocessing/postprocessing.
 
-No other implementation package may import these details. Upper layers reach the capability only
-through `TOKENS.SemanticDecisionProvider`.
+No other implementation package may import these details. Unlike ordinary PLAT-009 Domain →
+Technology Provider directionality, `lib/core` is also forbidden from directly importing
+`@workspace/semantic-decision`; it and all upper layers reach the capability only through
+`@workspace/contracts` and `TOKENS.SemanticDecisionProvider`. This exception is mechanically
+enforced by the layer-boundary lint/test suite.
 
 The Presentation composition root may import `@workspace/semantic-decision` solely for its
 self-registration side effect, matching the existing provider bootstrap pattern.

@@ -161,6 +161,15 @@ describe("layer-boundary eslint config", () => {
     expect(domainTech).toHaveLength(0);
   });
 
+  it("forbids lib/core from directly importing the semantic decision implementation", async () => {
+    const violations = await layerViolations(
+      `import "@workspace/semantic-decision";`,
+      "lib/core/src/impact/sample.ts",
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.message).toMatch(/PLAT-011 model boundary violation/);
+  });
+
   it("forbids every remaining Tech Provider from importing lib/core (upward inversion)", async () => {
     const techProviders = [
       "lib/schema/src/sqlite/graph-store.ts",

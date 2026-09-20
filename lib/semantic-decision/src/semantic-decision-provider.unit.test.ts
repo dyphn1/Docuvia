@@ -5,7 +5,7 @@ import {
   SemanticDecisionTasks,
   TOKENS,
 } from "@workspace/contracts";
-import { LocalSemanticDecisionProvider } from "./semantic-decision-provider.js";
+import { SemanticDecisionProvider } from "./semantic-decision-provider.js";
 import { registerSemanticDecisionProvider } from "./register.js";
 
 const request = {
@@ -25,9 +25,9 @@ const request = {
   ],
 } as const;
 
-describe("LocalSemanticDecisionProvider foundation boundary", () => {
+describe("SemanticDecisionProvider foundation boundary", () => {
   it("degrades honestly until the package-owned model is implemented", async () => {
-    const provider = new LocalSemanticDecisionProvider();
+    const provider = new SemanticDecisionProvider();
 
     await expect(provider.checkAvailability()).resolves.toMatchObject({
       available: false,

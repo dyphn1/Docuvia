@@ -311,12 +311,7 @@ function expandWorkspacePattern(
           base === "*" || entry.includes(base.slice(0, base.indexOf("*"))),
       )
       .map((entry) =>
-        resolveWithinWorkspace(
-          workspaceRoot,
-          realWorkspaceRoot,
-          parent,
-          entry,
-        ),
+        resolveWithinWorkspace(workspaceRoot, realWorkspaceRoot, parent, entry),
       )
       .filter((entry): entry is string => entry !== undefined);
   } catch {

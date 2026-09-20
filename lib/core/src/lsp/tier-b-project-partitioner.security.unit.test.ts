@@ -22,7 +22,11 @@ describe("partitionTierBBucket() path containment", () => {
         JSON.stringify({ references: [{ path: "../b" }] }),
         "utf8",
       );
-      fs.writeFileSync(path.join(root, "packages", "b", "package.json"), "{}", "utf8");
+      fs.writeFileSync(
+        path.join(root, "packages", "b", "package.json"),
+        "{}",
+        "utf8",
+      );
       fs.writeFileSync(
         path.join(root, "packages", "a", "src", "index.ts"),
         "",
@@ -57,7 +61,11 @@ describe("partitionTierBBucket() path containment", () => {
         JSON.stringify({ references: [{ path: "../missing" }] }),
         "utf8",
       );
-      fs.writeFileSync(path.join(projectRoot, "src", "index.ts"), "", "utf8");
+      fs.writeFileSync(
+        path.join(projectRoot, "src", "index.ts"),
+        "",
+        "utf8",
+      );
 
       const partition = partitionTierBBucket({
         workspaceRoot: root,

@@ -17,6 +17,7 @@ const IMPLEMENTATION_PACKAGES = [
   "@workspace/git-local",
   "@workspace/llm-api",
   "@workspace/remote-api",
+  "@workspace/semantic-decision",
 ];
 
 const LAYER_BOUNDARY_MESSAGE =
@@ -47,6 +48,7 @@ const TECH_PROVIDER_FORBIDDEN = [
   "@workspace/git-local",
   "@workspace/llm-api",
   "@workspace/remote-api",
+  "@workspace/semantic-decision",
 ];
 
 /** Plugin packages' forbidden list — identical to the Tech Providers' except their host
@@ -120,6 +122,7 @@ export default tseslint.config(
       "lib/git-local/**/*.ts",
       "lib/llm-api/**/*.ts",
       "lib/remote-api/**/*.ts",
+      "lib/semantic-decision/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [

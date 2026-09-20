@@ -10,7 +10,9 @@ describe("partitionTierBBucket() path containment", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-tierb-valid-"));
 
     try {
-      fs.mkdirSync(path.join(root, "packages", "a", "src"), { recursive: true });
+      fs.mkdirSync(path.join(root, "packages", "a", "src"), {
+        recursive: true,
+      });
       fs.mkdirSync(path.join(root, "packages", "b"), { recursive: true });
       fs.writeFileSync(
         path.join(root, "packages", "a", "package.json"),
@@ -39,14 +41,18 @@ describe("partitionTierBBucket() path containment", () => {
         files: ["packages/a/src/index.ts"],
       });
 
-      expect(partition.groups[0].deps).toEqual([path.join(root, "packages", "b")]);
+      expect(partition.groups[0].deps).toEqual([
+        path.join(root, "packages", "b"),
+      ]);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
 
   it("[invalid-input] drops a project reference whose target does not exist", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-tierb-missing-"));
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-missing-"),
+    );
 
     try {
       const projectRoot = path.join(root, "packages", "a");

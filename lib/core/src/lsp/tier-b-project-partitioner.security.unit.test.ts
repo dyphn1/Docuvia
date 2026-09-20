@@ -67,11 +67,7 @@ describe("partitionTierBBucket() path containment", () => {
         JSON.stringify({ references: [{ path: "../missing" }] }),
         "utf8",
       );
-      fs.writeFileSync(
-        path.join(projectRoot, "src", "index.ts"),
-        "",
-        "utf8",
-      );
+      fs.writeFileSync(path.join(projectRoot, "src", "index.ts"), "", "utf8");
 
       const partition = partitionTierBBucket({
         workspaceRoot: root,

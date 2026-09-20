@@ -16,9 +16,7 @@ const MODEL_NOT_INSTALLED =
  * resolve the capability through contracts/factory, while every model-specific artifact remains
  * confined to this package in the next slice.
  */
-export class LocalSemanticDecisionProvider
-  implements ISemanticDecisionProvider
-{
+export class SemanticDecisionProvider implements ISemanticDecisionProvider {
   readonly name = "local-semantic-decision";
 
   async checkAvailability(): Promise<SemanticDecisionAvailability> {

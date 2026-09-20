@@ -240,12 +240,7 @@ function readRustDeps(
       }
     }
   }
-  return resolveDependencyPaths(
-    workspaceRoot,
-    realWorkspaceRoot,
-    root,
-    deps,
-  );
+  return resolveDependencyPaths(workspaceRoot, realWorkspaceRoot, root, deps);
 }
 
 /** Local `replace <module> => <local-path>` directives in a go.mod -- only the local-path form
@@ -265,12 +260,7 @@ function readGoDeps(
     if (!localPath.startsWith(".") && !path.isAbsolute(localPath)) continue;
     deps.push(localPath);
   }
-  return resolveDependencyPaths(
-    workspaceRoot,
-    realWorkspaceRoot,
-    root,
-    deps,
-  );
+  return resolveDependencyPaths(workspaceRoot, realWorkspaceRoot, root, deps);
 }
 
 /** `workspaces`/`references`/`extends` path deps of a TypeScript project -- the monorepo boundary

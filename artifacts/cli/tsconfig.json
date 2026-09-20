@@ -13,6 +13,7 @@
     { "path": "../../lib/git-local" },
     { "path": "../../lib/llm-api" },
     { "path": "../../lib/remote-api" },
+    { "path": "../../lib/semantic-decision" },
     { "path": "../../lib/schema" },
     { "path": "../../lib/ui-core" }
   ]

@@ -24,11 +24,7 @@ export const SemanticDecisionOptionKinds = {
 export type SemanticDecisionOptionKind =
   (typeof SemanticDecisionOptionKinds)[keyof typeof SemanticDecisionOptionKinds];
 
-export type SemanticDecisionAttributeValue =
-  | string
-  | number
-  | boolean
-  | null;
+export type SemanticDecisionAttributeValue = string | number | boolean | null;
 
 export interface SemanticDecisionContext {
   /** Compact, caller-prepared evidence. The provider is not allowed to crawl the repository. */

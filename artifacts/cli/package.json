@@ -48,6 +48,7 @@
     "@workspace/git-local": "workspace:^",
     "@workspace/llm-api": "workspace:^",
     "@workspace/remote-api": "workspace:^",
+    "@workspace/semantic-decision": "workspace:^",
     "@workspace/schema": "workspace:^",
     "@workspace/ui-core": "workspace:^",
     "better-sqlite3": "^12.11.1",

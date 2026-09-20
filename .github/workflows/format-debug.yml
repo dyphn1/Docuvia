@@ -1,0 +1,32 @@
+name: Format Debug
+
+on:
+  push:
+    branches:
+      - fix/path-boundary-hardening
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Show Prettier diff
+        run: |
+          pnpm exec prettier --write \
+            lib/core/src/lsp/tier-b-project-partitioner.security.unit.test.ts \
+            lib/core/src/lsp/tier-b-project-partitioner.ts
+          git diff -- \
+            lib/core/src/lsp/tier-b-project-partitioner.security.unit.test.ts \
+            lib/core/src/lsp/tier-b-project-partitioner.ts
+          test -z "$(git status --short -- \
+            lib/core/src/lsp/tier-b-project-partitioner.security.unit.test.ts \
+            lib/core/src/lsp/tier-b-project-partitioner.ts)"

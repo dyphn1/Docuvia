@@ -262,8 +262,8 @@ function readTypeScriptDeps(root: string, workspaceRoot: string): string[] {
 /** Expands one `workspaces` pattern: a literal path, or a `*` glob against the directory's
  *  immediate entries. Never throws -- an unreadable/unmatched/escaping pattern contributes nothing. */
 function expandWorkspacePattern(
-  workspaceRoot: string,
   root: string,
+  workspaceRoot: string,
   pattern: string,
 ): string[] {
   if (!pattern.includes("*")) {
@@ -311,7 +311,7 @@ function readTypeScriptWorkspaces(
   const deps: string[] = [];
   for (const pattern of patterns as unknown[]) {
     if (typeof pattern === "string") {
-      deps.push(...expandWorkspacePattern(workspaceRoot, root, pattern));
+      deps.push(...expandWorkspacePattern(root, workspaceRoot, pattern));
     }
   }
   return deps;

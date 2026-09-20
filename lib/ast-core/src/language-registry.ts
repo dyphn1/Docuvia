@@ -85,6 +85,10 @@ function isPathInsideRoot(
 /**
  * Opens the project-local languages.toml only after realpath containment, then validates and reads
  * through the same FileHandle so the file checked for type/size is the file that gets parsed.
+ *
+ * This is a repository-input boundary, not a cross-process filesystem sandbox: standard Node
+ * FileHandle APIs do not provide a portable openat-style way to make realpath containment and open
+ * one atomic operation. A hostile local process racing path replacement is outside this contract.
  */
 async function readSafeLanguagesConfig(
   fs: FsPromisesModule,

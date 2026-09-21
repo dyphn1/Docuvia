@@ -53,8 +53,11 @@ const UNSAFE_WINDOWS_SHELL_TOKEN = /[%!"\r\n]/;
  * LSP overrides. Ordinary flags, paths (including spaces), and punctuation remain supported.
  */
 export function quoteForWindowsShell(token: string): string {
-  if (UNSAFE_WINDOWS_SHELL_TOKEN.test(token)) {
-    throw new Error("Unsafe character in Windows shell-wrapped LSP token");
+  const match = token.match(UNSAFE_WINDOWS_SHELL_TOKEN);
+  if (match) {
+    throw new Error(
+      `Unsafe character ${JSON.stringify(match[0])} in Windows shell-wrapped LSP token`,
+    );
   }
   return `"${token}"`;
 }

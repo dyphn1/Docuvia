@@ -32,6 +32,7 @@ const FORBIDDEN_PACKAGES = [
   "@workspace/git-local",
   "@workspace/llm-api",
   "@workspace/remote-api",
+  "@workspace/semantic-decision",
 ];
 
 const ALLOWED_PACKAGES = ["@workspace/contracts", "@workspace/ui-core"];
@@ -68,8 +69,8 @@ describe("layer-boundary eslint config", () => {
       "lib/ui-core/src/workflows/analyze/sample.ts",
     );
     const flagged = violations.map((v) => v.line);
-    // 7 forbidden + type + side-effect + re-export + subpath = 11 restricted lines; allowed lines are 1-2.
-    expect(flagged).toHaveLength(11);
+    // 8 forbidden + type + side-effect + re-export + subpath = 12 restricted lines; allowed lines are 1-2.
+    expect(flagged).toHaveLength(12);
     expect(violations[0]?.message).toMatch(/lib\/core|@workspace\/core/);
   });
 
@@ -78,7 +79,7 @@ describe("layer-boundary eslint config", () => {
       IMPORT_SAMPLES,
       "artifacts/cli/src/commands/sample.ts",
     );
-    expect(violations).toHaveLength(11);
+    expect(violations).toHaveLength(12);
   });
 
   it("allows artifacts/cli/src to import @workspace/ui-core and @workspace/contracts", async () => {
@@ -160,12 +161,22 @@ describe("layer-boundary eslint config", () => {
     expect(domainTech).toHaveLength(0);
   });
 
+  it("forbids lib/core from directly importing the semantic decision implementation", async () => {
+    const violations = await layerViolations(
+      `import "@workspace/semantic-decision";`,
+      "lib/core/src/impact/sample.ts",
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.message).toMatch(/PLAT-011 model boundary violation/);
+  });
+
   it("forbids every remaining Tech Provider from importing lib/core (upward inversion)", async () => {
     const techProviders = [
       "lib/schema/src/sqlite/graph-store.ts",
       "lib/git-local/src/git-local-provider.ts",
       "lib/llm-api/src/fetch-llm-client.ts",
       "lib/remote-api/src/fetch-remote-sync-client.ts",
+      "lib/semantic-decision/src/semantic-decision-provider.ts",
     ];
     for (const filePath of techProviders) {
       const violations = await layerViolations(
@@ -212,6 +223,7 @@ describe("layer-boundary eslint config", () => {
       "lib/git-local/src/git-local-provider.ts",
       "lib/llm-api/src/fetch-llm-client.ts",
       "lib/remote-api/src/fetch-remote-sync-client.ts",
+      "lib/semantic-decision/src/semantic-decision-provider.ts",
       "lib/ast-core/src/parser-core.ts",
       "lib/plugins-ast/src/index.ts",
     ];
@@ -240,6 +252,7 @@ describe("layer-boundary eslint config", () => {
         "lib/git-local/**/*.ts",
         "lib/llm-api/**/*.ts",
         "lib/remote-api/**/*.ts",
+        "lib/semantic-decision/**/*.ts",
       ]);
       const violations = results.flatMap((r) =>
         r.messages

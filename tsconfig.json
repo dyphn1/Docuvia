@@ -9,6 +9,7 @@
     { "path": "./lib/llm-api" },
     { "path": "./lib/plugins-ast" },
     { "path": "./lib/remote-api" },
+    { "path": "./lib/semantic-decision" },
     { "path": "./lib/schema" },
     { "path": "./lib/core" },
     { "path": "./lib/ui-core" },

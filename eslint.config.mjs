@@ -17,6 +17,7 @@ const IMPLEMENTATION_PACKAGES = [
   "@workspace/git-local",
   "@workspace/llm-api",
   "@workspace/remote-api",
+  "@workspace/semantic-decision",
 ];
 
 const LAYER_BOUNDARY_MESSAGE =
@@ -27,7 +28,7 @@ const LAYER_BOUNDARY_MESSAGE =
 /** Type B message (issue #30 follow-up): an implementation-layer import in the wrong direction. */
 const TYPE_B_DIRECTION_MESSAGE =
   "implementation-layer direction violation (Type B): Technology Providers (lib/schema, " +
-  "lib/git-local, lib/ast-core, lib/llm-api, lib/remote-api) and plugin packages (lib/plugins-ast) " +
+  "lib/git-local, lib/ast-core, lib/llm-api, lib/remote-api, lib/semantic-decision) and plugin packages (lib/plugins-ast) " +
   "may not import Domain Core (lib/core) or any sibling implementation package — only plugins " +
   "consuming their host (ast-core) and Domain Core consuming Tech Providers are legal directions. " +
   "Shared constants/types belong in @workspace/contracts.";
@@ -47,6 +48,7 @@ const TECH_PROVIDER_FORBIDDEN = [
   "@workspace/git-local",
   "@workspace/llm-api",
   "@workspace/remote-api",
+  "@workspace/semantic-decision",
 ];
 
 /** Plugin packages' forbidden list — identical to the Tech Providers' except their host
@@ -104,9 +106,29 @@ export default tseslint.config(
     ],
     rules: { "no-restricted-imports": "off" },
   },
+  // PLAT-011 is intentionally stricter than ordinary Domain → Tech directionality: model/runtime
+  // implementation must remain reachable from Domain Core only through the contracts token.
+  {
+    files: ["lib/core/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@workspace/semantic-decision"],
+              message:
+                "PLAT-011 model boundary violation: lib/core must resolve TOKENS.SemanticDecisionProvider through @workspace/contracts; never import @workspace/semantic-decision directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Type B (issue #30 follow-up): implementation-layer directionality, per Virtual Contracts §8
   // rule 1 + AGENTS.md mandate 1 + PLAT-009. ast-core is a Technology Provider (raw tree-sitter
-  // wrapper); plugins-ast is its per-language plugin package; schema/git-local/llm-api/remote-api
+  // wrapper); plugins-ast is its per-language plugin package; schema/git-local/llm-api/remote-api/
+  // semantic-decision
   // are the remaining Technology Providers. Legal directions are left unlocked: core →
   // ast-core/plugins-ast (Domain Core consumes Tech Providers) and plugins-ast → ast-core
   // (plugin → host). Locked directions below are the ones that would invert or cycle the
@@ -120,6 +142,7 @@ export default tseslint.config(
       "lib/git-local/**/*.ts",
       "lib/llm-api/**/*.ts",
       "lib/remote-api/**/*.ts",
+      "lib/semantic-decision/**/*.ts",
     ],
     rules: {
       "no-restricted-imports": [

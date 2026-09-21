@@ -14,7 +14,10 @@ import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { stampFullCallResolution } from "../analyze/call-resolution-stats.js";
-import {\n  initTempLifecycle,\n  type InitTempLifecycle,\n} from "./init-temp-lifecycle.js";
+import {
+  initTempLifecycle,
+  type InitTempLifecycle,
+} from "./init-temp-lifecycle.js";
 import {
   buildInitResult,
   buildSkippedInitResult,

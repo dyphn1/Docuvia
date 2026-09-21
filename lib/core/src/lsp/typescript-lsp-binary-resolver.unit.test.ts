@@ -36,6 +36,22 @@ describe("resolveTypeScriptLspBinary()", () => {
     }
   });
 
+  it("builds the child environment from the injected process view (issue #440)", () => {
+    const resolved = resolveTypeScriptLspBinary(workspaceRoot, undefined, {
+      env: {
+        PATH: "injected-path",
+        NODE_OPTIONS: "--stack-trace-limit=77",
+        DOCUVIA_LSP_SECRET_TEST: "injected-secret",
+      },
+    });
+
+    expect(resolved.env?.PATH).toBe("injected-path");
+    expect(resolved.env?.NODE_OPTIONS).toBe(
+      "--stack-trace-limit=77 --max-old-space-size=8192",
+    );
+    expect(resolved.env?.DOCUVIA_LSP_SECRET_TEST).toBeUndefined();
+  });
+
   it("prefers an explicit override over any other resolution", () => {
     const resolved = resolveTypeScriptLspBinary(workspaceRoot, {
       binary: "/custom/path/to/server",

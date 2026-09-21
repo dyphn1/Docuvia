@@ -37,13 +37,26 @@ export function needsWindowsShellWrapper(command: string): boolean {
   );
 }
 
-/** Double-quotes a single `cmd.exe` command-line token, doubling any embedded `"` (cmd.exe's own
- *  escaping convention) -- used only for the narrow `.cmd`/`.bat`/`.ps1`/bare-shell-command case,
- *  each argument individually, never a blanket unescaped `shell: true` + array-args (that pattern
- *  -- the one Node's `DEP0190` deprecation warns about -- concatenates args into the shell string
- *  unescaped, which is a real injection risk the moment any arg contains a shell metacharacter). */
+const UNSAFE_WINDOWS_SHELL_TOKEN = /[%!"\r\n]/;
+
+/**
+ * Quotes one token for the narrow Windows shim path. We intentionally reject characters that
+ * cmd.exe performs a second expansion/parsing pass on even inside double quotes:
+ *
+ * - `%NAME%` environment expansion;
+ * - `!NAME!` delayed environment expansion when enabled by the host;
+ * - embedded quotes, which can terminate/re-open the quoted token;
+ * - CR/LF, which can introduce an additional command line.
+ *
+ * The LSP protocol never requires shell expansion in argv. Rejecting these tokens is therefore
+ * safer than trying to emulate every cmd.exe escaping corner case for externally configurable
+ * LSP overrides. Ordinary flags, paths (including spaces), and punctuation remain supported.
+ */
 export function quoteForWindowsShell(token: string): string {
-  return `"${token.replace(/"/g, '""')}"`;
+  if (UNSAFE_WINDOWS_SHELL_TOKEN.test(token)) {
+    throw new Error("Unsafe character in Windows shell-wrapped LSP token");
+  }
+  return `"${token}"`;
 }
 
 /** Short timeout for the live `where` probe below -- a cheap PATH lookup, not the batch itself. */

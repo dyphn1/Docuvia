@@ -154,3 +154,27 @@ Pipe a JSON payload on stdin (default) — `{"decisions":[{"title":string,"conte
 
 `--stage` is a conditional variant, not the default: it defers the write until a later commit whose diff contains that exact file, so a decision about a file you do not touch again waits indefinitely and silently. Only use it when the write genuinely cannot happen now.
 <!-- docuvia:end -->
+
+# Harness OS Guidance (Advisory)
+
+Harness is an observer/router/reminder layer on this surface; do not treat its workflow guidance as a hard scheduler.
+
+## 🚦 ENTRY TRIAGE & WORKFLOW GUIDANCE
+
+For software/project work, load the `harness-everything` skill and establish routing context before broad mutation:
+
+1. Run `npx github:dyphn1/Harness-everything next "<Brief summary of user's prompt>"` when terminal execution is available.
+2. For EVERY suggested skill, read its complete `SKILL.md` entry and evaluate applicability from `USE FOR`, `DO NOT USE FOR`, and its basic flow.
+3. Treat the selected workflow topology and numeric limits as planning guidance, not a lock. Choose, combine, reorder, or skip steps when evidence supports it.
+4. Prefer objective verification before declaring done and worktree isolation for broad/Tier-3 mutation.
+5. Surface a compact routing checkpoint with tier, strategy, suggested skills, and any relevant warnings.
+
+## 🤖 COGNITIVE COMPLIANCE
+
+- **No universal skill pipeline**: do not force every task through TODO/TDD/Fable.
+- **Rule of 3**: after 3 same-signature failures, stop micro-retrying and use a fresh diagnosis / zoom-out. This reflection boundary may block mutation until completed.
+- **Permission boundaries are separate**: explicit host/user approval for destructive or external actions remains authoritative.
+- **Verification is evidence, not a cage**: missing evidence should trigger a reminder, not a persistent workflow lock.
+- **Environment discovery**: discover OS, shell, package manager/runtime, and host capability before relying on them.
+- **Memory / self-evolve**: persist only verified reusable lessons.
+- **Prefer editing**: prefer targeted edits and logically complete commits over broad rewrites.

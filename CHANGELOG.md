@@ -4,6 +4,32 @@ All notable changes to `docuvia` are documented in this file. Versions before 0.
 
 # [1.11.0](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.11.0) (2026-09-21)
 
+
+### Bug Fixes
+
+* **ci:** enforce hooks and harden analyze integration tests ([f30e637](https://github.com/dyphn1/Docuvia/commit/f30e6374dfe0692df51a6e178ab8eec0df76b3b1))
+* **core:** identify rejected Windows shell character ([c909142](https://github.com/dyphn1/Docuvia/commit/c9091420025b72b6f14cb6d2d950919e2801a403))
+* **core:** reject unsafe Windows shell tokens ([feaf101](https://github.com/dyphn1/Docuvia/commit/feaf101f85f7396ed743b3c3c27adde261fb5c9c))
+* **core:** return process environment snapshot ([2e9029c](https://github.com/dyphn1/Docuvia/commit/2e9029ce94eb1af2ec3faee03990d411b0731cf2))
+* **core:** use shared Windows platform constant ([8d47f8a](https://github.com/dyphn1/Docuvia/commit/8d47f8a6830d7235689428523ee9473aab676920))
+* **release:** bypass Husky hooks in CI ([ae9fa38](https://github.com/dyphn1/Docuvia/commit/ae9fa382687b0b6148f44e1a63064cfc6c14b917)), closes [#486](https://github.com/dyphn1/Docuvia/issues/486)
+* **ui-core:** keep resolveDbPath internal ([d233834](https://github.com/dyphn1/Docuvia/commit/d233834ac667400bc8959ebf32ceb8699cc86ead))
+
+
+### Features
+
+* **cli:** bootstrap semantic decision provider ([5d56842](https://github.com/dyphn1/Docuvia/commit/5d568420d2f1707e6938909ffef87c67be3628dd))
+* **contracts:** add semantic decision provider contract ([2ff9c02](https://github.com/dyphn1/Docuvia/commit/2ff9c02ee3fccd2c628a01b896674c6182a89cc4))
+* **contracts:** export semantic decision contract ([aebdc44](https://github.com/dyphn1/Docuvia/commit/aebdc44a086eb6451b6c9fc93609a32020510c32))
+* **contracts:** register semantic decision factory token ([da7406b](https://github.com/dyphn1/Docuvia/commit/da7406bfc7cb44accd9d55c4d6443c84a9713d40))
+* **semantic-decision:** add honest-degradation provider shell ([5c5da5c](https://github.com/dyphn1/Docuvia/commit/5c5da5c87308cfc44f0c7e70e4e9a397afb15542))
+* **semantic-decision:** add isolated feature provider package ([1c85e21](https://github.com/dyphn1/Docuvia/commit/1c85e210be27dcaebeecc00aa9a49cd6f4e03733))
+* **semantic-decision:** configure feature provider build ([7dc4807](https://github.com/dyphn1/Docuvia/commit/7dc4807f89ecc1afab90086fff72850c7f9cae6f))
+* **semantic-decision:** expose registration entrypoint only ([81f8982](https://github.com/dyphn1/Docuvia/commit/81f8982205ddbeb852f9ddc287acc7b99af06b91))
+* **semantic-decision:** register provider behind virtual contract ([298e23a](https://github.com/dyphn1/Docuvia/commit/298e23a3595e0938d6196b823dc07de59691c0f6))
+
+# [1.11.0](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.11.0) (2026-09-21)
+
 ### Bug Fixes
 
 - **ci:** enforce hooks and harden analyze integration tests ([f30e637](https://github.com/dyphn1/Docuvia/commit/f30e6374dfe0692df51a6e178ab8eec0df76b3b1))

@@ -1,5 +1,5 @@
 ---
-id: lib/remote-api/src/fetch-remote-sync-client.integration.test.ts#anonymous@L86
+id: lib/remote-api/src/fetch-remote-sync-client.integration.test.ts#anonymous@L39
 type: symbol
 name: anonymous
 filePath: lib/remote-api/src/fetch-remote-sync-client.integration.test.ts

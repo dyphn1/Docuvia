@@ -274,7 +274,11 @@ export class InitWorkflow {
 
         return result;
       } finally {
-        disposeShutdownHandlers();
+        try {
+          tempLifecycle?.stop();
+        } finally {
+          disposeShutdownHandlers();
+        }
       }
     } finally {
       await store.close();

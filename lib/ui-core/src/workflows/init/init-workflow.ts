@@ -274,11 +274,7 @@ export class InitWorkflow {
 
         return result;
       } finally {
-        try {
-          tempLifecycle?.stop();
-        } finally {
-          disposeShutdownHandlers();
-        }
+        disposeTempLifecycle(tempLifecycle, disposeShutdownHandlers);
       }
     } finally {
       await store.close();
@@ -293,6 +289,17 @@ export class InitWorkflow {
  * so no invocation ever leaves a dangling process-level listener. A no-op tempLifecycle (nothing
  * to clean up) yields a no-op disposer.
  */
+function disposeTempLifecycle(
+  tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
+  disposeShutdownHandlers: () => void,
+): void {
+  try {
+    tempLifecycle?.stop();
+  } finally {
+    disposeShutdownHandlers();
+  }
+}
+
 function registerTempLifecycleShutdownHandlers(
   tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
   logger: ILogger,

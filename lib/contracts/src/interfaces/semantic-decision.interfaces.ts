@@ -48,7 +48,9 @@ export type SemanticDecisionAttributeValue = string | number | boolean | null;
 export interface SemanticDecisionContext {
   /** Caller-prepared evidence; the provider must not crawl the repository. */
   readonly text: string;
-  readonly attributes?: Readonly<Record<string, SemanticDecisionAttributeValue>>;
+  readonly attributes?: Readonly<
+    Record<string, SemanticDecisionAttributeValue>
+  >;
 }
 export interface SemanticDecisionOption extends SemanticDecisionContext {
   /** Non-blank, unique caller-owned ID. No normalization or invented output IDs. */
@@ -132,8 +134,7 @@ export interface SemanticDecisionUnavailableOutcome extends SemanticDecisionRequ
   readonly calibrationVersion?: never;
 }
 export type SemanticDecisionOutcome =
-  | SemanticDecisionScoredOutcome
-  | SemanticDecisionUnavailableOutcome;
+  SemanticDecisionScoredOutcome | SemanticDecisionUnavailableOutcome;
 
 /** Future domain policy output, deliberately separate from provider scores and authoritative facts. */
 export interface SemanticDecisionPolicyResult extends SemanticDecisionRequestIdentity {
@@ -148,7 +149,10 @@ export interface SemanticDecisionPolicyResult extends SemanticDecisionRequestIde
 /** Pure domain validation, resolved by token. No model imports, policy thresholds or graph writes. */
 export interface ISemanticDecisionValidator {
   validateRequest(value: unknown): SemanticDecisionRequest;
-  validateOutcome(request: SemanticDecisionRequest, value: unknown): SemanticDecisionOutcome;
+  validateOutcome(
+    request: SemanticDecisionRequest,
+    value: unknown,
+  ): SemanticDecisionOutcome;
 }
 export interface ISemanticDecisionProvider {
   readonly name: string;
@@ -159,5 +163,8 @@ export interface ISemanticDecisionProvider {
    * DocuviaError; expected no-model/unsupported capability returns unavailable, never a guess.
    * Consumers validate requests and responses with ISemanticDecisionValidator before use.
    */
-  score(request: SemanticDecisionRequest, options?: SemanticDecisionCallOptions): Promise<SemanticDecisionOutcome>;
+  score(
+    request: SemanticDecisionRequest,
+    options?: SemanticDecisionCallOptions,
+  ): Promise<SemanticDecisionOutcome>;
 }

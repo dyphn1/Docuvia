@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#createSymlinkForTest
+id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#createTestDirectoryLink
 type: symbol
-name: createSymlinkForTest
+name: createTestDirectoryLink
 filePath: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts
 ---
-# Symbol: createSymlinkForTest
+# Symbol: createTestDirectoryLink
 
 File: `lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts`

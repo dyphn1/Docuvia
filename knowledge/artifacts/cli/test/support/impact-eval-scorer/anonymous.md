@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/impact-eval-scorer.ts#anonymous@L114
+id: artifacts/cli/test/support/impact-eval-scorer.ts#anonymous@L174
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/support/impact-eval-scorer.ts

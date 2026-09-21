@@ -2,6 +2,24 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.11.0](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.11.0) (2026-09-21)
+
+### Bug Fixes
+
+- **ci:** enforce hooks and harden analyze integration tests ([f30e637](https://github.com/dyphn1/Docuvia/commit/f30e6374dfe0692df51a6e178ab8eec0df76b3b1))
+
+### Features
+
+- **cli:** bootstrap semantic decision provider ([5d56842](https://github.com/dyphn1/Docuvia/commit/5d568420d2f1707e6938909ffef87c67be3628dd))
+- **contracts:** add semantic decision provider contract ([2ff9c02](https://github.com/dyphn1/Docuvia/commit/2ff9c02ee3fccd2c628a01b896674c6182a89cc4))
+- **contracts:** export semantic decision contract ([aebdc44](https://github.com/dyphn1/Docuvia/commit/aebdc44a086eb6451b6c9fc93609a32020510c32))
+- **contracts:** register semantic decision factory token ([da7406b](https://github.com/dyphn1/Docuvia/commit/da7406bfc7cb44accd9d55c4d6443c84a9713d40))
+- **semantic-decision:** add honest-degradation provider shell ([5c5da5c](https://github.com/dyphn1/Docuvia/commit/5c5da5c87308cfc44f0c7e70e4e9a397afb15542))
+- **semantic-decision:** add isolated feature provider package ([1c85e21](https://github.com/dyphn1/Docuvia/commit/1c85e210be27dcaebeecc00aa9a49cd6f4e03733))
+- **semantic-decision:** configure feature provider build ([7dc4807](https://github.com/dyphn1/Docuvia/commit/7dc4807f89ecc1afab90086fff72850c7f9cae6f))
+- **semantic-decision:** expose registration entrypoint only ([81f8982](https://github.com/dyphn1/Docuvia/commit/81f8982205ddbeb852f9ddc287acc7b99af06b91))
+- **semantic-decision:** register provider behind virtual contract ([298e23a](https://github.com/dyphn1/Docuvia/commit/298e23a3595e0938d6196b823dc07de59691c0f6))
+
 ## [1.10.1](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.10.1) (2026-09-16)
 
 ### Bug Fixes

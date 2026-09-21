@@ -7,3 +7,4 @@ filePath: lib/schema/src/sqlite/migration-runner.contract.integration.test.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/migration-runner.contract.integration.test.ts`
+

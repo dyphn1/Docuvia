@@ -1,9 +1,9 @@
 ---
-id: lib/contracts/src/factory/docuvia-factory.ts#docuviaFactory
+id: lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory
 type: symbol
-name: docuviaFactory
+name: DocuviaFactory
 filePath: lib/contracts/src/factory/docuvia-factory.ts
 ---
-# Symbol: docuviaFactory
+# Symbol: DocuviaFactory
 
 File: `lib/contracts/src/factory/docuvia-factory.ts`

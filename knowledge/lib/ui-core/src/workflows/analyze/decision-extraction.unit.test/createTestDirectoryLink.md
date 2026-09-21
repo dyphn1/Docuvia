@@ -1,10 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#anonymous@L90
+id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#createTestDirectoryLink
 type: symbol
-name: anonymous
+name: createTestDirectoryLink
 filePath: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: createTestDirectoryLink
 
 File: `lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts`
-

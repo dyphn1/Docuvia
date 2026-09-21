@@ -62,6 +62,14 @@ export {
 } from "./interfaces/edge-resolution.interfaces.js";
 export type {
   ISemanticDecisionProvider,
+  ISemanticDecisionValidator,
+  SemanticDecisionCallOptions,
+  SemanticDecisionCapability,
+  SemanticDecisionEvidenceIdentity,
+  SemanticDecisionRequestIdentity,
+  SemanticDecisionScoredOutcome,
+  SemanticDecisionUnavailableOutcome,
+  SemanticDecisionPolicyResult,
   SemanticDecisionAttributeValue,
   SemanticDecisionAvailability,
   SemanticDecisionContext,
@@ -74,6 +82,12 @@ export type {
   SemanticDecisionTask,
 } from "./interfaces/semantic-decision.interfaces.js";
 export {
+  SemanticDecisionSchemaVersion,
+  SemanticDecisionLimits,
+  SemanticDecisionStatuses,
+  SemanticDecisionScoreKinds,
+  SemanticDecisionUnavailableCodes,
+  SemanticDecisionTaskSemantics,
   SemanticDecisionOptionKinds,
   SemanticDecisionTasks,
 } from "./interfaces/semantic-decision.interfaces.js";

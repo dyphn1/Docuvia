@@ -46,6 +46,7 @@
 - [ADR Index](adr/README.md)
   - [PLAT-010 — Phase-Based Test Quality Governance](adr/platform/PLAT-010-phase-based-test-quality-governance.md)
   - [PLAT-011 — Semantic Decision Feature Provider Boundary](adr/platform/PLAT-011-semantic-decision-feature-provider-boundary.md)
+  - [Semantic Decision Phase 0 Contract](analysis/semantic-decision-phase0-contract.md)
 
 ## 🔄 Workflows
 

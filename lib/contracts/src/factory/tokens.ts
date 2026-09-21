@@ -25,7 +25,7 @@ import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
 import type { ISemanticDiffAnalyzer } from "../interfaces/semantic-diff.interfaces.js";
-import type { ISemanticDecisionProvider } from "../interfaces/semantic-decision.interfaces.js";
+import type { ISemanticDecisionProvider, ISemanticDecisionValidator } from "../interfaces/semantic-decision.interfaces.js";
 import type {
   IEdgeResolutionProvider,
   TierBLanguageId,
@@ -122,6 +122,7 @@ export const TOKENS = {
    * #468 / PLAT-011: model-agnostic local semantic scoring capability. Model/runtime details live
    * exclusively in @workspace/semantic-decision; callers resolve this interface only.
    */
+  SemanticDecisionValidator: createToken<ISemanticDecisionValidator>("ISemanticDecisionValidator"),
   SemanticDecisionProvider: createToken<ISemanticDecisionProvider>(
     "ISemanticDecisionProvider",
   ),

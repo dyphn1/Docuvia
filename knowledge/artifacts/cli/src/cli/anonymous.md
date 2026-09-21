@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/cli.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/cli.ts`
-.ts`

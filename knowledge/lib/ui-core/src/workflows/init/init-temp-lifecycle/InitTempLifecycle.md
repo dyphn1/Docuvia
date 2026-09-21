@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/init/init-temp-lifecycle.ts#InitTempLifecycle
+id: lib/ui-core/src/workflows/init/init-temp-lifecycle.ts#initTempLifecycle
 type: symbol
-name: InitTempLifecycle
+name: initTempLifecycle
 filePath: lib/ui-core/src/workflows/init/init-temp-lifecycle.ts
 ---
-# Symbol: InitTempLifecycle
+# Symbol: initTempLifecycle
 
 File: `lib/ui-core/src/workflows/init/init-temp-lifecycle.ts`

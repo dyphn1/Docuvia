@@ -29,6 +29,10 @@ jobs:
   release:
     name: Release (semantic-release)
     runs-on: ubuntu-latest
+    env:
+      # semantic-release pushes its generated release commit/tag; local developer
+      # pre-push gates must not block that CI-owned push.
+      HUSKY: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

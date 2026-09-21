@@ -9,37 +9,17 @@ import {
   MAX_ANALYZE_BYTES,
 } from "./decision-extraction.js";
 
-type SymlinkTargetType = "file" | "dir";
-
 /**
- * Creates a real symlink when the host permits it. Windows machines without
- * SeCreateSymbolicLinkPrivilege use a regular path plus a realpath mock so
- * these unit tests still exercise the boundary validation logic.
+ * Windows file symlinks require Developer Mode or SeCreateSymbolicLinkPrivilege.
+ * Directory junctions do not, while still exercising realpath-based workspace
+ * boundary validation. POSIX keeps using a directory symlink for the same cases.
  */
-function createSymlinkForTest(
-  targetPath: string,
-  symlinkPath: string,
-  type: SymlinkTargetType,
-): void {
-  try {
-    fs.symlinkSync(targetPath, symlinkPath, type);
-    return;
-  } catch (err) {
-    const errorCode = (err as NodeJS.ErrnoException).code;
-    if (process.platform !== "win32" || errorCode !== "EPERM") throw err;
-  }
-
-  if (type === "dir") {
-    fs.mkdirSync(symlinkPath);
-  } else {
-    fs.writeFileSync(symlinkPath, "");
-  }
-
-  const realpathSync = fs.realpathSync;
-  vi.spyOn(fs, "realpathSync").mockImplementation(((candidate) => {
-    if (candidate === symlinkPath) return targetPath;
-    return realpathSync(candidate);
-  }) as typeof fs.realpathSync);
+function createTestDirectoryLink(targetDir: string, linkDir: string): void {
+  fs.symlinkSync(
+    targetDir,
+    linkDir,
+    process.platform === "win32" ? "junction" : "dir",
+  );
 }
 
 describe("collectSourceFiles()", () => {
@@ -200,19 +180,19 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
     vi.restoreAllMocks();
   });
 
-  it("rejects a symlinked file inside the tree that resolves outside workspaceRoot", () => {
+  it("rejects a directory link that resolves outside workspaceRoot", () => {
     // Create a source file in outsideDir
     const secretFile = path.join(outsideDir, "secret.ts");
     fs.writeFileSync(secretFile, "export const secret = 1;\n");
 
-    // Create a symlink inside tmpDir pointing to the outside file
-    const symlinkFile = path.join(tmpDir, "escape-file.ts");
-    createSymlinkForTest(secretFile, symlinkFile, "file");
+    // Directory junctions work on Windows without Developer Mode/admin privileges.
+    const linkDir = path.join(tmpDir, "escape-dir");
+    createTestDirectoryLink(outsideDir, linkDir);
 
     const logger = createMockLogger();
-    const { files } = collectSourceFiles(tmpDir, tmpDir, logger);
+    const { files } = collectSourceFiles(linkDir, tmpDir, logger);
 
-    // The symlinked file should be filtered out by the per-file boundary check
+    // The linked directory resolves outside the workspace and must be rejected.
     expect(files).toHaveLength(0);
   });
 
@@ -233,21 +213,39 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
     expect(droppedFiles).toEqual([]);
   });
 
-  it("collects symlinks that resolve within workspaceRoot", () => {
-    // Create a real file inside tmpDir
-    const realFile = path.join(tmpDir, "real.ts");
-    fs.writeFileSync(realFile, "export const real = 1;\n");
+  it("filters a file whose resolved target escapes workspaceRoot", () => {
+    const candidateFile = path.join(tmpDir, "candidate.ts");
+    const outsideFile = path.join(outsideDir, "secret.ts");
+    fs.writeFileSync(candidateFile, "export const candidate = 1;\n");
+    fs.writeFileSync(outsideFile, "export const secret = 1;\n");
 
-    // Create a symlink inside tmpDir pointing to the real file
-    const symlinkFile = path.join(tmpDir, "link.ts");
-    createSymlinkForTest(realFile, symlinkFile, "file");
+    vi.spyOn(fs, "realpathSync").mockImplementation((filePath) => {
+      const inputPath = String(filePath);
+      return inputPath === candidateFile
+        ? outsideFile
+        : path.resolve(inputPath);
+    });
 
     const { files } = collectSourceFiles(tmpDir, tmpDir, createMockLogger());
 
-    // Should collect both the real file and the symlink
-    expect(files.length).toBeGreaterThanOrEqual(1);
+    expect(files).toHaveLength(0);
+  });
+
+  it("collects a directory link that resolves within workspaceRoot", () => {
+    const realDir = path.join(tmpDir, "real-dir");
+    fs.mkdirSync(realDir);
+    const realFile = path.join(realDir, "real.ts");
+    fs.writeFileSync(realFile, "export const real = 1;\n");
+
+    const linkDir = path.join(tmpDir, "link-dir");
+    createTestDirectoryLink(realDir, linkDir);
+
+    const { files } = collectSourceFiles(linkDir, tmpDir, createMockLogger());
+
+    // The linked directory remains inside the workspace and its source file is collected.
+    expect(files).toHaveLength(1);
     const paths = files.map((f) => f.relativePath);
-    expect(paths).toContain("real.ts");
+    expect(paths).toContain(path.join("link-dir", "real.ts"));
   });
 
   it("returns empty files when resolvedPath resolves outside workspaceRoot", () => {
@@ -263,19 +261,19 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
     expect(files).toHaveLength(0);
   });
 
-  it("returns empty when resolvedPath is a symlink pointing outside workspaceRoot", () => {
+  it("returns empty when resolvedPath is a directory link pointing outside workspaceRoot", () => {
     // Create a file in outsideDir
     fs.writeFileSync(
       path.join(outsideDir, "secret.ts"),
       "export const secret = 1;\n",
     );
 
-    // Create a symlink inside tmpDir that points to outsideDir
-    const symlinkPath = path.join(tmpDir, "escape-symlink");
-    createSymlinkForTest(outsideDir, symlinkPath, "dir");
+    // A directory junction avoids the Windows file-symlink privilege requirement.
+    const linkDir = path.join(tmpDir, "escape-dir");
+    createTestDirectoryLink(outsideDir, linkDir);
 
     const logger = createMockLogger();
-    const { files } = collectSourceFiles(symlinkPath, tmpDir, logger);
+    const { files } = collectSourceFiles(linkDir, tmpDir, logger);
 
     expect(files).toHaveLength(0);
   });

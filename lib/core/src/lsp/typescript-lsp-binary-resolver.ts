@@ -1,5 +1,3 @@
-import type { INodeProcess } from "@workspace/contracts";
-import { NodeProcessProvider } from "../process/process-provider.js";
 import {
   resolveNpmNpxBinary,
   type ResolvedLspBinary,
@@ -9,14 +7,15 @@ import {
   DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
 } from "./typescript-lsp-constants.js";
 import { buildMinimalLspEnv } from "./lsp-process-env.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessEnvView,
+} from "./lsp-process-host.js";
 
 /** Builds the minimal child-process env plus tsserver's heap ceiling. The parent process's
  * environment is deliberately not spread here: doing so would leak credentials/API keys into
  * the TypeScript LSP process and bypass the transport's minimal-env policy (issue #322).
  * Existing NODE_OPTIONS are preserved so an explicit --max-old-space-size choice still wins. */
-const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
-type ProcessEnvView = Pick<INodeProcess, "env">;
-
 function buildTsHeapSizeEnvOverride(
   nodeProcess: ProcessEnvView,
 ): NodeJS.ProcessEnv {
@@ -42,7 +41,7 @@ function buildTsHeapSizeEnvOverride(
 export function resolveTypeScriptLspBinary(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
-  nodeProcess: ProcessEnvView = DEFAULT_NODE_PROCESS,
+  nodeProcess: ProcessEnvView = DEFAULT_LSP_NODE_PROCESS,
 ): ResolvedLspBinary {
   return resolveNpmNpxBinary(
     workspaceRoot,

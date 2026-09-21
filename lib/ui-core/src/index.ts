@@ -1,6 +1,5 @@
 export { docuviaApi } from "./docuvia-api.js";
 export type { InitResult } from "./workflows/init/init-result.js";
-export { resolveDbPath } from "./utils/resolve-db-path.js";
 export type { CleanResult } from "./workflows/clean/clean-result.js";
 export type { StatusResult } from "./workflows/status/status-result.js";
 export type { SyncResult } from "./workflows/sync/sync-result.js";

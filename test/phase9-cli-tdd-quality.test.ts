@@ -23,7 +23,7 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "CLI entrypoint / dispatch / interactivity boundary",
     files: [
-      "../artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts",
+      "../artifacts/cli/test/integration/cli-workflow.integration.test.ts",
       "../artifacts/cli/test/integration/cli-help-version-interactive.test.ts",
       "../artifacts/cli/src/cli.ts",
       "../docs/gitbook/user-guide/cli.md",
@@ -71,7 +71,7 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Initialization / installation lifecycle and cross-surface parity",
     files: [
-      "../artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts",
+      "../artifacts/cli/test/integration/cli-workflow.integration.test.ts",
       "../artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts",
       "../artifacts/cli/test/unit/commands/init.unit.test.ts",
     ],
@@ -122,7 +122,7 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Analyze / maintenance cross-layer workflows",
     files: [
-      "../artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts",
+      "../artifacts/cli/test/integration/cli-workflow.integration.test.ts",
       "../artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts",
       "../artifacts/cli/test/unit/commands/analyze.unit.test.ts",
       "../artifacts/cli/test/unit/commands/snapshot.unit.test.ts",
@@ -175,7 +175,7 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Query / review / impact presentation boundary",
     files: [
-      "../artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts",
+      "../artifacts/cli/test/integration/cli-workflow.integration.test.ts",
       "../artifacts/cli/test/unit/commands/query.unit.test.ts",
       "../artifacts/cli/test/unit/commands/review.unit.test.ts",
       "../artifacts/cli/test/unit/commands/impact.unit.test.ts",
@@ -229,7 +229,7 @@ const capabilities: readonly CapabilityEvidence[] = [
   {
     name: "Shipped distribution / package closure",
     files: [
-      "../artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts",
+      "../artifacts/cli/test/integration/cli-workflow.integration.test.ts",
       "../artifacts/cli/test/integration/dist-build.test.ts",
       "../artifacts/cli/package.json",
       "../artifacts/cli/test/support/sandbox.ts",

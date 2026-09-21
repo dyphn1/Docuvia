@@ -64,7 +64,7 @@ describe("quoteForWindowsShell()", () => {
     "line1\rline2",
   ])("rejects shell-expanding or quote-breaking token %j", (token) => {
     expect(() => quoteForWindowsShell(token)).toThrow(
-      /Unsafe character in Windows shell-wrapped LSP token/,
+      /Unsafe character .* in Windows shell-wrapped LSP token/,
     );
   });
 
@@ -106,7 +106,7 @@ describe("buildWindowsShellCommandLine()", () => {
         ["--stdio", "--log=%TEMP%"],
         undefined,
       ),
-    ).rejects.toThrow(/Unsafe character in Windows shell-wrapped LSP token/);
+    ).rejects.toThrow(/Unsafe character .* in Windows shell-wrapped LSP token/);
   });
 
   it("leaves a non-bare-command's own name untouched (only quotes it), since only npx needs the extra where-resolution step", async () => {

@@ -1944,6 +1944,14 @@
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#docuviaFactory","type":"imports"}
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.resolve","type":"calls"}
 {"source":"artifacts/cli/test/integration/init-cli-mcp-symmetry.test.ts","target":"lib/contracts/src/factory/tokens.ts#TOKENS","type":"imports"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#anonymous","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#anonymous@L25","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#anonymous@L29","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#anonymous@L43","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#anonymous@L63","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#readCliVersion","type":"calls"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/integration/package-install.test.ts#readCliVersion","type":"contains"}
+{"source":"artifacts/cli/test/integration/package-install.test.ts","target":"artifacts/cli/test/support/sandbox.ts#buildDistCli","type":"calls"}
 {"source":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts","target":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts","target":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts#anonymous@L112","type":"contains"}
 {"source":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts","target":"artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts#anonymous@L130","type":"contains"}

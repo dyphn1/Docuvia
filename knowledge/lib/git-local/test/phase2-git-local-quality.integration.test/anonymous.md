@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/test/phase2-git-local-quality.integration.test.ts#anonymous@L27
+id: lib/git-local/test/phase2-git-local-quality.integration.test.ts#anonymous@L49
 type: symbol
 name: anonymous
 filePath: lib/git-local/test/phase2-git-local-quality.integration.test.ts

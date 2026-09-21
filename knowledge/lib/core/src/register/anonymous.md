@@ -8,4 +8,3 @@ filePath: lib/core/src/register.ts
 
 File: `lib/core/src/register.ts`
 
-`

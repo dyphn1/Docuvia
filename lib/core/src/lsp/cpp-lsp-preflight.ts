@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PLATFORM_WIN32, type INodeProcess } from "@workspace/contracts";
-import { NodeProcessProvider } from "../process/process-provider.js";
+import { PLATFORM_WIN32 } from "@workspace/contracts";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { CppLspConstants, CPP_LSP_MESSAGES } from "./cpp-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessHostView,
+} from "./lsp-process-host.js";
 
 export interface CppLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -23,13 +26,14 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
  *  prefix on Windows, and Homebrew's keg-only `llvm` formula prefix on macOS (both Apple Silicon
  *  and Intel) -- `llvm`/`clangd` is keg-only in Homebrew and Windows' LLVM installer doesn't
  *  always add itself to `PATH`, so a real install can still be invisible to a bare PATH probe. */
-const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
-type ProcessHostView = Pick<INodeProcess, "env" | "platform">;
-
 function getClangdInstallDirs(nodeProcess: ProcessHostView): string[] {
   if (nodeProcess.platform === PLATFORM_WIN32) {
     return [
-      path.join(nodeProcess.env.ProgramFiles ?? "C:\\Program Files", "LLVM", "bin"),
+      path.join(
+        nodeProcess.env.ProgramFiles ?? "C:\\Program Files",
+        "LLVM",
+        "bin",
+      ),
     ];
   }
   if (nodeProcess.platform === "darwin") {
@@ -44,7 +48,7 @@ function getClangdInstallDirs(nodeProcess: ProcessHostView): string[] {
 export async function checkCppLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
-  nodeProcess: ProcessHostView = DEFAULT_NODE_PROCESS,
+  nodeProcess: ProcessHostView = DEFAULT_LSP_NODE_PROCESS,
 ): Promise<CppLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 

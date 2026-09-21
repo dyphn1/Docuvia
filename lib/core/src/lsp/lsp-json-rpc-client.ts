@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { UTF8_ENCODING } from "@workspace/contracts";
 import { LspWireConstants, LSP_MESSAGES } from "./lsp-constants.js";
+import { buildMinimalLspEnv } from "./lsp-process-env.js";
 import {
   needsWindowsShellWrapper,
   isWindowsShellOnlyBareCommand,
@@ -13,39 +14,11 @@ export interface LspJsonRpcClientOptions {
   args: string[];
   cwd: string;
   /** Overrides the spawned process's environment. When omitted, a minimal
-   *  allowlist (PATH/HOME/etc. -- see `buildDefaultLspEnv`) is used instead of
+   *  allowlist (PATH/HOME/etc. -- see `buildMinimalLspEnv`) is used instead of
    *  inheriting the full `process.env`, so credentials/API keys never leak into
    *  LSP child processes (issue #165). Pass `env: { ...process.env }` explicitly
    *  to opt back into full inheritance. */
   env?: NodeJS.ProcessEnv;
-}
-
-/** Environment variables every LSP server needs to function: binary lookup
- *  (PATH), home-relative config discovery (HOME/USERPROFILE), Windows runtime
- *  resolution (PATHEXT/SYSTEMROOT/COMSPEC), and locale/terminal basics. Kept as
- *  a named constant (no magic strings) per project convention. */
-const LSP_ENV_ALLOWLIST = [
-  "PATH",
-  "HOME",
-  "USERPROFILE",
-  "PATHEXT",
-  "SYSTEMROOT",
-  "COMSPEC",
-  "LANG",
-  "LC_ALL",
-  "TERM",
-] as const;
-
-/** Builds the default spawned-process env: only the allowlisted variables from
- *  `process.env` (issue #165 -- the previous default inherited everything,
- *  including credentials/API keys). */
-function buildDefaultLspEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {};
-  for (const key of LSP_ENV_ALLOWLIST) {
-    const value = process.env[key];
-    if (value !== undefined) env[key] = value;
-  }
-  return env;
 }
 
 /** Full stdio pipe wiring (stdin/stdout/stderr all piped) — shared by both `spawn()` branches
@@ -110,7 +83,7 @@ export class LspJsonRpcClient {
     // Issue #165: default to the minimal allowlist env, not full `process.env`
     // inheritance -- an explicit `options.env` (e.g. TS's heap-size override,
     // which spreads `process.env` itself) still wins untouched.
-    const spawnedEnv = options.env ?? buildDefaultLspEnv();
+    const spawnedEnv = options.env ?? buildMinimalLspEnv();
     // Bare commands (only `"npx"` today) need their own extra resolution step -
     // see
     // `resolveWindowsBareCommandPath()`'s doc comment for the separate real bug

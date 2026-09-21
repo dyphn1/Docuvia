@@ -60,8 +60,8 @@ describe("quoteForWindowsShell()", () => {
     "%PATH%",
     "--arg=%USERPROFILE%",
     "!TEMP!",
-    "line1\\nline2",
-    "line1\\rline2",
+    "line1\nline2",
+    "line1\rline2",
   ])("rejects shell-expanding or quote-breaking token %j", (token) => {
     expect(() => quoteForWindowsShell(token)).toThrow(
       /Unsafe character in Windows shell-wrapped LSP token/,

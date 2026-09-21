@@ -282,13 +282,7 @@ export class InitWorkflow {
   }
 }
 
-/**
- * Registers this invocation's SIGTERM/SIGINT cleanup handler for the temp-file manager (extracted
- * from `execute()` solely to keep its own cyclomatic complexity within budget) and returns a
- * disposer that deregisters it — callers must invoke the disposer exactly once, in a `finally`,
- * so no invocation ever leaves a dangling process-level listener. A no-op tempLifecycle (nothing
- * to clean up) yields a no-op disposer.
- */
+/** Stops the temp lifecycle and always removes this invocation's signal handlers. */
 function disposeTempLifecycle(
   tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
   disposeShutdownHandlers: () => void,
@@ -300,6 +294,13 @@ function disposeTempLifecycle(
   }
 }
 
+/**
+ * Registers this invocation's SIGTERM/SIGINT cleanup handler for the temp-file manager (extracted
+ * from `execute()` solely to keep its own cyclomatic complexity within budget) and returns a
+ * disposer that deregisters it — callers must invoke the disposer exactly once, in a `finally`,
+ * so no invocation ever leaves a dangling process-level listener. A no-op tempLifecycle (nothing
+ * to clean up) yields a no-op disposer.
+ */
 function registerTempLifecycleShutdownHandlers(
   tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
   logger: ILogger,

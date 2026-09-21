@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { INodeProcess } from "@workspace/contracts";
-import { NodeProcessProvider } from "../process/process-provider.js";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { GoLspConstants, GO_LSP_MESSAGES } from "./go-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessEnvView,
+} from "./lsp-process-host.js";
 
 export interface GoLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -21,13 +23,12 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
  *  `$GOBIN` when set, else `$GOPATH/bin`, else Go's default `~/go/bin` -- a fresh shell (or an
  *  editor/agent spawned before `.profile` re-sourced) frequently doesn't have any of these on
  *  `PATH` yet even though the binary is present. */
-const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
-type ProcessEnvView = Pick<INodeProcess, "env">;
-
 function getGoBinDirs(nodeProcess: ProcessEnvView): string[] {
   const dirs: string[] = [];
   if (nodeProcess.env.GOBIN) dirs.push(nodeProcess.env.GOBIN);
-  if (nodeProcess.env.GOPATH) dirs.push(path.join(nodeProcess.env.GOPATH, "bin"));
+  if (nodeProcess.env.GOPATH) {
+    dirs.push(path.join(nodeProcess.env.GOPATH, "bin"));
+  }
   dirs.push(path.join(os.homedir(), "go", "bin"));
   return dirs;
 }
@@ -39,7 +40,7 @@ function getGoBinDirs(nodeProcess: ProcessEnvView): string[] {
 export async function checkGoLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
-  nodeProcess: ProcessEnvView = DEFAULT_NODE_PROCESS,
+  nodeProcess: ProcessEnvView = DEFAULT_LSP_NODE_PROCESS,
 ): Promise<GoLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 

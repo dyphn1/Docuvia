@@ -25,6 +25,7 @@ const CORE_OWNED_TOKENS = [
   TOKENS.SnapshotRenderer,
   TOKENS.HydrationService,
   TOKENS.SemanticDiffAnalyzer,
+  TOKENS.SemanticDecisionValidator,
   TOKENS.EdgeResolutionProviders,
 ] as const;
 

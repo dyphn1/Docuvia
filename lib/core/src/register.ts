@@ -28,6 +28,7 @@ import { JavaLspEdgeProvider } from "./lsp/java-lsp-edge-provider.js";
 import { CsharpLspEdgeProvider } from "./lsp/csharp-lsp-edge-provider.js";
 import { PhpLspEdgeProvider } from "./lsp/php-lsp-edge-provider.js";
 import { RubyLspEdgeProvider } from "./lsp/ruby-lsp-edge-provider.js";
+import { SemanticDecisionValidator } from "./semantic/semantic-decision-validator.js";
 import { acquireProcessLock } from "./process/process-lock.js";
 
 export interface CoreRegistrationOptions {
@@ -104,6 +105,11 @@ export function registerCoreProviders(
   );
 
   factory.register(TOKENS.ProcessLock, () => acquireProcessLock);
+
+  factory.register(
+    TOKENS.SemanticDecisionValidator,
+    () => new SemanticDecisionValidator(),
+  );
 
   factory.register(
     TOKENS.QueryService,

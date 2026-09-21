@@ -3,9 +3,12 @@ import {
   SemanticDecisionUnavailableCodes,
   type ISemanticDecisionProvider,
   type SemanticDecisionAvailability,
+  type SemanticDecisionCallOptions,
   type SemanticDecisionOutcome,
   type SemanticDecisionRequest,
 } from "@workspace/contracts";
+
+import { checkSemanticDecisionControls } from "./semantic-decision-controls.js";
 
 const MODEL_NOT_INSTALLED =
   "semantic decision model is not installed in this foundation slice";
@@ -31,7 +34,9 @@ export class SemanticDecisionProvider implements ISemanticDecisionProvider {
 
   async score(
     request: SemanticDecisionRequest,
+    options?: SemanticDecisionCallOptions,
   ): Promise<SemanticDecisionOutcome> {
+    checkSemanticDecisionControls(options);
     return {
       status: SemanticDecisionStatuses.UNAVAILABLE,
       scores: [],
@@ -40,7 +45,7 @@ export class SemanticDecisionProvider implements ISemanticDecisionProvider {
       schemaVersion: request.schemaVersion,
       requestId: request.requestId,
       featureSchemaVersion: request.featureSchemaVersion,
-      evidence: request.evidence,
+      evidence: { ...request.evidence },
     };
   }
 }

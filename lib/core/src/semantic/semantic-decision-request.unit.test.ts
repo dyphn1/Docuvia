@@ -194,9 +194,12 @@ describe("semantic request contract", () => {
       "undefined attribute",
       { ...request, context: { text: "", attributes: { absent: undefined } } },
     ],
-  ])("[invalid-input] rejects %s with a typed error", (_name, value) => {
-    expectInvalid(value);
-  });
+  ])(
+    "[invalid-input] [error-handling] rejects %s with a typed error",
+    (_name, value) => {
+      expectInvalid(value);
+    },
+  );
 
   it.each([
     "repoId",

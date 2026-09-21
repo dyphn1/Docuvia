@@ -81,7 +81,7 @@ describe("semantic boundary provider substitutability", () => {
     },
   );
 
-  it("[error-handling] rejects a replacement provider's corrupt result at the consumer boundary", async () => {
+  it("[invalid-input] [error-handling] rejects a replacement provider's corrupt result at the consumer boundary", async () => {
     const provider: ISemanticDecisionProvider = {
       name: "bad-provider",
       checkAvailability: async () => ({ available: true, capabilities: [] }),

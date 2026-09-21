@@ -133,7 +133,7 @@ Tests use `TDD-SOURCE` markers for this specification, PLAT-011 and the
 run red before each implementation slice. Pure validation and the no-I/O unavailable stub use
 unit tests; real runtime integration tests become mandatory when a runtime exists.
 
-| Requirement                                                      | Contract / planned executable evidence                                                                                              |
+| Requirement                                                      | Contract / executable evidence                                                                                                      |
 | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | P0-01 identities, versioning, bounded input, task semantics      | `semantic-decision-request.unit.test.ts`: valid variants, exact caps, UTF-8, malformed/duplicate/truncated input                    |
 | P0-02 raw/calibrated distinction, complete output, honest errors | `semantic-decision-outcome.unit.test.ts`: score/identity/failure matrix and negative controls                                       |

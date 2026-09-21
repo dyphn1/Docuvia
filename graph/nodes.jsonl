@@ -912,7 +912,10 @@
 {"id":"artifacts/cli/test/support/integration-env.ts","type":"file","name":"artifacts/cli/test/support/integration-env.ts","filePath":"artifacts/cli/test/support/integration-env.ts"}
 {"id":"artifacts/cli/test/support/integration-env.ts#removeTempDir","type":"symbol","name":"removeTempDir","filePath":"artifacts/cli/test/support/integration-env.ts"}
 {"id":"artifacts/cli/test/support/sandbox.ts","type":"file","name":"artifacts/cli/test/support/sandbox.ts","filePath":"artifacts/cli/test/support/sandbox.ts"}
+{"id":"artifacts/cli/test/support/sandbox.ts#acquireCliBuildLock","type":"symbol","name":"acquireCliBuildLock","filePath":"artifacts/cli/test/support/sandbox.ts"}
+{"id":"artifacts/cli/test/support/sandbox.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/support/sandbox.ts"}
 {"id":"artifacts/cli/test/support/sandbox.ts#buildDistCli","type":"symbol","name":"buildDistCli","filePath":"artifacts/cli/test/support/sandbox.ts"}
+{"id":"artifacts/cli/test/support/sandbox.ts#fileExists","type":"symbol","name":"fileExists","filePath":"artifacts/cli/test/support/sandbox.ts"}
 {"id":"artifacts/cli/test/support/sandbox.ts#SandboxAction","type":"symbol","name":"SandboxAction","filePath":"artifacts/cli/test/support/sandbox.ts"}
 {"id":"artifacts/cli/test/support/sandbox.ts#SandboxOptions","type":"symbol","name":"SandboxOptions","filePath":"artifacts/cli/test/support/sandbox.ts"}
 {"id":"artifacts/cli/test/support/sandbox.ts#TestSandbox","type":"symbol","name":"TestSandbox","filePath":"artifacts/cli/test/support/sandbox.ts"}

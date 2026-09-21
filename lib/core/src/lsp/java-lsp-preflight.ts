@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { PLATFORM_WIN32, type INodeProcess } from "@workspace/contracts";
+import { NodeProcessProvider } from "../process/process-provider.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { JavaLspConstants, JAVA_LSP_MESSAGES } from "./java-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
@@ -22,17 +24,20 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
  *  manual-install/package-manager prefixes on Linux, and Scoop/Chocolatey's bin dirs on Windows
  *  -- jdtls has no official standalone installer, so most non-IDE-bundled installs land in one of
  *  these without ever touching `PATH`. */
-function getJdtlsInstallDirs(): string[] {
-  if (process.platform === "win32") {
+const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
+type ProcessHostView = Pick<INodeProcess, "env" | "platform">;
+
+function getJdtlsInstallDirs(nodeProcess: ProcessHostView): string[] {
+  if (nodeProcess.platform === PLATFORM_WIN32) {
     return [
       path.join(os.homedir(), "scoop", "shims"),
       path.join(
-        process.env.ChocolateyInstall ?? "C:\\ProgramData\\chocolatey",
+        nodeProcess.env.ChocolateyInstall ?? "C:\\ProgramData\\chocolatey",
         "bin",
       ),
     ];
   }
-  if (process.platform === "darwin") {
+  if (nodeProcess.platform === "darwin") {
     return ["/opt/homebrew/bin", "/usr/local/bin"];
   }
   return [
@@ -48,6 +53,7 @@ function getJdtlsInstallDirs(): string[] {
 export async function checkJavaLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
+  nodeProcess: ProcessHostView = DEFAULT_NODE_PROCESS,
 ): Promise<JavaLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 
@@ -55,7 +61,7 @@ export async function checkJavaLspPreflight(
     {
       binaryName: JavaLspConstants.BINARY_NAME,
       defaultArgs: JavaLspConstants.DEFAULT_ARGS as unknown as string[],
-      extraCandidateDirs: getJdtlsInstallDirs(),
+      extraCandidateDirs: getJdtlsInstallDirs(nodeProcess),
     },
     override,
   );

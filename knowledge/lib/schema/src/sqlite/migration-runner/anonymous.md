@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/migration-runner.ts#anonymous@L53
+id: lib/schema/src/sqlite/migration-runner.ts#anonymous@L43
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/migration-runner.ts

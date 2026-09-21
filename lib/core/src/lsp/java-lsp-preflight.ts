@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { PLATFORM_WIN32, type INodeProcess } from "@workspace/contracts";
-import { NodeProcessProvider } from "../process/process-provider.js";
+import { PLATFORM_WIN32 } from "@workspace/contracts";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { JavaLspConstants, JAVA_LSP_MESSAGES } from "./java-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessHostView,
+} from "./lsp-process-host.js";
 
 export interface JavaLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -24,9 +27,6 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
  *  manual-install/package-manager prefixes on Linux, and Scoop/Chocolatey's bin dirs on Windows
  *  -- jdtls has no official standalone installer, so most non-IDE-bundled installs land in one of
  *  these without ever touching `PATH`. */
-const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
-type ProcessHostView = Pick<INodeProcess, "env" | "platform">;
-
 function getJdtlsInstallDirs(nodeProcess: ProcessHostView): string[] {
   if (nodeProcess.platform === PLATFORM_WIN32) {
     return [
@@ -53,7 +53,7 @@ function getJdtlsInstallDirs(nodeProcess: ProcessHostView): string[] {
 export async function checkJavaLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
-  nodeProcess: ProcessHostView = DEFAULT_NODE_PROCESS,
+  nodeProcess: ProcessHostView = DEFAULT_LSP_NODE_PROCESS,
 ): Promise<JavaLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 

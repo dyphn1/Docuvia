@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#documentSymbolFor@L428
+id: lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#documentSymbolFor@L435
 type: symbol
 name: documentSymbolFor
 filePath: lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts

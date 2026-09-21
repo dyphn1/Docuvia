@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { PLATFORM_WIN32, type INodeProcess } from "@workspace/contracts";
+import { NodeProcessProvider } from "../process/process-provider.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { CppLspConstants, CPP_LSP_MESSAGES } from "./cpp-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
@@ -21,13 +23,16 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
  *  prefix on Windows, and Homebrew's keg-only `llvm` formula prefix on macOS (both Apple Silicon
  *  and Intel) -- `llvm`/`clangd` is keg-only in Homebrew and Windows' LLVM installer doesn't
  *  always add itself to `PATH`, so a real install can still be invisible to a bare PATH probe. */
-function getClangdInstallDirs(): string[] {
-  if (process.platform === "win32") {
+const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
+type ProcessHostView = Pick<INodeProcess, "env" | "platform">;
+
+function getClangdInstallDirs(nodeProcess: ProcessHostView): string[] {
+  if (nodeProcess.platform === PLATFORM_WIN32) {
     return [
-      path.join(process.env.ProgramFiles ?? "C:\\Program Files", "LLVM", "bin"),
+      path.join(nodeProcess.env.ProgramFiles ?? "C:\\Program Files", "LLVM", "bin"),
     ];
   }
-  if (process.platform === "darwin") {
+  if (nodeProcess.platform === "darwin") {
     return ["/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin"];
   }
   return ["/usr/lib/llvm/bin", "/usr/local/bin"];
@@ -39,6 +44,7 @@ function getClangdInstallDirs(): string[] {
 export async function checkCppLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
+  nodeProcess: ProcessHostView = DEFAULT_NODE_PROCESS,
 ): Promise<CppLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 
@@ -46,7 +52,7 @@ export async function checkCppLspPreflight(
     {
       binaryName: CppLspConstants.BINARY_NAME,
       defaultArgs: CppLspConstants.DEFAULT_ARGS as unknown as string[],
-      extraCandidateDirs: getClangdInstallDirs(),
+      extraCandidateDirs: getClangdInstallDirs(nodeProcess),
     },
     override,
   );

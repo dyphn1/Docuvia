@@ -69,9 +69,9 @@ describe("quoteForWindowsShell()", () => {
   });
 
   it("keeps ordinary punctuation and spaces inside one quoted token", () => {
-    expect(quoteForWindowsShell("C:\\Program Files\\tool & data\\server.cmd")).toBe(
-      '"C:\\Program Files\\tool & data\\server.cmd"',
-    );
+    expect(
+      quoteForWindowsShell("C:\\Program Files\\tool & data\\server.cmd"),
+    ).toBe('"C:\\Program Files\\tool & data\\server.cmd"');
   });
 });
 

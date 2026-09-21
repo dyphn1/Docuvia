@@ -10,9 +10,11 @@ import {
   TOKENS,
   MemoryKeys,
   createMockLogger,
+  DOCUVIA_DIR_NAME,
+  LOCAL_DB_FILE_NAME,
   type IGitProvider,
 } from "@workspace/contracts";
-import { docuviaApi, resolveDbPath } from "@workspace/ui-core";
+import { docuviaApi } from "@workspace/ui-core";
 import { GraphStore } from "@workspace/schema";
 import { GitLocalProvider } from "@workspace/git-local";
 import { GitConstants } from "@workspace/contracts";
@@ -135,7 +137,7 @@ describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failur
       docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, tmpDir);
 
       const logger = createMockLogger();
-      const dbPath = resolveDbPath(tmpDir);
+      const dbPath = path.join(tmpDir, DOCUVIA_DIR_NAME, LOCAL_DB_FILE_NAME);
       try {
         // Step 1: a real init -- creates the knowledge branch, parses+persists the fixture, packs
         // the initial graph onto the branch, and (per this plan's own reordering fix) marks synced

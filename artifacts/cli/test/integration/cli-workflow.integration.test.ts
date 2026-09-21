@@ -27,9 +27,9 @@ function parseJsonOutput<T>(stdout: string): T {
 }
 
 /**
- * Phase 9 owns the presentation/cross-layer boundary rather than the lower-layer algorithms that
- * Phases 1-8 already hardened. These tests therefore execute the real CLI entrypoint and, where
- * packaging itself is the contract, the freshly-built `dist/cli.js` under plain Node.
+ * CLI workflow integration owns the presentation/cross-layer boundary rather than the lower-layer
+ * algorithms. These tests execute the real CLI entrypoint and, where packaging itself is the
+ * contract, the freshly-built `dist/cli.js` under plain Node.
  *
  * TDD-SOURCE: docs/gitbook/user-guide/cli.md#cli-commands
  * TDD-SOURCE: artifacts/cli/src/cli.ts#main
@@ -44,7 +44,7 @@ function parseJsonOutput<T>(stdout: string): T {
  * TDD-SOURCE: artifacts/cli/package.json#bin
  * TDD-SOURCE: artifacts/cli/test/support/sandbox.ts#runDistCli
  */
-describe("Phase 9 CLI and cross-layer workflow quality", () => {
+describe("CLI workflow integration", () => {
   beforeAll(async () => {
     await buildDistCli();
   }, REAL_SUBPROCESS_TEST_TIMEOUT_MS);

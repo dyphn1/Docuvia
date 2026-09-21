@@ -9,6 +9,39 @@ import {
   MAX_ANALYZE_BYTES,
 } from "./decision-extraction.js";
 
+type SymlinkTargetType = "file" | "dir";
+
+/**
+ * Creates a real symlink when the host permits it. Windows machines without
+ * SeCreateSymbolicLinkPrivilege use a regular path plus a realpath mock so
+ * these unit tests still exercise the boundary validation logic.
+ */
+function createSymlinkForTest(
+  targetPath: string,
+  symlinkPath: string,
+  type: SymlinkTargetType,
+): void {
+  try {
+    fs.symlinkSync(targetPath, symlinkPath, type);
+    return;
+  } catch (err) {
+    const errorCode = (err as NodeJS.ErrnoException).code;
+    if (process.platform !== "win32" || errorCode !== "EPERM") throw err;
+  }
+
+  if (type === "dir") {
+    fs.mkdirSync(symlinkPath);
+  } else {
+    fs.writeFileSync(symlinkPath, "");
+  }
+
+  const realpathSync = fs.realpathSync;
+  vi.spyOn(fs, "realpathSync").mockImplementation(((candidate) => {
+    if (candidate === symlinkPath) return targetPath;
+    return realpathSync(candidate);
+  }) as typeof fs.realpathSync);
+}
+
 describe("collectSourceFiles()", () => {
   let tmpDir: string;
 
@@ -174,7 +207,7 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
 
     // Create a symlink inside tmpDir pointing to the outside file
     const symlinkFile = path.join(tmpDir, "escape-file.ts");
-    fs.symlinkSync(secretFile, symlinkFile);
+    createSymlinkForTest(secretFile, symlinkFile, "file");
 
     const logger = createMockLogger();
     const { files } = collectSourceFiles(tmpDir, tmpDir, logger);
@@ -207,7 +240,7 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
 
     // Create a symlink inside tmpDir pointing to the real file
     const symlinkFile = path.join(tmpDir, "link.ts");
-    fs.symlinkSync(realFile, symlinkFile);
+    createSymlinkForTest(realFile, symlinkFile, "file");
 
     const { files } = collectSourceFiles(tmpDir, tmpDir, createMockLogger());
 
@@ -239,7 +272,7 @@ describe("collectSourceFiles() boundary validation (issue #162)", () => {
 
     // Create a symlink inside tmpDir that points to outsideDir
     const symlinkPath = path.join(tmpDir, "escape-symlink");
-    fs.symlinkSync(outsideDir, symlinkPath);
+    createSymlinkForTest(outsideDir, symlinkPath, "dir");
 
     const logger = createMockLogger();
     const { files } = collectSourceFiles(symlinkPath, tmpDir, logger);

@@ -110,6 +110,9 @@ importers:
       "@types/node":
         specifier: "catalog:"
         version: 25.9.5
+      "@workspace/ast-core":
+        specifier: workspace:^
+        version: link:../../lib/ast-core
       "@workspace/contracts":
         specifier: workspace:^
         version: link:../../lib/contracts

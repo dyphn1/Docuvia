@@ -33,6 +33,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "catalog:",
+    "@workspace/ast-core": "workspace:^",
     "@workspace/contracts": "workspace:^",
     "@workspace/core": "workspace:^",
     "@workspace/git-local": "workspace:^",

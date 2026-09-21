@@ -1,8 +1,10 @@
-import type {
-  ISemanticDecisionProvider,
-  SemanticDecisionAvailability,
-  SemanticDecisionOutcome,
-  SemanticDecisionRequest,
+import {
+  SemanticDecisionStatuses,
+  SemanticDecisionUnavailableCodes,
+  type ISemanticDecisionProvider,
+  type SemanticDecisionAvailability,
+  type SemanticDecisionOutcome,
+  type SemanticDecisionRequest,
 } from "@workspace/contracts";
 
 const MODEL_NOT_INSTALLED =
@@ -20,15 +22,25 @@ export class SemanticDecisionProvider implements ISemanticDecisionProvider {
   readonly name = "local-semantic-decision";
 
   async checkAvailability(): Promise<SemanticDecisionAvailability> {
-    return { available: false, reason: MODEL_NOT_INSTALLED };
+    return {
+      available: false,
+      reason: MODEL_NOT_INSTALLED,
+      capabilities: [],
+    };
   }
 
   async score(
-    _request: SemanticDecisionRequest,
+    request: SemanticDecisionRequest,
   ): Promise<SemanticDecisionOutcome> {
     return {
+      status: SemanticDecisionStatuses.UNAVAILABLE,
       scores: [],
+      unavailableCode: SemanticDecisionUnavailableCodes.MODEL_NOT_INSTALLED,
       unavailableReason: MODEL_NOT_INSTALLED,
+      schemaVersion: request.schemaVersion,
+      requestId: request.requestId,
+      featureSchemaVersion: request.featureSchemaVersion,
+      evidence: request.evidence,
     };
   }
 }

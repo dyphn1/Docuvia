@@ -1,0 +1,9 @@
+---
+id: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
+type: file
+name: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
+filePath: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
+---
+# File: lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts
+
+Path: `lib/ui-core/src/utils/is-path-within-workspace.unit.test.ts`

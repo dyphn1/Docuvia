@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/phase9-cli-cross-layer.integration.test.ts`
-

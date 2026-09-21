@@ -1,10 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#anonymous@L87
+id: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts#SymlinkTargetType
 type: symbol
-name: anonymous
+name: SymlinkTargetType
 filePath: lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: SymlinkTargetType
 
 File: `lib/ui-core/src/workflows/analyze/decision-extraction.unit.test.ts`
-

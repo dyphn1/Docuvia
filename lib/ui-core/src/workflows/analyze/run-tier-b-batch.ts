@@ -170,6 +170,7 @@ async function runTierBBatchCore(
       },
       failedEntries: [],
       permanentFailed: [],
+      skippedNotApplicable: [],
       edgesApplied: 0,
       edgesPruned: 0,
     });
@@ -177,15 +178,7 @@ async function runTierBBatchCore(
 
   const outcome = await resolveEdgesForQueue(deps, buckets);
 
-  for (const failure of outcome.filesFailed) {
-    await appendAnalyzeLogLine(workspaceRoot, {
-      event: ANALYZE_EVENTS.TIER_B_FILE_FAILED,
-      level: JSONL_LOG_LEVEL_ERROR,
-      file: failure.file,
-      reason: failure.reason,
-      retryable: failure.retryable,
-    });
-  }
+  await logTierBFileOutcomes(workspaceRoot, outcome.filesFailed);
 
   if (outcome.unavailableReason) {
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -210,18 +203,8 @@ async function runTierBBatchCore(
     headSha,
   );
   const processedFiles = new Set(outcome.filesProcessed);
-  const retryableByFile = new Map(
-    outcome.filesFailed.map((f) => [f.file, f.retryable]),
-  );
-  const permanentFailed: TierBQueueEntry[] = [];
-  const failedEntries = toProcess.filter((e) => {
-    if (processedFiles.has(e.file)) return false;
-    if (retryableByFile.get(e.file) === false) {
-      permanentFailed.push(e);
-      return false;
-    }
-    return true;
-  });
+  const { failedEntries, permanentFailed, skippedNotApplicable } =
+    classifyTierBFileOutcomes(toProcess, processedFiles, outcome.filesFailed);
 
   const madeProgress = processedFiles.size > 0 || edgesApplied > 0;
   const zeroProgressWatchdogTripped = applyZeroProgressWatchdog(
@@ -247,6 +230,7 @@ async function runTierBBatchCore(
     outcome,
     failedEntries,
     permanentFailed,
+    skippedNotApplicable,
     edgesApplied,
     edgesPruned,
     zeroProgressWatchdogTripped,
@@ -370,6 +354,7 @@ function emptyResult(
     filesQueued: 0,
     filesDroppedDeleted: 0,
     filesSkippedLanguage: 0,
+    filesSkippedNotApplicable: 0,
     filesProcessed: 0,
     filesFailed: 0,
     filesFailedPermanent: 0,
@@ -412,6 +397,53 @@ async function dispatchQueue(
     droppedDeleted,
     skippedLanguage: unsupported,
   };
+}
+
+async function logTierBFileOutcomes(
+  workspaceRoot: string,
+  failures: MergedEdgeResolutionOutcome["filesFailed"],
+): Promise<void> {
+  for (const failure of failures) {
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: failure.notApplicable
+        ? ANALYZE_EVENTS.TIER_B_FILE_SKIPPED_NOT_APPLICABLE
+        : ANALYZE_EVENTS.TIER_B_FILE_FAILED,
+      ...(failure.notApplicable ? {} : { level: JSONL_LOG_LEVEL_ERROR }),
+      file: failure.file,
+      reason: failure.reason,
+      retryable: failure.retryable,
+    });
+  }
+}
+
+function classifyTierBFileOutcomes(
+  toProcess: TierBQueueEntry[],
+  processedFiles: ReadonlySet<string>,
+  failures: MergedEdgeResolutionOutcome["filesFailed"],
+): {
+  failedEntries: TierBQueueEntry[];
+  permanentFailed: TierBQueueEntry[];
+  skippedNotApplicable: TierBQueueEntry[];
+} {
+  const failureByFile = new Map(
+    failures.map((failure) => [failure.file, failure]),
+  );
+  const permanentFailed: TierBQueueEntry[] = [];
+  const skippedNotApplicable: TierBQueueEntry[] = [];
+  const failedEntries = toProcess.filter((entry) => {
+    if (processedFiles.has(entry.file)) return false;
+    const failure = failureByFile.get(entry.file);
+    if (failure?.notApplicable) {
+      skippedNotApplicable.push(entry);
+      return false;
+    }
+    if (failure?.retryable === false) {
+      permanentFailed.push(entry);
+      return false;
+    }
+    return true;
+  });
+  return { failedEntries, permanentFailed, skippedNotApplicable };
 }
 
 async function logDroppedAndSkipped(
@@ -522,6 +554,7 @@ interface FinalizeArgs {
   outcome: MergedEdgeResolutionOutcome;
   failedEntries: TierBQueueEntry[];
   permanentFailed: TierBQueueEntry[];
+  skippedNotApplicable: TierBQueueEntry[];
   edgesApplied: number;
   edgesPruned: number;
   zeroProgressWatchdogTripped?: boolean;
@@ -535,12 +568,19 @@ async function finalizeBatch(
   args: FinalizeArgs,
 ): Promise<TierBOnlyResult> {
   const { workspaceRoot, logger, store, knowledgeGit } = deps;
-  const { headSha, outcome, failedEntries, permanentFailed } = args;
+  const {
+    headSha,
+    outcome,
+    failedEntries,
+    permanentFailed,
+    skippedNotApplicable,
+  } = args;
+  const terminalEntries = [...permanentFailed, ...skippedNotApplicable];
 
-  if (headSha && permanentFailed.length > 0) {
+  if (headSha && terminalEntries.length > 0) {
     const project = store.projects.getFirst();
     if (project) {
-      for (const entry of permanentFailed) {
+      for (const entry of terminalEntries) {
         store.files.markTierBProcessed({
           projectId: project.id,
           filePath: entry.file,
@@ -577,6 +617,7 @@ async function finalizeBatch(
     filesQueued: args.queued,
     filesDroppedDeleted: args.droppedDeleted,
     filesSkippedLanguage: args.skippedLanguage,
+    filesSkippedNotApplicable: skippedNotApplicable.length,
     filesProcessed,
     filesFailed: failedEntries.length,
     filesFailedPermanent: permanentFailed.length,
@@ -594,6 +635,7 @@ async function finalizeBatch(
       filesProcessed,
       args.edgesApplied,
       permanentFailed.length,
+      skippedNotApplicable.length,
     ),
   );
 
@@ -603,6 +645,7 @@ async function finalizeBatch(
     filesQueued: args.queued,
     filesDroppedDeleted: args.droppedDeleted,
     filesSkippedLanguage: args.skippedLanguage,
+    filesSkippedNotApplicable: skippedNotApplicable.length,
     filesProcessed,
     filesFailed: failedEntries.length,
     filesFailedPermanent: permanentFailed.length,

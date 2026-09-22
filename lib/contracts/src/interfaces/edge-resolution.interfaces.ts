@@ -53,6 +53,11 @@ export interface EdgeResolutionFileFailure {
    *  orchestrator drops `retryable: false` files from the re-queued `failedEntries` entirely
    *  (they still get logged per-file and counted in the batch summary). */
   retryable?: boolean;
+  /** `true` when the provider ran correctly but this file is outside the provider's semantic
+   *  project/program (for example a TypeScript file excluded by its owning tsconfig). This is a
+   *  terminal AST-only outcome, not an operational failure: callers should not re-queue it and
+   *  should not surface it as an error-level diagnostic. */
+  notApplicable?: boolean;
 }
 
 /**

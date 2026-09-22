@@ -206,7 +206,10 @@ async function runTierBBatchCore(
   const { failedEntries, permanentFailed, skippedNotApplicable } =
     classifyTierBFileOutcomes(toProcess, processedFiles, outcome.filesFailed);
 
-  const madeProgress = processedFiles.size > 0 || edgesApplied > 0;
+  const madeProgress =
+    processedFiles.size > 0 ||
+    edgesApplied > 0 ||
+    skippedNotApplicable.length > 0;
   const zeroProgressWatchdogTripped = applyZeroProgressWatchdog(
     store,
     toProcess,

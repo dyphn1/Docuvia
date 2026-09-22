@@ -7,6 +7,11 @@ import {
 } from "./language-provider.js";
 
 const DEFAULT_LANGUAGES_CONFIG_FILENAME = "languages.toml";
+/** Bounds both file I/O and TOML parser work for repository-controlled language configuration. */
+const MAX_LANGUAGES_CONFIG_BYTES = 256 * 1024;
+
+type FsPromisesModule = typeof import("node:fs/promises");
+type PathModule = typeof import("node:path");
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -62,6 +67,57 @@ function validateLanguageRegistryData(
   return true;
 }
 
+/** True when `candidate` is `root` itself or a descendant after realpath resolution. */
+function isPathInsideRoot(
+  pathModule: PathModule,
+  root: string,
+  candidate: string,
+): boolean {
+  const relative = pathModule.relative(root, candidate);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${pathModule.sep}`) &&
+      !pathModule.isAbsolute(relative))
+  );
+}
+
+/**
+ * Opens the project-local languages.toml only after realpath containment, then validates and reads
+ * through the same FileHandle so the file checked for type/size is the file that gets parsed.
+ *
+ * This is a repository-input boundary, not a cross-process filesystem sandbox: standard Node
+ * FileHandle APIs do not provide a portable openat-style way to make realpath containment and open
+ * one atomic operation. A hostile local process racing path replacement is outside this contract.
+ */
+async function readSafeLanguagesConfig(
+  fs: FsPromisesModule,
+  path: PathModule,
+  rootPath: string,
+): Promise<string | undefined> {
+  const targetPath = path.join(rootPath, DEFAULT_LANGUAGES_CONFIG_FILENAME);
+  try {
+    const [realRoot, realTarget] = await Promise.all([
+      fs.realpath(rootPath),
+      fs.realpath(targetPath),
+    ]);
+    if (!isPathInsideRoot(path, realRoot, realTarget)) return undefined;
+
+    const handle = await fs.open(realTarget, "r");
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.size > MAX_LANGUAGES_CONFIG_BYTES) {
+        return undefined;
+      }
+      return await handle.readFile(UTF8_ENCODING);
+    } finally {
+      await handle.close();
+    }
+  } catch (fileErr: unknown) {
+    return undefined;
+  }
+}
+
 export class LanguageRegistry {
   private config: LanguageRegistryData;
   private extToProviderMap: Map<string, LanguageProvider>;
@@ -115,20 +171,11 @@ export class LanguageRegistry {
         processLike.versions.node &&
         processLike.cwd
       ) {
-        // @ts-ignore
-        const fs = await import("fs/promises");
-        // @ts-ignore
-        const path = await import("path");
-        const targetPath = projectRoot
-          ? path.resolve(projectRoot, DEFAULT_LANGUAGES_CONFIG_FILENAME)
-          : path.resolve(processLike.cwd(), DEFAULT_LANGUAGES_CONFIG_FILENAME);
-        try {
-          await fs.access(targetPath);
-          const content = await fs.readFile(targetPath, UTF8_ENCODING);
-          return LanguageRegistry.loadFromString(content, base);
-        } catch (fileErr: unknown) {
-          // Gracefully fall back to defaults if file is not accessible
-        }
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const rootPath = path.resolve(projectRoot ?? processLike.cwd());
+        const content = await readSafeLanguagesConfig(fs, path, rootPath);
+        return LanguageRegistry.loadFromString(content, base);
       }
     } catch (err: unknown) {
       // Gracefully fall back to defaults on loading errors

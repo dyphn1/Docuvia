@@ -274,11 +274,29 @@ export class InitWorkflow {
 
         return result;
       } finally {
-        disposeShutdownHandlers();
+        stopTempLifecycleAndDisposeShutdownHandlers(
+          tempLifecycle,
+          disposeShutdownHandlers,
+        );
       }
     } finally {
       await store.close();
     }
+  }
+}
+
+/**
+ * Stops the periodic temp cleanup lifecycle and always removes this invocation's signal handlers.
+ * The nested finally keeps listener disposal guaranteed even if stopCleanup() itself throws.
+ */
+function stopTempLifecycleAndDisposeShutdownHandlers(
+  tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
+  disposeShutdownHandlers: () => void,
+): void {
+  try {
+    tempLifecycle?.stop();
+  } finally {
+    disposeShutdownHandlers();
   }
 }
 

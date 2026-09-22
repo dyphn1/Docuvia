@@ -195,6 +195,36 @@ describe("partitionTierBBucket() (PRJ-001 project-aware partition)", () => {
     ]);
   });
 
+  it("drops TypeScript references and extends paths that escape the workspace", () => {
+    const root = withWorkspace({
+      "package.json": JSON.stringify({
+        name: "root",
+        private: true,
+        workspaces: ["packages/*"],
+      }),
+      "tsconfig.json": "{}",
+      "packages/a/package.json": JSON.stringify({ name: "a" }),
+      "packages/a/tsconfig.json": JSON.stringify({
+        references: [{ path: "../b" }, { path: "../../../outside" }],
+        extends: "../../../outside-tsconfig.json",
+      }),
+      "packages/a/src/index.ts": "",
+      "packages/b/package.json": JSON.stringify({ name: "b" }),
+      "packages/b/src/index.ts": "",
+    });
+
+    const partition = partitionTierBBucket({
+      workspaceRoot: root,
+      languageId: TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+      files: ["packages/a/src/index.ts", "packages/b/src/index.ts"],
+    });
+
+    const groupByRoot = new Map(partition.groups.map((g) => [g.root, g]));
+    expect(groupByRoot.get(path.join(root, "packages", "a"))?.deps).toEqual([
+      path.join(root, "packages", "b"),
+    ]);
+  });
+
   it("orders Go submodules ahead of the module that replaces into them", () => {
     const root = withWorkspace({
       "go.mod":
@@ -239,6 +269,29 @@ describe("partitionTierBBucket() (PRJ-001 project-aware partition)", () => {
     expect(partition.groups.map((g) => g.root)).toEqual([
       path.join(root, "A"),
       path.join(root, "B"),
+    ]);
+  });
+
+  it("drops C# ProjectReference targets that escape the workspace", () => {
+    const root = withWorkspace({
+      "A/A.csproj": "",
+      "A/Program.cs": "",
+      "B/B.csproj": [
+        '<ProjectReference Include="..\\A\\A.csproj" />',
+        '<ProjectReference Include="..\\..\\outside\\Evil.csproj" />',
+      ].join("\n"),
+      "B/Util.cs": "",
+    });
+
+    const partition = partitionTierBBucket({
+      workspaceRoot: root,
+      languageId: TIER_B_LANGUAGE_IDS.CSHARP,
+      files: ["A/Program.cs", "B/Util.cs"],
+    });
+
+    const groupByRoot = new Map(partition.groups.map((g) => [g.root, g]));
+    expect(groupByRoot.get(path.join(root, "B"))?.deps).toEqual([
+      path.join(root, "A"),
     ]);
   });
 

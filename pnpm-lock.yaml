@@ -79,6 +79,30 @@ importers:
       "@modelcontextprotocol/sdk":
         specifier: ^1.29.0
         version: 1.29.0(zod@3.25.76)
+      "@workspace/contracts":
+        specifier: workspace:^
+        version: link:../../lib/contracts
+      "@workspace/core":
+        specifier: workspace:^
+        version: link:../../lib/core
+      "@workspace/git-local":
+        specifier: workspace:^
+        version: link:../../lib/git-local
+      "@workspace/llm-api":
+        specifier: workspace:^
+        version: link:../../lib/llm-api
+      "@workspace/remote-api":
+        specifier: workspace:^
+        version: link:../../lib/remote-api
+      "@workspace/semantic-decision":
+        specifier: workspace:^
+        version: link:../../lib/semantic-decision
+      "@workspace/schema":
+        specifier: workspace:^
+        version: link:../../lib/schema
+      "@workspace/ui-core":
+        specifier: workspace:^
+        version: link:../../lib/ui-core
       better-sqlite3:
         specifier: ^12.11.1
         version: 12.11.1
@@ -110,33 +134,6 @@ importers:
       "@types/node":
         specifier: "catalog:"
         version: 25.9.5
-      "@workspace/ast-core":
-        specifier: workspace:^
-        version: link:../../lib/ast-core
-      "@workspace/contracts":
-        specifier: workspace:^
-        version: link:../../lib/contracts
-      "@workspace/core":
-        specifier: workspace:^
-        version: link:../../lib/core
-      "@workspace/git-local":
-        specifier: workspace:^
-        version: link:../../lib/git-local
-      "@workspace/llm-api":
-        specifier: workspace:^
-        version: link:../../lib/llm-api
-      "@workspace/remote-api":
-        specifier: workspace:^
-        version: link:../../lib/remote-api
-      "@workspace/semantic-decision":
-        specifier: workspace:^
-        version: link:../../lib/semantic-decision
-      "@workspace/schema":
-        specifier: workspace:^
-        version: link:../../lib/schema
-      "@workspace/ui-core":
-        specifier: workspace:^
-        version: link:../../lib/ui-core
       execa:
         specifier: ^9.6.1
         version: 9.6.1

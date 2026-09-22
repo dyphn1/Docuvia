@@ -83,6 +83,11 @@ jobs:
 
       - name: Test quality gate
         if: runner.os == 'Linux'
+        env:
+          # Never infer push baselines from a depth-1 checkout. PRs compare the real base/head
+          # commits; pushes compare the event's before SHA to the pushed SHA.
+          CATEGORY_HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+          CATEGORY_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bash scripts/test-quality-gate.sh
 
   ocr-review:

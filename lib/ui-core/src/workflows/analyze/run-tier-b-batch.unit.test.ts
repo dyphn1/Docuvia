@@ -468,6 +468,48 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("resets an existing zero-progress streak when a healthy provider terminally skips a not-applicable file (#413)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore(["a.ts#foo"], []);
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            {
+              file: "a.ts",
+              reason: "Could not find source file: 'a.ts'.",
+              retryable: false,
+              notApplicable: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesSkippedNotApplicable).toBe(1);
+    expect(result.zeroProgressWatchdogTripped).toBe(false);
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("0");
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
   it("trips the zero-progress watchdog on the Nth consecutive zero-progress batch: the still-retryable remainder is declared permanently-failed, dropped from the re-queue, and stamped (issue #22 split 2 -- the per-file retryable:false classification can't reach files whose only signal is a batch-level deadline cut, so the cross-batch counter is the safety net for them)", async () => {
     const workspaceRoot = await makeWorkspace();
     const { store, fake } = makeStore([]);

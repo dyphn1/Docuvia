@@ -14,10 +14,12 @@ const LSP_ENV_ALLOWLIST = [
 ] as const;
 
 /** Builds the minimal environment inherited by an LSP child process. */
-export function buildMinimalLspEnv(): NodeJS.ProcessEnv {
+export function buildMinimalLspEnv(
+  sourceEnv: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const key of LSP_ENV_ALLOWLIST) {
-    const value = process.env[key];
+    const value = sourceEnv[key];
     if (value !== undefined) env[key] = value;
   }
   return env;

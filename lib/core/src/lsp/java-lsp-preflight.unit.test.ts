@@ -2,8 +2,19 @@ import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import child_process from "node:child_process";
 import { checkJavaLspPreflight } from "./java-lsp-preflight.js";
+import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
+
+vi.mock("./lsp-binary-resolver-strategies.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("./lsp-binary-resolver-strategies.js")
+    >();
+  return {
+    ...actual,
+    resolvePathNativeBinary: vi.fn(actual.resolvePathNativeBinary),
+  };
+});
 
 describe("checkJavaLspPreflight()", () => {
   let workspaceRoot: string;
@@ -17,6 +28,28 @@ describe("checkJavaLspPreflight()", () => {
 
   afterEach(() => {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("derives Chocolatey candidates from the injected host view (issue #440)", async () => {
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "jdtls",
+      args: [],
+      locallyResolved: false,
+    });
+
+    await checkJavaLspPreflight(workspaceRoot, undefined, {
+      platform: "win32",
+      env: { ChocolateyInstall: "D:\\InjectedChocolatey" },
+    });
+
+    expect(resolvePathNativeBinary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraCandidateDirs: expect.arrayContaining([
+          path.join("D:\\InjectedChocolatey", "bin"),
+        ]),
+      }),
+      undefined,
+    );
   });
 
   it("reports not ready with a reason when no markers are present", async () => {
@@ -33,18 +66,11 @@ describe("checkJavaLspPreflight()", () => {
       "<project></project>\n",
     );
 
-    // Spy on execFile to simulate failing when trying to probe jdtls
-    vi.spyOn(child_process, "execFile").mockImplementation(((
-      _file: any,
-      _args: any,
-      _options: any,
-      callback: any,
-    ) => {
-      if (typeof callback === "function") {
-        callback(new Error("not found"), "", "");
-      }
-      return {} as any;
-    }) as any);
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "jdtls",
+      args: [],
+      locallyResolved: false,
+    });
 
     const result = await checkJavaLspPreflight(workspaceRoot);
 

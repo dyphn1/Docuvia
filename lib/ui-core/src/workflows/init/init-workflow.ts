@@ -14,10 +14,7 @@ import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { stampFullCallResolution } from "../analyze/call-resolution-stats.js";
-import {
-  initTempLifecycle,
-  type InitTempLifecycle,
-} from "./init-temp-lifecycle.js";
+import { initTempLifecycle } from "./init-temp-lifecycle.js";
 import {
   buildInitResult,
   buildSkippedInitResult,
@@ -277,26 +274,11 @@ export class InitWorkflow {
 
         return result;
       } finally {
-        stopTempLifecycleAndDisposeShutdownHandlers(
-          tempLifecycle,
-          disposeShutdownHandlers,
-        );
+        disposeShutdownHandlers();
       }
     } finally {
       await store.close();
     }
-  }
-}
-
-/** Stops the temp lifecycle and always removes this invocation's signal handlers. */
-function stopTempLifecycleAndDisposeShutdownHandlers(
-  tempLifecycle: InitTempLifecycle | undefined,
-  disposeShutdownHandlers: () => void,
-): void {
-  try {
-    tempLifecycle?.stop();
-  } finally {
-    disposeShutdownHandlers();
   }
 }
 

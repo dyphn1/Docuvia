@@ -94,6 +94,9 @@ importers:
       "@workspace/remote-api":
         specifier: workspace:^
         version: link:../../lib/remote-api
+      "@workspace/semantic-decision":
+        specifier: workspace:^
+        version: link:../../lib/semantic-decision
       "@workspace/schema":
         specifier: workspace:^
         version: link:../../lib/schema
@@ -279,6 +282,19 @@ importers:
         version: 5.9.3
 
   lib/remote-api:
+    dependencies:
+      "@workspace/contracts":
+        specifier: workspace:^
+        version: link:../contracts
+    devDependencies:
+      "@types/node":
+        specifier: "catalog:"
+        version: 25.9.5
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.9.5)
+
+  lib/semantic-decision:
     dependencies:
       "@workspace/contracts":
         specifier: workspace:^

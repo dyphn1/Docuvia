@@ -2,7 +2,7 @@ import { INodeProcess } from "@workspace/contracts";
 
 export class NodeProcessProvider implements INodeProcess {
   get env(): NodeJS.ProcessEnv {
-    return process.env;
+    return { ...process.env };
   }
   get version(): string {
     return process.version;

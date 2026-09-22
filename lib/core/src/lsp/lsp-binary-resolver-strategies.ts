@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { NODE_MODULES_DIR_NAME } from "@workspace/contracts";
+import { NODE_MODULES_DIR_NAME, PLATFORM_WIN32 } from "@workspace/contracts";
 
 const execFileAsync = promisify(execFile);
 
@@ -68,7 +68,7 @@ function resolveLocalBinaryPath(
 ): string | undefined {
   const binDir = path.join(workspaceRoot, NODE_MODULES_DIR_NAME, ".bin");
   const candidates =
-    process.platform === "win32"
+    process.platform === PLATFORM_WIN32
       ? WINDOWS_BIN_EXTENSIONS.map((ext) => `${packageName}${ext}`)
       : [packageName];
 
@@ -171,7 +171,7 @@ async function probePathForBinary(
   binaryName: string,
 ): Promise<string | undefined> {
   try {
-    if (process.platform === "win32") {
+    if (process.platform === PLATFORM_WIN32) {
       const { stdout } = await execFileAsync("where", [binaryName], {
         timeout: PATH_PROBE_TIMEOUT_MS,
       });
@@ -200,7 +200,7 @@ function resolveExtraCandidateDir(
   if (!extraCandidateDirs) return undefined;
 
   const candidateNames =
-    process.platform === "win32"
+    process.platform === PLATFORM_WIN32
       ? [`${binaryName}.exe`, binaryName]
       : [binaryName];
 

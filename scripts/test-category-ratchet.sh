@@ -11,30 +11,21 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCANNER="$REPO_ROOT/.claude/skills/test-audit/scripts/category-scan.mjs"
 SCANNER_TEST="$REPO_ROOT/.claude/skills/test-audit/scripts/category-scan.unit.test.mjs"
 OUTPUT_DIR="${TEST_CATEGORY_OUTPUT_DIR:-$REPO_ROOT/.test-results/test-category}"
-HEAD_REF="${CATEGORY_HEAD_REF:-}"
-BASE_REF="${CATEGORY_BASE_REF:-}"
-
 mkdir -p "$OUTPUT_DIR"
 
-# Pull-request jobs normally check out GitHub's synthetic merge commit at depth 1. Scanning
-# HEAD^1 in that shape is unreliable because the parent commits may not exist locally. Resolve
-# the real PR branch/base from GitHub's standard environment variables when explicit refs were
-# not supplied, then fetch either ref on demand below.
-if [ -z "$HEAD_REF" ]; then
-  if [ -n "${GITHUB_HEAD_REF:-}" ]; then
-    HEAD_REF="origin/${GITHUB_HEAD_REF}"
-  else
-    HEAD_REF="HEAD"
-  fi
+# Keep event/base resolution in one testable place. In particular, a depth-1 push checkout may
+# not contain HEAD's parent; the resolver verifies the parent commit instead of leaking a literal
+# "HEAD^1" token into ensure_ref() as an invalid fetch refspec.
+REF_RESOLVER="$REPO_ROOT/scripts/test-category-ratchet-refs.sh"
+if [ ! -f "$REF_RESOLVER" ]; then
+  echo "ERROR: Missing required category ref resolver: $REF_RESOLVER" >&2
+  exit 1
 fi
-
-if [ -z "$BASE_REF" ] || [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
-  if [ -n "${GITHUB_BASE_REF:-}" ]; then
-    BASE_REF="origin/${GITHUB_BASE_REF}"
-  else
-    BASE_REF="$(git -C "$REPO_ROOT" rev-parse "${HEAD_REF}^1" 2>/dev/null || true)"
-  fi
-fi
+# shellcheck source=./test-category-ratchet-refs.sh
+source "$REF_RESOLVER"
+resolve_test_category_refs "$REPO_ROOT"
+HEAD_REF="$CATEGORY_RESOLVED_HEAD_REF"
+BASE_REF="$CATEGORY_RESOLVED_BASE_REF"
 
 ensure_ref() {
   local ref="$1"

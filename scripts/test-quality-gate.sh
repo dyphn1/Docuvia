@@ -102,7 +102,8 @@ echo
 
 # ─── Axis 1 category coverage ratchet (#263) ───────────────────────────
 # Pin the ref-resolution regression first: this must work in the same shallow checkout shape
-# used by the main Typecheck & Test job before the full ratchet is allowed to run.
+# used by the main Typecheck & Test job before the full ratchet is allowed to run. Under set -e,
+# a regression here intentionally aborts before the Axis 1 ratchet can run with untrusted refs.
 bash "$REPO_ROOT/scripts/test-category-ratchet.unit.test.sh"
 
 # Recompute base and HEAD every run; never trust the historical FAIL_COUNT=203 claim as a static

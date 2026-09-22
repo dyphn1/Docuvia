@@ -2,6 +2,17 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.11.1](https://github.com/dyphn1/Docuvia/compare/v1.11.0...v1.11.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* **ast-core:** avoid config file TOCTOU race ([ef0da97](https://github.com/dyphn1/Docuvia/commit/ef0da970aa2fc0b22e56b8fa29c337a52836b880))
+* **ast-core:** harden languages config loading ([#441](https://github.com/dyphn1/Docuvia/issues/441)) ([1f3456b](https://github.com/dyphn1/Docuvia/commit/1f3456beb702aae78d835e4864b4e4202ab6c672))
+* **ast-core:** preserve lazy Node imports for browser compatibility ([6ea45ce](https://github.com/dyphn1/Docuvia/commit/6ea45ce4d8f890e0a345bbf8b43a92ccfcad728d))
+* **core:** contain Tier B project paths to workspace ([#387](https://github.com/dyphn1/Docuvia/issues/387) [#426](https://github.com/dyphn1/Docuvia/issues/426)) ([611fe2a](https://github.com/dyphn1/Docuvia/commit/611fe2abae2c31a435c651f047ebefe995a43070))
+* **core:** reject symlink dependency escapes ([b9384d0](https://github.com/dyphn1/Docuvia/commit/b9384d06109a4cf3bd0b67a3c9c1ab415b8977f0))
+
 # [1.11.0](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.11.0) (2026-09-21)
 
 ### Bug Fixes

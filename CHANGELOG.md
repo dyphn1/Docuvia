@@ -4,15 +4,14 @@ All notable changes to `docuvia` are documented in this file. Versions before 0.
 
 ## [1.11.2](https://github.com/dyphn1/Docuvia/compare/v1.11.1...v1.11.2) (2026-09-22)
 
-
 ### Bug Fixes
 
-* **ci:** avoid unresolved HEAD parent refspec ([e58ce8b](https://github.com/dyphn1/Docuvia/commit/e58ce8b5df07d771044410504991dbc11e45d0e9))
-* **ci:** fail clearly when ref resolver is missing ([4d3440c](https://github.com/dyphn1/Docuvia/commit/4d3440c66a526ae07f9738ea214abfd2ca0d2a71))
-* **ci:** harden zero baseline resolution ([1798df2](https://github.com/dyphn1/Docuvia/commit/1798df283cd6073fa7c12149c2fe44b3a356ba19))
-* **ci:** make category event refs explicit ([482e855](https://github.com/dyphn1/Docuvia/commit/482e85510de11fd617267f76259c589727c8d2b5))
-* **ci:** pass event SHAs to category ratchet ([961c19c](https://github.com/dyphn1/Docuvia/commit/961c19c494a6dbffcdc293279686d0b33f68ef5c))
-* **ci:** resolve category ratchet refs safely ([5d7fc43](https://github.com/dyphn1/Docuvia/commit/5d7fc437d495b0e5b5d5542407935b8887bdeebb))
+- **ci:** avoid unresolved HEAD parent refspec ([e58ce8b](https://github.com/dyphn1/Docuvia/commit/e58ce8b5df07d771044410504991dbc11e45d0e9))
+- **ci:** fail clearly when ref resolver is missing ([4d3440c](https://github.com/dyphn1/Docuvia/commit/4d3440c66a526ae07f9738ea214abfd2ca0d2a71))
+- **ci:** harden zero baseline resolution ([1798df2](https://github.com/dyphn1/Docuvia/commit/1798df283cd6073fa7c12149c2fe44b3a356ba19))
+- **ci:** make category event refs explicit ([482e855](https://github.com/dyphn1/Docuvia/commit/482e85510de11fd617267f76259c589727c8d2b5))
+- **ci:** pass event SHAs to category ratchet ([961c19c](https://github.com/dyphn1/Docuvia/commit/961c19c494a6dbffcdc293279686d0b33f68ef5c))
+- **ci:** resolve category ratchet refs safely ([5d7fc43](https://github.com/dyphn1/Docuvia/commit/5d7fc437d495b0e5b5d5542407935b8887bdeebb))
 
 ## [1.11.1](https://github.com/dyphn1/Docuvia/compare/v1.11.0...v1.11.1) (2026-09-22)
 

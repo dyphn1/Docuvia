@@ -61,6 +61,27 @@ describe("packed npm distribution", () => {
   });
 
   it(
+    "[happy] keeps the CLI bin valid through npm publish normalization",
+    async () => {
+      const publishResult = await execa(
+        NPM_COMMAND,
+        ["publish", "--dry-run", "--ignore-scripts", "--json"],
+        {
+          cwd: CLI_PACKAGE_DIR,
+          reject: false,
+          env: { ...process.env, npm_config_update_notifier: "false" },
+        },
+      );
+
+      const publishOutput = `${publishResult.stdout}\n${publishResult.stderr}`;
+      expect(publishResult.exitCode, publishOutput).toBe(0);
+      expect(publishOutput).not.toContain("bin[docuvia]");
+      expect(publishOutput).not.toContain("invalid and removed");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
     "[happy] installs the packed CLI in a clean npm consumer and runs its binary",
     async () => {
       tempDir = await mkdtemp(join(tmpdir(), "docuvia-package-install-"));

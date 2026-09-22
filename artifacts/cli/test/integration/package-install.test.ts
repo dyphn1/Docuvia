@@ -1,6 +1,6 @@
 import { execa } from "execa";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
+import { cp, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
@@ -63,11 +63,27 @@ describe("packed npm distribution", () => {
   it(
     "[happy] keeps the CLI bin valid through npm publish normalization",
     async () => {
+      tempDir = await mkdtemp(join(tmpdir(), "docuvia-publish-dry-run-"));
+      const stagedPackageDir = join(tempDir, "package");
+      await mkdir(stagedPackageDir);
+
+      const manifest = JSON.parse(
+        await readFile(join(CLI_PACKAGE_DIR, "package.json"), "utf8"),
+      ) as Record<string, unknown>;
+      manifest.version = `0.0.0-publish-dry-run.${process.pid}`;
+      await writeFile(
+        join(stagedPackageDir, "package.json"),
+        JSON.stringify(manifest, null, 2),
+      );
+      await cp(join(CLI_PACKAGE_DIR, "dist"), join(stagedPackageDir, "dist"), {
+        recursive: true,
+      });
+
       const publishResult = await execa(
         NPM_COMMAND,
         ["publish", "--dry-run", "--ignore-scripts", "--json"],
         {
-          cwd: CLI_PACKAGE_DIR,
+          cwd: stagedPackageDir,
           reject: false,
           env: { ...process.env, npm_config_update_notifier: "false" },
         },

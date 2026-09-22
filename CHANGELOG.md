@@ -4,12 +4,11 @@ All notable changes to `docuvia` are documented in this file. Versions before 0.
 
 ## [1.11.4](https://github.com/dyphn1/Docuvia/compare/v1.11.3...v1.11.4) (2026-09-22)
 
-
 ### Bug Fixes
 
-* **cli:** fix portable tarball builds ([657a308](https://github.com/dyphn1/Docuvia/commit/657a308a322cb3084abcb04cd333a61287961d90))
-* **release:** fix npm tarball installation ([c8e0848](https://github.com/dyphn1/Docuvia/commit/c8e084817e88acd483af8bb295cf441b7caab5bf)), closes [#488](https://github.com/dyphn1/Docuvia/issues/488)
-* **release:** keep bundled workspace packages out of tarball dependencies ([777664f](https://github.com/dyphn1/Docuvia/commit/777664f979797209bae06e99da16ebcaeb3fdb4a))
+- **cli:** fix portable tarball builds ([657a308](https://github.com/dyphn1/Docuvia/commit/657a308a322cb3084abcb04cd333a61287961d90))
+- **release:** fix npm tarball installation ([c8e0848](https://github.com/dyphn1/Docuvia/commit/c8e084817e88acd483af8bb295cf441b7caab5bf)), closes [#488](https://github.com/dyphn1/Docuvia/issues/488)
+- **release:** keep bundled workspace packages out of tarball dependencies ([777664f](https://github.com/dyphn1/Docuvia/commit/777664f979797209bae06e99da16ebcaeb3fdb4a))
 
 ## [1.11.3](https://github.com/dyphn1/Docuvia/compare/v1.11.2...v1.11.3) (2026-09-22)
 

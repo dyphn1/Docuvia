@@ -807,6 +807,73 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(outcome.filesProcessed).toEqual(["b.ts"]);
   });
 
+  it("classifies tsserver's excluded-file source lookup as not applicable instead of a permanent error (#413)", async () => {
+    const handler: RequestHandler = (method, params) => {
+      if (
+        method === LspMethods.DOCUMENT_SYMBOL &&
+        params.textDocument.uri === uriFor(workspaceRoot, "a.ts")
+      ) {
+        throw new Error(
+          "TypeScript Server Error (5.9.3)\nCould not find source file: 'a.ts'.",
+        );
+      }
+      return [];
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(outcome.filesFailed).toEqual([
+      {
+        file: "a.ts",
+        reason:
+          "TypeScript Server Error (5.9.3)\nCould not find source file: 'a.ts'.",
+        retryable: false,
+        notApplicable: true,
+      },
+    ]);
+    expect(outcome.filesProcessed).toEqual(["b.ts"]);
+  });
+
+  it.each([
+    "details: Could not find source file: 'a.ts'.",
+    "Could not find source file: a.ts.",
+    "Could not find source file:something",
+    "unrelated failure; Could not find source file: 'a.ts'. trailing context",
+  ])(
+    "does not classify unrelated or malformed source-file errors as not applicable: %s",
+    async (message) => {
+      const handler: RequestHandler = (method, params) => {
+        if (
+          method === LspMethods.DOCUMENT_SYMBOL &&
+          params.textDocument.uri === uriFor(workspaceRoot, "a.ts")
+        ) {
+          throw new Error(message);
+        }
+        return [];
+      };
+
+      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+        asClient(new FakeLspClient(handler)),
+      );
+
+      const outcome = await provider.resolveEdges({
+        workspaceRoot,
+        files: ["a.ts"],
+      });
+
+      expect(outcome.filesFailed).toEqual([
+        { file: "a.ts", reason: message, retryable: false },
+      ]);
+    },
+  );
+
   it("degrades honestly (unavailableReason set, no edges) when the client fails to spawn", async () => {
     const fake = new FakeLspClient();
     fake.startError = new Error("ENOENT: no such file or directory");

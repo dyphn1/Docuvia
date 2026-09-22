@@ -10,6 +10,9 @@ import {
   type IEdgeResolutionProvider,
   type EdgeResolutionOutcome,
   type NodeLinkRow,
+  DOCUVIA_DIR_NAME,
+  DOCUVIA_LOGS_DIR_NAME,
+  ANALYZE_LOG_FILE_NAME,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { runTierBBatch } from "./run-tier-b-batch.js";
@@ -394,6 +397,74 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     ]);
 
     const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("terminally skips a not-applicable project file without error-level logging or retry (#413)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore(["a.ts#foo"], []);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            {
+              file: "a.ts",
+              reason: "Could not find source file: 'a.ts'.",
+              retryable: false,
+              notApplicable: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesFailed).toBe(0);
+    expect(result.filesFailedPermanent).toBe(0);
+    expect(result.filesSkippedNotApplicable).toBe(1);
+
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([]);
+    expect(fake.tierBProcessed).toEqual([
+      { projectId: 1, filePath: "a.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const logPath = path.join(
+      workspaceRoot,
+      DOCUVIA_DIR_NAME,
+      DOCUVIA_LOGS_DIR_NAME,
+      ANALYZE_LOG_FILE_NAME,
+    );
+    const entries = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const skipped = entries.find(
+      (entry) => entry.event === "analyze.tierB.file_skipped_not_applicable",
+    );
+    expect(skipped).toMatchObject({
+      file: "a.ts",
+      reason: "Could not find source file: 'a.ts'.",
+    });
+    expect(skipped.level).toBeUndefined();
+
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 

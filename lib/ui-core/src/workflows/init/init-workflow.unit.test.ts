@@ -182,6 +182,7 @@ describe("InitWorkflow.execute()", () => {
   let callOrder: string[];
   let store: IGraphStore;
   let gitOverrides: Partial<IGitProvider>;
+  let tempFileManager: ITempFileManager;
   let openStoreSpy: ReturnType<
     typeof vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>
   >;
@@ -258,7 +259,7 @@ describe("InitWorkflow.execute()", () => {
     const graphPersister: IGraphPersister = {
       persist: vi.fn().mockResolvedValue({ updatedCount: 1 }),
     };
-    const tempFileManager: ITempFileManager = {
+    tempFileManager = {
       initialize: vi.fn().mockResolvedValue(undefined),
       cleanup: vi.fn().mockResolvedValue(undefined),
       stopCleanup: vi.fn(),
@@ -546,6 +547,36 @@ describe("InitWorkflow.execute()", () => {
     expect(result.failures).toEqual([
       { file: "src/broken.ts", hash: "h", error: "Worker exited with code 1" },
     ]);
+  });
+
+  it("stops the temp cleanup lifecycle when execute() returns successfully (issue #452)", async () => {
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(tempFileManager.stopCleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops the temp cleanup lifecycle and removes signal handlers when a post-initialization step throws (issue #452)", async () => {
+    const sigtermBefore = process.listenerCount("SIGTERM");
+    const sigintBefore = process.listenerCount("SIGINT");
+    const docuviaDir = path.join(tmpDir, ".docuvia");
+
+    // initTempLifecycle() calls getTempDirPath() only after initialize() succeeds. Sabotage the
+    // command-log directory at that exact point so writeInitSummary() fails after the lifecycle
+    // and signal handlers have both been established.
+    (tempFileManager.getTempDirPath as any).mockImplementationOnce(() => {
+      fs.rmSync(docuviaDir, { recursive: true, force: true });
+      fs.writeFileSync(docuviaDir, "block post-init summary write");
+      return path.join(docuviaDir, "tmp");
+    });
+
+    await expect(
+      new InitWorkflow(tmpDir, createMockLogger()).execute(),
+    ).rejects.toThrow();
+
+    expect(tempFileManager.stopCleanup).toHaveBeenCalledTimes(1);
+    expect(process.listenerCount("SIGTERM")).toBe(sigtermBefore);
+    expect(process.listenerCount("SIGINT")).toBe(sigintBefore);
+    expect(store.close).toHaveBeenCalledTimes(1);
   });
 
   it("registers exactly one SIGTERM/SIGINT pair for the run and removes both once execute() finishes", async () => {

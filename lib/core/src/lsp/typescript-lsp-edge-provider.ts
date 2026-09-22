@@ -28,6 +28,9 @@ const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
   ".jsx": "javascriptreact",
 };
 
+const TYPESCRIPT_NOT_APPLICABLE_FILE_ERROR =
+  /(?:^|\r?\n)Could not find source file:\s*['"][^'"\r\n]+['"]\.?\s*(?:\r?\n|$)/i;
+
 const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: TsLspConstants.PACKAGE_NAME,
   tierBLanguageId: TIER_B_LANGUAGE_IDS.TYPESCRIPT,
@@ -35,6 +38,8 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: resolveTypeScriptLspBinary,
   checkPreflight: checkTypeScriptLspPreflight,
+  isNotApplicableFileError: (message) =>
+    TYPESCRIPT_NOT_APPLICABLE_FILE_ERROR.test(message),
   supportsQualifiedContainment: true,
   // roadmap item 28: typescript-language-server reads this key directly off the initialize
   // request and forwards it as tsserver's own --max-old-space-size arg -- the mechanism that

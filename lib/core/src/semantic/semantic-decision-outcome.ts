@@ -11,6 +11,7 @@ import {
   hasKeys,
   IDENTITY_KEYS,
   isNonBlank,
+  isDataArray,
   isProbability,
   isRecord,
   matchesIdentity,
@@ -63,6 +64,7 @@ function isScored(
   return (
     Array.isArray(scores) &&
     scores.length === request.options.length &&
+    isDataArray(scores) &&
     request.options.every((option, index) => isScore(scores[index], option.id))
   );
 }
@@ -81,6 +83,7 @@ function isUnavailable(value: Record<string, unknown>): boolean {
   return (
     Array.isArray(value.scores) &&
     value.scores.length === 0 &&
+    isDataArray(value.scores) &&
     isNonBlank(value.unavailableReason) &&
     Object.values(SemanticDecisionUnavailableCodes).some(
       (code) => code === value.unavailableCode,

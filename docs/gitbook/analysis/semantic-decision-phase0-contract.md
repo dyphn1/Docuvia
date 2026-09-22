@@ -67,7 +67,12 @@ The hard contract cap is **32 candidates**, **34 total options**, and **32 KiB o
 `JSON.stringify(request)`**, including metadata/attributes. Equality with a cap is valid. Context
 and option text may be empty. Attributes must be finite number, string, boolean or null values.
 Unknown structural fields, malformed objects/arrays, unsupported schema/task/kind and missing
-identity are rejected. No silent coercion, unknown-key stripping, ID normalization or truncation.
+identity are rejected. Records accept only own enumerable data properties; accessors and
+non-enumerable properties are rejected before reading their values, including in attributes.
+Arrays must be dense plain arrays with enumerable data elements and no custom properties or
+serialization/iteration hooks (the built-in non-enumerable `length` is allowed). Frozen data is
+valid. The total option cap is checked before inspecting any array element or counting candidates.
+No silent coercion, unknown-key stripping, ID normalization or truncation.
 
 Availability advertises exact `task × language × relation × featureSchemaVersion` capabilities
 and tighter provider limits where needed. An empty capability list means no supported slice.

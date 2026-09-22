@@ -10,6 +10,7 @@ import {
   hasKeys,
   IDENTITY_KEYS,
   isIdentity,
+  isDataArray,
   isNonBlank,
   isRecord,
 } from "./semantic-decision-shapes.js";
@@ -68,14 +69,23 @@ function hasLegalOptions(options: readonly unknown[], task: unknown): boolean {
 }
 
 function checkOptionLimits(options: readonly unknown[]): void {
+  if (options.length > SemanticDecisionLimits.MAX_OPTIONS) {
+    throw new DocuviaError(
+      ErrorCodes.SEMANTIC_INPUT_LIMIT_EXCEEDED,
+      "Semantic option limit exceeded",
+    );
+  }
+  if (!isDataArray(options)) {
+    throw new DocuviaError(
+      ErrorCodes.SEMANTIC_INVALID_REQUEST,
+      "Semantic options must be a dense data array",
+    );
+  }
   const candidateCount = options.filter(
     (value) =>
       isRecord(value) && value.kind === SemanticDecisionOptionKinds.CANDIDATE,
   ).length;
-  if (
-    options.length > SemanticDecisionLimits.MAX_OPTIONS ||
-    candidateCount > SemanticDecisionLimits.MAX_CANDIDATES
-  ) {
+  if (candidateCount > SemanticDecisionLimits.MAX_CANDIDATES) {
     throw new DocuviaError(
       ErrorCodes.SEMANTIC_INPUT_LIMIT_EXCEEDED,
       "Semantic option limit exceeded",

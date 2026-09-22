@@ -8,7 +8,26 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value))
     return false;
   const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
+  return (
+    (prototype === Object.prototype || prototype === null) &&
+    Reflect.ownKeys(value).every((key) => isEnumerableDataProperty(value, key))
+  );
+}
+
+function isEnumerableDataProperty(value: object, key: PropertyKey): boolean {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor?.enumerable === true && Object.hasOwn(descriptor, "value");
+}
+
+/** JSON arrays have only dense data elements and their built-in length. */
+export function isDataArray(value: unknown): value is unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype)
+    return false;
+  if (Reflect.ownKeys(value).length !== value.length + 1) return false;
+  for (let index = 0; index < value.length; index++) {
+    if (!isEnumerableDataProperty(value, String(index))) return false;
+  }
+  return true;
 }
 
 export function hasKeys(

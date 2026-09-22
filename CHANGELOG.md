@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.11.5](https://github.com/dyphn1/Docuvia/compare/v1.11.4...v1.11.5) (2026-09-22)
+
+
+### Bug Fixes
+
+* **release:** use publish-safe CLI bin path ([c60210f](https://github.com/dyphn1/Docuvia/commit/c60210f9c945d0126ef8632227cdcb0bfcba82b4))
+
 ## [1.11.4](https://github.com/dyphn1/Docuvia/compare/v1.11.3...v1.11.4) (2026-09-22)
 
 ### Bug Fixes

@@ -10,10 +10,12 @@ const CLI_PACKAGE_DIR = resolve(import.meta.dirname, "../..");
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 const NPX_COMMAND = process.platform === "win32" ? "npx.cmd" : "npx";
 
-async function readCliVersion(): Promise<string> {
-  const manifest = JSON.parse(
-    await readFile(join(CLI_PACKAGE_DIR, "package.json"), "utf8"),
-  ) as { version?: unknown };
+async function readCliVersion(
+  manifestPath = join(CLI_PACKAGE_DIR, "package.json"),
+): Promise<string> {
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
+    version?: unknown;
+  };
   if (typeof manifest.version !== "string") {
     throw new Error("CLI package.json must contain a string version");
   }
@@ -40,8 +42,26 @@ describe("packed npm distribution", () => {
     tempDir = undefined;
   });
 
+  it("[invalid-input] rejects a package manifest whose version is not a string", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "docuvia-package-manifest-"));
+    const manifestPath = join(tempDir, "package.json");
+    await writeFile(manifestPath, JSON.stringify({ version: 123 }));
+
+    await expect(readCliVersion(manifestPath)).rejects.toThrow(
+      "CLI package.json must contain a string version",
+    );
+  });
+
+  it("[error-handling] propagates malformed package manifest JSON", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "docuvia-package-manifest-"));
+    const manifestPath = join(tempDir, "package.json");
+    await writeFile(manifestPath, "{not-json");
+
+    await expect(readCliVersion(manifestPath)).rejects.toThrow(SyntaxError);
+  });
+
   it(
-    "[distribution] installs the packed CLI in a clean npm consumer and runs its binary",
+    "[happy] installs the packed CLI in a clean npm consumer and runs its binary",
     async () => {
       tempDir = await mkdtemp(join(tmpdir(), "docuvia-package-install-"));
       const consumerDir = join(tempDir, "consumer");

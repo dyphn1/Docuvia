@@ -4,12 +4,11 @@ All notable changes to `docuvia` are documented in this file. Versions before 0.
 
 ## [1.11.3](https://github.com/dyphn1/Docuvia/compare/v1.11.2...v1.11.3) (2026-09-22)
 
-
 ### Bug Fixes
 
-* **ui-core:** repair formatted source newlines ([451150f](https://github.com/dyphn1/Docuvia/commit/451150fd745d2a32ae72a757bad4f10e27f4980e))
-* **ui-core:** stop init temp cleanup lifecycle ([4f8665e](https://github.com/dyphn1/Docuvia/commit/4f8665e6bcb98980b87103203091e1f3a24aa50c))
-* **ui-core:** stop init temp cleanup lifecycle ([7378773](https://github.com/dyphn1/Docuvia/commit/737877355293d261fe9e6418fafafb4ef7a00976))
+- **ui-core:** repair formatted source newlines ([451150f](https://github.com/dyphn1/Docuvia/commit/451150fd745d2a32ae72a757bad4f10e27f4980e))
+- **ui-core:** stop init temp cleanup lifecycle ([4f8665e](https://github.com/dyphn1/Docuvia/commit/4f8665e6bcb98980b87103203091e1f3a24aa50c))
+- **ui-core:** stop init temp cleanup lifecycle ([7378773](https://github.com/dyphn1/Docuvia/commit/737877355293d261fe9e6418fafafb4ef7a00976))
 
 ## [1.11.2](https://github.com/dyphn1/Docuvia/compare/v1.11.1...v1.11.2) (2026-09-22)
 

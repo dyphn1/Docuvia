@@ -2,6 +2,43 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.11.4](https://github.com/dyphn1/Docuvia/compare/v1.11.3...v1.11.4) (2026-09-22)
+
+### Bug Fixes
+
+- **cli:** fix portable tarball builds ([657a308](https://github.com/dyphn1/Docuvia/commit/657a308a322cb3084abcb04cd333a61287961d90))
+- **release:** fix npm tarball installation ([c8e0848](https://github.com/dyphn1/Docuvia/commit/c8e084817e88acd483af8bb295cf441b7caab5bf)), closes [#488](https://github.com/dyphn1/Docuvia/issues/488)
+- **release:** keep bundled workspace packages out of tarball dependencies ([777664f](https://github.com/dyphn1/Docuvia/commit/777664f979797209bae06e99da16ebcaeb3fdb4a))
+
+## [1.11.3](https://github.com/dyphn1/Docuvia/compare/v1.11.2...v1.11.3) (2026-09-22)
+
+### Bug Fixes
+
+- **ui-core:** repair formatted source newlines ([451150f](https://github.com/dyphn1/Docuvia/commit/451150fd745d2a32ae72a757bad4f10e27f4980e))
+- **ui-core:** stop init temp cleanup lifecycle ([4f8665e](https://github.com/dyphn1/Docuvia/commit/4f8665e6bcb98980b87103203091e1f3a24aa50c))
+- **ui-core:** stop init temp cleanup lifecycle ([7378773](https://github.com/dyphn1/Docuvia/commit/737877355293d261fe9e6418fafafb4ef7a00976))
+
+## [1.11.2](https://github.com/dyphn1/Docuvia/compare/v1.11.1...v1.11.2) (2026-09-22)
+
+### Bug Fixes
+
+- **ci:** avoid unresolved HEAD parent refspec ([e58ce8b](https://github.com/dyphn1/Docuvia/commit/e58ce8b5df07d771044410504991dbc11e45d0e9))
+- **ci:** fail clearly when ref resolver is missing ([4d3440c](https://github.com/dyphn1/Docuvia/commit/4d3440c66a526ae07f9738ea214abfd2ca0d2a71))
+- **ci:** harden zero baseline resolution ([1798df2](https://github.com/dyphn1/Docuvia/commit/1798df283cd6073fa7c12149c2fe44b3a356ba19))
+- **ci:** make category event refs explicit ([482e855](https://github.com/dyphn1/Docuvia/commit/482e85510de11fd617267f76259c589727c8d2b5))
+- **ci:** pass event SHAs to category ratchet ([961c19c](https://github.com/dyphn1/Docuvia/commit/961c19c494a6dbffcdc293279686d0b33f68ef5c))
+- **ci:** resolve category ratchet refs safely ([5d7fc43](https://github.com/dyphn1/Docuvia/commit/5d7fc437d495b0e5b5d5542407935b8887bdeebb))
+
+## [1.11.1](https://github.com/dyphn1/Docuvia/compare/v1.11.0...v1.11.1) (2026-09-22)
+
+### Bug Fixes
+
+- **ast-core:** avoid config file TOCTOU race ([ef0da97](https://github.com/dyphn1/Docuvia/commit/ef0da970aa2fc0b22e56b8fa29c337a52836b880))
+- **ast-core:** harden languages config loading ([#441](https://github.com/dyphn1/Docuvia/issues/441)) ([1f3456b](https://github.com/dyphn1/Docuvia/commit/1f3456beb702aae78d835e4864b4e4202ab6c672))
+- **ast-core:** preserve lazy Node imports for browser compatibility ([6ea45ce](https://github.com/dyphn1/Docuvia/commit/6ea45ce4d8f890e0a345bbf8b43a92ccfcad728d))
+- **core:** contain Tier B project paths to workspace ([#387](https://github.com/dyphn1/Docuvia/issues/387) [#426](https://github.com/dyphn1/Docuvia/issues/426)) ([611fe2a](https://github.com/dyphn1/Docuvia/commit/611fe2abae2c31a435c651f047ebefe995a43070))
+- **core:** reject symlink dependency escapes ([b9384d0](https://github.com/dyphn1/Docuvia/commit/b9384d06109a4cf3bd0b67a3c9c1ab415b8977f0))
+
 # [1.11.0](https://github.com/dyphn1/Docuvia/compare/v1.10.0...v1.11.0) (2026-09-21)
 
 ### Bug Fixes

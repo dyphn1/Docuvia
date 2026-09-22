@@ -154,10 +154,67 @@ function findOwningProjectRoot(
   }
 }
 
+/** True when `candidate` is `workspaceRoot` itself or a native-path descendant of it. */
+function isPathInsideWorkspace(
+  workspaceRoot: string,
+  candidate: string,
+): boolean {
+  const relative = path.relative(path.resolve(workspaceRoot), candidate);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
+/**
+ * Resolves a project-file supplied path without allowing lexical or symlink escapes from the
+ * analysis workspace. The lexical path is retained so it still matches project-group roots.
+ */
+function resolveWithinWorkspace(
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+  baseDir: string,
+  candidatePath: string,
+): string | undefined {
+  const resolvedWorkspace = path.resolve(workspaceRoot);
+  const resolved = path.normalize(path.resolve(baseDir, candidatePath));
+  if (!isPathInsideWorkspace(resolvedWorkspace, resolved)) return undefined;
+
+  try {
+    const realCandidate = fs.realpathSync(resolved);
+    return isPathInsideWorkspace(realWorkspaceRoot, realCandidate)
+      ? resolved
+      : undefined;
+  } catch {
+    // Dependency discovery is best-effort and security-sensitive: any canonicalization failure
+    // is treated as unsafe rather than allowing an unverified path into the dependency graph.
+    return undefined;
+  }
+}
+
+function resolveDependencyPaths(
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+  root: string,
+  deps: readonly string[],
+): string[] {
+  return deps
+    .map((dep) =>
+      resolveWithinWorkspace(workspaceRoot, realWorkspaceRoot, root, dep),
+    )
+    .filter((dep): dep is string => dep !== undefined);
+}
+
 /** Local `path = "..."` dependencies declared under any dependencies/workspace/patch section of a
  *  Cargo.toml, plus `[workspace]` `members`/`exclude` entries -- a line-level scan (no TOML parser)
  *  that only collects path-bearing values, so registry deps (`crates.io` names) never leak in. */
-function readRustDeps(root: string): string[] {
+function readRustDeps(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   const content = readProjectFile(root, ConfigFilenames.CARGO_TOML);
   if (content === undefined) return [];
   const deps: string[] = [];
@@ -183,12 +240,16 @@ function readRustDeps(root: string): string[] {
       }
     }
   }
-  return deps.map((d) => resolveDepDir(root, d));
+  return resolveDependencyPaths(workspaceRoot, realWorkspaceRoot, root, deps);
 }
 
 /** Local `replace <module> => <local-path>` directives in a go.mod -- only the local-path form
  *  (registry `require`s carry versions and can't be local). */
-function readGoDeps(root: string): string[] {
+function readGoDeps(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   const content = readProjectFile(root, ConfigFilenames.GO_MOD);
   if (content === undefined) return [];
   const deps: string[] = [];
@@ -199,23 +260,48 @@ function readGoDeps(root: string): string[] {
     if (!localPath.startsWith(".") && !path.isAbsolute(localPath)) continue;
     deps.push(localPath);
   }
-  return deps.map((d) => resolveDepDir(root, d));
+  return resolveDependencyPaths(workspaceRoot, realWorkspaceRoot, root, deps);
 }
 
 /** `workspaces`/`references`/`extends` path deps of a TypeScript project -- the monorepo boundary
  *  a root package.json declares and the tsconfig project references a sub-package declares. */
-function readTypeScriptDeps(root: string): string[] {
+function readTypeScriptDeps(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   return [
-    ...readTypeScriptWorkspaces(root),
-    ...readTypeScriptTsconfigDeps(root),
+    ...readTypeScriptWorkspaces(root, workspaceRoot, realWorkspaceRoot),
+    ...readTypeScriptTsconfigDeps(root, workspaceRoot, realWorkspaceRoot),
   ];
 }
 
 /** Expands one `workspaces` pattern: a literal path, or a `*` glob against the directory's
- *  immediate entries. Never throws -- an unreadable/unmatched pattern contributes nothing. */
-function expandWorkspacePattern(root: string, pattern: string): string[] {
-  if (!pattern.includes("*")) return [path.resolve(root, pattern)];
-  const parent = path.resolve(root, path.dirname(pattern));
+ *  immediate entries. Never throws -- an unreadable/unmatched/escaping pattern contributes nothing. */
+function expandWorkspacePattern(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+  pattern: string,
+): string[] {
+  if (!pattern.includes("*")) {
+    const resolved = resolveWithinWorkspace(
+      workspaceRoot,
+      realWorkspaceRoot,
+      root,
+      pattern,
+    );
+    return resolved ? [resolved] : [];
+  }
+
+  const parent = resolveWithinWorkspace(
+    workspaceRoot,
+    realWorkspaceRoot,
+    root,
+    path.dirname(pattern),
+  );
+  if (!parent) return [];
+
   const base = path.basename(pattern);
   try {
     return fs
@@ -224,14 +310,21 @@ function expandWorkspacePattern(root: string, pattern: string): string[] {
         (entry) =>
           base === "*" || entry.includes(base.slice(0, base.indexOf("*"))),
       )
-      .map((entry) => path.join(parent, entry));
+      .map((entry) =>
+        resolveWithinWorkspace(workspaceRoot, realWorkspaceRoot, parent, entry),
+      )
+      .filter((entry): entry is string => entry !== undefined);
   } catch {
     return [];
   }
 }
 
 /** Local `workspaces` package directories of a root package.json. */
-function readTypeScriptWorkspaces(root: string): string[] {
+function readTypeScriptWorkspaces(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   const packageJson = readJson(root, ConfigFilenames.PACKAGE_JSON);
   if (packageJson === undefined) return [];
   const workspaces: unknown = packageJson.workspaces;
@@ -245,14 +338,25 @@ function readTypeScriptWorkspaces(root: string): string[] {
   const deps: string[] = [];
   for (const pattern of patterns as unknown[]) {
     if (typeof pattern === "string") {
-      deps.push(...expandWorkspacePattern(root, pattern));
+      deps.push(
+        ...expandWorkspacePattern(
+          root,
+          workspaceRoot,
+          realWorkspaceRoot,
+          pattern,
+        ),
+      );
     }
   }
   return deps;
 }
 
 /** Local tsconfig project `references` paths and `extends` targets of a sub-package. */
-function readTypeScriptTsconfigDeps(root: string): string[] {
+function readTypeScriptTsconfigDeps(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   const tsconfig = readJson(root, ConfigFilenames.TSCONFIG_JSON);
   if (tsconfig === undefined) return [];
   const deps: string[] = [];
@@ -261,12 +365,25 @@ function readTypeScriptTsconfigDeps(root: string): string[] {
     for (const ref of references) {
       if (typeof ref !== "object" || ref === null) continue;
       const refPath = (ref as { path?: unknown }).path;
-      if (typeof refPath === "string") deps.push(path.resolve(root, refPath));
+      if (typeof refPath !== "string") continue;
+      const resolved = resolveWithinWorkspace(
+        workspaceRoot,
+        realWorkspaceRoot,
+        root,
+        refPath,
+      );
+      if (resolved) deps.push(resolved);
     }
   }
   const extendsPath = tsconfig.extends;
   if (typeof extendsPath === "string") {
-    deps.push(path.resolve(root, extendsPath));
+    const resolved = resolveWithinWorkspace(
+      workspaceRoot,
+      realWorkspaceRoot,
+      root,
+      extendsPath,
+    );
+    if (resolved) deps.push(resolved);
   }
   return deps;
 }
@@ -274,7 +391,11 @@ function readTypeScriptTsconfigDeps(root: string): string[] {
 /** `<ProjectReference Include="...">` targets of every `*.csproj` in the project root -- resolved
  *  to the referenced project's *directory* (the owning-project root, which is where its own marker
  *  lives), not the .csproj file. */
-function readCSharpDeps(root: string): string[] {
+function readCSharpDeps(
+  root: string,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   const deps: string[] = [];
   let entries: string[] = [];
   try {
@@ -289,8 +410,14 @@ function readCSharpDeps(root: string): string[] {
     for (const match of content.matchAll(
       /<ProjectReference[^>]*Include\s*=\s*"([^"]+)"/g,
     )) {
-      const resolved = path.resolve(root, match[1].split("\\").join("/"));
-      deps.push(path.dirname(resolved));
+      const includePath = match[1].split("\\").join("/");
+      const resolved = resolveWithinWorkspace(
+        workspaceRoot,
+        realWorkspaceRoot,
+        root,
+        includePath,
+      );
+      if (resolved) deps.push(path.dirname(resolved));
     }
   }
   return deps;
@@ -322,23 +449,24 @@ function readJson(
   }
 }
 
-function resolveDepDir(root: string, relPath: string): string {
-  return path.normalize(path.resolve(root, relPath));
-}
-
 /** Local path dependencies of a project root, per language (PRJ-003's edges). Languages without a
  *  cheap path-dep marker (python/java/cpp/php/ruby) contribute no deps -- project *boundaries*
  *  still apply to them (PRJ-001), only ordering is flat. */
-function readProjectDeps(root: string, languageId: TierBLanguageId): string[] {
+function readProjectDeps(
+  root: string,
+  languageId: TierBLanguageId,
+  workspaceRoot: string,
+  realWorkspaceRoot: string,
+): string[] {
   switch (languageId) {
     case TIER_B_LANGUAGE_IDS.RUST:
-      return readRustDeps(root);
+      return readRustDeps(root, workspaceRoot, realWorkspaceRoot);
     case TIER_B_LANGUAGE_IDS.GO:
-      return readGoDeps(root);
+      return readGoDeps(root, workspaceRoot, realWorkspaceRoot);
     case TIER_B_LANGUAGE_IDS.TYPESCRIPT:
-      return readTypeScriptDeps(root);
+      return readTypeScriptDeps(root, workspaceRoot, realWorkspaceRoot);
     case TIER_B_LANGUAGE_IDS.CSHARP:
-      return readCSharpDeps(root);
+      return readCSharpDeps(root, workspaceRoot, realWorkspaceRoot);
     default:
       return [];
   }
@@ -401,6 +529,13 @@ export function partitionTierBBucket(
   input: PartitionTierBBucketInput,
 ): TierBProjectPartition {
   const workspaceRoot = path.resolve(input.workspaceRoot);
+  let realWorkspaceRoot: string | undefined;
+  try {
+    realWorkspaceRoot = fs.realpathSync(workspaceRoot);
+  } catch {
+    realWorkspaceRoot = undefined;
+  }
+
   const rule =
     PROJECT_MARKER_RULES.find((r) => r.languageId === input.languageId) ?? null;
   const markerCache = new Map<string, boolean>();
@@ -422,7 +557,15 @@ export function partitionTierBBucket(
     groups.push({
       root,
       files,
-      deps: rule ? readProjectDeps(root, input.languageId) : [],
+      deps:
+        rule && realWorkspaceRoot
+          ? readProjectDeps(
+              root,
+              input.languageId,
+              workspaceRoot,
+              realWorkspaceRoot,
+            )
+          : [],
     });
   }
 

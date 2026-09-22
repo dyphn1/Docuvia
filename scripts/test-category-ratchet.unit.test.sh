@@ -52,11 +52,31 @@ assert_eq "origin/feature/test-ratchet" "$CATEGORY_RESOLVED_HEAD_REF" "PR head f
 assert_eq "origin/main" "$CATEGORY_RESOLVED_BASE_REF" "PR base fallback"
 
 # GitHub uses an all-zero before SHA for branch creation. Treat it as unavailable rather
-# than trying to fetch it or infer an unresolved symbolic parent.
+# than trying to fetch it or infer an unresolved symbolic parent. Keep this length-agnostic so
+# the behavior is not tied to SHA-1.
 CATEGORY_HEAD_REF="HEAD"
 CATEGORY_BASE_REF="0000000000000000000000000000000000000000"
 unset GITHUB_HEAD_REF GITHUB_BASE_REF
 resolve_test_category_refs "$TMP_REPO"
-assert_eq "" "$CATEGORY_RESOLVED_BASE_REF" "zero before SHA must degrade safely"
+assert_eq "" "$CATEGORY_RESOLVED_BASE_REF" "SHA-1 zero before SHA must degrade safely"
+
+CATEGORY_BASE_REF="0000000000000000000000000000000000000000000000000000000000000000"
+resolve_test_category_refs "$TMP_REPO"
+assert_eq "" "$CATEGORY_RESOLVED_BASE_REF" "long zero before SHA must degrade safely"
+
+# Explicit refs are an override contract, not a SHA-only API. Preserve a caller-supplied branch
+# name verbatim and leave validation/fetching to the ratchet's ensure_ref step.
+CATEGORY_HEAD_REF="HEAD"
+CATEGORY_BASE_REF="main"
+resolve_test_category_refs "$TMP_REPO"
+assert_eq "main" "$CATEGORY_RESOLVED_BASE_REF" "explicit non-SHA base ref used as-is"
+
+# Asymmetric PR metadata is still deterministic: without a head branch the local HEAD is used,
+# while an available base branch remains a usable remote baseline.
+unset CATEGORY_HEAD_REF CATEGORY_BASE_REF GITHUB_HEAD_REF
+GITHUB_BASE_REF="main"
+resolve_test_category_refs "$TMP_REPO"
+assert_eq "HEAD" "$CATEGORY_RESOLVED_HEAD_REF" "asymmetric PR head fallback"
+assert_eq "origin/main" "$CATEGORY_RESOLVED_BASE_REF" "asymmetric PR base fallback"
 
 echo "test-category-ratchet ref resolution: PASS"

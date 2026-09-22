@@ -16,8 +16,13 @@ mkdir -p "$OUTPUT_DIR"
 # Keep event/base resolution in one testable place. In particular, a depth-1 push checkout may
 # not contain HEAD's parent; the resolver verifies the parent commit instead of leaking a literal
 # "HEAD^1" token into ensure_ref() as an invalid fetch refspec.
+REF_RESOLVER="$REPO_ROOT/scripts/test-category-ratchet-refs.sh"
+if [ ! -f "$REF_RESOLVER" ]; then
+  echo "ERROR: Missing required category ref resolver: $REF_RESOLVER" >&2
+  exit 1
+fi
 # shellcheck source=./test-category-ratchet-refs.sh
-source "$REPO_ROOT/scripts/test-category-ratchet-refs.sh"
+source "$REF_RESOLVER"
 resolve_test_category_refs "$REPO_ROOT"
 HEAD_REF="$CATEGORY_RESOLVED_HEAD_REF"
 BASE_REF="$CATEGORY_RESOLVED_BASE_REF"

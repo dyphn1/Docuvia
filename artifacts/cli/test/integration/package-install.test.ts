@@ -138,7 +138,7 @@ describe("packed npm distribution", () => {
         bin?: unknown;
         dependencies?: Record<string, string>;
       };
-      expect(installedManifest.bin).toEqual({ docuvia: "./dist/cli.js" });
+      expect(installedManifest.bin).toEqual({ docuvia: "dist/cli.js" });
       expect(
         Object.values(installedManifest.dependencies ?? {}).some((value) =>
           value.startsWith("workspace:"),

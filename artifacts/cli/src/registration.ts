@@ -9,3 +9,4 @@ import "@workspace/schema";
 import "@workspace/core";
 import "@workspace/remote-api";
 import "@workspace/llm-api";
+import "@workspace/semantic-decision";

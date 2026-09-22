@@ -55,8 +55,23 @@ describe("quoteForWindowsShell()", () => {
     expect(quoteForWindowsShell("--no-install")).toBe('"--no-install"');
   });
 
-  it("doubles embedded double quotes per cmd.exe's own escaping convention", () => {
-    expect(quoteForWindowsShell('say "hi"')).toBe('"say ""hi"""');
+  it.each([
+    'say "hi"',
+    "%PATH%",
+    "--arg=%USERPROFILE%",
+    "!TEMP!",
+    "line1\nline2",
+    "line1\rline2",
+  ])("rejects shell-expanding or quote-breaking token %j", (token) => {
+    expect(() => quoteForWindowsShell(token)).toThrow(
+      /Unsafe character .* in Windows shell-wrapped LSP token/,
+    );
+  });
+
+  it("keeps ordinary punctuation and spaces inside one quoted token", () => {
+    expect(
+      quoteForWindowsShell("C:\\Program Files\\tool & data\\server.cmd"),
+    ).toBe('"C:\\Program Files\\tool & data\\server.cmd"');
   });
 });
 
@@ -83,6 +98,16 @@ describe("buildWindowsShellCommandLine()", () => {
       expect(commandLine).toContain('"--version"');
     },
   );
+
+  it("rejects an externally supplied shell-expanding argument before command-line assembly (issue #425)", async () => {
+    await expect(
+      buildWindowsShellCommandLine(
+        "C:\\proj\\node_modules\\.bin\\ts.cmd",
+        ["--stdio", "--log=%TEMP%"],
+        undefined,
+      ),
+    ).rejects.toThrow(/Unsafe character .* in Windows shell-wrapped LSP token/);
+  });
 
   it("leaves a non-bare-command's own name untouched (only quotes it), since only npx needs the extra where-resolution step", async () => {
     const commandLine = await buildWindowsShellCommandLine(

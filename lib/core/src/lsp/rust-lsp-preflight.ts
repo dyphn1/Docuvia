@@ -1,15 +1,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { INodeProcess } from "@workspace/contracts";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
-import { NodeProcessProvider } from "../process/process-provider.js";
 import {
   resolvePathNativeBinary,
   probeBinaryVersionSpawnable,
 } from "./lsp-binary-resolver-strategies.js";
 import { RustLspConstants, RUST_LSP_MESSAGES } from "./rust-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessEnvView,
+} from "./lsp-process-host.js";
 
 export interface RustLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -24,9 +26,6 @@ export interface RustLspPreflightResult extends LspPreflightOutcome {
 function checkMarkerFileResolvable(workspaceRoot: string): boolean {
   return fs.existsSync(path.join(workspaceRoot, ConfigFilenames.CARGO_TOML));
 }
-
-const DEFAULT_NODE_PROCESS = new NodeProcessProvider();
-type ProcessEnvView = Pick<INodeProcess, "env">;
 
 function getCargoBinDir(nodeProcess: ProcessEnvView): string {
   return path.join(
@@ -69,7 +68,7 @@ export async function probeRustAnalyzerSpawnable(
 export async function checkRustLspPreflight(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
-  nodeProcess: ProcessEnvView = DEFAULT_NODE_PROCESS,
+  nodeProcess: ProcessEnvView = DEFAULT_LSP_NODE_PROCESS,
 ): Promise<RustLspPreflightResult> {
   const markerFileResolvable = checkMarkerFileResolvable(workspaceRoot);
 

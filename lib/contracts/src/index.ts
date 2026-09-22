@@ -60,6 +60,23 @@ export {
   EdgeResolutionSources,
   TIER_B_LANGUAGE_IDS,
 } from "./interfaces/edge-resolution.interfaces.js";
+export type {
+  ISemanticDecisionProvider,
+  SemanticDecisionAttributeValue,
+  SemanticDecisionAvailability,
+  SemanticDecisionContext,
+  SemanticDecisionModelIdentity,
+  SemanticDecisionOption,
+  SemanticDecisionOptionKind,
+  SemanticDecisionOutcome,
+  SemanticDecisionRequest,
+  SemanticDecisionScore,
+  SemanticDecisionTask,
+} from "./interfaces/semantic-decision.interfaces.js";
+export {
+  SemanticDecisionOptionKinds,
+  SemanticDecisionTasks,
+} from "./interfaces/semantic-decision.interfaces.js";
 export { KnowledgeBranchSyncStatuses } from "./interfaces/knowledge-git.interfaces.js";
 export type {
   DiscoveredFile,

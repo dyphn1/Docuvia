@@ -30,6 +30,22 @@ describe("checkCppLspPreflight()", () => {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("derives the Windows LLVM candidate from the injected host view (issue #440)", async () => {
+    await checkCppLspPreflight(workspaceRoot, undefined, {
+      platform: "win32",
+      env: { ProgramFiles: "D:\\InjectedProgramFiles" },
+    });
+
+    expect(resolvePathNativeBinary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraCandidateDirs: [
+          path.join("D:\\InjectedProgramFiles", "LLVM", "bin"),
+        ],
+      }),
+      undefined,
+    );
+  });
+
   it("reports not ready with a reason when no markers are present", async () => {
     const result = await checkCppLspPreflight(workspaceRoot);
 

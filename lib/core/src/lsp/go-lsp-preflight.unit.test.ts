@@ -30,6 +30,31 @@ describe("checkGoLspPreflight()", () => {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("derives Go install candidates from the injected process environment (issue #440)", async () => {
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "gopls",
+      args: [],
+      locallyResolved: false,
+    });
+
+    await checkGoLspPreflight(workspaceRoot, undefined, {
+      env: {
+        GOBIN: "/injected/go-bin",
+        GOPATH: "/injected/go-path",
+      },
+    });
+
+    expect(resolvePathNativeBinary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraCandidateDirs: expect.arrayContaining([
+          "/injected/go-bin",
+          path.join("/injected/go-path", "bin"),
+        ]),
+      }),
+      undefined,
+    );
+  });
+
   it("reports not ready with a reason when no go.mod is present", async () => {
     const result = await checkGoLspPreflight(workspaceRoot);
 

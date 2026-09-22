@@ -7,14 +7,20 @@ import {
   DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
 } from "./typescript-lsp-constants.js";
 import { buildMinimalLspEnv } from "./lsp-process-env.js";
+import {
+  DEFAULT_LSP_NODE_PROCESS,
+  type ProcessEnvView,
+} from "./lsp-process-host.js";
 
 /** Builds the minimal child-process env plus tsserver's heap ceiling. The parent process's
  * environment is deliberately not spread here: doing so would leak credentials/API keys into
  * the TypeScript LSP process and bypass the transport's minimal-env policy (issue #322).
  * Existing NODE_OPTIONS are preserved so an explicit --max-old-space-size choice still wins. */
-function buildTsHeapSizeEnvOverride(): NodeJS.ProcessEnv {
-  const env = buildMinimalLspEnv();
-  const existing = process.env.NODE_OPTIONS ?? "";
+function buildTsHeapSizeEnvOverride(
+  nodeProcess: ProcessEnvView,
+): NodeJS.ProcessEnv {
+  const env = buildMinimalLspEnv(nodeProcess.env);
+  const existing = nodeProcess.env.NODE_OPTIONS ?? "";
   if (existing.includes("--max-old-space-size")) {
     env.NODE_OPTIONS = existing;
     return env;
@@ -35,13 +41,14 @@ function buildTsHeapSizeEnvOverride(): NodeJS.ProcessEnv {
 export function resolveTypeScriptLspBinary(
   workspaceRoot: string,
   override?: { binary?: string; args?: string[] },
+  nodeProcess: ProcessEnvView = DEFAULT_LSP_NODE_PROCESS,
 ): ResolvedLspBinary {
   return resolveNpmNpxBinary(
     workspaceRoot,
     {
       packageName: TsLspConstants.PACKAGE_NAME,
       defaultArgs: [TsLspConstants.STDIO_ARG],
-      buildEnv: buildTsHeapSizeEnvOverride,
+      buildEnv: () => buildTsHeapSizeEnvOverride(nodeProcess),
     },
     override,
   );

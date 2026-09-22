@@ -1,6 +1,6 @@
 {
   "name": "docuvia",
-  "version": "1.10.1",
+  "version": "1.11.1",
   "description": "Codebase Knowledge Evolver — maintains a local knowledge graph of your workspace: modules, dependencies, blast radius, and recorded architectural decisions.",
   "license": "MIT",
   "type": "module",
@@ -48,6 +48,7 @@
     "@workspace/git-local": "workspace:^",
     "@workspace/llm-api": "workspace:^",
     "@workspace/remote-api": "workspace:^",
+    "@workspace/semantic-decision": "workspace:^",
     "@workspace/schema": "workspace:^",
     "@workspace/ui-core": "workspace:^",
     "better-sqlite3": "^12.11.1",

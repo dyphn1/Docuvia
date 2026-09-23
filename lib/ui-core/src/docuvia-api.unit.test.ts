@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   docuviaMemory,
   ErrorCodes,
@@ -189,5 +192,48 @@ describe("docuviaApi.stageAgentAuthoredDecisions() -- input-time target existenc
         code: ErrorCodes.FS_READ_FAILED,
       }),
     );
+  });
+
+  it("[invalid-input] rejects an existing absolute target outside WORKSPACE_ROOT before staging (#471)", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-stage-workspace-"),
+    );
+    const outsideRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-stage-outside-"),
+    );
+    const outsideFile = path.join(outsideRoot, "outside.ts");
+    fs.writeFileSync(outsideFile, "export const outside = true;\n");
+
+    try {
+      docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+      docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, outsideFile);
+      docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED_DECISIONS, [
+        {
+          title: "x",
+          content: "y",
+          nodeType: "rule",
+          confidence: 0.5,
+        },
+      ]);
+
+      await expect(
+        docuviaApi.stageAgentAuthoredDecisions(scopeId, createMockLogger()),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.INVALID_INPUT,
+      });
+      expect(
+        fs.existsSync(
+          path.join(
+            workspaceRoot,
+            ".docuvia",
+            "pending-l3-decisions.json",
+          ),
+        ),
+      ).toBe(false);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+      fs.rmSync(outsideRoot, { recursive: true, force: true });
+    }
   });
 });

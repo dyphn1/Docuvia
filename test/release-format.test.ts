@@ -146,8 +146,8 @@ describe("semantic-release generated artifact formatting", () => {
       ): Promise<void>;
     };
 
-    await expect(plugin.prepare({}, { cwd: fixtureRoot })).rejects.toMatchObject(
-      { code: "ENOENT" },
-    );
+    await expect(
+      plugin.prepare({}, { cwd: fixtureRoot }),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

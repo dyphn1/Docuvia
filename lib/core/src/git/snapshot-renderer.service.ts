@@ -160,6 +160,9 @@ export class SnapshotRendererService implements ISnapshotRenderer {
             lastTierBProcessedAt: file.lastTierBProcessedAt,
             lastTierBCommitSha: file.lastTierBCommitSha,
           })),
+        ...(metadata.lastIngestedSourceSha
+          ? { lastIngestedSourceSha: metadata.lastIngestedSourceSha }
+          : {}),
       };
       await fs.writeFile(
         path.join(graphDir, GitConstants.METADATA_JSON_NAME),

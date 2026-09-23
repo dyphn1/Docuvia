@@ -255,7 +255,9 @@ export class HydrationService implements IHydrationService {
         repoUrl: project.repoUrl,
       }).id;
     }
-    return store.projects.getFirst()?.id ?? GitConstants.DEFAULT_LOCAL_PROJECT_ID;
+    return (
+      store.projects.getFirst()?.id ?? GitConstants.DEFAULT_LOCAL_PROJECT_ID
+    );
   }
 
   private restoreFileMetadata(

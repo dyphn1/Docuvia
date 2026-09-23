@@ -2,6 +2,25 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.12.0](https://github.com/dyphn1/Docuvia/compare/v1.11.5...v1.12.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **tier-b:** classify only exact tsserver project exclusions ([502a31c](https://github.com/dyphn1/Docuvia/commit/502a31c409c1be5b466d2889db1027d3355240b2))
+* **tier-b:** count terminal not-applicable skips as progress ([83c1688](https://github.com/dyphn1/Docuvia/commit/83c1688602c9f9c445c7293511ad1c8f54433202))
+
+
+### Features
+
+* **cli:** describe Tier B not-applicable skips ([0efca2f](https://github.com/dyphn1/Docuvia/commit/0efca2f0855ce29fe1cb31001e7a18ccd41c3634))
+* **cli:** print Tier B not-applicable count ([9ad8486](https://github.com/dyphn1/Docuvia/commit/9ad8486a0234c7b248fcd700f8b159b66ff91b82))
+* **tier-b:** expose not-applicable skip count ([1289b59](https://github.com/dyphn1/Docuvia/commit/1289b59176a9d9224edda29118e70a417f3846c6))
+* **tier-b:** model not-applicable file outcomes ([1537369](https://github.com/dyphn1/Docuvia/commit/15373694e1b6f486fa6c0b98a580f0d10ae991a3))
+* **tier-b:** propagate not-applicable LSP outcomes ([9901265](https://github.com/dyphn1/Docuvia/commit/9901265e64834004ac4c2ab44b152f4d8028eaf5))
+* **tier-b:** report not-applicable file outcomes ([c4d3188](https://github.com/dyphn1/Docuvia/commit/c4d3188feaf6f7e7e838c1352be91c07a29acc8b))
+* **tier-b:** terminally skip not-applicable project files ([beb5d43](https://github.com/dyphn1/Docuvia/commit/beb5d43b75aaf64b3bb9c630f738a9e85b8d9d37))
+
 ## [1.11.5](https://github.com/dyphn1/Docuvia/compare/v1.11.4...v1.11.5) (2026-09-22)
 
 ### Bug Fixes

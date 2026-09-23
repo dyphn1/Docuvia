@@ -281,6 +281,82 @@ describe("HydrationService.hydrate()", () => {
     });
   });
 
+  it("restores project and Tier-B file metadata from graph/metadata.json before graph load", async () => {
+    const metadataJson = JSON.stringify({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [
+        {
+          filePath: "src/a.ts",
+          contentHash: "hash-a",
+          lastTierBProcessedAt: "2026-09-23 12:00:00",
+          lastTierBCommitSha: "source-a",
+        },
+        {
+          filePath: "src/b.ts",
+          contentHash: "hash-b",
+          lastTierBProcessedAt: null,
+          lastTierBCommitSha: null,
+        },
+      ],
+    });
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) => {
+          if (filePath === "graph/metadata.json")
+            return Promise.resolve(metadataJson);
+          return Promise.resolve("");
+        }),
+    });
+    const getOrInsert = vi.fn().mockReturnValue({ id: 1 });
+    const upsertFile = vi.fn();
+    const markTierBProcessed = vi.fn();
+    const store = makeMockGraphStore({
+      projects: {
+        getFirst: vi.fn(),
+        insert: vi.fn(),
+        getOrInsert,
+        count: vi.fn(),
+      },
+      files: {
+        getAllHashes: vi.fn(),
+        getAllSnapshotMetadata: vi.fn(),
+        upsertFile,
+        markTierBProcessed,
+        getTierBFileStatus: vi.fn(),
+        getTierBCoverage: vi.fn(),
+      },
+    });
+    const service = new HydrationService(git);
+
+    await service.hydrate("/workspace", store);
+
+    expect(getOrInsert).toHaveBeenCalledWith({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    expect(upsertFile).toHaveBeenCalledTimes(2);
+    expect(upsertFile).toHaveBeenNthCalledWith(1, {
+      projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+      filePath: "src/a.ts",
+      contentHash: "hash-a",
+    });
+    expect(upsertFile).toHaveBeenNthCalledWith(2, {
+      projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+      filePath: "src/b.ts",
+      contentHash: "hash-b",
+    });
+    expect(markTierBProcessed).toHaveBeenCalledTimes(1);
+    expect(markTierBProcessed).toHaveBeenCalledWith({
+      projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+      filePath: "src/a.ts",
+      commitSha: "source-a",
+    });
+    expect(store.graph.bulkLoadGraph).toHaveBeenCalled();
+  });
+
   it("also imports L3 cards from knowledge/_l3 at the resolved knowledge commit (L3DIST-007), inside the same write-locked bulk-load", async () => {
     const nodesJsonl =
       '{"id":"src/a.ts","type":"file","name":"src/a.ts","filePath":"src/a.ts"}\n';

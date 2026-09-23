@@ -354,6 +354,7 @@ describe("HydrationService.hydrate()", () => {
       projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
       filePath: "src/a.ts",
       commitSha: "source-a",
+      processedAt: "2026-09-23 12:00:00",
     });
     expect(store.meta.set).toHaveBeenCalledWith(
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,

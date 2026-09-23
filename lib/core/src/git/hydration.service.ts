@@ -70,6 +70,7 @@ function parseSnapshotMetadata(
   return {
     project: parsed.project,
     files: Array.isArray(parsed.files) ? parsed.files : [],
+    lastIngestedSourceSha: parsed.lastIngestedSourceSha,
   };
 }
 

@@ -218,13 +218,14 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       projectId: project.id,
       filePath: "src/a.ts",
       commitSha: "source-a",
+      processedAt: "2026-09-23 12:00:00",
     });
 
     expect(store.files.getAllSnapshotMetadata()).toEqual([
       {
         filePath: "src/a.ts",
         contentHash: "hash-a",
-        lastTierBProcessedAt: expect.any(String),
+        lastTierBProcessedAt: "2026-09-23 12:00:00",
         lastTierBCommitSha: "source-a",
       },
       {

@@ -21,7 +21,6 @@ export function isPathWithinWorkspace(
   );
 }
 
-
 export type ExistingWorkspacePathResult =
   | { status: "ok"; resolvedPath: string }
   | { status: "outside" }

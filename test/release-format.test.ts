@@ -23,7 +23,7 @@ describe("semantic-release generated artifact formatting", () => {
     );
   });
 
-  it("formats generated artifacts after changelog/npm prepare and before git commit", async () => {
+  it("[happy] formats generated artifacts after changelog/npm prepare and before git commit", async () => {
     const releaseConfig = JSON.parse(
       await readFile(resolve(repoRoot, ".releaserc.json"), "utf8"),
     ) as { plugins: ReleasePlugin[] };
@@ -42,7 +42,7 @@ describe("semantic-release generated artifact formatting", () => {
     expect(gitIndex).toBeGreaterThan(formatterIndex);
   });
 
-  it("normalizes semantic-release-style changelog and package output with repo Prettier rules", async () => {
+  it("[happy] normalizes semantic-release-style changelog and package output with repo Prettier rules", async () => {
     const fixtureRoot = await mkdtemp(
       resolve(tmpdir(), "docuvia-release-format-"),
     );
@@ -97,5 +97,57 @@ describe("semantic-release generated artifact formatting", () => {
       });
       expect(actual).toBe(canonical);
     }
+  });
+
+  it("[invalid-input] rejects malformed generated package metadata", async () => {
+    const fixtureRoot = await mkdtemp(
+      resolve(tmpdir(), "docuvia-release-format-invalid-"),
+    );
+    tempDirs.push(fixtureRoot);
+    await mkdir(resolve(fixtureRoot, "artifacts/cli"), { recursive: true });
+
+    await writeFile(
+      resolve(fixtureRoot, "CHANGELOG.md"),
+      "# Changelog\n\nValid changelog content.\n",
+      "utf8",
+    );
+    await writeFile(
+      resolve(fixtureRoot, "artifacts/cli/package.json"),
+      '{"name":"docuvia",',
+      "utf8",
+    );
+
+    const pluginUrl = pathToFileURL(
+      resolve(repoRoot, "scripts/release-format-plugin.mjs"),
+    ).href;
+    const plugin = (await import(pluginUrl)) as {
+      prepare(
+        pluginConfig: Record<string, never>,
+        context: { cwd: string },
+      ): Promise<void>;
+    };
+
+    await expect(plugin.prepare({}, { cwd: fixtureRoot })).rejects.toThrow();
+  });
+
+  it("[error-handling] reports a missing required release artifact", async () => {
+    const fixtureRoot = await mkdtemp(
+      resolve(tmpdir(), "docuvia-release-format-missing-"),
+    );
+    tempDirs.push(fixtureRoot);
+
+    const pluginUrl = pathToFileURL(
+      resolve(repoRoot, "scripts/release-format-plugin.mjs"),
+    ).href;
+    const plugin = (await import(pluginUrl)) as {
+      prepare(
+        pluginConfig: Record<string, never>,
+        context: { cwd: string },
+      ): Promise<void>;
+    };
+
+    await expect(plugin.prepare({}, { cwd: fixtureRoot })).rejects.toMatchObject(
+      { code: "ENOENT" },
+    );
   });
 });

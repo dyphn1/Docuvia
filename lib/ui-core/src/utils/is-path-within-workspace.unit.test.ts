@@ -47,7 +47,9 @@ describe("resolveExistingPathWithinWorkspace (issue #471)", () => {
       const target = path.join(root, "src", "safe.ts");
       writeSource(target);
 
-      expect(resolveExistingPathWithinWorkspace(target, root)).toEqual({
+      expect(
+        resolveExistingPathWithinWorkspace(path.join("src", "safe.ts"), root),
+      ).toEqual({
         status: "ok",
         resolvedPath: path.resolve(target),
       });

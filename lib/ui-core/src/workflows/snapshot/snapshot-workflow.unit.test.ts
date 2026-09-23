@@ -521,10 +521,7 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.SnapshotRenderer, () => renderer);
     docuviaFactory.lock();
 
-    await new SnapshotWorkflow(
-      "/workspace/demo",
-      createMockLogger(),
-    ).execute();
+    await new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute();
 
     expect(renderer.render).toHaveBeenCalled();
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalled();

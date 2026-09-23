@@ -62,15 +62,51 @@ function parseEdgesJsonl(
     .map((line) => JSON.parse(line) as RenderedEdge);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
 function parseSnapshotMetadata(
   raw: string | undefined,
 ): SnapshotMetadata | undefined {
   if (!raw) return undefined;
-  const parsed = JSON.parse(raw) as Partial<SnapshotMetadata>;
+
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) return { files: [] };
+
+  const projectValue = parsed.project;
+  const project =
+    isRecord(projectValue) &&
+    typeof projectValue.name === "string" &&
+    typeof projectValue.repoUrl === "string"
+      ? { name: projectValue.name, repoUrl: projectValue.repoUrl }
+      : undefined;
+
+  const files = Array.isArray(parsed.files)
+    ? parsed.files.flatMap((value) => {
+        if (!isRecord(value) || typeof value.filePath !== "string") return [];
+        return [
+          {
+            filePath: value.filePath,
+            contentHash: nullableString(value.contentHash),
+            lastTierBProcessedAt: nullableString(value.lastTierBProcessedAt),
+            lastTierBCommitSha: nullableString(value.lastTierBCommitSha),
+          },
+        ];
+      })
+    : [];
+
   return {
-    project: parsed.project,
-    files: Array.isArray(parsed.files) ? parsed.files : [],
-    lastIngestedSourceSha: parsed.lastIngestedSourceSha,
+    project,
+    files,
+    lastIngestedSourceSha:
+      typeof parsed.lastIngestedSourceSha === "string"
+        ? parsed.lastIngestedSourceSha
+        : undefined,
   };
 }
 

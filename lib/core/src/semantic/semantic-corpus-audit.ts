@@ -63,6 +63,21 @@ export function auditCorpus(
     "duplicateGroup",
   );
   const readyRealFamilies = readyRealCounts(samples, lookup, "repoFamily");
+  const slices = CORPUS_ORIGINS.flatMap((origin) =>
+    CORPUS_SPLITS.map((split) => ({
+      origin,
+      split,
+      metrics: corpusMetrics(
+        samples.filter(
+          (s) => s.source.origin === origin && s.source.split === split,
+        ),
+        lookup,
+      ),
+    })),
+  );
+  const sealedTestRecall = slices.find(
+    (slice) => slice.origin === "real" && slice.split === "test",
+  )!.metrics.candidateRecall;
   return {
     ...identity,
     datasetHash: createHash("sha256")
@@ -72,18 +87,7 @@ export function auditCorpus(
     reasons,
     real,
     synthetic,
-    slices: CORPUS_ORIGINS.flatMap((origin) =>
-      CORPUS_SPLITS.map((split) => ({
-        origin,
-        split,
-        metrics: corpusMetrics(
-          samples.filter(
-            (s) => s.source.origin === origin && s.source.split === split,
-          ),
-          lookup,
-        ),
-      })),
-    ),
+    slices,
     independentReadyRealRequests,
     readyRealFamilies,
     gates: {
@@ -93,7 +97,7 @@ export function auditCorpus(
       )
         ? "pass"
         : "insufficient-evidence",
-      candidateRecall: recallGate(real.candidateRecall),
+      candidateRecall: recallGate(sealedTestRecall),
     },
   };
 }

@@ -31,7 +31,6 @@ describe("isPathWithinWorkspace (issues #266/#267)", () => {
   });
 });
 
-
 describe("resolveExistingPathWithinWorkspace (issue #471)", () => {
   it("[happy] accepts an existing file whose canonical path stays inside the workspace", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-safe-"));

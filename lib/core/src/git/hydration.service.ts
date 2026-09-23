@@ -223,6 +223,12 @@ export class HydrationService implements IHydrationService {
           });
         }
       }
+      if (metadata?.lastIngestedSourceSha) {
+        store.meta.set(
+          GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+          metadata.lastIngestedSourceSha,
+        );
+      }
 
       const loaded = store.graph.bulkLoadGraph({
         projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,

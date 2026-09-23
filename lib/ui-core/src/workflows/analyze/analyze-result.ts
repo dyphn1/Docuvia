@@ -70,6 +70,10 @@ export interface TierBBatchResult {
   filesDroppedDeleted: number;
   /** Entries skipped because their language has no Tier B plugin yet (§8e). */
   filesSkippedLanguage: number;
+  /** Entries whose provider ran successfully but reported that the file is outside its semantic
+   *  project/program. These remain at Tier A precision, are stamped as attempted, and are not
+   *  re-queued or treated as errors. */
+  filesSkippedNotApplicable?: number;
   /** Entries the LSP provider successfully resolved edges for (or attempted with zero edges
    *  found -- still a success). */
   filesProcessed: number;

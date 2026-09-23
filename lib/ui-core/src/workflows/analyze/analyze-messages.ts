@@ -70,8 +70,16 @@ export const ANALYZE_MESSAGES = {
   TIER_B_EMPTY_QUEUE: "Tier B queue is empty -- nothing to escalate.",
   TIER_B_DEGRADED: (reason: string) =>
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
-  TIER_B_SUMMARY: (processed: number, edges: number, permanentFailed: number) =>
+  TIER_B_SUMMARY: (
+    processed: number,
+    edges: number,
+    permanentFailed: number,
+    notApplicable: number,
+  ) =>
     `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied` +
+    (notApplicable > 0
+      ? `, ${notApplicable} file(s) not applicable to their LSP project (kept at Tier A)`
+      : "") +
     (permanentFailed > 0
       ? `, ${permanentFailed} file(s) permanently failed (dropped from the re-try queue)`
       : ""),
@@ -177,6 +185,8 @@ export const ANALYZE_EVENTS = {
   TIER_B_EMPTY_QUEUE: "analyze.tierB.empty_queue",
   TIER_B_FILE_DROPPED_DELETED: "analyze.tierB.file_dropped_deleted",
   TIER_B_FILE_SKIPPED_LANGUAGE: "analyze.tierB.file_skipped_language",
+  TIER_B_FILE_SKIPPED_NOT_APPLICABLE:
+    "analyze.tierB.file_skipped_not_applicable",
   TIER_B_DEGRADED: "analyze.tierB.degraded",
   TIER_B_FILE_FAILED: "analyze.tierB.file_failed",
   TIER_B_SUMMARY: "analyze.tierB.summary",

@@ -241,7 +241,12 @@ interface SharedBatchState {
  *  the batch-level `edges`/`filesProcessed`/`filesFailed` arrays. */
 type RunOneSlotResult =
   | { ok: true; edges: ResolvedCallEdge[] }
-  | { ok: false; deadlineExceeded: boolean; reason: string };
+  | {
+      ok: false;
+      deadlineExceeded: boolean;
+      reason: string;
+      notApplicable?: boolean;
+    };
 
 /**
  * Minimal preflight outcome shape `BaseLspEdgeProvider` actually needs (`ready`/`reason`) --
@@ -283,6 +288,10 @@ export interface LspLanguageConfig {
     workspaceRoot: string,
     override?: { binary?: string; args?: string[] },
   ) => Promise<LspPreflightOutcome>;
+  /** Optional classifier for a deterministic per-file server response meaning the provider is
+   *  healthy but the file is not part of its semantic project/program. Such files remain at Tier
+   *  A precision and are terminally skipped rather than treated as operational failures. */
+  isNotApplicableFileError?: (message: string) => boolean;
   /** GRPH-006: whether this language's Tier A extraction resolves method-in-class containment
    *  (mirrors `ast-worker.ts`'s actual per-language capability — see the plan's capability table.
    *  Deliberately explicit, never inferred from the LSP server's own `documentSymbol` nesting,
@@ -1096,6 +1105,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           file: files[i],
           reason: slot.reason,
           retryable: slot.deadlineExceeded,
+          ...(slot.notApplicable ? { notApplicable: true } : {}),
         });
       }
     }
@@ -1200,11 +1210,20 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         };
       }
       const reason = err instanceof Error ? err.message : String(err);
-      this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
-        error: reason,
-      });
+      const notApplicable =
+        this.languageConfig.isNotApplicableFileError?.(reason) === true;
+      if (!notApplicable) {
+        this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
+          error: reason,
+        });
+      }
       this.closeAndEvict(client, file, state);
-      return { ok: false, deadlineExceeded: false, reason };
+      return {
+        ok: false,
+        deadlineExceeded: false,
+        reason,
+        ...(notApplicable ? { notApplicable: true } : {}),
+      };
     }
   }
 

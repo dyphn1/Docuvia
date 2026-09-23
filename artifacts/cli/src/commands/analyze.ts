@@ -311,6 +311,7 @@ function printTierBBatchResult(
         result.edgesApplied,
         result.filesFailed,
         result.filesFailedPermanent,
+        result.filesSkippedNotApplicable ?? 0,
         Boolean(result.zeroProgressWatchdogTripped),
       ),
     );

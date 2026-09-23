@@ -199,6 +199,43 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
   });
 
+  it("files repo: getAllSnapshotMetadata() preserves Tier-B restore state", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/b.ts",
+      contentHash: "hash-b",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      contentHash: "hash-a",
+    });
+    store.files.markTierBProcessed({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      commitSha: "source-a",
+    });
+
+    expect(store.files.getAllSnapshotMetadata()).toEqual([
+      {
+        filePath: "src/a.ts",
+        contentHash: "hash-a",
+        lastTierBProcessedAt: expect.any(String),
+        lastTierBCommitSha: "source-a",
+      },
+      {
+        filePath: "src/b.ts",
+        contentHash: "hash-b",
+        lastTierBProcessedAt: null,
+        lastTierBCommitSha: null,
+      },
+    ]);
+  });
+
   it("tags repo: upsertTag()/getIdByName()/linkNodeToTag()", () => {
     const project = store.projects.insert({
       name: "demo",

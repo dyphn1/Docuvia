@@ -116,18 +116,26 @@ export class LspJsonRpcClient {
     child.on("exit", (code) => this.onExit(code));
     child.on("error", (err) => this.onError(err));
 
-    await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      child.once("spawn", () => {
-        settled = true;
-        resolve();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onSpawn = () => {
+          child.removeListener("error", onStartupError);
+          resolve();
+        };
+        const onStartupError = (err: Error) => {
+          child.removeListener("spawn", onSpawn);
+          reject(err);
+        };
+        child.once("spawn", onSpawn);
+        child.once("error", onStartupError);
       });
-      child.once("error", (err) => {
-        if (settled) return;
-        settled = true;
-        reject(err);
-      });
-    });
+    } catch (err) {
+      // The persistent runtime error handler is registered before the startup listener and may
+      // already have marked the client stopped. Cleanup is based on child ownership, not that
+      // state flag, so a failed spawn still releases listeners and stdio handles (#388).
+      await this.stop();
+      throw err;
+    }
   }
 
   /** Sends a request and resolves/rejects with the server's response, or rejects on `timeoutMs`.
@@ -182,7 +190,9 @@ export class LspJsonRpcClient {
    *  Idempotent. A server that ignores SIGTERM must not keep request timers, stdio listeners, or
    *  this client instance reachable indefinitely (issue #324). */
   async stop(): Promise<void> {
-    if (!this.child || this.stopped) return;
+    // A child can emit error/exit (setting `stopped`) while this client still owns its transport.
+    // Idempotence is therefore keyed on ownership of `child`, not on the running-state flag.
+    if (!this.child) return;
     this.stopped = true;
     const child = this.child;
     this.child = undefined;

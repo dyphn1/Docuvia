@@ -359,3 +359,12 @@ export {
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "./constants/hooks.js";
+
+export type {
+  ISemanticCorpusService,
+  SemanticCorpusSample,
+  SemanticCorpusLabelResult,
+  SemanticCorpusLabel,
+  SemanticCorpusReason,
+  SemanticCorpusSplit,
+} from "./interfaces/semantic-corpus.interfaces.js";

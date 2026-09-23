@@ -1,3 +1,4 @@
+import type { ISemanticCorpusService } from "../interfaces/semantic-corpus.interfaces.js";
 import type { ILogger } from "../logging/types.js";
 import type { IGitProvider } from "../interfaces/git.interfaces.js";
 import type { ILineBlameProvider } from "../interfaces/git.interfaces.js";
@@ -125,6 +126,9 @@ export const TOKENS = {
    * #468 / PLAT-011: model-agnostic local semantic scoring capability. Model/runtime details live
    * exclusively in @workspace/semantic-decision; callers resolve this interface only.
    */
+  SemanticCorpusService: createToken<ISemanticCorpusService>(
+    "ISemanticCorpusService",
+  ),
   SemanticDecisionValidator: createToken<ISemanticDecisionValidator>(
     "ISemanticDecisionValidator",
   ),

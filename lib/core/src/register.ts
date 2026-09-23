@@ -1,3 +1,4 @@
+import { SemanticCorpusService } from "./semantic/semantic-corpus-service.js";
 import {
   docuviaFactory,
   TOKENS,
@@ -105,6 +106,11 @@ export function registerCoreProviders(
   );
 
   factory.register(TOKENS.ProcessLock, () => acquireProcessLock);
+
+  factory.register(
+    TOKENS.SemanticCorpusService,
+    () => new SemanticCorpusService(),
+  );
 
   factory.register(
     TOKENS.SemanticDecisionValidator,

@@ -17,9 +17,9 @@ function pluginName(plugin: ReleasePlugin): string {
 describe("semantic-release generated artifact formatting", () => {
   afterEach(async () => {
     await Promise.all(
-      tempDirs
-        .splice(0)
-        .map((dir) => rm(dir, { recursive: true, force: true })),
+      tempDirs.splice(0).map((dir) =>
+        rm(dir, { recursive: true, force: true }),
+      ),
     );
   });
 

@@ -49,7 +49,7 @@ export class SnapshotRendererService implements ISnapshotRenderer {
   public async render(
     input: SnapshotRenderInput,
   ): Promise<SnapshotRenderResult> {
-    const { outDir, l2Rows, linkRows, l3Rows } = input;
+    const { outDir, l2Rows, linkRows, l3Rows, metadata } = input;
 
     const graphDir = path.join(outDir, GitConstants.GRAPH_DIR_NAME);
     const knowledgeDir = path.join(outDir, GitConstants.KNOWLEDGE_DIR_NAME);
@@ -138,6 +138,32 @@ export class SnapshotRendererService implements ISnapshotRenderer {
       await fs.writeFile(
         path.join(graphDir, GitConstants.EDGES_JSONL_NAME),
         edgesData.join("\n") + "\n",
+        UTF8_ENCODING,
+      );
+    }
+
+    if (metadata) {
+      const metadataData = {
+        ...(metadata.project
+          ? {
+              project: {
+                name: metadata.project.name,
+                repoUrl: metadata.project.repoUrl,
+              },
+            }
+          : {}),
+        files: [...metadata.files]
+          .sort((a, b) => a.filePath.localeCompare(b.filePath))
+          .map((file) => ({
+            filePath: file.filePath,
+            contentHash: file.contentHash,
+            lastTierBProcessedAt: file.lastTierBProcessedAt,
+            lastTierBCommitSha: file.lastTierBCommitSha,
+          })),
+      };
+      await fs.writeFile(
+        path.join(graphDir, GitConstants.METADATA_JSON_NAME),
+        JSON.stringify(metadataData, null, 2) + "\n",
         UTF8_ENCODING,
       );
     }

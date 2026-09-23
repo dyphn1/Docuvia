@@ -5,6 +5,7 @@ import type {
   IGraphStore,
   IHydrationService,
   ILogger,
+  SnapshotMetadata,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
@@ -59,6 +60,17 @@ function parseEdgesJsonl(
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line) as RenderedEdge);
+}
+
+function parseSnapshotMetadata(
+  raw: string | undefined,
+): SnapshotMetadata | undefined {
+  if (!raw) return undefined;
+  const parsed = JSON.parse(raw) as Partial<SnapshotMetadata>;
+  return {
+    project: parsed.project,
+    files: Array.isArray(parsed.files) ? parsed.files : [],
+  };
 }
 
 /**
@@ -137,7 +149,7 @@ export class HydrationService implements IHydrationService {
       };
     }
 
-    const [nodesJsonl, edgesJsonl] = await Promise.all([
+    const [nodesJsonl, edgesJsonl, metadataJson] = await Promise.all([
       this.git.readFileAtRef(
         cwd,
         knowledgeSha,
@@ -154,10 +166,19 @@ export class HydrationService implements IHydrationService {
           GitConstants.EDGES_JSONL_NAME,
         ),
       ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.METADATA_JSON_NAME,
+        ),
+      ),
     ]);
 
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
+    const metadata = parseSnapshotMetadata(metadataJson);
 
     const force = options?.force ?? false;
     if (!force) {
@@ -179,6 +200,30 @@ export class HydrationService implements IHydrationService {
     }
 
     const bulkResult = await store.withWriteLock(async () => {
+      const restoredProject = metadata?.project
+        ? store.projects.getOrInsert({
+            name: metadata.project.name,
+            repoUrl: metadata.project.repoUrl,
+          })
+        : store.projects.getFirst();
+      const projectId =
+        restoredProject?.id ?? GitConstants.DEFAULT_LOCAL_PROJECT_ID;
+
+      for (const file of metadata?.files ?? []) {
+        store.files.upsertFile({
+          projectId,
+          filePath: file.filePath,
+          contentHash: file.contentHash,
+        });
+        if (file.lastTierBProcessedAt !== null) {
+          store.files.markTierBProcessed({
+            projectId,
+            filePath: file.filePath,
+            commitSha: file.lastTierBCommitSha,
+          });
+        }
+      }
+
       const loaded = store.graph.bulkLoadGraph({
         projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
         nodes,

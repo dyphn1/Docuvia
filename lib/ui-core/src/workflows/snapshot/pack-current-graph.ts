@@ -50,6 +50,9 @@ export async function packCurrentGraphOntoKnowledgeBranch(
           ? { name: project.name, repoUrl: project.repo_url }
           : undefined,
         files: fileMetadata,
+        lastIngestedSourceSha: store.meta.get(
+          GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+        ),
       },
     });
 

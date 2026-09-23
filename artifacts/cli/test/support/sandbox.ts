@@ -162,7 +162,14 @@ export interface DistCliBuild {
  * removing `cli.js` while a test is about to execute it.
  */
 export async function buildDistCli(): Promise<DistCliBuild> {
-  const outputDir = await mkdtemp(resolve(tmpdir(), "docuvia-cli-dist-"));
+  // Keep the isolated build inside the CLI package tree. The bundle intentionally leaves some
+  // runtime dependencies external (for example web-tree-sitter), so placing the entrypoint under
+  // the OS temp directory breaks Node's normal upward node_modules lookup. A unique package-local
+  // directory still avoids the shared production dist/ lifecycle while preserving dependency
+  // resolution exactly as the shipped build sees it.
+  const outputDir = await mkdtemp(
+    resolve(__dirname, "../../.docuvia-cli-dist-"),
+  );
 
   try {
     await execa("npx", ["tsup"], {

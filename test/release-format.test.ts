@@ -17,9 +17,9 @@ function pluginName(plugin: ReleasePlugin): string {
 describe("semantic-release generated artifact formatting", () => {
   afterEach(async () => {
     await Promise.all(
-      tempDirs.splice(0).map((dir) =>
-        rm(dir, { recursive: true, force: true }),
-      ),
+      tempDirs
+        .splice(0)
+        .map((dir) => rm(dir, { recursive: true, force: true })),
     );
   });
 
@@ -87,10 +87,7 @@ describe("semantic-release generated artifact formatting", () => {
 
     await plugin.prepare({}, { cwd: fixtureRoot });
 
-    for (const relativePath of [
-      "CHANGELOG.md",
-      "artifacts/cli/package.json",
-    ]) {
+    for (const relativePath of ["CHANGELOG.md", "artifacts/cli/package.json"]) {
       const absolutePath = resolve(fixtureRoot, relativePath);
       const actual = await readFile(absolutePath, "utf8");
       const config = (await prettier.resolveConfig(absolutePath)) ?? {};

@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.12.2](https://github.com/dyphn1/Docuvia/compare/v1.12.1...v1.12.2) (2026-09-23)
+
+### Bug Fixes
+
+- **release:** format generated artifacts before release commit ([d8c75fc](https://github.com/dyphn1/Docuvia/commit/d8c75fc26fee68bfba440c5a9ca7219f8aab982f))
+- **release:** format generated artifacts before release commit ([185232b](https://github.com/dyphn1/Docuvia/commit/185232bc24602d5887aa350d8f57bc23e3cf8ea1))
+
 ## [1.12.1](https://github.com/dyphn1/Docuvia/compare/v1.12.0...v1.12.1) (2026-09-23)
 
 ### Bug Fixes

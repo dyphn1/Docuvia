@@ -114,6 +114,7 @@ export { AstExportKinds } from "./interfaces/ast.interfaces.js";
 export type {
   ProjectRow,
   ProjectFileRow,
+  ProjectFileSnapshotMetadata,
   L1TagRow,
   L2NodeRow,
   NodeLinkRow,
@@ -246,6 +247,7 @@ export {
 export type {
   SnapshotRenderInput,
   SnapshotRenderResult,
+  SnapshotMetadata,
   ISnapshotRenderer,
 } from "./interfaces/snapshot.interfaces.js";
 export type { HookName, HooksConfig } from "./interfaces/hooks.interfaces.js";

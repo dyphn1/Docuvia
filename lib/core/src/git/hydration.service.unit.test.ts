@@ -284,6 +284,7 @@ describe("HydrationService.hydrate()", () => {
   it("restores project and Tier-B file metadata from graph/metadata.json before graph load", async () => {
     const metadataJson = JSON.stringify({
       project: { name: "demo", repoUrl: "file:///demo" },
+      lastIngestedSourceSha: "source-head",
       files: [
         {
           filePath: "src/a.ts",
@@ -354,6 +355,10 @@ describe("HydrationService.hydrate()", () => {
       filePath: "src/a.ts",
       commitSha: "source-a",
     });
+    expect(store.meta.set).toHaveBeenCalledWith(
+      GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      "source-head",
+    );
     expect(store.graph.bulkLoadGraph).toHaveBeenCalled();
   });
 

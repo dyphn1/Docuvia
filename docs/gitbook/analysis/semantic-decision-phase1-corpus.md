@@ -85,7 +85,10 @@ from the repository after installing dependencies. This developer evaluation ent
 bootstraps the existing contracts factory, then calls `ISemanticCorpusService.audit`.
 It does not initialize a graph, load a model, contact an oracle or change CLI routing.
 
-The input is a UTF-8 JSON manifest (maximum 64 MiB). The report is written atomically
+The input is a UTF-8 JSON manifest (maximum 64 MiB). Size checks and bounded reads
+use one opened file descriptor; replacing the pathname after the size check cannot
+swap the bytes being audited. Reading is capped even if the opened file grows.
+The report is written atomically
 only after validation/audit succeeds; malformed input cannot overwrite an earlier
 report. Input and output must be different files. The output directory is created as
 needed. Standard output contains a JSON summary with dataset hash and gate results;
@@ -104,6 +107,7 @@ leakage, missing files, output failures and preservation of an existing report.
 | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | P1-01         | Provenance contract and honest label quarantine                                                                           | Implemented |
 | P1-02         | Split leakage, candidate recall and evidence sufficiency report                                                           | Implemented |
+| P1-03         | Offline audit command, atomic reports and explicit exit status                                                            | Implemented |
 | Collection    | Source hashing, deterministic candidate generation, real LSP capture                                                      | Pending     |
 | Corpus exit   | ≥8 real repo families (4 train / 2 calibration / 2 test), ≥10,000 requests, ≥2,000 sealed-test requests, temporal holdout | Pending     |
 | Baseline exit | Fixed hardware; paired AST-only/AST+LSP; cold/warm and initial/incremental; full analyze/commit/pre-push timings          | Pending     |
@@ -112,6 +116,6 @@ Unit fixtures demonstrate policy behavior only. They are not a real training cor
 model-quality evidence, a measured baseline or permission to start Phase 2. The existing
 `eval:impact` gate remains mandatory and unchanged. #468 stays open.
 
-Tests cite P1-01 and the testing architecture, cover positive/negative/malformed/failure
+Tests cite P1-01–03 and the testing architecture, cover positive/negative/malformed/failure
 cases and complete repeated replay. Shared shapes live in contracts; pure policy lives
 in Domain Core behind a transient factory token. No model imports, I/O or global state.

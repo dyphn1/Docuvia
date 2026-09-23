@@ -24,10 +24,16 @@ let temporary: string;
 let input: string;
 let output: string;
 
-function run(args = ["--input", input, "--output", output]) {
+function run(args = ["--input", input, "--output", output], preload?: string) {
   const child = spawnSync(
     process.execPath,
-    ["--import", "tsx", command, ...args],
+    [
+      ...(preload ? ["--require", preload] : []),
+      "--import",
+      "tsx",
+      command,
+      ...args,
+    ],
     { cwd: root, encoding: "utf8", timeout: 20_000 },
   );
   expect(child.error).toBe(undefined);
@@ -170,6 +176,45 @@ describe("offline semantic corpus command", () => {
         message: "Corpus must contain valid UTF-8 JSON",
       });
       expect(existsSync(output)).toBe(false);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[negative] reads the opened snapshot if the pathname changes after its size check",
+    () => {
+      const hook = join(temporary, "swap-after-stat.cjs");
+      const saved = join(temporary, "original.json");
+      writeFileSync(
+        hook,
+        `
+      const fs = require("node:fs");
+      const originalStat = fs.statSync;
+      const originalFstat = fs.fstatSync;
+      const input = ${JSON.stringify(input)};
+      const identity = originalStat(input);
+      let swapped = false;
+      function swap(stats) {
+        if (!swapped && stats.ino === identity.ino && stats.dev === identity.dev) {
+          swapped = true;
+          fs.renameSync(input, ${JSON.stringify(saved)});
+          fs.writeFileSync(input, "corrupt replacement");
+        }
+        return stats;
+      }
+      fs.statSync = (...args) => swap(originalStat(...args));
+      fs.fstatSync = (...args) => swap(originalFstat(...args));
+      require("node:module").syncBuiltinESMExports();
+    `,
+      );
+      const child = run(undefined, hook);
+      expect(readFileSync(input, "utf8")).toBe("corrupt replacement");
+      expect(child.status).toBe(2);
+      expect(child.stderr).toBe("");
+      expect(JSON.parse(readFileSync(output, "utf8")).corpusId).toBe(
+        "synthetic-cli",
+      );
+      expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual(inputValue());
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

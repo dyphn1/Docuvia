@@ -10,11 +10,13 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
+  openSync,
+  closeSync,
+  fstatSync,
+  readSync,
   realpathSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -46,6 +48,41 @@ function argumentsFor(args: string[]): { input: string; output: string } {
   };
 }
 
+function checkInputSize(bytes: number): void {
+  if (bytes > MAX_INPUT_BYTES)
+    throw new DocuviaError(
+      ErrorCodes.SEMANTIC_CORPUS_INVALID,
+      "Corpus JSON exceeds 64 MiB",
+    );
+}
+
+function readBoundedSnapshot(input: string): Buffer {
+  const descriptor = openSync(input, "r");
+  try {
+    const stats = fstatSync(descriptor);
+    checkInputSize(stats.size);
+    if (!stats.isFile())
+      throw new DocuviaError(
+        ErrorCodes.SEMANTIC_CORPUS_INVALID,
+        "Corpus input must be a regular file",
+      );
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for (;;) {
+      const chunk = Buffer.alloc(
+        Math.min(64 * 1024, MAX_INPUT_BYTES - total + 1),
+      );
+      const count = readSync(descriptor, chunk, 0, chunk.length, null);
+      if (count === 0) return Buffer.concat(chunks, total);
+      total += count;
+      checkInputSize(total);
+      chunks.push(chunk.subarray(0, count));
+    }
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
 function readManifest(input: string, output: string): unknown {
   const canonicalInput = realpathSync(input);
   const canonicalOutput = existsSync(output) ? realpathSync(output) : output;
@@ -55,18 +92,7 @@ function readManifest(input: string, output: string): unknown {
       "Input and output must be different files",
     );
   }
-  if (statSync(input).size > MAX_INPUT_BYTES) {
-    throw new DocuviaError(
-      ErrorCodes.SEMANTIC_CORPUS_INVALID,
-      "Corpus JSON exceeds 64 MiB",
-    );
-  }
-  const bytes = readFileSync(input);
-  if (bytes.length > MAX_INPUT_BYTES)
-    throw new DocuviaError(
-      ErrorCodes.SEMANTIC_CORPUS_INVALID,
-      "Corpus JSON exceeds 64 MiB",
-    );
+  const bytes = readBoundedSnapshot(input);
   try {
     return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch (cause) {

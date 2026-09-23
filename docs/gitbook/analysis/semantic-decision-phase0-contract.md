@@ -7,16 +7,17 @@ It does not supersede [IMPT-002](../adr/impact/IMPT-002-lsp-for-absolute-quality
 
 ## Scope and current inventory
 
-| Work                                                                    | Status / owner                                                 |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Isolated package, factory provider token, model import restrictions     | Already delivered by #469; retained                            |
-| TypeScript, same-repository, LSP-verifiable cross-file call targets     | First experimental slice; this phase defines its contract only |
-| Request/response validation and unavailable provider conformance        | This Phase 0 implementation                                    |
-| Candidate generation, corpus, gold labels, baseline                     | Phase 1; not implemented                                       |
-| Models, calibration, measured precision/cost                            | Phase 2; not implemented                                       |
-| Runtime, policy, shadow, timeout supervision and fallback workflow      | Phase 3; not implemented                                       |
-| Probabilistic persistence, freshness, opt-in LSP routing, impact UI     | Phases 4–6; not implemented                                    |
-| Shared daemon / additional languages, imports, dynamic patterns, Tier C | Conditional Phases 7–8; not prerequisites for the first slice  |
+| Work                                                                    | Status / owner                                                                        |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Isolated package, factory provider token, model import restrictions     | Already delivered by #469; retained                                                   |
+| TypeScript, same-repository, LSP-verifiable cross-file call targets     | First experimental slice; this phase defines its contract only                        |
+| Request/response validation and unavailable provider conformance        | This Phase 0 implementation                                                           |
+| Corpus labeling, split/recall audit, offline evaluation command         | Phase 1 infrastructure implemented; see [Phase 1](semantic-decision-phase1-corpus.md) |
+| Source/candidate collection, real corpus and paired baseline            | Phase 1; pending                                                                      |
+| Models, calibration, measured precision/cost                            | Phase 2; not implemented                                                              |
+| Runtime, policy, shadow, timeout supervision and fallback workflow      | Phase 3; not implemented                                                              |
+| Probabilistic persistence, freshness, opt-in LSP routing, impact UI     | Phases 4–6; not implemented                                                           |
+| Shared daemon / additional languages, imports, dynamic patterns, Tier C | Conditional Phases 7–8; not prerequisites for the first slice                         |
 
 Tier A owns deterministic facts, legal candidates and evidence snapshots. The provider only
 scores supplied options. Domain/orchestration owns validation, policy and verification routing;

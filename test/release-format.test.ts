@@ -23,9 +23,7 @@ describe("semantic-release generated artifact formatting", () => {
     );
   });
 
-  it(
-    "formats generated artifacts after changelog/npm prepare and before git commit",
-    async () => {
+  it("formats generated artifacts after changelog/npm prepare and before git commit", async () => {
       const releaseConfig = JSON.parse(
         await readFile(resolve(repoRoot, ".releaserc.json"), "utf8"),
       ) as { plugins: ReleasePlugin[] };
@@ -42,12 +40,9 @@ describe("semantic-release generated artifact formatting", () => {
       expect(npmIndex).toBeGreaterThan(changelogIndex);
       expect(formatterIndex).toBeGreaterThan(npmIndex);
       expect(gitIndex).toBeGreaterThan(formatterIndex);
-    },
-  );
+    });
 
-  it(
-    "normalizes semantic-release-style changelog and package output with repo Prettier rules",
-    async () => {
+  it("normalizes semantic-release-style changelog and package output with repo Prettier rules", async () => {
       const fixtureRoot = await mkdtemp(
         resolve(tmpdir(), "docuvia-release-format-"),
       );
@@ -105,6 +100,5 @@ describe("semantic-release generated artifact formatting", () => {
         });
         expect(actual).toBe(canonical);
       }
-    },
-  );
+    });
 });

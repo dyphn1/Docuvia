@@ -34,11 +34,11 @@ async function readState(sandbox: TestSandbox): Promise<RestoredState> {
 }
 
 // Test-category coverage for this end-to-end persistence regression:
- // [happy] the normal snapshot -> clean -> status/hydrate path succeeds.
- // [invalid-input] clean deliberately removes local.db, so the read path starts from missing local state.
- // [error-handling] status/ensureHydrated self-heals that missing state from the knowledge branch.
- // [stress] forced hydration is repeated to prove metadata restoration stays stable across rebuilds.
- // [state-diff] every restored metric is compared byte-for-value with the pre-clean baseline.
+// [happy] the normal snapshot -> clean -> status/hydrate path succeeds.
+// [invalid-input] clean deliberately removes local.db, so the read path starts from missing local state.
+// [error-handling] status/ensureHydrated self-heals that missing state from the knowledge branch.
+// [stress] forced hydration is repeated to prove metadata restoration stays stable across rebuilds.
+// [state-diff] every restored metric is compared byte-for-value with the pre-clean baseline.
 describe("hydrate metadata round-trip (real CLI / git / SQLite)", () => {
   let sandbox: TestSandbox;
 

@@ -52,6 +52,12 @@ jobs:
       # Formatting and lint results are byte-identical across OSes (`.gitattributes` pins
       # `eol=lf`, prettier pins `endOfLine: "lf"`), so run them once rather than burning a second
       # runner's minutes on the same answer.
+      - name: Diagnose release-format test formatting
+        if: runner.os == 'Linux'
+        run: |
+          pnpm exec prettier --write test/release-format.test.ts
+          git diff -- test/release-format.test.ts
+
       - name: Check formatting
         if: runner.os == 'Linux'
         run: pnpm exec prettier --check .

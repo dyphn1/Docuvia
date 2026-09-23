@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { TestSandbox, buildDistCli } from "../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
@@ -18,19 +26,25 @@ import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeout
  *    source layout. `tsx` (running straight from source) never disturbs any of these paths, so
  *    none of the `tsx`-based tests could ever have caught it.
  *
- * Every test below runs against a freshly-built `dist/cli.js` via plain `node`
- * (`TestSandbox.runDistCli()`) so a regression in any of the above fails here, not in a user's
- * terminal.
+ * Every test below runs against a freshly-built, suite-owned compiled CLI artifact via plain
+ * `node` (`TestSandbox.runDistCli()`) so a regression in any of the above fails here, not in a
+ * user's terminal.
  */
 describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () => {
+  let distBuild: Awaited<ReturnType<typeof buildDistCli>>;
+
   beforeAll(async () => {
-    await buildDistCli();
+    distBuild = await buildDistCli();
+  }, SUBPROCESS_TEST_TIMEOUT_MS);
+
+  afterAll(async () => {
+    if (distBuild) await distBuild.cleanup();
   }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
-    sandbox = new TestSandbox();
+    sandbox = new TestSandbox(distBuild.cliPath);
     await sandbox.setup({
       initGit: true,
       files: {
@@ -170,7 +184,7 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
       const PROCESSES_PER_ROUND = 4;
 
       for (let round = 0; round < ROUNDS; round++) {
-        const roundSandbox = new TestSandbox();
+        const roundSandbox = new TestSandbox(distBuild.cliPath);
         await roundSandbox.setup({
           initGit: true,
           files: {

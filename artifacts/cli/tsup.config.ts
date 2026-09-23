@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { defineConfig } from "tsup";
 
 const require = createRequire(import.meta.url);
+const outputDir = process.env.DOCUVIA_TEST_CLI_DIST_DIR ?? "dist";
 
 export default defineConfig({
   // ast-worker is built as its own entry (not just imported from cli.ts) so that
@@ -20,7 +21,7 @@ export default defineConfig({
   clean: true,
   minify: true,
   sourcemap: true,
-  outDir: "dist",
+  outDir: outputDir,
   // Several @workspace/* libs (contracts, core, git-local, remote-api, schema, ui-core) declare
   // "main": "./src/index.ts" with emitDeclarationOnly and ship no compiled .js — they're only
   // ever meant to be consumed by a bundler. tsup externalizes node_modules deps by default,
@@ -45,7 +46,7 @@ export default defineConfig({
   // assuming the .sql files sit next to the compiled JS. Bundling breaks both assumptions the
   // same way, so copy the real assets alongside the build output.
   onSuccess: async () => {
-    const distDir = path.join(import.meta.dirname, "dist");
+    const distDir = path.resolve(import.meta.dirname, outputDir);
     const wasmSrc = require.resolve("web-tree-sitter/tree-sitter.wasm");
     fs.copyFileSync(wasmSrc, path.join(distDir, "tree-sitter.wasm"));
 

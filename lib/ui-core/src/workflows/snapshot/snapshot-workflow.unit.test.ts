@@ -168,7 +168,11 @@ describe("SnapshotWorkflow.execute()", () => {
       expect.objectContaining({
         l2Rows: [{ id: 1 }],
         linkRows: [{ id: 1 }],
-        metadata: { project: undefined, files: [] },
+        metadata: {
+          project: undefined,
+          files: [],
+          lastIngestedSourceSha: undefined,
+        },
       }),
     );
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalledWith(

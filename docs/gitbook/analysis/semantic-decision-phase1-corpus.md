@@ -78,6 +78,26 @@ is not Phase 1 completion: collection provenance, dedup correctness, temporal or
 real oracle replay, fixed-hardware paired baselines and corpus review still require
 external evidence. No model/precision/LSP-avoidance metric is fabricated.
 
+## P1-03 — Offline audit command
+
+Run `pnpm run eval:semantic --input corpus.json --output evaluate/results/semantic.json`
+from the repository after installing dependencies. This developer evaluation entrypoint
+bootstraps the existing contracts factory, then calls `ISemanticCorpusService.audit`.
+It does not initialize a graph, load a model, contact an oracle or change CLI routing.
+
+The input is a UTF-8 JSON manifest (maximum 64 MiB). The report is written atomically
+only after validation/audit succeeds; malformed input cannot overwrite an earlier
+report. Input and output must be different files. The output directory is created as
+needed. Standard output contains a JSON summary with dataset hash and gate results;
+errors are structured JSON on standard error. Exit codes: **0** for passing quantity
+and candidate-recall gates; **2** for a valid report with failed/insufficient gates;
+**1** for arguments, JSON, validation, leakage or filesystem failure. Exit 0 is still
+not the external review/baseline exit gate for Phase 1.
+
+The child-process regression runs a synthetic fixture twice and compares report bytes,
+summary, ordered results, provenance hash and exit status. It also checks corrupt JSON,
+leakage, missing files, output failures and preservation of an existing report.
+
 ## Delivery and remaining gates
 
 | Slice         | Scope                                                                                                                     | Status      |

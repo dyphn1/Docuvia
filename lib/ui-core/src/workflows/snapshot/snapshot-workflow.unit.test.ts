@@ -424,6 +424,8 @@ describe("SnapshotWorkflow.execute()", () => {
 
     const git = {
       getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
+      getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
+      readFileAtRef: vi.fn().mockResolvedValue('{"files":[]}'),
     };
     docuviaFactory.register(TOKENS.GitProvider, () => git as any);
 
@@ -465,5 +467,66 @@ describe("SnapshotWorkflow.execute()", () => {
     expect(store.graph.getAllNodes).not.toHaveBeenCalled();
     expect(renderer.render).not.toHaveBeenCalled();
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).not.toHaveBeenCalled();
+  });
+
+  it("does not skip an otherwise up-to-date legacy snapshot that lacks graph/metadata.json", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn().mockImplementation((key) => {
+          if (key === "lastTierBBatchSha") return "matched-head-sha";
+          if (key === "tierBBatchPending") return "";
+          return undefined;
+        }),
+        set: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      ({
+        getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
+        getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
+        readFileAtRef: vi.fn().mockResolvedValue(undefined),
+      }) as any,
+    );
+
+    const knowledgeGit: IKnowledgeGitService = {
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi
+        .fn()
+        .mockResolvedValue("matched-head-sha"),
+      hasSourceCommitInHistory: vi.fn().mockResolvedValue(true),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    };
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+
+    const renderer: ISnapshotRenderer = {
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+        errors: [],
+      }),
+    };
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => renderer);
+    docuviaFactory.lock();
+
+    await new SnapshotWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
+
+    expect(renderer.render).toHaveBeenCalled();
+    expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalled();
   });
 });

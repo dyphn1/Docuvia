@@ -1,3 +1,4 @@
+import type { ISemanticCorpusService } from "../interfaces/semantic-corpus.interfaces.js";
 import type { ILogger } from "../logging/types.js";
 import type { IGitProvider } from "../interfaces/git.interfaces.js";
 import type { ILineBlameProvider } from "../interfaces/git.interfaces.js";
@@ -25,7 +26,10 @@ import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
 import type { ISemanticDiffAnalyzer } from "../interfaces/semantic-diff.interfaces.js";
-import type { ISemanticDecisionProvider } from "../interfaces/semantic-decision.interfaces.js";
+import type {
+  ISemanticDecisionProvider,
+  ISemanticDecisionValidator,
+} from "../interfaces/semantic-decision.interfaces.js";
 import type {
   IEdgeResolutionProvider,
   TierBLanguageId,
@@ -122,6 +126,12 @@ export const TOKENS = {
    * #468 / PLAT-011: model-agnostic local semantic scoring capability. Model/runtime details live
    * exclusively in @workspace/semantic-decision; callers resolve this interface only.
    */
+  SemanticCorpusService: createToken<ISemanticCorpusService>(
+    "ISemanticCorpusService",
+  ),
+  SemanticDecisionValidator: createToken<ISemanticDecisionValidator>(
+    "ISemanticDecisionValidator",
+  ),
   SemanticDecisionProvider: createToken<ISemanticDecisionProvider>(
     "ISemanticDecisionProvider",
   ),

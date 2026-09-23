@@ -62,6 +62,14 @@ export {
 } from "./interfaces/edge-resolution.interfaces.js";
 export type {
   ISemanticDecisionProvider,
+  ISemanticDecisionValidator,
+  SemanticDecisionCallOptions,
+  SemanticDecisionCapability,
+  SemanticDecisionEvidenceIdentity,
+  SemanticDecisionRequestIdentity,
+  SemanticDecisionScoredOutcome,
+  SemanticDecisionUnavailableOutcome,
+  SemanticDecisionPolicyResult,
   SemanticDecisionAttributeValue,
   SemanticDecisionAvailability,
   SemanticDecisionContext,
@@ -74,6 +82,12 @@ export type {
   SemanticDecisionTask,
 } from "./interfaces/semantic-decision.interfaces.js";
 export {
+  SemanticDecisionSchemaVersion,
+  SemanticDecisionLimits,
+  SemanticDecisionStatuses,
+  SemanticDecisionScoreKinds,
+  SemanticDecisionUnavailableCodes,
+  SemanticDecisionTaskSemantics,
   SemanticDecisionOptionKinds,
   SemanticDecisionTasks,
 } from "./interfaces/semantic-decision.interfaces.js";
@@ -345,3 +359,15 @@ export {
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "./constants/hooks.js";
+
+export type {
+  SemanticCorpusManifest,
+  SemanticCorpusMetrics,
+  SemanticCorpusReport,
+  ISemanticCorpusService,
+  SemanticCorpusSample,
+  SemanticCorpusLabelResult,
+  SemanticCorpusLabel,
+  SemanticCorpusReason,
+  SemanticCorpusSplit,
+} from "./interfaces/semantic-corpus.interfaces.js";

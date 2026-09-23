@@ -116,3 +116,17 @@ daemon.
   requires an explicit architecture/API change.
 - **Deferred:** lifecycle optimization such as one loaded model per machine remains unresolved until
   benchmarks justify it.
+
+## Phase 0 contract amendment (2026-09-21)
+
+The [Phase 0 scope and acceptance contract](../../analysis/semantic-decision-phase0-contract.md)
+fixes schema version 1, request/evidence identity, capability/size limits, control/error semantics
+and boundary validation. All three tasks use independent option scores; edge-relation is
+multi-target, not a forced single-target softmax. Raw scores, calibrated confidence, versioned
+policy decisions and authoritative facts are separate concepts. Only a calibrated response may
+claim a calibration version; no score becomes verified evidence.
+
+Pure validators live in Domain Core behind a contracts token. The existing isolated provider
+continues to report unavailable with no supported capabilities. No production workflow invokes
+it, so IMPT-002 and all existing deterministic/LSP behavior remain in force. Corpus, model,
+shadow/policy, persistence and shared-service gates remain future work.

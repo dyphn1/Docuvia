@@ -57,6 +57,7 @@ jobs:
         run: |
           pnpm exec prettier --write test/release-format.test.ts
           git diff -- test/release-format.test.ts
+          exit 1
 
       - name: Check formatting
         if: runner.os == 'Linux'

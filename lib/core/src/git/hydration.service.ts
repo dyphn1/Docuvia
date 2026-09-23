@@ -221,6 +221,7 @@ export class HydrationService implements IHydrationService {
             projectId,
             filePath: file.filePath,
             commitSha: file.lastTierBCommitSha,
+            processedAt: file.lastTierBProcessedAt,
           });
         }
       }

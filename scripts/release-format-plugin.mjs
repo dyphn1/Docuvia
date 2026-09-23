@@ -2,10 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import * as prettier from "prettier";
 
-const RELEASE_ARTIFACTS = [
-  "CHANGELOG.md",
-  "artifacts/cli/package.json",
-];
+const RELEASE_ARTIFACTS = ["CHANGELOG.md", "artifacts/cli/package.json"];
 
 /**
  * semantic-release prepare hook.

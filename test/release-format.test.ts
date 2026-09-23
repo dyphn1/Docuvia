@@ -1,11 +1,11 @@
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import * as prettier from "prettier";
 import { afterEach, describe, expect, it } from "vitest";
 
-const repoRoot = resolve(__dirname, "..");
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const tempDirs: string[] = [];
 
 type ReleasePlugin = string | [string, Record<string, unknown>];

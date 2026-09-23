@@ -294,6 +294,7 @@ describe("SnapshotRendererService.render()", () => {
       linkRows: [],
       metadata: {
         project: { name: "demo", repoUrl: "file:///demo" },
+        lastIngestedSourceSha: "source-head",
         files: [
           {
             filePath: "src/b.ts",
@@ -330,6 +331,7 @@ describe("SnapshotRendererService.render()", () => {
           lastTierBCommitSha: null,
         },
       ],
+      lastIngestedSourceSha: "source-head",
     });
   });
 

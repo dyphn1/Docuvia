@@ -361,6 +361,9 @@ export {
 } from "./constants/hooks.js";
 
 export type {
+  SemanticCorpusManifest,
+  SemanticCorpusMetrics,
+  SemanticCorpusReport,
   ISemanticCorpusService,
   SemanticCorpusSample,
   SemanticCorpusLabelResult,

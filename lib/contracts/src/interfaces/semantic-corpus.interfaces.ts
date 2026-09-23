@@ -67,4 +67,48 @@ export interface SemanticCorpusLabelResult {
 
 export interface ISemanticCorpusService {
   label(sample: unknown): SemanticCorpusLabelResult;
+  audit(manifest: unknown): SemanticCorpusReport;
+}
+
+export interface SemanticCorpusManifest {
+  readonly schemaVersion: 1;
+  readonly corpusId: string;
+  readonly corpusVersion: string;
+  readonly splitSeed: string;
+  readonly samples: readonly SemanticCorpusSample[];
+}
+
+export interface SemanticCorpusMetrics {
+  readonly requests: number;
+  readonly trustedGoldRequests: number;
+  readonly goldTargets: number;
+  readonly coveredTargets: number;
+  readonly fullyCoveredRequests: number;
+  readonly candidateRecall: number | null;
+  readonly setCoverage: number | null;
+}
+
+export interface SemanticCorpusReport {
+  readonly schemaVersion: 1;
+  readonly corpusId: string;
+  readonly corpusVersion: string;
+  readonly splitSeed: string;
+  readonly datasetHash: string;
+  readonly results: readonly SemanticCorpusLabelResult[];
+  readonly reasons: Readonly<Record<SemanticCorpusReason, number>>;
+  readonly real: SemanticCorpusMetrics;
+  readonly synthetic: SemanticCorpusMetrics;
+  readonly slices: readonly {
+    readonly origin: "real" | "synthetic";
+    readonly split: SemanticCorpusSplit;
+    readonly metrics: SemanticCorpusMetrics;
+  }[];
+  readonly independentReadyRealRequests: Readonly<
+    Record<SemanticCorpusSplit, number>
+  >;
+  readonly readyRealFamilies: Readonly<Record<SemanticCorpusSplit, number>>;
+  readonly gates: {
+    readonly sampleSize: "pass" | "insufficient-evidence";
+    readonly candidateRecall: "pass" | "fail" | "insufficient-evidence";
+  };
 }

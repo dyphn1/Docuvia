@@ -41,15 +41,52 @@ or contradictory-shape data throws `SEMANTIC_CORPUS_INVALID`; ordinary oracle fa
 are diagnostic results. Snapshot/config hashes use lowercase SHA-256 hex. Dense plain
 arrays and own enumerable data properties are required; frozen records are legal.
 
+## P1-02 — Corpus audit and repeatable denominators
+
+`audit` accepts a versioned manifest (`schemaVersion`, `corpusId`, `corpusVersion`,
+`splitSeed`, `samples`). It validates every record through P1-01. Unknown fields,
+duplicate sample IDs, duplicate repo/project/call-site/source snapshots, inconsistent
+repo-to-family assignments and >100,000 records fail with `SEMANTIC_CORPUS_INVALID`.
+Evaluation-only samples in train, family overlap between splits, or duplicate-group
+overlap between splits fail with `SEMANTIC_CORPUS_LEAKAGE`. This initial audit permits
+temporal data from sealed-test families or separate held-out families; a collector
+must separately establish that temporal snapshots are later. Supplied family/duplicate groups are declarations,
+not a substitute for source-based clone/fragment discovery.
+
+The deterministic report sorts by sample ID, hashes canonical JSON (object keys sorted,
+array order retained), and includes every label result, reason counts and separate
+real/synthetic × split metrics. Two replays of the same manifest must match in full.
+Input sample order or object key order cannot change the dataset hash or report.
+
+Candidate recall is covered gold targets / all independently confirmed gold targets;
+set coverage is requests covering every gold target / requests with trusted gold.
+Known misses, empty candidate sets and truncated observations remain in these
+denominators. Truncated observations contribute diagnostic recall but never usable
+training labels. Stale/conflicting/failed-oracle/unreviewed/out-of-scope observations
+have no trusted gold and remain visible in reason counts, never silently dropped or
+turned into negatives. Zero denominators are `null` and evidence-insufficient.
+
+Sample-size eligibility counts only ready real observations, deduplicated by the
+collector's duplicate group. Family minimums count only those observations: ≥4 train,
+≥2 calibration, ≥2 sealed test, ≥10,000 independent requests overall in those three
+splits, ≥2,000 independent test requests, and ≥1 temporal request. Synthetic fixtures
+and unusable observations cannot satisfy these gates. Candidate-recall gate requires
+≥99% over trusted real gold, with per-split results retained for review.
+
+These gates report data quantity and declared candidate quality only. Even a `pass`
+is not Phase 1 completion: collection provenance, dedup correctness, temporal ordering,
+real oracle replay, fixed-hardware paired baselines and corpus review still require
+external evidence. No model/precision/LSP-avoidance metric is fabricated.
+
 ## Delivery and remaining gates
 
-| Slice         | Scope                                                                                                                     | Status     |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| P1-01         | Provenance contract and honest label quarantine                                                                           | This slice |
-| P1-02         | Split leakage, candidate recall and evidence sufficiency report                                                           | Next slice |
-| Collection    | Source hashing, deterministic candidate generation, real LSP capture                                                      | Pending    |
-| Corpus exit   | ≥8 real repo families (4 train / 2 calibration / 2 test), ≥10,000 requests, ≥2,000 sealed-test requests, temporal holdout | Pending    |
-| Baseline exit | Fixed hardware; paired AST-only/AST+LSP; cold/warm and initial/incremental; full analyze/commit/pre-push timings          | Pending    |
+| Slice         | Scope                                                                                                                     | Status      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| P1-01         | Provenance contract and honest label quarantine                                                                           | Implemented |
+| P1-02         | Split leakage, candidate recall and evidence sufficiency report                                                           | Implemented |
+| Collection    | Source hashing, deterministic candidate generation, real LSP capture                                                      | Pending     |
+| Corpus exit   | ≥8 real repo families (4 train / 2 calibration / 2 test), ≥10,000 requests, ≥2,000 sealed-test requests, temporal holdout | Pending     |
+| Baseline exit | Fixed hardware; paired AST-only/AST+LSP; cold/warm and initial/incremental; full analyze/commit/pre-push timings          | Pending     |
 
 Unit fixtures demonstrate policy behavior only. They are not a real training corpus,
 model-quality evidence, a measured baseline or permission to start Phase 2. The existing

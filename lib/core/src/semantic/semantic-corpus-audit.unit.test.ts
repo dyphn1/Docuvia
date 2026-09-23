@@ -93,7 +93,7 @@ describe("semantic corpus audit", () => {
     ]);
     expect(first.gates).toEqual({
       sampleSize: "insufficient-evidence",
-      candidateRecall: "fail",
+      candidateRecall: "insufficient-evidence",
     });
     expect(first.independentReadyRealRequests).toEqual({
       train: 1,

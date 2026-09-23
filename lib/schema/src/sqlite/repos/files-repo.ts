@@ -78,15 +78,21 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
     projectId: number;
     filePath: string;
     commitSha: string | null;
+    processedAt?: string;
   }): void {
     this.db
       .prepare(
         `INSERT INTO ${SchemaTables.PROJECT_FILES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, last_tier_b_processed_at, last_tier_b_commit_sha)
-         VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+         VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)
          ON CONFLICT(${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH})
-         DO UPDATE SET last_tier_b_processed_at = CURRENT_TIMESTAMP, last_tier_b_commit_sha = excluded.last_tier_b_commit_sha`,
+         DO UPDATE SET last_tier_b_processed_at = excluded.last_tier_b_processed_at, last_tier_b_commit_sha = excluded.last_tier_b_commit_sha`,
       )
-      .run(input.projectId, input.filePath, input.commitSha);
+      .run(
+        input.projectId,
+        input.filePath,
+        input.processedAt ?? null,
+        input.commitSha,
+      );
   }
 
   /**

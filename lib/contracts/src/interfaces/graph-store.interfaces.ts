@@ -251,6 +251,8 @@ export interface IProjectFilesRepo {
     projectId: number;
     filePath: string;
     commitSha: string | null;
+    /** Optional persisted timestamp used only when restoring snapshot metadata. */
+    processedAt?: string;
   }): void;
   /**
    * Tier B coverage for a single file — `query`/`impact`'s "does this node's own file's

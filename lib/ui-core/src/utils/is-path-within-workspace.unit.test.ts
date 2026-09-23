@@ -32,25 +32,34 @@ describe("isPathWithinWorkspace (issues #266/#267)", () => {
 });
 
 describe("resolveExistingPathWithinWorkspace (issue #471)", () => {
-  it("[happy] accepts an existing file whose canonical path stays inside the workspace", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-safe-"));
-    try {
-      const target = path.join(root, "src", "safe.ts");
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, "export const safe = true;\n");
+  it(
+    "[happy] accepts an existing file whose canonical path stays inside the workspace",
+    () => {
+      const root = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-path-safe-"),
+      );
+      try {
+        const target = path.join(root, "src", "safe.ts");
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, "export const safe = true;\n");
 
-      expect(resolveExistingPathWithinWorkspace(target, root)).toEqual({
-        status: "ok",
-        resolvedPath: path.resolve(target),
-      });
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
+        expect(resolveExistingPathWithinWorkspace(target, root)).toEqual({
+          status: "ok",
+          resolvedPath: path.resolve(target),
+        });
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("[invalid-input] rejects an absolute path outside the workspace", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-root-"));
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-outside-"));
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-path-root-"),
+    );
+    const outside = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-path-outside-"),
+    );
     try {
       const target = path.join(outside, "outside.ts");
       fs.writeFileSync(target, "export const outside = true;\n");
@@ -64,32 +73,44 @@ describe("resolveExistingPathWithinWorkspace (issue #471)", () => {
     }
   });
 
-  it("[error-handling] rejects a workspace-local symlink or junction that resolves outside", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-root-"));
-    const outside = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-outside-"));
-    try {
-      fs.writeFileSync(
-        path.join(outside, "outside.ts"),
-        "export const outside = true;\n",
+  it(
+    "[error-handling] rejects a workspace-local symlink or junction that resolves outside",
+    () => {
+      const root = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-path-root-"),
       );
-      const link = path.join(root, "linked");
-      fs.symlinkSync(
-        outside,
-        link,
-        process.platform === "win32" ? "junction" : "dir",
+      const outside = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-path-outside-"),
       );
+      try {
+        fs.writeFileSync(
+          path.join(outside, "outside.ts"),
+          "export const outside = true;\n",
+        );
+        const link = path.join(root, "linked");
+        fs.symlinkSync(
+          outside,
+          link,
+          process.platform === "win32" ? "junction" : "dir",
+        );
 
-      expect(
-        resolveExistingPathWithinWorkspace(path.join(link, "outside.ts"), root),
-      ).toEqual({ status: "outside" });
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-      fs.rmSync(outside, { recursive: true, force: true });
-    }
-  });
+        expect(
+          resolveExistingPathWithinWorkspace(
+            path.join(link, "outside.ts"),
+            root,
+          ),
+        ).toEqual({ status: "outside" });
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("[invalid-input] reports a missing in-workspace path without accepting it", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-path-missing-"));
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-path-missing-"),
+    );
     try {
       expect(
         resolveExistingPathWithinWorkspace(path.join(root, "missing.ts"), root),

@@ -484,12 +484,14 @@ describe("SnapshotWorkflow.execute()", () => {
       vi.fn().mockResolvedValue(store),
     );
 
-    docuviaFactory.register(TOKENS.GitProvider, () =>
-      ({
-        getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
-        getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
-        readFileAtRef: vi.fn().mockResolvedValue(undefined),
-      }) as any,
+    docuviaFactory.register(
+      TOKENS.GitProvider,
+      () =>
+        ({
+          getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
+          getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
+          readFileAtRef: vi.fn().mockResolvedValue(undefined),
+        }) as any,
     );
 
     const knowledgeGit: IKnowledgeGitService = {

@@ -5,6 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
   type IGraphStore,
+  type IGitProvider,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { SNAPSHOT_EVENTS, SNAPSHOT_MESSAGES } from "./snapshot-messages.js";
@@ -71,21 +72,10 @@ export class SnapshotWorkflow {
             headSha,
           )
         : false;
-    let hasRestoreMetadata = false;
-    if (isAlreadySnapshotted) {
-      const knowledgeTip = await git.getBranchTipSha(
-        this.workspaceRoot,
-        GitConstants.KNOWLEDGE_ROOT,
-      );
-      if (knowledgeTip) {
-        hasRestoreMetadata =
-          (await git.readFileAtRef(
-            this.workspaceRoot,
-            knowledgeTip,
-            `${GitConstants.GRAPH_DIR_NAME}/${GitConstants.METADATA_JSON_NAME}`,
-          )) !== undefined;
-      }
-    }
+    const hasRestoreMetadata = await this.hasRestoreMetadata(
+      git,
+      Boolean(isAlreadySnapshotted),
+    );
 
     const pending = store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING);
     const lastTierB = store.meta.get(
@@ -103,6 +93,25 @@ export class SnapshotWorkflow {
     );
 
     return { shouldSkip, headSha };
+  }
+
+  private async hasRestoreMetadata(
+    git: IGitProvider,
+    isAlreadySnapshotted: boolean,
+  ): Promise<boolean> {
+    if (!isAlreadySnapshotted) return false;
+    const knowledgeTip = await git.getBranchTipSha(
+      this.workspaceRoot,
+      GitConstants.KNOWLEDGE_ROOT,
+    );
+    if (!knowledgeTip) return false;
+    return (
+      (await git.readFileAtRef(
+        this.workspaceRoot,
+        knowledgeTip,
+        `${GitConstants.GRAPH_DIR_NAME}/${GitConstants.METADATA_JSON_NAME}`,
+      )) !== undefined
+    );
   }
 
   public async execute(): Promise<SnapshotResult> {

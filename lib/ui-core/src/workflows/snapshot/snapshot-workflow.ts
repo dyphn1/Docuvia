@@ -71,6 +71,22 @@ export class SnapshotWorkflow {
             headSha,
           )
         : false;
+    let hasRestoreMetadata = false;
+    if (isAlreadySnapshotted) {
+      const knowledgeTip = await git.getBranchTipSha(
+        this.workspaceRoot,
+        GitConstants.KNOWLEDGE_ROOT,
+      );
+      if (knowledgeTip) {
+        hasRestoreMetadata =
+          (await git.readFileAtRef(
+            this.workspaceRoot,
+            knowledgeTip,
+            `${GitConstants.GRAPH_DIR_NAME}/${GitConstants.METADATA_JSON_NAME}`,
+          )) !== undefined;
+      }
+    }
+
     const pending = store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING);
     const lastTierB = store.meta.get(
       GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
@@ -80,6 +96,7 @@ export class SnapshotWorkflow {
     const shouldSkip = !!(
       headSha &&
       isAlreadySnapshotted &&
+      hasRestoreMetadata &&
       lastTierB === headSha &&
       !pending &&
       !tierCProcessed

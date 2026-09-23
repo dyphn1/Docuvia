@@ -22,6 +22,7 @@
         "pkgRoot": "artifacts/cli"
       }
     ],
+    "./scripts/release-format-plugin.mjs",
     [
       "@semantic-release/git",
       {

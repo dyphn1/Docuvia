@@ -4,14 +4,13 @@ All notable changes to `docuvia` are documented in this file. Versions before 0.
 
 ## [1.12.1](https://github.com/dyphn1/Docuvia/compare/v1.12.0...v1.12.1) (2026-09-23)
 
-
 ### Bug Fixes
 
-* **core:** release LSP startup listeners and failed child state ([d53517e](https://github.com/dyphn1/Docuvia/commit/d53517eef8ac33c45e47663405667f76f6bd03e9))
-* **ui-core:** contain staged targets at API boundary ([1bdbe14](https://github.com/dyphn1/Docuvia/commit/1bdbe14629546ef02baf3ac395421561f33488e2))
-* **ui-core:** enforce staging-store path containment ([1d1e949](https://github.com/dyphn1/Docuvia/commit/1d1e9491f3fd068f5427f17b54d97b767fbd7ca5))
-* **ui-core:** resolve staged targets from workspace root ([351763b](https://github.com/dyphn1/Docuvia/commit/351763b41415d6208da3cce3caf578bbc095c646))
-* **ui-core:** validate canonical workspace paths ([21de536](https://github.com/dyphn1/Docuvia/commit/21de5365fbcad3ed14616d64277f17181dad4d10))
+- **core:** release LSP startup listeners and failed child state ([d53517e](https://github.com/dyphn1/Docuvia/commit/d53517eef8ac33c45e47663405667f76f6bd03e9))
+- **ui-core:** contain staged targets at API boundary ([1bdbe14](https://github.com/dyphn1/Docuvia/commit/1bdbe14629546ef02baf3ac395421561f33488e2))
+- **ui-core:** enforce staging-store path containment ([1d1e949](https://github.com/dyphn1/Docuvia/commit/1d1e9491f3fd068f5427f17b54d97b767fbd7ca5))
+- **ui-core:** resolve staged targets from workspace root ([351763b](https://github.com/dyphn1/Docuvia/commit/351763b41415d6208da3cce3caf578bbc095c646))
+- **ui-core:** validate canonical workspace paths ([21de536](https://github.com/dyphn1/Docuvia/commit/21de5365fbcad3ed14616d64277f17181dad4d10))
 
 # [1.12.0](https://github.com/dyphn1/Docuvia/compare/v1.11.5...v1.12.0) (2026-09-23)
 

@@ -224,11 +224,7 @@ describe("docuviaApi.stageAgentAuthoredDecisions() -- input-time target existenc
       });
       expect(
         fs.existsSync(
-          path.join(
-            workspaceRoot,
-            ".docuvia",
-            "pending-l3-decisions.json",
-          ),
+          path.join(workspaceRoot, ".docuvia", "pending-l3-decisions.json"),
         ),
       ).toBe(false);
     } finally {

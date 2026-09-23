@@ -1,12 +1,22 @@
 import { execa } from "execa";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "fs/promises";
+import {
+  access,
+  cp,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "fs/promises";
 import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { buildDistCli } from "../support/sandbox.js";
 
 const CLI_PACKAGE_DIR = resolve(import.meta.dirname, "../..");
+const CLI_DIST_PATH = join(CLI_PACKAGE_DIR, "dist", "cli.js");
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm";
 const NPX_COMMAND = process.platform === "win32" ? "npx.cmd" : "npx";
 
@@ -26,9 +36,15 @@ describe("packed npm distribution", () => {
   let tempDir: string | undefined;
 
   beforeAll(async () => {
-    // The CLI Vitest project is intentionally fileParallelism:false, so this shares the same
-    // serialized compiled-dist contract as dist-build.test.ts and cli-workflow.integration.test.ts.
-    await buildDistCli();
+    // CI already runs the package build before the test suite. Rebuilding here would run tsup with
+    // clean:true against the shared dist/ directory and can temporarily delete cli.js while another
+    // compiled-CLI integration test is using it. Only build as a standalone-test fallback when the
+    // expected artifact does not exist.
+    try {
+      await access(CLI_DIST_PATH);
+    } catch {
+      await buildDistCli();
+    }
   }, SUBPROCESS_TEST_TIMEOUT_MS);
 
   afterEach(async () => {
@@ -59,6 +75,43 @@ describe("packed npm distribution", () => {
 
     await expect(readCliVersion(manifestPath)).rejects.toThrow(SyntaxError);
   });
+
+  it(
+    "[happy] keeps the CLI bin valid through npm publish normalization",
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), "docuvia-publish-dry-run-"));
+      const stagedPackageDir = join(tempDir, "package");
+      await mkdir(stagedPackageDir);
+
+      const manifest = JSON.parse(
+        await readFile(join(CLI_PACKAGE_DIR, "package.json"), "utf8"),
+      ) as Record<string, unknown>;
+      manifest.version = `0.0.0-publish-dry-run.${process.pid}`;
+      await writeFile(
+        join(stagedPackageDir, "package.json"),
+        JSON.stringify(manifest, null, 2),
+      );
+      await cp(join(CLI_PACKAGE_DIR, "dist"), join(stagedPackageDir, "dist"), {
+        recursive: true,
+      });
+
+      const publishResult = await execa(
+        NPM_COMMAND,
+        ["publish", "--dry-run", "--ignore-scripts", "--json"],
+        {
+          cwd: stagedPackageDir,
+          reject: false,
+          env: { ...process.env, npm_config_update_notifier: "false" },
+        },
+      );
+
+      const publishOutput = `${publishResult.stdout}\n${publishResult.stderr}`;
+      expect(publishResult.exitCode, publishOutput).toBe(0);
+      expect(publishOutput).not.toContain("bin[docuvia]");
+      expect(publishOutput).not.toContain("invalid and removed");
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it(
     "[happy] installs the packed CLI in a clean npm consumer and runs its binary",
@@ -117,7 +170,7 @@ describe("packed npm distribution", () => {
         bin?: unknown;
         dependencies?: Record<string, string>;
       };
-      expect(installedManifest.bin).toEqual({ docuvia: "./dist/cli.js" });
+      expect(installedManifest.bin).toEqual({ docuvia: "dist/cli.js" });
       expect(
         Object.values(installedManifest.dependencies ?? {}).some((value) =>
           value.startsWith("workspace:"),

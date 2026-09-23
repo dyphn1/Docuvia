@@ -156,11 +156,15 @@ export const UI_MESSAGES = {
     edgesApplied: number,
     filesFailed: number,
     filesFailedPermanent: number,
+    filesSkippedNotApplicable: number,
     zeroProgressWatchdogTripped: boolean,
   ) =>
     `${filesProcessed} file(s) processed, ${edgesApplied} corrected edge(s) applied` +
     (filesFailed > 0
       ? `, ${filesFailed} file(s) left queued for the next batch`
+      : "") +
+    (filesSkippedNotApplicable > 0
+      ? `, ${filesSkippedNotApplicable} file(s) not applicable to their LSP project (kept at Tier A)`
       : "") +
     (filesFailedPermanent > 0
       ? `, ${filesFailedPermanent} file(s) permanently failed (not re-queued)`

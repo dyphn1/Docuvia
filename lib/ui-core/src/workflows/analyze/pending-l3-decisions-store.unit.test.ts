@@ -203,6 +203,62 @@ describe("pending-l3-decisions-store", () => {
       ).rejects.toMatchObject({ code: ErrorCodes.FS_READ_FAILED });
     });
 
+    it("[invalid-input] rejects an absolute source path outside the workspace (#471)", async () => {
+      const outside = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-pending-l3-outside-"),
+      );
+      try {
+        const outsideFile = path.join(outside, "outside.ts");
+        fs.writeFileSync(outsideFile, "export const outside = true;\n");
+
+        await expect(
+          stagePendingDecisions(
+            tmpDir,
+            outsideFile,
+            oneDecision,
+            createMockLogger(),
+          ),
+        ).rejects.toMatchObject({ code: ErrorCodes.INVALID_INPUT });
+      } finally {
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    });
+
+    it("[error-handling] rejects a workspace-local symlink or junction whose canonical target escapes (#471)", async () => {
+      const outside = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-pending-l3-outside-"),
+      );
+      try {
+        fs.writeFileSync(
+          path.join(outside, "outside.ts"),
+          "export const outside = true;\n",
+        );
+        const link = path.join(tmpDir, "linked");
+        fs.symlinkSync(
+          outside,
+          link,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+
+        await expect(
+          stagePendingDecisions(
+            tmpDir,
+            path.join("linked", "outside.ts"),
+            oneDecision,
+            createMockLogger(),
+          ),
+        ).rejects.toMatchObject({ code: ErrorCodes.INVALID_INPUT });
+
+        expect(
+          fs.existsSync(
+            path.join(tmpDir, ".docuvia", "pending-l3-decisions.json"),
+          ),
+        ).toBe(false);
+      } finally {
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    });
+
     it("refuses to stage on a single non-source file that can never be anchored", async () => {
       fs.writeFileSync(path.join(tmpDir, "notes.md"), "# a note\n");
       await expect(

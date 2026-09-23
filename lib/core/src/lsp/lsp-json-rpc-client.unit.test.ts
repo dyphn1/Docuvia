@@ -106,7 +106,29 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
     }
   });
 
-  it("rejects request() with a clear error when the binary does not resolve (spawn failure)", async () => {
+  it("[state-diff] removes the unused startup listener after a successful spawn (#472)", async () => {
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: process.execPath,
+      args: [FIXTURE_PATH],
+      cwd: __dirname,
+    });
+    try {
+      const child = (
+        client as unknown as {
+          child?: { listenerCount(event: string): number };
+        }
+      ).child;
+      expect(child).toBeDefined();
+      expect(child?.listenerCount("spawn")).toBe(0);
+      // Only the persistent runtime error handler should remain after startup settles.
+      expect(child?.listenerCount("error")).toBe(1);
+    } finally {
+      await client.stop();
+    }
+  });
+
+  it("[error-handling] rejects and releases child transport state when spawn fails (#388)", async () => {
     const client = new LspJsonRpcClient();
     await expect(
       client.start({
@@ -115,6 +137,9 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
         cwd: __dirname,
       }),
     ).rejects.toThrow();
+
+    expect((client as unknown as { child?: unknown }).child).toBeUndefined();
+    await expect(client.stop()).resolves.toBeUndefined();
   });
 
   it("defaults to a minimal allowlist env, not full process.env inheritance (issue #165)", async () => {

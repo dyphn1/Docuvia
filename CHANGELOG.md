@@ -2,6 +2,52 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.12.3](https://github.com/dyphn1/Docuvia/compare/v1.12.2...v1.12.3) (2026-09-23)
+
+### Bug Fixes
+
+- **test:** keep isolated CLI build inside package tree ([2404071](https://github.com/dyphn1/Docuvia/commit/240407133ac7f2c8e445330be78a778dbadd9a5e))
+
+## [1.12.2](https://github.com/dyphn1/Docuvia/compare/v1.12.1...v1.12.2) (2026-09-23)
+
+### Bug Fixes
+
+- **release:** format generated artifacts before release commit ([d8c75fc](https://github.com/dyphn1/Docuvia/commit/d8c75fc26fee68bfba440c5a9ca7219f8aab982f))
+- **release:** format generated artifacts before release commit ([185232b](https://github.com/dyphn1/Docuvia/commit/185232bc24602d5887aa350d8f57bc23e3cf8ea1))
+
+## [1.12.1](https://github.com/dyphn1/Docuvia/compare/v1.12.0...v1.12.1) (2026-09-23)
+
+### Bug Fixes
+
+- **core:** release LSP startup listeners and failed child state ([d53517e](https://github.com/dyphn1/Docuvia/commit/d53517eef8ac33c45e47663405667f76f6bd03e9))
+- **ui-core:** contain staged targets at API boundary ([1bdbe14](https://github.com/dyphn1/Docuvia/commit/1bdbe14629546ef02baf3ac395421561f33488e2))
+- **ui-core:** enforce staging-store path containment ([1d1e949](https://github.com/dyphn1/Docuvia/commit/1d1e9491f3fd068f5427f17b54d97b767fbd7ca5))
+- **ui-core:** resolve staged targets from workspace root ([351763b](https://github.com/dyphn1/Docuvia/commit/351763b41415d6208da3cce3caf578bbc095c646))
+- **ui-core:** validate canonical workspace paths ([21de536](https://github.com/dyphn1/Docuvia/commit/21de5365fbcad3ed14616d64277f17181dad4d10))
+
+# [1.12.0](https://github.com/dyphn1/Docuvia/compare/v1.11.5...v1.12.0) (2026-09-23)
+
+### Bug Fixes
+
+- **tier-b:** classify only exact tsserver project exclusions ([502a31c](https://github.com/dyphn1/Docuvia/commit/502a31c409c1be5b466d2889db1027d3355240b2))
+- **tier-b:** count terminal not-applicable skips as progress ([83c1688](https://github.com/dyphn1/Docuvia/commit/83c1688602c9f9c445c7293511ad1c8f54433202))
+
+### Features
+
+- **cli:** describe Tier B not-applicable skips ([0efca2f](https://github.com/dyphn1/Docuvia/commit/0efca2f0855ce29fe1cb31001e7a18ccd41c3634))
+- **cli:** print Tier B not-applicable count ([9ad8486](https://github.com/dyphn1/Docuvia/commit/9ad8486a0234c7b248fcd700f8b159b66ff91b82))
+- **tier-b:** expose not-applicable skip count ([1289b59](https://github.com/dyphn1/Docuvia/commit/1289b59176a9d9224edda29118e70a417f3846c6))
+- **tier-b:** model not-applicable file outcomes ([1537369](https://github.com/dyphn1/Docuvia/commit/15373694e1b6f486fa6c0b98a580f0d10ae991a3))
+- **tier-b:** propagate not-applicable LSP outcomes ([9901265](https://github.com/dyphn1/Docuvia/commit/9901265e64834004ac4c2ab44b152f4d8028eaf5))
+- **tier-b:** report not-applicable file outcomes ([c4d3188](https://github.com/dyphn1/Docuvia/commit/c4d3188feaf6f7e7e838c1352be91c07a29acc8b))
+- **tier-b:** terminally skip not-applicable project files ([beb5d43](https://github.com/dyphn1/Docuvia/commit/beb5d43b75aaf64b3bb9c630f738a9e85b8d9d37))
+
+## [1.11.5](https://github.com/dyphn1/Docuvia/compare/v1.11.4...v1.11.5) (2026-09-22)
+
+### Bug Fixes
+
+- **release:** use publish-safe CLI bin path ([c60210f](https://github.com/dyphn1/Docuvia/commit/c60210f9c945d0126ef8632227cdcb0bfcba82b4))
+
 ## [1.11.4](https://github.com/dyphn1/Docuvia/compare/v1.11.3...v1.11.4) (2026-09-22)
 
 ### Bug Fixes

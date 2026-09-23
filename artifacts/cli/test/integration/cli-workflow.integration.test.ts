@@ -1,4 +1,12 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { REAL_SUBPROCESS_TEST_TIMEOUT_MS } from "../support/integration-env.js";
 import { TestSandbox, buildDistCli } from "../support/sandbox.js";
 
@@ -29,7 +37,7 @@ function parseJsonOutput<T>(stdout: string): T {
 /**
  * CLI workflow integration owns the presentation/cross-layer boundary rather than the lower-layer
  * algorithms. These tests execute the real CLI entrypoint and, where packaging itself is the
- * contract, the freshly-built `dist/cli.js` under plain Node.
+ * contract, a freshly-built suite-owned CLI artifact under plain Node.
  *
  * TDD-SOURCE: docs/gitbook/user-guide/cli.md#cli-commands
  * TDD-SOURCE: artifacts/cli/src/cli.ts#main
@@ -45,14 +53,20 @@ function parseJsonOutput<T>(stdout: string): T {
  * TDD-SOURCE: artifacts/cli/test/support/sandbox.ts#runDistCli
  */
 describe("CLI workflow integration", () => {
+  let distBuild: Awaited<ReturnType<typeof buildDistCli>>;
+
   beforeAll(async () => {
-    await buildDistCli();
+    distBuild = await buildDistCli();
+  }, REAL_SUBPROCESS_TEST_TIMEOUT_MS);
+
+  afterAll(async () => {
+    if (distBuild) await distBuild.cleanup();
   }, REAL_SUBPROCESS_TEST_TIMEOUT_MS);
 
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
-    sandbox = new TestSandbox();
+    sandbox = new TestSandbox(distBuild.cliPath);
     await sandbox.setup({
       initGit: true,
       files: {

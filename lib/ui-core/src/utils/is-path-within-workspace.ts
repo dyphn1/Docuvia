@@ -41,7 +41,7 @@ export function resolveExistingPathWithinWorkspace(
   workspaceRoot: string,
 ): ExistingWorkspacePathResult {
   const resolvedRoot = path.resolve(workspaceRoot);
-  const resolvedTarget = path.resolve(targetPath);
+  const resolvedTarget = path.resolve(resolvedRoot, targetPath);
 
   if (!isPathWithinWorkspace(resolvedTarget, resolvedRoot)) {
     return { status: "outside" };

@@ -232,7 +232,7 @@ export class HydrationService implements IHydrationService {
       }
 
       const loaded = store.graph.bulkLoadGraph({
-        projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+        projectId,
         nodes,
         edges,
       });

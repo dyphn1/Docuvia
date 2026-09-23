@@ -19,6 +19,8 @@ export type SandboxAction = (sandbox: TestSandbox) => Promise<void>;
 export class TestSandbox {
   public dir!: string;
 
+  constructor(private readonly distCliPath: string = CLI_DIST_PATH) {}
+
   /**
    * Setup a new clean sandbox environment.
    */
@@ -100,11 +102,12 @@ export class TestSandbox {
    * that need a real standalone `.js` file, assets like the tree-sitter wasm/grammar files and
    * SQL migrations that a bundler can relocate away from their `__dirname`-relative source
    * layout). Use this — not `runCli()` — for any test asserting "the shipped CLI actually works",
-   * since that's the one thing `tsx`-based tests structurally cannot catch. Requires `dist/cli.js`
-   * to already be built (see `buildDistCli()`).
+   * since that's the one thing `tsx`-based tests structurally cannot catch. The compiled entry
+   * path is injected by `buildDistCli()` for isolation; the production `dist/cli.js` path remains
+   * the fallback for callers that intentionally target an existing package build.
    */
   runDistCli(args: string[], options?: ExecaOptions) {
-    return execa(process.execPath, [CLI_DIST_PATH, ...args], {
+    return execa(process.execPath, [this.distCliPath, ...args], {
       cwd: this.dir,
       ...options,
       env: {
@@ -146,6 +149,44 @@ export class TestSandbox {
  * tests fail the moment a packaging regression is introduced, in CI or locally, independent of
  * whether some other step already ran `pnpm run build`.
  */
-export async function buildDistCli(): Promise<void> {
-  await execa("npx", ["tsup"], { cwd: resolve(__dirname, "../..") });
+export interface DistCliBuild {
+  readonly outputDir: string;
+  readonly cliPath: string;
+  cleanup(): Promise<void>;
+}
+
+/**
+ * Builds the compiled CLI into a suite-owned temporary directory instead of the package's shared
+ * production `dist/`. Full-workspace tests run multiple Vitest projects concurrently; keeping
+ * compiled-CLI fixtures outside `artifacts/cli/dist` prevents an unrelated build/clean step from
+ * removing `cli.js` while a test is about to execute it.
+ */
+export async function buildDistCli(): Promise<DistCliBuild> {
+  const outputDir = await mkdtemp(resolve(tmpdir(), "docuvia-cli-dist-"));
+
+  try {
+    await execa("npx", ["tsup"], {
+      cwd: resolve(__dirname, "../.."),
+      env: {
+        ...process.env,
+        DOCUVIA_TEST_CLI_DIST_DIR: outputDir,
+      },
+    });
+  } catch (err) {
+    await rm(outputDir, { recursive: true, force: true });
+    throw err;
+  }
+
+  return {
+    outputDir,
+    cliPath: resolve(outputDir, "cli.js"),
+    cleanup: async () => {
+      await rm(outputDir, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+        retryDelay: 100,
+      });
+    },
+  };
 }

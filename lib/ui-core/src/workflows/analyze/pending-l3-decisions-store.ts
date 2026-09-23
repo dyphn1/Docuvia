@@ -13,6 +13,7 @@ import { toNodeKey } from "./anchor-resolution.js";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { collectSourceFiles } from "./decision-extraction.js";
 import type { ExtractedDecision } from "./analyze-result.js";
+import { resolveExistingPathWithinWorkspace } from "../../utils/is-path-within-workspace.js";
 
 const PENDING_L3_DECISIONS_STORE_MESSAGES = {
   CORRUPT_FILE: (filePath: string) =>
@@ -112,18 +113,37 @@ export async function stagePendingDecisions(
   decisions: ExtractedDecision[],
   logger: ILogger,
 ): Promise<{ staged: number }> {
-  const resolvedPath = path.resolve(workspaceRoot, targetPath);
+  // Defense in depth: this store is also called directly by tests/internal workflows, so it must
+  // not rely on docuviaApi having validated the path first. The shared helper rejects lexical
+  // escapes before probing the target and canonical symlink/junction escapes before collection.
+  const targetValidation = resolveExistingPathWithinWorkspace(
+    targetPath,
+    workspaceRoot,
+  );
+  if (targetValidation.status === "outside") {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath),
+    );
+  }
+  if (targetValidation.status === "missing") {
+    throw new DocuviaError(
+      ErrorCodes.FS_READ_FAILED,
+      ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath),
+    );
+  }
+  const resolvedPath = targetValidation.resolvedPath;
 
   // Roadmap item 37 — validate before appending, so an entry that could never flush is refused
   // instead of silently staging a dead-end the flush would retry forever. L2 file nodes only
   // exist for tree-sitter-parseable files, so a single non-source file (e.g. eslint.config.mjs,
-  // .md) can never be an anchor; a nonexistent path mirrors the direct `--agent-authored`
-  // path's PATH_NOT_FOUND behavior. Directory targets stay lenient (the walk may still collect
+  // .md) can never be an anchor. Directory targets stay lenient (the walk may still collect
   // source files to fall back on).
   let isDirectory: boolean;
   try {
     isDirectory = statSync(resolvedPath).isDirectory();
   } catch {
+    // A path can disappear after validation; preserve the direct path's missing-target contract.
     throw new DocuviaError(
       ErrorCodes.FS_READ_FAILED,
       ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath),

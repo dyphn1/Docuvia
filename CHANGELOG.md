@@ -2,6 +2,23 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.13.0](https://github.com/dyphn1/Docuvia/compare/v1.12.3...v1.13.0) (2026-09-23)
+
+### Bug Fixes
+
+- **eval:** bound corpus reads on one file descriptor ([a478024](https://github.com/dyphn1/Docuvia/commit/a4780245a6d1cce52ea49ada2d45a1a103947e2e))
+- **semantic:** adapt foundation provider to phase 0 contract ([e60909f](https://github.com/dyphn1/Docuvia/commit/e60909f343cdd72e74707e20b23a75c067e76d15))
+- **semantic:** gate recall on sealed test split ([7418ea2](https://github.com/dyphn1/Docuvia/commit/7418ea2bd82b3e2c22d7de1d3f48a7c8443eae8c))
+- **semantic:** reject unstable data shapes before validation ([3c68af4](https://github.com/dyphn1/Docuvia/commit/3c68af4a010d6f0261be4e0e275f329656776de7))
+
+### Features
+
+- **eval:** add offline semantic corpus audit command ([f22d4d4](https://github.com/dyphn1/Docuvia/commit/f22d4d4aa467304c96f00da8d4dbb624f8eda878))
+- **semantic:** add trusted corpus observation labels ([07bff04](https://github.com/dyphn1/Docuvia/commit/07bff04e8db7495db12772e9f20b7544847d7487))
+- **semantic:** audit corpus isolation and candidate recall ([c442077](https://github.com/dyphn1/Docuvia/commit/c442077d95778293742ce2a89a41660f3b397d31))
+- **semantic:** enforce call controls and verify provider conformance ([ec627f2](https://github.com/dyphn1/Docuvia/commit/ec627f29d98654b0df717770edca10181465fcc2))
+- **semantic:** validate bounded requests and complete scoring outcomes ([383eca2](https://github.com/dyphn1/Docuvia/commit/383eca2e31242515f7d98d0522a11e3b07f421f2))
+
 ## [1.12.3](https://github.com/dyphn1/Docuvia/compare/v1.12.2...v1.12.3) (2026-09-23)
 
 ### Bug Fixes

@@ -70,8 +70,11 @@ Sample-size eligibility counts only ready real observations, deduplicated by the
 collector's duplicate group. Family minimums count only those observations: ≥4 train,
 ≥2 calibration, ≥2 sealed test, ≥10,000 independent requests overall in those three
 splits, ≥2,000 independent test requests, and ≥1 temporal request. Synthetic fixtures
-and unusable observations cannot satisfy these gates. Candidate-recall gate requires
-≥99% over trusted real gold, with per-split results retained for review.
+and unusable observations cannot satisfy these gates. Aggregate real candidate recall
+remains a diagnostic metric, while the candidate-recall gate requires ≥99% on the
+**sealed-test real split** so train/calibration volume cannot mask held-out candidate misses.
+The separate sample-size gate ensures a fully passing corpus also contains ≥2,000 independent
+sealed-test requests. Per-split results remain in the report for review.
 
 These gates report data quantity and declared candidate quality only. Even a `pass`
 is not Phase 1 completion: collection provenance, dedup correctness, temporal ordering,

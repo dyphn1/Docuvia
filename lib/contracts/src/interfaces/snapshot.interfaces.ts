@@ -8,6 +8,8 @@ import type {
 export interface SnapshotMetadata {
   project?: { name: string; repoUrl: string };
   files: ProjectFileSnapshotMetadata[];
+  /** Source HEAD represented by this graph; restores status graph freshness after hydrate. */
+  lastIngestedSourceSha?: string;
 }
 
 /**

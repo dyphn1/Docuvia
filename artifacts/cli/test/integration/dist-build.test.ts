@@ -163,68 +163,72 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
   // rounds, each in its own fresh workspace, drives the odds of missing a real regression here
   // down close to zero without asserting anything timing-specific — every round must still exit
   // 0 for every process.
-  it("does not crash when several init processes race against the compiled build in the same workspace", async () => {
-    const ROUNDS = 5;
-    const PROCESSES_PER_ROUND = 4;
+  it(
+    "does not crash when several init processes race against the compiled build in the same workspace",
+    async () => {
+      const ROUNDS = 5;
+      const PROCESSES_PER_ROUND = 4;
 
-    for (let round = 0; round < ROUNDS; round++) {
-      const roundSandbox = new TestSandbox();
-      await roundSandbox.setup({
-        initGit: true,
-        files: {
-          "src/index.ts":
-            "export function hello(): string {\n  return 'world';\n}\n",
-        },
-      });
+      for (let round = 0; round < ROUNDS; round++) {
+        const roundSandbox = new TestSandbox();
+        await roundSandbox.setup({
+          initGit: true,
+          files: {
+            "src/index.ts":
+              "export function hello(): string {\n  return 'world';\n}\n",
+          },
+        });
 
-      try {
-        const results = await Promise.allSettled(
-          Array.from({ length: PROCESSES_PER_ROUND }, () =>
-            roundSandbox.runDistCli(["init"]),
-          ),
-        );
-
-        const exitCodes = results.map((r) =>
-          r.status === "fulfilled"
-            ? r.value.exitCode
-            : ((r.reason as { exitCode?: number }).exitCode ?? "unknown"),
-        );
-
-        const failureDetails = results
-          .filter(
-            (r) =>
-              r.status === "rejected" ||
-              (r.status === "fulfilled" && r.value.exitCode !== 0),
-          )
-          .map((r) =>
-            r.status === "rejected"
-              ? {
-                  exitCode: (r.reason as { exitCode?: number }).exitCode,
-                  message: (r.reason as Error).message,
-                  stderr: (r.reason as { stderr?: string }).stderr,
-                  stdout: (r.reason as { stdout?: string }).stdout,
-                }
-              : {
-                  exitCode: r.value.exitCode,
-                  stderr: r.value.stderr,
-                  stdout: r.value.stdout,
-                },
+        try {
+          const results = await Promise.allSettled(
+            Array.from({ length: PROCESSES_PER_ROUND }, () =>
+              roundSandbox.runDistCli(["init"]),
+            ),
           );
 
-        expect(
-          exitCodes.every((code) => code === 0),
-          `round ${round}: expected every concurrent init run to exit 0, got: ${JSON.stringify(exitCodes)}. Failures: ${JSON.stringify(failureDetails, null, 2)}`,
-        ).toBe(true);
+          const exitCodes = results.map((r) =>
+            r.status === "fulfilled"
+              ? r.value.exitCode
+              : ((r.reason as { exitCode?: number }).exitCode ?? "unknown"),
+          );
 
-        // The race must not have left the database unusable for a normal run to build on.
-        const { count } = roundSandbox
-          .getDb()
-          .prepare("SELECT COUNT(*) as count FROM projects")
-          .get() as { count: number };
-        expect(count).toBe(1);
-      } finally {
-        await roundSandbox.teardown();
+          const failureDetails = results
+            .filter(
+              (r) =>
+                r.status === "rejected" ||
+                (r.status === "fulfilled" && r.value.exitCode !== 0),
+            )
+            .map((r) =>
+              r.status === "rejected"
+                ? {
+                    exitCode: (r.reason as { exitCode?: number }).exitCode,
+                    message: (r.reason as Error).message,
+                    stderr: (r.reason as { stderr?: string }).stderr,
+                    stdout: (r.reason as { stdout?: string }).stdout,
+                  }
+                : {
+                    exitCode: r.value.exitCode,
+                    stderr: r.value.stderr,
+                    stdout: r.value.stdout,
+                  },
+            );
+
+          expect(
+            exitCodes.every((code) => code === 0),
+            `round ${round}: expected every concurrent init run to exit 0, got: ${JSON.stringify(exitCodes)}. Failures: ${JSON.stringify(failureDetails, null, 2)}`,
+          ).toBe(true);
+
+          // The race must not have left the database unusable for a normal run to build on.
+          const { count } = roundSandbox
+            .getDb()
+            .prepare("SELECT COUNT(*) as count FROM projects")
+            .get() as { count: number };
+          expect(count).toBe(1);
+        } finally {
+          await roundSandbox.teardown();
+        }
       }
-    }
-  }, 90000);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 });

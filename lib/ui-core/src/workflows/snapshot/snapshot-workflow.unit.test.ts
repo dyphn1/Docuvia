@@ -29,6 +29,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     files: {
       getAllHashes: vi.fn(),
+      getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
@@ -161,8 +162,14 @@ describe("SnapshotWorkflow.execute()", () => {
 
     expect(store.graph.getAllNodes).toHaveBeenCalled();
     expect(store.graph.getAllLinks).toHaveBeenCalled();
+    expect(store.projects.getFirst).toHaveBeenCalled();
+    expect(store.files.getAllSnapshotMetadata).toHaveBeenCalled();
     expect(renderer.render).toHaveBeenCalledWith(
-      expect.objectContaining({ l2Rows: [{ id: 1 }], linkRows: [{ id: 1 }] }),
+      expect.objectContaining({
+        l2Rows: [{ id: 1 }],
+        linkRows: [{ id: 1 }],
+        metadata: { project: undefined, files: [] },
+      }),
     );
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalledWith(
       "/workspace/demo",

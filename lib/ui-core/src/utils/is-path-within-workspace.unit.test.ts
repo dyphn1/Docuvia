@@ -107,16 +107,22 @@ describe("resolveExistingPathWithinWorkspace (issue #471)", () => {
     },
   );
 
-  it("[invalid-input] reports a missing in-workspace path without accepting it", () => {
-    const root = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-path-missing-"),
-    );
-    try {
-      expect(
-        resolveExistingPathWithinWorkspace(path.join(root, "missing.ts"), root),
-      ).toEqual({ status: "missing" });
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-  });
+  it(
+    "[invalid-input] reports a missing in-workspace path without accepting it",
+    () => {
+      const root = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-path-missing-"),
+      );
+      try {
+        expect(
+          resolveExistingPathWithinWorkspace(
+            path.join(root, "missing.ts"),
+            root,
+          ),
+        ).toEqual({ status: "missing" });
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 });

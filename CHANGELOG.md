@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.12.3](https://github.com/dyphn1/Docuvia/compare/v1.12.2...v1.12.3) (2026-09-23)
+
+### Bug Fixes
+
+- **test:** keep isolated CLI build inside package tree ([2404071](https://github.com/dyphn1/Docuvia/commit/240407133ac7f2c8e445330be78a778dbadd9a5e))
+
 ## [1.12.2](https://github.com/dyphn1/Docuvia/compare/v1.12.1...v1.12.2) (2026-09-23)
 
 ### Bug Fixes

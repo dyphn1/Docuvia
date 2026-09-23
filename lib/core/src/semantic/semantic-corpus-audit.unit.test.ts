@@ -319,6 +319,27 @@ describe("semantic corpus audit", () => {
       test: 2,
       temporal: 1,
     });
+
+    const maskedTestMisses = samples.map((s) => {
+      if (
+        s.source.split !== "test" ||
+        Number(s.sampleId.slice("test-".length)) >= 100
+      )
+        return s;
+      return {
+        ...s,
+        candidates: [{ id: "a", targetId: "src/a.ts#target" }],
+      };
+    });
+    const maskedReport = service.audit(manifest(maskedTestMisses));
+    expect(maskedReport.real.candidateRecall).toBeGreaterThanOrEqual(0.99);
+    expect(
+      maskedReport.slices.find(
+        (slice) => slice.origin === "real" && slice.split === "test",
+      )?.metrics.candidateRecall,
+    ).toBeLessThan(0.99);
+    expect(maskedReport.gates.candidateRecall).toBe("fail");
+
     expect(
       service.audit(manifest(samples.filter((s) => s.sampleId !== "test-1999")))
         .gates.sampleSize,

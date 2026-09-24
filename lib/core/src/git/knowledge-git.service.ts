@@ -894,8 +894,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<boolean> {
     return (
-      (await this.resolveKnowledgeCommitForSource(cwd, sourceSha, branchName)) !==
-      undefined
+      (await this.resolveKnowledgeCommitForSource(
+        cwd,
+        sourceSha,
+        branchName,
+      )) !== undefined
     );
   }
 

@@ -447,9 +447,9 @@ describe("HydrationService.hydrate()", () => {
     const store = makeMockGraphStore();
     const service = new HydrationService(git);
 
-    await expect(
-      service.hydrate("/workspace", store),
-    ).resolves.toMatchObject({ hydrated: true });
+    await expect(service.hydrate("/workspace", store)).resolves.toMatchObject({
+      hydrated: true,
+    });
     expect(store.projects.getOrInsert).not.toHaveBeenCalled();
     expect(store.files.upsertFile).not.toHaveBeenCalled();
     expect(store.graph.bulkLoadGraph).toHaveBeenCalled();

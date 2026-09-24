@@ -233,7 +233,7 @@ export interface IProjectFilesRepo {
    * Snapshot-facing bulk read of persisted file metadata. One row per project_files record,
    * including the Tier-B processed marker needed to reconstruct coverage after hydrate.
    */
-  getAllSnapshotMetadata?(): ProjectFileSnapshotMetadata[];
+  getAllSnapshotMetadata(): ProjectFileSnapshotMetadata[];
   upsertFile(input: {
     projectId: number;
     filePath: string;

@@ -75,7 +75,12 @@ function parseSnapshotMetadata(
 ): SnapshotMetadata | undefined {
   if (!raw) return undefined;
 
-  const parsed = JSON.parse(raw) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
   if (!isRecord(parsed)) return { files: [] };
 
   const projectValue = parsed.project;

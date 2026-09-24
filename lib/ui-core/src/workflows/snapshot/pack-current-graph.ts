@@ -34,7 +34,7 @@ export async function packCurrentGraphOntoKnowledgeBranch(
   const l2Rows = store.graph.getAllNodes();
   const linkRows = store.graph.getAllLinks();
   const project = store.projects.getFirst();
-  const fileMetadata = store.files.getAllSnapshotMetadata?.() ?? [];
+  const fileMetadata = store.files.getAllSnapshotMetadata();
 
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),

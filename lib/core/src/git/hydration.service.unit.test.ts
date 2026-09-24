@@ -432,6 +432,29 @@ describe("HydrationService.hydrate()", () => {
     );
   });
 
+  it("treats malformed snapshot metadata as absent instead of aborting hydration", async () => {
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(
+            filePath === "graph/metadata.json" ? "{not-json" : "",
+          ),
+        ),
+    });
+    const store = makeMockGraphStore();
+    const service = new HydrationService(git);
+
+    await expect(
+      service.hydrate("/workspace", store),
+    ).resolves.toMatchObject({ hydrated: true });
+    expect(store.projects.getOrInsert).not.toHaveBeenCalled();
+    expect(store.files.upsertFile).not.toHaveBeenCalled();
+    expect(store.graph.bulkLoadGraph).toHaveBeenCalled();
+  });
+
   it("also imports L3 cards from knowledge/_l3 at the resolved knowledge commit (L3DIST-007), inside the same write-locked bulk-load", async () => {
     const nodesJsonl =
       '{"id":"src/a.ts","type":"file","name":"src/a.ts","filePath":"src/a.ts"}\n';

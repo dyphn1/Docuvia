@@ -1506,3 +1506,38 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
     expect(order).toEqual(["acquire", "reconcile", "release"]);
   });
 });
+
+
+describe("KnowledgeGitService.resolveKnowledgeCommitForSource()", () => {
+  it("returns the newest knowledge commit whose Docuvia-Source trailer exactly matches the requested source sha", async () => {
+    const sourceSha = "1111111111111111111111111111111111111111";
+    const otherSourceSha = "2222222222222222222222222222222222222222";
+    const git = makeMockGitProvider({
+      getCommitLog: vi.fn().mockResolvedValue([
+        {
+          sha: "knowledge-other",
+          message: `Snapshot [2222222]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${otherSourceSha}`,
+        },
+        {
+          sha: "knowledge-match-newer",
+          message: `Snapshot [1111111]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceSha}`,
+        },
+        {
+          sha: "knowledge-match-older",
+          message: `Snapshot [1111111]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceSha}`,
+        },
+      ]),
+    });
+    const service = new KnowledgeGitService(git);
+
+    await expect(
+      service.resolveKnowledgeCommitForSource("/workspace", sourceSha),
+    ).resolves.toBe("knowledge-match-newer");
+    await expect(
+      service.resolveKnowledgeCommitForSource(
+        "/workspace",
+        "3333333333333333333333333333333333333333",
+      ),
+    ).resolves.toBeUndefined();
+  });
+});

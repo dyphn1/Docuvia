@@ -422,10 +422,10 @@ describe("SnapshotWorkflow.execute()", () => {
       vi.fn().mockResolvedValue(store),
     );
 
+    const readFileAtRef = vi.fn().mockResolvedValue('{"files":[]}');
     const git = {
       getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
-      getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
-      readFileAtRef: vi.fn().mockResolvedValue('{"files":[]}'),
+      readFileAtRef,
     };
     docuviaFactory.register(TOKENS.GitProvider, () => git as any);
 
@@ -442,6 +442,9 @@ describe("SnapshotWorkflow.execute()", () => {
       resolveNewestSourceTrailerSha: vi
         .fn()
         .mockResolvedValue("matched-head-sha"),
+      resolveKnowledgeCommitForSource: vi
+        .fn()
+        .mockResolvedValue("knowledge-match"),
       hasSourceCommitInHistory: vi.fn().mockResolvedValue(true),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     };
@@ -467,9 +470,14 @@ describe("SnapshotWorkflow.execute()", () => {
     expect(store.graph.getAllNodes).not.toHaveBeenCalled();
     expect(renderer.render).not.toHaveBeenCalled();
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).not.toHaveBeenCalled();
+    expect(readFileAtRef).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "knowledge-match",
+      "graph/metadata.json",
+    );
   });
 
-  it("does not skip an otherwise up-to-date legacy snapshot that lacks graph/metadata.json", async () => {
+  it("does not skip an otherwise up-to-date legacy snapshot whose exact matching knowledge commit lacks graph/metadata.json, even when the branch tip has it", async () => {
     const store = makeMockStore({
       meta: {
         get: vi.fn().mockImplementation((key) => {
@@ -484,13 +492,18 @@ describe("SnapshotWorkflow.execute()", () => {
       vi.fn().mockResolvedValue(store),
     );
 
+    const readFileAtRef = vi
+      .fn()
+      .mockImplementation((_cwd: string, ref: string) =>
+        Promise.resolve(ref === "knowledge-tip" ? '{"files":[]}' : undefined),
+      );
     docuviaFactory.register(
       TOKENS.GitProvider,
       () =>
         ({
           getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
           getBranchTipSha: vi.fn().mockResolvedValue("knowledge-tip"),
-          readFileAtRef: vi.fn().mockResolvedValue(undefined),
+          readFileAtRef,
         }) as any,
     );
 
@@ -507,6 +520,9 @@ describe("SnapshotWorkflow.execute()", () => {
       resolveNewestSourceTrailerSha: vi
         .fn()
         .mockResolvedValue("matched-head-sha"),
+      resolveKnowledgeCommitForSource: vi
+        .fn()
+        .mockResolvedValue("knowledge-legacy"),
       hasSourceCommitInHistory: vi.fn().mockResolvedValue(true),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     };
@@ -527,5 +543,15 @@ describe("SnapshotWorkflow.execute()", () => {
 
     expect(renderer.render).toHaveBeenCalled();
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalled();
+    expect(readFileAtRef).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "knowledge-legacy",
+      "graph/metadata.json",
+    );
+    expect(readFileAtRef).not.toHaveBeenCalledWith(
+      "/workspace/demo",
+      "knowledge-tip",
+      "graph/metadata.json",
+    );
   });
 });

@@ -872,21 +872,31 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     return undefined;
   }
 
-  public async hasSourceCommitInHistory(
+  public async resolveKnowledgeCommitForSource(
     cwd: string,
     sourceSha: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
-  ): Promise<boolean> {
+  ): Promise<string | undefined> {
     const log = await this.git.getCommitLog(
       cwd,
       branchName,
       GitConstants.KNOWLEDGE_LOG_SCAN_LIMIT,
     );
     for (const entry of log) {
-      const sSha = parseSourceTrailer(entry.message);
-      if (sSha === sourceSha) return true;
+      if (parseSourceTrailer(entry.message) === sourceSha) return entry.sha;
     }
-    return false;
+    return undefined;
+  }
+
+  public async hasSourceCommitInHistory(
+    cwd: string,
+    sourceSha: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+  ): Promise<boolean> {
+    return (
+      (await this.resolveKnowledgeCommitForSource(cwd, sourceSha, branchName)) !==
+      undefined
+    );
   }
 
   /** Thin pass-through to `withKnowledgeBranchLock` — see `IKnowledgeGitService`'s doc comment. */

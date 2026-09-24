@@ -65,16 +65,25 @@ export class SnapshotWorkflow {
   ): Promise<{ shouldSkip: boolean; headSha: string | null }> {
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
     const headSha = (await git.getHeadSha(this.workspaceRoot)) ?? null;
+    const matchingKnowledgeSha =
+      headSha &&
+      typeof knowledgeGit.resolveKnowledgeCommitForSource === "function"
+        ? await knowledgeGit.resolveKnowledgeCommitForSource(
+            this.workspaceRoot,
+            headSha,
+          )
+        : undefined;
     const isAlreadySnapshotted =
-      headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
+      matchingKnowledgeSha !== undefined ||
+      (headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
         ? await knowledgeGit.hasSourceCommitInHistory(
             this.workspaceRoot,
             headSha,
           )
-        : false;
+        : false);
     const hasRestoreMetadata = await this.hasRestoreMetadata(
       git,
-      Boolean(isAlreadySnapshotted),
+      matchingKnowledgeSha,
     );
 
     const pending = store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING);
@@ -97,18 +106,13 @@ export class SnapshotWorkflow {
 
   private async hasRestoreMetadata(
     git: IGitProvider,
-    isAlreadySnapshotted: boolean,
+    knowledgeSha: string | undefined,
   ): Promise<boolean> {
-    if (!isAlreadySnapshotted) return false;
-    const knowledgeTip = await git.getBranchTipSha(
-      this.workspaceRoot,
-      GitConstants.KNOWLEDGE_ROOT,
-    );
-    if (!knowledgeTip) return false;
+    if (!knowledgeSha) return false;
     return (
       (await git.readFileAtRef(
         this.workspaceRoot,
-        knowledgeTip,
+        knowledgeSha,
         `${GitConstants.GRAPH_DIR_NAME}/${GitConstants.METADATA_JSON_NAME}`,
       )) !== undefined
     );

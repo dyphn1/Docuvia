@@ -109,6 +109,16 @@ export interface IKnowledgeGitService {
     branchName?: string,
   ): Promise<string | undefined>;
   /**
+   * Resolves the newest knowledge-branch commit whose `Docuvia-Source` trailer exactly matches
+   * `sourceSha`. Snapshot skip checks use the returned commit so restore metadata is verified on
+   * the snapshot that actually represents the current source HEAD, not merely on the branch tip.
+   */
+  resolveKnowledgeCommitForSource?(
+    cwd: string,
+    sourceSha: string,
+    branchName?: string,
+  ): Promise<string | undefined>;
+  /**
    * Scans the knowledge branch's history to check if a specific source commit sha has already
    * been snapshotted (has a corresponding commit with a matching `Docuvia-Source` trailer).
    */

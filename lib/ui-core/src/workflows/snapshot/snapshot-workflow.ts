@@ -73,14 +73,6 @@ export class SnapshotWorkflow {
             headSha,
           )
         : undefined;
-    const isAlreadySnapshotted =
-      matchingKnowledgeSha !== undefined ||
-      (headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
-        ? await knowledgeGit.hasSourceCommitInHistory(
-            this.workspaceRoot,
-            headSha,
-          )
-        : false);
     const hasRestoreMetadata = await this.hasRestoreMetadata(
       git,
       matchingKnowledgeSha,
@@ -94,7 +86,7 @@ export class SnapshotWorkflow {
 
     const shouldSkip = !!(
       headSha &&
-      isAlreadySnapshotted &&
+      matchingKnowledgeSha &&
       hasRestoreMetadata &&
       lastTierB === headSha &&
       !pending &&

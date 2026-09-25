@@ -119,6 +119,19 @@ For `candidate-boundary` cases:
 
 A candidate-only result never receives a confirmed positive TP.
 
+### Provenance metrics
+
+When a case declares expected prediction provenance, the evaluator compares the
+observed evidence channel for files that were actually surfaced:
+
+- exact channel match is a provenance success;
+- the same file surfaced through a different channel is a provenance mismatch;
+- a file not surfaced at all remains an accuracy/coverage miss and is not
+  double-counted as a provenance mismatch.
+
+The report exposes provenance checked count, mismatch count, and mismatch rate.
+A zero checked denominator reports `null` / `n/a`.
+
 ### Epistemic-honesty metrics
 
 For `epistemic-unknown` cases:
@@ -181,7 +194,9 @@ Pure unit tests must prove:
 7. errors remain visible in total and per-slice counts;
 8. zero-denominator metrics render `n/a`;
 9. duplicate input entries normalize deterministically;
-10. intentionally bad control input demonstrably lowers/fails the relevant
+10. wrong evidence provenance increments the mismatch metric;
+11. unsupported report schema versions fail closed;
+12. intentionally bad control input demonstrably lowers/fails the relevant
     metric.
 
 TDD source markers:

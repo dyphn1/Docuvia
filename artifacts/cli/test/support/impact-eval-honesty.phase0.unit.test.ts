@@ -87,7 +87,9 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it("[negative] detects wrong-target binding even when the dependency set looks like a true negative", () => {
+  it(
+    "[negative] detects wrong-target binding even when the dependency set looks like a true negative",
+    () => {
     const result = scoreImpactHonestyCase(
       input({
         scenario: "same-name-wrong-target",
@@ -113,10 +115,12 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
       correctCases: 0,
       wrongTargetCases: 1,
       wrongTargetRate: 1,
-    });
-  });
+    },
+  );
 
-  it("[boundary] keeps ambiguity/abstention distinct from wrong-target binding", () => {
+  it(
+    "[boundary] keeps ambiguity/abstention distinct from wrong-target binding",
+    () => {
     const result = scoreImpactHonestyCase(
       input({
         scenario: "same-name-ambiguous",
@@ -143,8 +147,8 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
       correctCases: 0,
       wrongTargetCases: 0,
       wrongTargetRate: null,
-    });
-  });
+    },
+  );
 
   it("[negative] does not promote dynamic candidates to confirmed TPs", () => {
     const result = scoreImpactHonestyCase(

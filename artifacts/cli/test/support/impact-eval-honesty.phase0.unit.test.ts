@@ -9,9 +9,7 @@ import {
 // TDD-SOURCE: issue #508 Phase 0
 // TDD-SOURCE: docs/gitbook/guidelines/impact-benchmark-honesty-contract.md
 
-function caseOf(
-  overrides: Partial<ImpactHonestyCase> = {},
-): ImpactHonestyCase {
+function caseOf(overrides: Partial<ImpactHonestyCase> = {}): ImpactHonestyCase {
   return {
     scenario: "case",
     target: "target",
@@ -39,9 +37,7 @@ describe("issue #508 Phase 0 impact honesty contract", () => {
       f1: 1,
     });
 
-    const report = buildImpactHonestyReport([
-      caseOf({ scenario: "positive" }),
-    ]);
+    const report = buildImpactHonestyReport([caseOf({ scenario: "positive" })]);
     expect(report.metrics.positive).toMatchObject({
       cases: 1,
       meanPrecision: 1,
@@ -304,9 +300,6 @@ describe("issue #508 Phase 0 impact honesty contract", () => {
       "a-case",
       "z-case",
     ]);
-    expect(first.cases[1]?.confirmedFiles).toEqual([
-      "src/a.ts",
-      "src/b.ts",
-    ]);
+    expect(first.cases[1]?.confirmedFiles).toEqual(["src/a.ts", "src/b.ts"]);
   });
 });

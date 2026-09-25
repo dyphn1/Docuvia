@@ -10,14 +10,12 @@ The existing #192 impact benchmark remains the positive-regression baseline. Pha
 
 Impact evaluation must distinguish:
 
-| State | Meaning |
-| --- | --- |
-| `confirmed-positive` | one or more dependents are confirmed |
-| `verified-negative` | the target was resolved and sufficient evidence supports zero confirmed dependents |
-| `candidate` | one or more bounded candidates are surfaced, but they are not confirmed dependencies |
-| `unknown` | available evidence is insufficient to make a safe positive/negative claim |
-| `not-found` | target resolution itself failed |
-| `error` | evaluation did not complete |
+- `confirmed-positive`: one or more dependents are confirmed.
+- `verified-negative`: the target was resolved and sufficient evidence supports zero confirmed dependents.
+- `candidate`: one or more bounded candidates are surfaced, but they are not confirmed dependencies.
+- `unknown`: available evidence is insufficient to make a safe positive/negative claim.
+- `not-found`: target resolution itself failed.
+- `error`: evaluation did not complete.
 
 `candidate`, `unknown`, `not-found`, and `error` must never be silently converted to `verified-negative`.
 

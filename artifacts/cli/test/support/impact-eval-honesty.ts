@@ -251,10 +251,7 @@ function buildCandidateMetrics(
   const recalls = applicable.map((item) =>
     item.outcome === "error"
       ? 0
-      : scoreCandidateRecall(
-          item.candidateFiles,
-          item.expectedCandidateFiles,
-        ),
+      : scoreCandidateRecall(item.candidateFiles, item.expectedCandidateFiles),
   );
 
   return {

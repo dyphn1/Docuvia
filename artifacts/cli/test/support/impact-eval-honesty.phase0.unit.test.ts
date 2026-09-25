@@ -94,8 +94,8 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
         intent: "negative",
         expectedConfirmedFiles: [],
         predictions: [],
-        expectedTargetIdentity: "src/correct.ts::function::sameName",
-        observedTargetIdentity: "src/wrong.ts::function::sameName",
+        expectedTargetIdentity: "src/correct.ts#sameName",
+        observedTargetIdentity: "src/wrong.ts#sameName",
       }),
     );
 
@@ -125,7 +125,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
         expectedConfirmedFiles: [],
         predictions: [],
         observedStatus: "ambiguous",
-        expectedTargetIdentity: "src/correct.ts::function::sameName",
+        expectedTargetIdentity: "src/correct.ts#sameName",
       }),
     );
 

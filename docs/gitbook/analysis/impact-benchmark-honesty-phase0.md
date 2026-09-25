@@ -64,8 +64,9 @@ stable target identity:
 - `observedTargetIdentity`: the target node the analyzer actually resolved.
 
 The identity is evaluator-owned and must be deterministic across clean ingests.
-Use a stable source locator (for example repository-relative file path + symbol
-kind/name), not a transient database row id.
+For Docuvia-backed cases, use the existing deterministic `l2_nodes.node_key`
+(STOR-005: `<file_path>` / `<file_path>#<symbolName>`), never the transient
+numeric database row id.
 
 If a case declares `expectedTargetIdentity` and the analyzer reports
 `resolved`, a missing or different `observedTargetIdentity` is a

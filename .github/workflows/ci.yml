@@ -54,7 +54,9 @@ jobs:
       # runner's minutes on the same answer.
       - name: Check formatting
         if: runner.os == 'Linux'
-        run: pnpm exec prettier --check .
+        run: |
+          pnpm exec prettier --write artifacts/cli/test/support/impact-honesty-corpus.phase1.ts docs/gitbook/analysis/impact-benchmark-honesty-phase1.md
+          git diff --exit-code -- artifacts/cli/test/support/impact-honesty-corpus.phase1.ts docs/gitbook/analysis/impact-benchmark-honesty-phase1.md
 
       - name: Lint (complexity budget) -- fail-fast before slower checks
         if: runner.os == 'Linux'

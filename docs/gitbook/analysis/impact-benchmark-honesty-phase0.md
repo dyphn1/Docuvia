@@ -57,6 +57,21 @@ An observed result has one of these statuses:
 `error` is an execution failure. It is never rewritten as UNKNOWN, NOT_FOUND,
 or a passing empty result.
 
+Cases that exercise duplicate/same-name resolution may also declare an optional
+stable target identity:
+
+- `expectedTargetIdentity`: the target node the golden case intends;
+- `observedTargetIdentity`: the target node the analyzer actually resolved.
+
+The identity is evaluator-owned and must be deterministic across clean ingests.
+Use a stable source locator (for example repository-relative file path + symbol
+kind/name), not a transient database row id.
+
+If a case declares `expectedTargetIdentity` and the analyzer reports
+`resolved`, a missing or different `observedTargetIdentity` is a
+**wrong-target** result. UNKNOWN/AMBIGUOUS/NOT_FOUND/ERROR remain distinct
+abstention/failure states and are not relabeled as wrong-target.
+
 ## Evidence channels
 
 Predicted files retain their evidence source:
@@ -107,6 +122,24 @@ negatives.
 
 A slice with zero resolved negative cases reports `null` metrics rather than
 fabricating 0 or 1.
+
+### Target-resolution identity
+
+For cases that declare `expectedTargetIdentity`:
+
+- `resolved` with the exact same observed identity is a correct resolution;
+- `resolved` with a missing or different identity is a wrong-target result;
+- non-resolved states are not counted as wrong-target bindings because the
+  analyzer did not claim a concrete target; those states remain visible in the
+  normal status accounting.
+
+The aggregate exposes target-resolution case count, resolved count, correct
+count, wrong-target count, and wrong-target rate over resolved identity-checked
+cases.
+
+This metric is intentionally independent from dependency-set accuracy. A query
+that binds to the wrong same-name symbol must not pass merely because that wrong
+symbol happens to have the same (including empty) dependent set.
 
 ### Candidate-boundary metrics
 
@@ -195,8 +228,11 @@ Pure unit tests must prove:
 8. zero-denominator metrics render `n/a`;
 9. duplicate input entries normalize deterministically;
 10. wrong evidence provenance increments the mismatch metric;
-11. unsupported report schema versions fail closed;
-12. intentionally bad control input demonstrably lowers/fails the relevant
+11. wrong same-name target binding is detected independently from dependency
+    set scoring;
+12. ambiguity/abstention is distinct from wrong-target binding;
+13. unsupported report schema versions fail closed;
+14. intentionally bad control input demonstrably lowers/fails the relevant
     metric.
 
 TDD source markers:

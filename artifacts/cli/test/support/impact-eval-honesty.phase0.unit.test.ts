@@ -87,70 +87,64 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it(
-    "[negative] detects wrong-target binding even when the dependency set looks like a true negative",
-    () => {
-      const result = scoreImpactHonestyCase(
-        input({
-          scenario: "same-name-wrong-target",
-          intent: "negative",
-          expectedConfirmedFiles: [],
-          predictions: [],
-          expectedTargetIdentity: "src/correct.ts#sameName",
-          observedTargetIdentity: "src/wrong.ts#sameName",
-        }),
-      );
+  it("[negative] detects wrong-target binding even when the dependency set looks like a true negative", () => {
+    const result = scoreImpactHonestyCase(
+      input({
+        scenario: "same-name-wrong-target",
+        intent: "negative",
+        expectedConfirmedFiles: [],
+        predictions: [],
+        expectedTargetIdentity: "src/correct.ts#sameName",
+        observedTargetIdentity: "src/wrong.ts#sameName",
+      }),
+    );
 
-      expect(result.negativeClassification).toBe("true-negative");
-      expect(result.targetResolution).toEqual({
-        checked: true,
-        correct: false,
-        wrongTarget: true,
-      });
+    expect(result.negativeClassification).toBe("true-negative");
+    expect(result.targetResolution).toEqual({
+      checked: true,
+      correct: false,
+      wrongTarget: true,
+    });
 
-      const aggregate = aggregateImpactHonesty([result]);
-      expect(aggregate.targetResolution).toEqual({
-        cases: 1,
-        resolvedCases: 1,
-        correctCases: 0,
-        wrongTargetCases: 1,
-        wrongTargetRate: 1,
-      });
-    },
-  );
+    const aggregate = aggregateImpactHonesty([result]);
+    expect(aggregate.targetResolution).toEqual({
+      cases: 1,
+      resolvedCases: 1,
+      correctCases: 0,
+      wrongTargetCases: 1,
+      wrongTargetRate: 1,
+    });
+  });
 
-  it(
-    "[boundary] keeps ambiguity/abstention distinct from wrong-target binding",
-    () => {
-      const result = scoreImpactHonestyCase(
-        input({
-          scenario: "same-name-ambiguous",
-          intent: "negative",
-          expectedStatus: "ambiguous",
-          expectedConfirmedFiles: [],
-          predictions: [],
-          observedStatus: "ambiguous",
-          expectedTargetIdentity: "src/correct.ts#sameName",
-        }),
-      );
+  it("[boundary] keeps ambiguity/abstention distinct from wrong-target binding", () => {
+    const result = scoreImpactHonestyCase(
+      input({
+        scenario: "same-name-ambiguous",
+        intent: "negative",
+        expectedStatus: "ambiguous",
+        expectedConfirmedFiles: [],
+        predictions: [],
+        observedStatus: "ambiguous",
+        expectedTargetIdentity: "src/correct.ts#sameName",
+      }),
+    );
 
-      expect(result.targetResolution).toEqual({
-        checked: false,
-        correct: false,
-        wrongTarget: false,
-      });
+    expect(result.targetResolution).toEqual({
+      checked: false,
+      correct: false,
+      wrongTarget: false,
+    });
 
-      const aggregate = aggregateImpactHonesty([result]);
-      expect(aggregate.statusCounts.ambiguous).toBe(1);
-      expect(aggregate.targetResolution).toEqual({
-        cases: 1,
-        resolvedCases: 0,
-        correctCases: 0,
-        wrongTargetCases: 0,
-        wrongTargetRate: null,
-      });
-    },
-  );
+    const aggregate = aggregateImpactHonesty([result]);
+    expect(aggregate.statusCounts.ambiguous).toBe(1);
+    expect(aggregate.targetResolution).toEqual({
+      cases: 1,
+      resolvedCases: 0,
+      correctCases: 0,
+      wrongTargetCases: 0,
+      wrongTargetRate: null,
+    });
+  });
 
   it("[negative] does not promote dynamic candidates to confirmed TPs", () => {
     const result = scoreImpactHonestyCase(

@@ -20,11 +20,7 @@ export type ImpactHonestyCaseIntent =
   | "not-found";
 
 export type ImpactHonestyObservedStatus =
-  | "resolved"
-  | "unknown"
-  | "ambiguous"
-  | "not-found"
-  | "error";
+  "resolved" | "unknown" | "ambiguous" | "not-found" | "error";
 
 export type ImpactHonestyExpectedStatus = Exclude<
   ImpactHonestyObservedStatus,
@@ -32,9 +28,7 @@ export type ImpactHonestyExpectedStatus = Exclude<
 >;
 
 export type ImpactHonestyEvidenceChannel =
-  | "static"
-  | "lsp-fallback"
-  | "dynamic-candidate";
+  "static" | "lsp-fallback" | "dynamic-candidate";
 
 export interface ImpactHonestyPrediction {
   readonly file: string;
@@ -77,8 +71,7 @@ export interface ImpactHonestyProvenanceMetrics {
 }
 
 export type ImpactHonestyNegativeClassification =
-  | "true-negative"
-  | "false-positive";
+  "true-negative" | "false-positive";
 
 export interface ImpactHonestyEpistemicResult {
   readonly correctUnknown: boolean;
@@ -195,8 +188,7 @@ function normalizedPredictions(
     });
   }
   return [...byKey.values()].sort(
-    (a, b) =>
-      compareText(a.file, b.file) || compareText(a.channel, b.channel),
+    (a, b) => compareText(a.file, b.file) || compareText(a.channel, b.channel),
   );
 }
 
@@ -246,10 +238,7 @@ function provenanceMetrics(
   expectedPredictions: readonly ImpactHonestyPrediction[],
   predictions: readonly ImpactHonestyPrediction[],
 ): ImpactHonestyProvenanceMetrics {
-  const observedChannels = new Map<
-    string,
-    Set<ImpactHonestyEvidenceChannel>
-  >();
+  const observedChannels = new Map<string, Set<ImpactHonestyEvidenceChannel>>();
 
   for (const prediction of predictions) {
     const channels = observedChannels.get(prediction.file) ?? new Set();
@@ -466,9 +455,7 @@ export function aggregateImpactHonesty(
       meanPrecision: mean(
         positiveScored.map((result) => result.positive.precision),
       ),
-      meanRecall: mean(
-        positiveScored.map((result) => result.positive.recall),
-      ),
+      meanRecall: mean(positiveScored.map((result) => result.positive.recall)),
       meanF1: mean(positiveScored.map((result) => result.positive.f1)),
     },
     negative: {
@@ -492,9 +479,7 @@ export function aggregateImpactHonesty(
       covered: candidateCovered,
       predicted: candidatePredicted,
       coverage:
-        candidateExpected === 0
-          ? null
-          : candidateCovered / candidateExpected,
+        candidateExpected === 0 ? null : candidateCovered / candidateExpected,
     },
     provenance: {
       checked: provenanceChecked,
@@ -573,7 +558,7 @@ export function buildImpactHonestyMarkdown(
       aggregate.notFound.accuracy,
     )} |`,
     "",
-    `**Case accounting:** ${aggregate.totalCases} total · ${aggregate.errorCases} errored.`,
+    `**Case accounting:** ${aggregate.totalCases} total Â· ${aggregate.errorCases} errored.`,
     "",
     "> No blended overall score is defined. Candidate evidence is not promoted",
     "> to confirmed dependency evidence.",

@@ -323,18 +323,11 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
 
     expect(first).toEqual(second);
-    expect(first.confirmedPredictedFiles).toEqual([
-      "src/a.ts",
-      "src/z.ts",
-    ]);
+    expect(first.confirmedPredictedFiles).toEqual(["src/a.ts", "src/z.ts"]);
     expect(first.candidatePredictedFiles).toEqual(["src/candidate.ts"]);
 
-    const a = buildImpactHonestyMarkdown(
-      aggregateImpactHonesty([first]),
-    );
-    const b = buildImpactHonestyMarkdown(
-      aggregateImpactHonesty([second]),
-    );
+    const a = buildImpactHonestyMarkdown(aggregateImpactHonesty([first]));
+    const b = buildImpactHonestyMarkdown(aggregateImpactHonesty([second]));
     expect(a).toBe(b);
   });
 

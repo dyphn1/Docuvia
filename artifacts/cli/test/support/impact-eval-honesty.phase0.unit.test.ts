@@ -133,6 +133,52 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(result.candidatePredictedFiles).toEqual(["src/a.ts"]);
   });
 
+  it("[negative] measures provenance mismatches independently", () => {
+    const matched = scoreImpactHonestyCase(
+      input({
+        expectedPredictions: [
+          {
+            file: "src/dependent.ts",
+            channel: "dynamic-candidate",
+          },
+        ],
+        predictions: [
+          {
+            file: "src/dependent.ts",
+            channel: "dynamic-candidate",
+          },
+        ],
+      }),
+    );
+    const mismatched = scoreImpactHonestyCase(
+      input({
+        expectedPredictions: [
+          {
+            file: "src/dependent.ts",
+            channel: "dynamic-candidate",
+          },
+        ],
+        predictions: [{ file: "src/dependent.ts", channel: "static" }],
+      }),
+    );
+
+    expect(matched.provenance).toEqual({
+      checked: 1,
+      mismatches: 0,
+      mismatchRate: 0,
+    });
+    expect(mismatched.provenance).toEqual({
+      checked: 1,
+      mismatches: 1,
+      mismatchRate: 1,
+    });
+    expect(aggregateImpactHonesty([matched, mismatched]).provenance).toEqual({
+      checked: 2,
+      mismatches: 1,
+      mismatchRate: 0.5,
+    });
+  });
+
   it("[error-handling] distinguishes UNKNOWN from false-safe empty", () => {
     const honest = scoreImpactHonestyCase(
       input({
@@ -226,6 +272,15 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(aggregate.positive.meanF1).toBeNull();
   });
 
+  it("[invalid-input] rejects unsupported report schema versions", () => {
+    expect(() =>
+      scoreImpactHonestyCase({
+        ...input(),
+        schemaVersion: 2 as typeof IMPACT_HONESTY_SCHEMA_VERSION,
+      }),
+    ).toThrow(/unsupported impact honesty schema version/);
+  });
+
   it("[boundary] uses null/n-a for empty metric slices", () => {
     const aggregate = aggregateImpactHonesty([]);
     const markdown = buildImpactHonestyMarkdown(aggregate);
@@ -234,6 +289,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(aggregate.negative.specificity).toBeNull();
     expect(aggregate.negative.falsePositiveRate).toBeNull();
     expect(aggregate.candidate.coverage).toBeNull();
+    expect(aggregate.provenance.mismatchRate).toBeNull();
     expect(aggregate.epistemic.correctUnknownRate).toBeNull();
     expect(aggregate.epistemic.falseSafeRate).toBeNull();
     expect(aggregate.notFound.accuracy).toBeNull();

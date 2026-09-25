@@ -9,13 +9,13 @@ The impact benchmark must distinguish **what the product knows** from **what the
 
 Every version-2 benchmark case declares one metric family:
 
-| Family | Purpose | Primary evidence |
-| --- | --- | --- |
-| `positive` | One or more confirmed dependents are expected | precision / recall / F1 |
-| `negative` | The target is valid and the confirmed dependent set is expected to be empty | case-level true-negative / false-positive discrimination |
-| `candidate` | A bounded candidate set is expected, but the candidates are not confirmed dependencies | candidate coverage (introduced by a later phase) |
-| `epistemic` | Available evidence is insufficient for a verified answer | correct abstention / false-safe behavior |
-| `ambiguity` | Multiple target interpretations are plausible | wrong-target / abstention behavior |
+| Family      | Purpose                                                                                | Primary evidence                                         |
+| ----------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `positive`  | One or more confirmed dependents are expected                                          | precision / recall / F1                                  |
+| `negative`  | The target is valid and the confirmed dependent set is expected to be empty            | case-level true-negative / false-positive discrimination |
+| `candidate` | A bounded candidate set is expected, but the candidates are not confirmed dependencies | candidate coverage (introduced by a later phase)         |
+| `epistemic` | Available evidence is insufficient for a verified answer                               | correct abstention / false-safe behavior                 |
+| `ambiguity` | Multiple target interpretations are plausible                                          | wrong-target / abstention behavior                       |
 
 The existing eight #192 regression cases remain `positive` cases. Phase 0 does not rewrite their historical F1 semantics.
 

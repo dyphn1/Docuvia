@@ -273,8 +273,7 @@ export function scoreContractCase(
     contract.expectedDecision === "stale" ||
     contract.expectedDecision === "incomplete";
   const correctAbstention = isEpistemic
-    ? expectedUncertainty &&
-      observation.decision === contract.expectedDecision
+    ? expectedUncertainty && observation.decision === contract.expectedDecision
     : null;
 
   let wrongTarget: boolean | null = null;

@@ -17,8 +17,7 @@ It must:
 
 - keep the existing eight #192/#393 positive corpus cases unchanged;
 - score real CLI output through the Phase 0 honesty scorer;
-- retain evidence provenance (`static`, `lsp-fallback`,
-  `dynamic-candidate`);
+- retain evidence provenance (`static`, `lsp-fallback`, `dynamic-candidate`);
 - identify the node actually selected by the shipped impact resolver using the
   deterministic STOR-005 `node_key`;
 - include negative controls that demonstrate the gate can fail.
@@ -31,14 +30,14 @@ gap is not rewritten into an expected pass.
 
 The Phase 1 corpus contains the following independent scenarios.
 
-| Scenario | Golden intent | What it proves |
-| --- | --- | --- |
-| `zero-dependents` | negative | a real target with no dependents produces no confirmed dependency prediction |
-| `same-name-lure` | negative + target identity | an unrelated same-name definition with a caller cannot steal the query and create a false positive |
-| `duplicate-symbol-resolution` | confirmed positive + target identity | duplicate exact names in separate modules resolve to the fixture's canonical definition, not the decoy |
-| `exact-over-like` | negative + target identity | an exact symbol match wins over more-connected LIKE/substring candidates |
-| `near-match-noise` | negative | similar module/path/symbol names are not returned as dependents of an exact target |
-| `positive-with-decoy` | confirmed positive | the true dependent is returned while an unrelated decoy remains absent |
+| Scenario                      | Golden intent                        | What it proves                                                                                                  |
+| ----------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `zero-dependents`             | negative                             | a real target with no dependents produces no confirmed dependency prediction                                   |
+| `same-name-lure`              | negative + target identity           | an unrelated same-name definition with a caller cannot steal the query and create a false positive              |
+| `duplicate-symbol-resolution` | confirmed positive + target identity | duplicate exact names in separate modules resolve to the fixture's canonical definition, not the decoy          |
+| `exact-over-like`              | negative + target identity           | an exact symbol match wins over more-connected LIKE/substring candidates                                       |
+| `near-match-noise`             | negative                             | similar module/path/symbol names are not returned as dependents of an exact target                              |
+| `positive-with-decoy`          | confirmed positive                   | the true dependent is returned while an unrelated decoy remains absent                                         |
 
 The duplicate-name fixtures intentionally give the canonical node a
 deterministic semantic advantage already documented by the current resolver:

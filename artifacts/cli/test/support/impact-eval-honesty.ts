@@ -39,6 +39,10 @@ export interface ImpactHonestyCaseInput {
   readonly schemaVersion: typeof IMPACT_HONESTY_SCHEMA_VERSION;
   readonly scenario: string;
   readonly target: string;
+  /** Optional stable golden identity for duplicate/same-name target resolution checks. */
+  readonly expectedTargetIdentity?: string;
+  /** Optional stable identity of the target actually resolved by the analyzer. */
+  readonly observedTargetIdentity?: string;
   readonly intent: ImpactHonestyCaseIntent;
   readonly expectedStatus: ImpactHonestyExpectedStatus;
   readonly expectedConfirmedFiles: readonly string[];
@@ -79,10 +83,18 @@ export interface ImpactHonestyEpistemicResult {
   readonly wrongCertainty: boolean;
 }
 
+export interface ImpactHonestyTargetResolutionResult {
+  readonly checked: boolean;
+  readonly correct: boolean;
+  readonly wrongTarget: boolean;
+}
+
 export interface ImpactHonestyCaseResult {
   readonly schemaVersion: typeof IMPACT_HONESTY_SCHEMA_VERSION;
   readonly scenario: string;
   readonly target: string;
+  readonly expectedTargetIdentity?: string;
+  readonly observedTargetIdentity?: string;
   readonly intent: ImpactHonestyCaseIntent;
   readonly expectedStatus: ImpactHonestyExpectedStatus;
   readonly observedStatus: ImpactHonestyObservedStatus;
@@ -98,6 +110,7 @@ export interface ImpactHonestyCaseResult {
   readonly candidate: ImpactHonestyCandidateMetrics | null;
   readonly provenance: ImpactHonestyProvenanceMetrics;
   readonly epistemic: ImpactHonestyEpistemicResult | null;
+  readonly targetResolution: ImpactHonestyTargetResolutionResult;
 }
 
 export interface ImpactHonestyAggregate {
@@ -143,6 +156,13 @@ export interface ImpactHonestyAggregate {
     readonly cases: number;
     readonly correctCases: number;
     readonly accuracy: number | null;
+  };
+  readonly targetResolution: {
+    readonly cases: number;
+    readonly resolvedCases: number;
+    readonly correctCases: number;
+    readonly wrongTargetCases: number;
+    readonly wrongTargetRate: number | null;
   };
 }
 
@@ -314,6 +334,23 @@ function epistemicMetricsForCase(
   };
 }
 
+function targetResolutionForCase(
+  expectedTargetIdentity: string | undefined,
+  observedTargetIdentity: string | undefined,
+  observedStatus: ImpactHonestyObservedStatus,
+): ImpactHonestyTargetResolutionResult {
+  if (expectedTargetIdentity === undefined || observedStatus !== "resolved") {
+    return { checked: false, correct: false, wrongTarget: false };
+  }
+
+  const correct = observedTargetIdentity === expectedTargetIdentity;
+  return {
+    checked: true,
+    correct,
+    wrongTarget: !correct,
+  };
+}
+
 export function scoreImpactHonestyCase(
   input: ImpactHonestyCaseInput,
 ): ImpactHonestyCaseResult {
@@ -345,6 +382,8 @@ export function scoreImpactHonestyCase(
     schemaVersion: IMPACT_HONESTY_SCHEMA_VERSION,
     scenario: input.scenario,
     target: input.target,
+    expectedTargetIdentity: input.expectedTargetIdentity,
+    observedTargetIdentity: input.observedTargetIdentity,
     intent: input.intent,
     expectedStatus: input.expectedStatus,
     observedStatus: input.observedStatus,
@@ -377,6 +416,11 @@ export function scoreImpactHonestyCase(
       input.intent,
       input.observedStatus,
       confirmedPredictedFiles,
+    ),
+    targetResolution: targetResolutionForCase(
+      input.expectedTargetIdentity,
+      input.observedTargetIdentity,
+      input.observedStatus,
     ),
   };
 }
@@ -480,6 +524,19 @@ export function aggregateImpactHonesty(
     (result) => result.observedStatus === "not-found",
   ).length;
 
+  const targetResolutionCases = results.filter(
+    (result) => result.expectedTargetIdentity !== undefined,
+  );
+  const targetResolutionResolved = targetResolutionCases.filter(
+    (result) => result.targetResolution.checked,
+  );
+  const correctTargetCases = targetResolutionResolved.filter(
+    (result) => result.targetResolution.correct,
+  ).length;
+  const wrongTargetCases = targetResolutionResolved.filter(
+    (result) => result.targetResolution.wrongTarget,
+  ).length;
+
   return {
     schemaVersion: IMPACT_HONESTY_SCHEMA_VERSION,
     totalCases: results.length,
@@ -551,6 +608,16 @@ export function aggregateImpactHonesty(
           ? null
           : correctNotFoundCases / notFoundCases.length,
     },
+    targetResolution: {
+      cases: targetResolutionCases.length,
+      resolvedCases: targetResolutionResolved.length,
+      correctCases: correctTargetCases,
+      wrongTargetCases,
+      wrongTargetRate:
+        targetResolutionResolved.length === 0
+          ? null
+          : wrongTargetCases / targetResolutionResolved.length,
+    },
   };
 }
 
@@ -597,8 +664,11 @@ export function buildImpactHonestyMarkdown(
     `| not-found | ${aggregate.notFound.cases} | accuracy | ${fmt(
       aggregate.notFound.accuracy,
     )} |`,
+    `| target resolution | ${aggregate.targetResolution.cases} | wrong-target rate | ${fmt(
+      aggregate.targetResolution.wrongTargetRate,
+    )} |`,
     "",
-    `**Case accounting:** ${aggregate.totalCases} total Â· ${aggregate.errorCases} errored.`,
+    `**Case accounting:** ${aggregate.totalCases} total · ${aggregate.errorCases} errored.`,
     "",
     "> No blended overall score is defined. Candidate evidence is not promoted",
     "> to confirmed dependency evidence.",

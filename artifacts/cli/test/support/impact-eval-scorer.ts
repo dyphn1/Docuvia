@@ -272,9 +272,12 @@ export function scoreContractCase(
     contract.expectedDecision === "unknown" ||
     contract.expectedDecision === "stale" ||
     contract.expectedDecision === "incomplete";
-  const correctAbstention = isEpistemic
-    ? expectedUncertainty && observation.decision === contract.expectedDecision
-    : null;
+  let correctAbstention: boolean | null = null;
+  if (isEpistemic) {
+    correctAbstention =
+      expectedUncertainty &&
+      observation.decision === contract.expectedDecision;
+  }
 
   let wrongTarget: boolean | null = null;
   if (isAmbiguity) {
@@ -284,6 +287,15 @@ export function scoreContractCase(
       observation.resolvedTargetIdentity !== null
         ? observation.resolvedTargetIdentity !== contract.expectedTargetIdentity
         : false;
+  }
+
+  let precision: number | null = null;
+  let recall: number | null = null;
+  let f1: number | null = null;
+  if (isPositive) {
+    precision = status === "error" ? 0 : metrics.precision;
+    recall = status === "error" ? 0 : metrics.recall;
+    f1 = status === "error" ? 0 : metrics.f1;
   }
 
   return {
@@ -298,9 +310,9 @@ export function scoreContractCase(
     tp: metrics.tp,
     fp: metrics.fp,
     fn: metrics.fn,
-    precision: isPositive ? (status === "error" ? 0 : metrics.precision) : null,
-    recall: isPositive ? (status === "error" ? 0 : metrics.recall) : null,
-    f1: isPositive ? (status === "error" ? 0 : metrics.f1) : null,
+    precision,
+    recall,
+    f1,
     negativeTrue,
     falsePositiveNegative,
     falseSafe:

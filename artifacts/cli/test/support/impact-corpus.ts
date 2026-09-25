@@ -163,6 +163,10 @@ export interface GoldenCase {
     | "child-process-spawn"
     | "unresolved-receiver-call"
     | "unresolved-method-call";
+  /** Phase 0 metric family: the existing #192 corpus remains the positive regression slice. */
+  family: "positive";
+  /** Expected epistemic decision for the honesty-aware scorer. */
+  expectedDecision: "confirmed-positive";
   /** Impact target resolved via `findNodeByName` (exact match by design). */
   target: string;
   /** Human-labeled ground truth: workspace-relative files that genuinely depend on `target`. */
@@ -172,41 +176,57 @@ export interface GoldenCase {
 export const GOLDEN_CASES: GoldenCase[] = [
   {
     scenario: "control-static-call",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "evalAdd",
     expectedDependentFiles: ["src/calculator.ts"],
   },
   {
     scenario: "plain-import-no-call",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "EVAL_MAX_RETRIES",
     expectedDependentFiles: ["src/client.ts"],
   },
   {
     scenario: "re-export-chain",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "evalChainHelper",
     expectedDependentFiles: ["src/app-main.ts", "src/mid/index.ts"],
   },
   {
     scenario: "runtime-variable-import",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "runCleanupPlugin",
     expectedDependentFiles: ["src/plugin-loader.ts"],
   },
   {
     scenario: "computed-import-specifier",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "EVAL_EN_MESSAGES",
     expectedDependentFiles: ["src/i18n.ts"],
   },
   {
     scenario: "child-process-spawn",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "runMigrations",
     expectedDependentFiles: ["src/task-runner.ts"],
   },
   {
     scenario: "unresolved-receiver-call",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "evalRenderTemplate",
     expectedDependentFiles: ["src/render-host.ts"],
   },
   {
     scenario: "unresolved-method-call",
+    family: "positive",
+    expectedDecision: "confirmed-positive",
     target: "evalRenderMethod",
     expectedDependentFiles: ["src/method-render-host.ts"],
   },

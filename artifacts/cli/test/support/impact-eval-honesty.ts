@@ -263,6 +263,57 @@ function provenanceMetrics(
   };
 }
 
+function positiveMetricsForCase(
+  intent: ImpactHonestyCaseIntent,
+  observedStatus: ImpactHonestyObservedStatus,
+  confirmedPredictedFiles: readonly string[],
+  expectedConfirmedFiles: readonly string[],
+): ImpactHonestyPositiveMetrics | null {
+  if (intent !== "confirmed-positive" || observedStatus !== "resolved") {
+    return null;
+  }
+  return setMetrics(confirmedPredictedFiles, expectedConfirmedFiles);
+}
+
+function negativeClassificationForCase(
+  intent: ImpactHonestyCaseIntent,
+  observedStatus: ImpactHonestyObservedStatus,
+  confirmedPredictedFiles: readonly string[],
+): ImpactHonestyNegativeClassification | null {
+  if (intent !== "negative" || observedStatus !== "resolved") return null;
+  return confirmedPredictedFiles.length === 0
+    ? "true-negative"
+    : "false-positive";
+}
+
+function candidateMetricsForCase(
+  intent: ImpactHonestyCaseIntent,
+  observedStatus: ImpactHonestyObservedStatus,
+  candidatePredictedFiles: readonly string[],
+  expectedCandidateFiles: readonly string[],
+): ImpactHonestyCandidateMetrics | null {
+  if (intent !== "candidate-boundary" || observedStatus !== "resolved") {
+    return null;
+  }
+  return candidateMetrics(candidatePredictedFiles, expectedCandidateFiles);
+}
+
+function epistemicMetricsForCase(
+  intent: ImpactHonestyCaseIntent,
+  observedStatus: ImpactHonestyObservedStatus,
+  confirmedPredictedFiles: readonly string[],
+): ImpactHonestyEpistemicResult | null {
+  if (intent !== "epistemic-unknown") return null;
+
+  const resolved = observedStatus === "resolved";
+  return {
+    correctUnknown:
+      observedStatus === "unknown" || observedStatus === "ambiguous",
+    falseSafe: resolved && confirmedPredictedFiles.length === 0,
+    wrongCertainty: resolved && confirmedPredictedFiles.length > 0,
+  };
+}
+
 export function scoreImpactHonestyCase(
   input: ImpactHonestyCaseInput,
 ): ImpactHonestyCaseResult {
@@ -290,35 +341,6 @@ export function scoreImpactHonestyCase(
       .map((prediction) => prediction.file),
   );
 
-  const resolved = input.observedStatus === "resolved";
-  const positive =
-    input.intent === "confirmed-positive" && resolved
-      ? setMetrics(confirmedPredictedFiles, expectedConfirmedFiles)
-      : null;
-
-  const negativeClassification =
-    input.intent === "negative" && resolved
-      ? confirmedPredictedFiles.length === 0
-        ? "true-negative"
-        : "false-positive"
-      : null;
-
-  const candidate =
-    input.intent === "candidate-boundary" && resolved
-      ? candidateMetrics(candidatePredictedFiles, expectedCandidateFiles)
-      : null;
-
-  const epistemic =
-    input.intent === "epistemic-unknown"
-      ? {
-          correctUnknown:
-            input.observedStatus === "unknown" ||
-            input.observedStatus === "ambiguous",
-          falseSafe: resolved && confirmedPredictedFiles.length === 0,
-          wrongCertainty: resolved && confirmedPredictedFiles.length > 0,
-        }
-      : null;
-
   return {
     schemaVersion: IMPACT_HONESTY_SCHEMA_VERSION,
     scenario: input.scenario,
@@ -333,11 +355,29 @@ export function scoreImpactHonestyCase(
     candidatePredictedFiles,
     predictions,
     statusCorrect: input.observedStatus === input.expectedStatus,
-    positive,
-    negativeClassification,
-    candidate,
+    positive: positiveMetricsForCase(
+      input.intent,
+      input.observedStatus,
+      confirmedPredictedFiles,
+      expectedConfirmedFiles,
+    ),
+    negativeClassification: negativeClassificationForCase(
+      input.intent,
+      input.observedStatus,
+      confirmedPredictedFiles,
+    ),
+    candidate: candidateMetricsForCase(
+      input.intent,
+      input.observedStatus,
+      candidatePredictedFiles,
+      expectedCandidateFiles,
+    ),
     provenance: provenanceMetrics(expectedPredictions, predictions),
-    epistemic,
+    epistemic: epistemicMetricsForCase(
+      input.intent,
+      input.observedStatus,
+      confirmedPredictedFiles,
+    ),
   };
 }
 

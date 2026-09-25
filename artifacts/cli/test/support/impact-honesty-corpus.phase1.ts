@@ -273,7 +273,9 @@ function nodePathsByName(db: Database.Database, name: string): string[] {
   const rows = db
     .prepare("SELECT path_patterns FROM l2_nodes WHERE name = ?")
     .all(name) as NodePathRow[];
-  return [...new Set(rows.flatMap((row) => parsePathPatterns(row.path_patterns)))].sort();
+  return [
+    ...new Set(rows.flatMap((row) => parsePathPatterns(row.path_patterns))),
+  ].sort();
 }
 
 function inferObservedTarget(
@@ -310,12 +312,11 @@ function inferObservedTarget(
   return matched[0];
 }
 
-function mapEvidenceChannel(edgeSource: string | undefined): ImpactHonestyEvidenceChannel {
+function mapEvidenceChannel(
+  edgeSource: string | undefined,
+): ImpactHonestyEvidenceChannel {
   if (edgeSource === undefined) return "static";
-  if (
-    edgeSource === "lsp-fallback" ||
-    edgeSource === "dynamic-candidate"
-  ) {
+  if (edgeSource === "lsp-fallback" || edgeSource === "dynamic-candidate") {
     return edgeSource;
   }
   throw new Error(`unknown impact edgeSource: ${edgeSource}`);
@@ -342,7 +343,10 @@ function dependencyPredictions(
 async function runImpact(
   sandbox: TestSandbox,
   target: string,
-): Promise<{ status: "resolved" | "not-found" | "error"; impact: ImpactJsonResult | null }> {
+): Promise<{
+  status: "resolved" | "not-found" | "error";
+  impact: ImpactJsonResult | null;
+}> {
   try {
     const run = await sandbox.runCli(["impact", target, "--format=json"], {
       reject: false,

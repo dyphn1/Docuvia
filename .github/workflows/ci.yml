@@ -52,21 +52,6 @@ jobs:
       # Formatting and lint results are byte-identical across OSes (`.gitattributes` pins
       # `eol=lf`, prettier pins `endOfLine: "lf"`), so run them once rather than burning a second
       # runner's minutes on the same answer.
-      - name: Phase 0 formatter diagnostic
-        if: runner.os == 'Linux'
-        run: |
-          pnpm exec prettier --write \
-            artifacts/cli/test/support/impact-eval-honesty.phase0.unit.test.ts \
-            artifacts/cli/test/support/impact-eval-honesty.ts
-          echo "PHASE0_FORMATTED_TEST_BEGIN"
-          base64 -w 0 artifacts/cli/test/support/impact-eval-honesty.phase0.unit.test.ts
-          echo
-          echo "PHASE0_FORMATTED_TEST_END"
-          echo "PHASE0_FORMATTED_IMPL_BEGIN"
-          base64 -w 0 artifacts/cli/test/support/impact-eval-honesty.ts
-          echo
-          echo "PHASE0_FORMATTED_IMPL_END"
-
       - name: Check formatting
         if: runner.os == 'Linux'
         run: pnpm exec prettier --check .

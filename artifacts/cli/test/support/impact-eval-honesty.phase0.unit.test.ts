@@ -23,15 +23,13 @@ function input(
     expectedConfirmedFiles: ["src/dependent.ts"],
     expectedCandidateFiles: [],
     observedStatus: "resolved",
-    predictions: [
-      { file: "src/dependent.ts", channel: "static" },
-    ],
+    predictions: [{ file: "src/dependent.ts", channel: "static" }],
     ...overrides,
   };
 }
 
 describe("impact benchmark honesty Phase 0 scorer", () => {
-  it("[happy] preserves positive precision/recall/F1 semantics for confirmed channels", () => {
+  it("[happy] preserves positive precision/recall/F1 semantics", () => {
     const result = scoreImpactHonestyCase(input());
 
     expect(result.schemaVersion).toBe(1);
@@ -47,7 +45,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(result.candidatePredictedFiles).toEqual([]);
   });
 
-  it("[negative] distinguishes a verified true negative from a negative false positive", () => {
+  it("[negative] distinguishes true negative from false positive", () => {
     const good = scoreImpactHonestyCase(
       input({
         scenario: "negative-good",
@@ -89,11 +87,14 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it("[negative] never promotes a dynamic candidate into a confirmed dependency true positive", () => {
+  it("[negative] does not promote dynamic candidates to confirmed TPs", () => {
     const result = scoreImpactHonestyCase(
       input({
         predictions: [
-          { file: "src/dependent.ts", channel: "dynamic-candidate" },
+          {
+            file: "src/dependent.ts",
+            channel: "dynamic-candidate",
+          },
         ],
       }),
     );
@@ -109,7 +110,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it("[boundary] scores candidate coverage only from dynamic-candidate evidence", () => {
+  it("[boundary] scores candidate coverage only from candidate evidence", () => {
     const result = scoreImpactHonestyCase(
       input({
         intent: "candidate-boundary",
@@ -132,7 +133,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(result.candidatePredictedFiles).toEqual(["src/a.ts"]);
   });
 
-  it("[error-handling] distinguishes honest UNKNOWN from a false-safe resolved empty result", () => {
+  it("[error-handling] distinguishes UNKNOWN from false-safe empty", () => {
     const honest = scoreImpactHonestyCase(
       input({
         scenario: "honest-unknown",
@@ -164,7 +165,6 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
       falseSafe: true,
       wrongCertainty: false,
     });
-
     expect(aggregateImpactHonesty([honest, falseSafe]).epistemic).toEqual({
       cases: 2,
       correctUnknownCases: 1,
@@ -175,7 +175,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it("[negative] keeps target-not-found distinct from a resolved empty dependency set", () => {
+  it("[negative] keeps not-found distinct from resolved empty", () => {
     const correct = scoreImpactHonestyCase(
       input({
         scenario: "not-found-correct",
@@ -198,6 +198,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     );
 
     const aggregate = aggregateImpactHonesty([correct, wrong]);
+
     expect(correct.statusCorrect).toBe(true);
     expect(wrong.statusCorrect).toBe(false);
     expect(aggregate.notFound).toEqual({
@@ -207,14 +208,13 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
   });
 
-  it("[error-handling] keeps execution errors visible in total and slice counts", () => {
+  it("[error-handling] keeps execution errors visible", () => {
     const errored = scoreImpactHonestyCase(
       input({
         observedStatus: "error",
         predictions: [],
       }),
     );
-
     const aggregate = aggregateImpactHonesty([errored]);
 
     expect(aggregate.totalCases).toBe(1);
@@ -226,7 +226,7 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(aggregate.positive.meanF1).toBeNull();
   });
 
-  it("[boundary] uses null/n-a for mathematically empty metric slices", () => {
+  it("[boundary] uses null/n-a for empty metric slices", () => {
     const aggregate = aggregateImpactHonesty([]);
     const markdown = buildImpactHonestyMarkdown(aggregate);
 
@@ -241,14 +241,20 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     expect(markdown).not.toContain("NaN");
   });
 
-  it("[determinism] deduplicates and sorts channel predictions and renders byte-stable reports", () => {
+  it("[determinism] normalizes predictions and renders stable reports", () => {
     const value = input({
       predictions: [
         { file: "src/z.ts", channel: "lsp-fallback" },
         { file: "src/a.ts", channel: "static" },
         { file: "src/z.ts", channel: "lsp-fallback" },
-        { file: "src/candidate.ts", channel: "dynamic-candidate" },
-        { file: "src/candidate.ts", channel: "dynamic-candidate" },
+        {
+          file: "src/candidate.ts",
+          channel: "dynamic-candidate",
+        },
+        {
+          file: "src/candidate.ts",
+          channel: "dynamic-candidate",
+        },
       ],
       expectedConfirmedFiles: ["src/z.ts", "src/a.ts", "src/a.ts"],
     });
@@ -261,15 +267,22 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
     });
 
     expect(first).toEqual(second);
-    expect(first.confirmedPredictedFiles).toEqual(["src/a.ts", "src/z.ts"]);
+    expect(first.confirmedPredictedFiles).toEqual([
+      "src/a.ts",
+      "src/z.ts",
+    ]);
     expect(first.candidatePredictedFiles).toEqual(["src/candidate.ts"]);
 
-    const a = buildImpactHonestyMarkdown(aggregateImpactHonesty([first]));
-    const b = buildImpactHonestyMarkdown(aggregateImpactHonesty([second]));
+    const a = buildImpactHonestyMarkdown(
+      aggregateImpactHonesty([first]),
+    );
+    const b = buildImpactHonestyMarkdown(
+      aggregateImpactHonesty([second]),
+    );
     expect(a).toBe(b);
   });
 
-  it("[negative-control] deliberately bad negative evidence measurably degrades the metric", () => {
+  it("[negative-control] bad evidence degrades the negative metric", () => {
     const good = aggregateImpactHonesty([
       scoreImpactHonestyCase(
         input({
@@ -284,7 +297,12 @@ describe("impact benchmark honesty Phase 0 scorer", () => {
         input({
           intent: "negative",
           expectedConfirmedFiles: [],
-          predictions: [{ file: "src/poison.ts", channel: "lsp-fallback" }],
+          predictions: [
+            {
+              file: "src/poison.ts",
+              channel: "lsp-fallback",
+            },
+          ],
         }),
       ),
     ]);

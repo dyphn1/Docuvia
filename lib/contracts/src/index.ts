@@ -346,7 +346,10 @@ export {
   aggregateCallResolution,
   callResolutionDenominator,
 } from "./utils/call-resolution.js";
-export type { INodeProcess } from "./interfaces/process.interfaces.js";
+export type {
+  HostEnvironmentSnapshot,
+  INodeProcess,
+} from "./interfaces/process.interfaces.js";
 export { DiagnosticStatus } from "./interfaces/diagnostic.interfaces.js";
 export type {
   DiagnosticResult,

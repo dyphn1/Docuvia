@@ -5,7 +5,8 @@ import { GitLocalProvider } from "./git-local-provider.js";
  * Self-registration side effect (see
  * docs/gitbook/architecture/application-lifecycle-and-state.md's Bootstrap phase) — imported
  * once, for its side effect only, by the Presentation layer. Every `resolve()` afterwards
- * returns a fresh, transient `GitLocalProvider` (it holds no state, so transience costs nothing).
+ * returns a fresh, transient `GitLocalProvider`; each instance holds only an immutable host-
+ * environment snapshot captured through the Presentation-owned composition token.
  */
 docuviaFactory.register(
   TOKENS.GitProvider,

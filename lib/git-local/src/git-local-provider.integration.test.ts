@@ -7,7 +7,10 @@ import {
   collectDirectoryFiles,
   runFastImport,
 } from "./fast-import.js";
-import { GitLocalProvider } from "./git-local-provider.js";
+import {
+  buildGitProcessEnvironment,
+  GitLocalProvider,
+} from "./git-local-provider.js";
 import {
   HOOK_MARKER,
   HOOK_NAME,
@@ -48,6 +51,41 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     } finally {
       fs.rmSync(nonGitDir, { recursive: true, force: true });
     }
+  });
+
+  it("[happy] preserves arbitrary injected host keys, caller overrides, and stable locale precedence", () => {
+    const hostEnvironment = Object.freeze({
+      PATH: "/custom/bin",
+      HOME: "/home/tester",
+      SSH_AUTH_SOCK: "/tmp/ssh-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+      NODE_EXTRA_CA_CERTS: "/etc/company-ca.pem",
+      SECRET_TOKEN: "host-secret",
+      LC_ALL: "zh_TW.UTF-8",
+      LANG: "zh_TW.UTF-8",
+      LC_MESSAGES: "zh_TW.UTF-8",
+    });
+
+    const env = buildGitProcessEnvironment(hostEnvironment, {
+      SECRET_TOKEN: "caller-secret",
+      CUSTOM_GIT_CONTEXT: "preserved",
+      LANG: "ja_JP.UTF-8",
+    });
+
+    expect(env).toMatchObject({
+      PATH: "/custom/bin",
+      HOME: "/home/tester",
+      SSH_AUTH_SOCK: "/tmp/ssh-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+      NODE_EXTRA_CA_CERTS: "/etc/company-ca.pem",
+      SECRET_TOKEN: "caller-secret",
+      CUSTOM_GIT_CONTEXT: "preserved",
+      LC_ALL: "C",
+      LANG: "C",
+      LC_MESSAGES: "C",
+    });
+    expect(hostEnvironment.SECRET_TOKEN).toBe("host-secret");
+    expect(hostEnvironment.LANG).toBe("zh_TW.UTF-8");
   });
 
   it("branchExists / commitEmptyTree / updateBranchRef create a branch pointing at a rootless commit", async () => {

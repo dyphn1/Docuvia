@@ -598,8 +598,13 @@ export interface IGraphStore {
    * thousands of `calls`/`extends`/`implements` edges once `ScopeResolver` actually resolves
    * them), one fsync per row turned a multi-minute persist into a practically-infinite one — see
    * docs/cli-test-analysis/typescript-cli-benchmark.md's Tier B re-verification session. Does not
-   * replace `withWriteLock` — callers still need that for cross-process/cross-call serialization;
-   * this only removes the per-statement autocommit cost inside one already-locked call.
+   * replace `withWriteLock` — callers still need that for in-process cross-call serialization.
+   *
+   * The transaction is a write transaction (`BEGIN IMMEDIATE`): it takes SQLite's write lock up
+   * front, waiting on `busy_timeout` if another process holds it. That is the cross-process
+   * coordination — `withWriteLock` is process-local. A deferred BEGIN would take a read snapshot
+   * on the first SELECT and fail with SQLITE_BUSY_SNAPSHOT (no busy wait) at the first write if
+   * another process committed in between (issue #480). Do not use it for read-only work.
    */
   withTransaction<T>(fn: () => T): T;
   close(): Promise<void>;

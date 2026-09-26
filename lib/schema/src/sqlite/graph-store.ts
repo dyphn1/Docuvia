@@ -285,9 +285,10 @@ export class GraphStore implements IGraphStore {
 
   /** See `IGraphStore.withTransaction`'s doc comment. `better-sqlite3`'s `db.transaction(fn)`
    *  returns a wrapped function that runs `fn` inside BEGIN/COMMIT (ROLLBACK on throw) — call it
-   *  immediately rather than handing the wrapper back to the caller. */
+   *  immediately rather than handing the wrapper back to the caller. `.immediate()` so the write
+   *  lock is taken at BEGIN (issue #480); nested inside another transaction it is a SAVEPOINT. */
   withTransaction<T>(fn: () => T): T {
-    return this.db.transaction(fn)();
+    return this.db.transaction(fn).immediate();
   }
 
   /**

@@ -33,6 +33,8 @@ export async function packCurrentGraphOntoKnowledgeBranch(
 
   const l2Rows = store.graph.getAllNodes();
   const linkRows = store.graph.getAllLinks();
+  const project = store.projects.getFirst();
+  const fileMetadata = store.files.getAllSnapshotMetadata();
 
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),
@@ -43,6 +45,15 @@ export async function packCurrentGraphOntoKnowledgeBranch(
       l2Rows,
       linkRows,
       l3Rows: store.l3.getAllExportable(),
+      metadata: {
+        project: project
+          ? { name: project.name, repoUrl: project.repo_url }
+          : undefined,
+        files: fileMetadata,
+        lastIngestedSourceSha: store.meta.get(
+          GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+        ),
+      },
     });
 
     await store.withWriteLock(() => {

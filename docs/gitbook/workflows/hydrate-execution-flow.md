@@ -4,8 +4,11 @@
 > `artifacts/cli/src/commands/hydrate.ts` through `lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts`.
 
 `docuvia hydrate` is the explicit, always-runs counterpart to `snapshot`: it resolves the
-knowledge-branch commit matching the current source `HEAD` (or its nearest analyzed ancestor) and
-bulk-loads `graph/*.jsonl` into `local.db`, wholesale replacing `l2_nodes`/`node_links`. It's the
+knowledge-branch commit matching the current source `HEAD` (or its nearest analyzed ancestor),
+restores `graph/metadata.json` when present (project identity, project-file/Tier-B state, and
+last-ingested source SHA), and bulk-loads `graph/*.jsonl` into `local.db`, wholesale replacing
+`l2_nodes`/`node_links`. Older knowledge commits without the metadata artifact remain readable and
+fall back to the pre-#489 graph-only behavior. It's the
 same `IHydrationService` that `ensureHydrated()` (used by `query`/`impact`/`status`/`review`) wraps
 for the automatic staleness-check path — this is the manual, unconditional path.
 
@@ -31,8 +34,9 @@ sequenceDiagram
 
     WF->>Svc: hydrate workspaceRoot, store
     Svc->>Svc: resolve nearest ancestor knowledge commit for source HEAD
-    Svc->>Svc: stream graph jsonl, bulk insert inside one transaction
-    Note right of Svc: MATCH STOR-002 strict guardrail, bulk insert in one transaction, not per row.
+    Svc->>Svc: read graph jsonl + optional metadata json
+    Svc->>Store: restore project/project_files/meta and bulk-load graph under one write lock
+    Note right of Svc: MATCH STOR-002 strict guardrail; metadata and graph become visible atomically to local readers.
     Svc-->>WF: hydrated, knowledgeSha, nodesLoaded, edgesLoaded, edgesDropped
 
     alt nothing to hydrate

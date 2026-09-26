@@ -44,6 +44,13 @@ export interface ProjectFileRow {
   last_tier_b_commit_sha: string | null;
 }
 
+export interface ProjectFileSnapshotMetadata {
+  filePath: string;
+  contentHash: string | null;
+  lastTierBProcessedAt: string | null;
+  lastTierBCommitSha: string | null;
+}
+
 export interface L1TagRow {
   id: number;
   name: string;
@@ -222,6 +229,11 @@ export interface IProjectsRepo {
 
 export interface IProjectFilesRepo {
   getAllHashes(): Array<{ filePath: string; contentHash: string | null }>;
+  /**
+   * Snapshot-facing bulk read of persisted file metadata. One row per project_files record,
+   * including the Tier-B processed marker needed to reconstruct coverage after hydrate.
+   */
+  getAllSnapshotMetadata(): ProjectFileSnapshotMetadata[];
   upsertFile(input: {
     projectId: number;
     filePath: string;
@@ -239,6 +251,8 @@ export interface IProjectFilesRepo {
     projectId: number;
     filePath: string;
     commitSha: string | null;
+    /** Optional persisted timestamp used only when restoring snapshot metadata. */
+    processedAt?: string;
   }): void;
   /**
    * Tier B coverage for a single file — `query`/`impact`'s "does this node's own file's

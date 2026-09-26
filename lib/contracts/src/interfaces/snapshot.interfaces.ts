@@ -2,7 +2,15 @@ import type {
   L2NodeRow,
   L3NodeRow,
   NodeLinkRow,
+  ProjectFileSnapshotMetadata,
 } from "./graph-store.interfaces.js";
+
+export interface SnapshotMetadata {
+  project?: { name: string; repoUrl: string };
+  files: ProjectFileSnapshotMetadata[];
+  /** Source HEAD represented by this graph; restores status graph freshness after hydrate. */
+  lastIngestedSourceSha?: string;
+}
 
 /**
  * Renders the local knowledge graph's current state (already persisted to `IGraphStore` by
@@ -23,6 +31,8 @@ export interface SnapshotRenderInput {
    * itself (issue #206). Optional so existing callers/mocks stay valid.
    */
   l3Rows?: L3NodeRow[];
+  /** Project/file metadata needed for a lossless snapshot -> hydrate round-trip. */
+  metadata?: SnapshotMetadata;
 }
 
 export interface SnapshotRenderResult {

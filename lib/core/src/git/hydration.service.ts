@@ -5,6 +5,7 @@ import type {
   IGraphStore,
   IHydrationService,
   ILogger,
+  SnapshotMetadata,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
@@ -59,6 +60,59 @@ function parseEdgesJsonl(
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => JSON.parse(line) as RenderedEdge);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function nullableString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function parseSnapshotMetadata(
+  raw: string | undefined,
+): SnapshotMetadata | undefined {
+  if (!raw) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(parsed)) return { files: [] };
+
+  const projectValue = parsed.project;
+  const project =
+    isRecord(projectValue) &&
+    typeof projectValue.name === "string" &&
+    typeof projectValue.repoUrl === "string"
+      ? { name: projectValue.name, repoUrl: projectValue.repoUrl }
+      : undefined;
+
+  const files = Array.isArray(parsed.files)
+    ? parsed.files.flatMap((value) => {
+        if (!isRecord(value) || typeof value.filePath !== "string") return [];
+        return [
+          {
+            filePath: value.filePath,
+            contentHash: nullableString(value.contentHash),
+            lastTierBProcessedAt: nullableString(value.lastTierBProcessedAt),
+            lastTierBCommitSha: nullableString(value.lastTierBCommitSha),
+          },
+        ];
+      })
+    : [];
+
+  return {
+    project,
+    files,
+    lastIngestedSourceSha:
+      typeof parsed.lastIngestedSourceSha === "string"
+        ? parsed.lastIngestedSourceSha
+        : undefined,
+  };
 }
 
 /**
@@ -137,7 +191,7 @@ export class HydrationService implements IHydrationService {
       };
     }
 
-    const [nodesJsonl, edgesJsonl] = await Promise.all([
+    const [nodesJsonl, edgesJsonl, metadataJson] = await Promise.all([
       this.git.readFileAtRef(
         cwd,
         knowledgeSha,
@@ -154,10 +208,19 @@ export class HydrationService implements IHydrationService {
           GitConstants.EDGES_JSONL_NAME,
         ),
       ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.METADATA_JSON_NAME,
+        ),
+      ),
     ]);
 
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
+    const metadata = parseSnapshotMetadata(metadataJson);
 
     const force = options?.force ?? false;
     if (!force) {
@@ -179,8 +242,10 @@ export class HydrationService implements IHydrationService {
     }
 
     const bulkResult = await store.withWriteLock(async () => {
+      const projectId = this.restoreSnapshotMetadata(store, metadata);
+
       const loaded = store.graph.bulkLoadGraph({
-        projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+        projectId,
         nodes,
         edges,
       });
@@ -202,6 +267,57 @@ export class HydrationService implements IHydrationService {
       ...bulkResult,
     });
     return { hydrated: true, knowledgeSha, ...bulkResult };
+  }
+
+  private restoreSnapshotMetadata(
+    store: IGraphStore,
+    metadata: SnapshotMetadata | undefined,
+  ): number {
+    const projectId = this.resolveHydratedProjectId(store, metadata?.project);
+    for (const file of metadata?.files ?? []) {
+      this.restoreFileMetadata(store, projectId, file);
+    }
+    if (metadata?.lastIngestedSourceSha) {
+      store.meta.set(
+        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+        metadata.lastIngestedSourceSha,
+      );
+    }
+    return projectId;
+  }
+
+  private resolveHydratedProjectId(
+    store: IGraphStore,
+    project: SnapshotMetadata["project"],
+  ): number {
+    if (project) {
+      return store.projects.getOrInsert({
+        name: project.name,
+        repoUrl: project.repoUrl,
+      }).id;
+    }
+    return (
+      store.projects.getFirst()?.id ?? GitConstants.DEFAULT_LOCAL_PROJECT_ID
+    );
+  }
+
+  private restoreFileMetadata(
+    store: IGraphStore,
+    projectId: number,
+    file: SnapshotMetadata["files"][number],
+  ): void {
+    store.files.upsertFile({
+      projectId,
+      filePath: file.filePath,
+      contentHash: file.contentHash,
+    });
+    if (file.lastTierBProcessedAt === null) return;
+    store.files.markTierBProcessed({
+      projectId,
+      filePath: file.filePath,
+      commitSha: file.lastTierBCommitSha,
+      processedAt: file.lastTierBProcessedAt,
+    });
   }
 
   /**

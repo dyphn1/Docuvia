@@ -5,6 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
   type IGraphStore,
+  type IGitProvider,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { SNAPSHOT_EVENTS, SNAPSHOT_MESSAGES } from "./snapshot-messages.js";
@@ -64,13 +65,19 @@ export class SnapshotWorkflow {
   ): Promise<{ shouldSkip: boolean; headSha: string | null }> {
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
     const headSha = (await git.getHeadSha(this.workspaceRoot)) ?? null;
-    const isAlreadySnapshotted =
-      headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
-        ? await knowledgeGit.hasSourceCommitInHistory(
+    const matchingKnowledgeSha =
+      headSha &&
+      typeof knowledgeGit.resolveKnowledgeCommitForSource === "function"
+        ? await knowledgeGit.resolveKnowledgeCommitForSource(
             this.workspaceRoot,
             headSha,
           )
-        : false;
+        : undefined;
+    const hasRestoreMetadata = await this.hasRestoreMetadata(
+      git,
+      matchingKnowledgeSha,
+    );
+
     const pending = store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING);
     const lastTierB = store.meta.get(
       GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
@@ -79,13 +86,28 @@ export class SnapshotWorkflow {
 
     const shouldSkip = !!(
       headSha &&
-      isAlreadySnapshotted &&
+      matchingKnowledgeSha &&
+      hasRestoreMetadata &&
       lastTierB === headSha &&
       !pending &&
       !tierCProcessed
     );
 
     return { shouldSkip, headSha };
+  }
+
+  private async hasRestoreMetadata(
+    git: IGitProvider,
+    knowledgeSha: string | undefined,
+  ): Promise<boolean> {
+    if (!knowledgeSha) return false;
+    return (
+      (await git.readFileAtRef(
+        this.workspaceRoot,
+        knowledgeSha,
+        `${GitConstants.GRAPH_DIR_NAME}/${GitConstants.METADATA_JSON_NAME}`,
+      )) !== undefined
+    );
   }
 
   public async execute(): Promise<SnapshotResult> {

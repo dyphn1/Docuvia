@@ -5,7 +5,10 @@
 
 `docuvia snapshot` re-renders the current SQLite graph into the git-native `docuvia-knowledge`
 branch view. It deliberately does **not** re-run file discovery or AST parsing — that data is
-assumed already persisted by `init`/`sync`.
+assumed already persisted by `init`/`sync`. In addition to graph JSONL and knowledge markdown,
+`graph/metadata.json` carries the project identity, `project_files` restore state (including
+Tier-B processed markers), and the last-ingested source SHA so a later `hydrate` can reconstruct
+status-critical metadata instead of restoring only L2/L3 rows.
 
 > **Corrected**: this doc previously claimed the post-commit hook installed by `init` fires this
 > command automatically after every commit. That was true before PLAT-007 Tier A's post-commit
@@ -51,9 +54,9 @@ sequenceDiagram
         WF-->>API: throw DB_OPEN_FAILED
     end
 
-    WF->>Store: getAllNodes, getAllLinks
+    WF->>Store: getAllNodes, getAllLinks, project and file metadata
     WF->>WF: mkdtemp scratch directory
-    WF->>Renderer: render outDir, l2Rows, linkRows
+    WF->>Renderer: render graph JSONL, metadata JSON, markdown/L3 cards
     Note right of Renderer: MATCH STOR-003, per file and per symbol granular markdown plus graph jsonl.
     Renderer-->>WF: nodesWritten, edgesWritten, markdownFilesWritten
 

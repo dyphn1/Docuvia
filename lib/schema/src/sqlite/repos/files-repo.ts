@@ -1,5 +1,9 @@
 import type Database from "better-sqlite3";
-import type { IProjectFilesRepo, ProjectFileRow } from "@workspace/contracts";
+import type {
+  IProjectFilesRepo,
+  ProjectFileRow,
+  ProjectFileSnapshotMetadata,
+} from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
 
 /** `files` repo — `project_files` reads/writes for the file-discovery hash-diff. */
@@ -20,6 +24,31 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
     return rows.map((row) => ({
       filePath: row.file_path,
       contentHash: row.content_hash,
+    }));
+  }
+
+  /** One deterministic bulk read for snapshot/hydrate metadata round-tripping. */
+  getAllSnapshotMetadata(): ProjectFileSnapshotMetadata[] {
+    const rows = this.db
+      .prepare(
+        `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.CONTENT_HASH},
+                last_tier_b_processed_at, last_tier_b_commit_sha
+         FROM ${SchemaTables.PROJECT_FILES}
+         ORDER BY ${SchemaColumns.FILE_PATH}`,
+      )
+      .all() as Pick<
+      ProjectFileRow,
+      | "file_path"
+      | "content_hash"
+      | "last_tier_b_processed_at"
+      | "last_tier_b_commit_sha"
+    >[];
+
+    return rows.map((row) => ({
+      filePath: row.file_path,
+      contentHash: row.content_hash,
+      lastTierBProcessedAt: row.last_tier_b_processed_at,
+      lastTierBCommitSha: row.last_tier_b_commit_sha,
     }));
   }
 
@@ -49,15 +78,21 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
     projectId: number;
     filePath: string;
     commitSha: string | null;
+    processedAt?: string;
   }): void {
     this.db
       .prepare(
         `INSERT INTO ${SchemaTables.PROJECT_FILES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, last_tier_b_processed_at, last_tier_b_commit_sha)
-         VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+         VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP), ?)
          ON CONFLICT(${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH})
-         DO UPDATE SET last_tier_b_processed_at = CURRENT_TIMESTAMP, last_tier_b_commit_sha = excluded.last_tier_b_commit_sha`,
+         DO UPDATE SET last_tier_b_processed_at = excluded.last_tier_b_processed_at, last_tier_b_commit_sha = excluded.last_tier_b_commit_sha`,
       )
-      .run(input.projectId, input.filePath, input.commitSha);
+      .run(
+        input.projectId,
+        input.filePath,
+        input.processedAt ?? null,
+        input.commitSha,
+      );
   }
 
   /**

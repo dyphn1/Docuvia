@@ -29,6 +29,8 @@ export const GitConstants = {
   L3_DIR_NAME: "_l3",
   NODES_JSONL_NAME: "nodes.jsonl",
   EDGES_JSONL_NAME: "edges.jsonl",
+  /** Snapshot metadata required to reconstruct project rows and Tier-B file coverage on hydrate. */
+  METADATA_JSON_NAME: "metadata.json",
   /** Commit-message trailer key (STOR-001 point 4) carrying the full 40-char source-commit sha, read back by Phase 2's nearest-ancestor hydration lookup. */
   SOURCE_COMMIT_TRAILER_KEY: "Docuvia-Source",
   POST_COMMIT_HOOK_NAME: "post-commit",

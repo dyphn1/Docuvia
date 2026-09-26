@@ -18,6 +18,7 @@ function makeMockStore(): IGraphStore {
     },
     files: {
       getAllHashes: vi.fn().mockReturnValue([]),
+      getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),

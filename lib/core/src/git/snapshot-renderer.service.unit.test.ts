@@ -287,6 +287,54 @@ describe("SnapshotRendererService.render()", () => {
     expect(content).toContain("# Symbol: doThing");
   });
 
+  it("writes deterministic graph/metadata.json for project and Tier-B file restore state", async () => {
+    await renderer.render({
+      outDir,
+      l2Rows: [],
+      linkRows: [],
+      metadata: {
+        project: { name: "demo", repoUrl: "file:///demo" },
+        lastIngestedSourceSha: "source-head",
+        files: [
+          {
+            filePath: "src/b.ts",
+            contentHash: "hash-b",
+            lastTierBProcessedAt: null,
+            lastTierBCommitSha: null,
+          },
+          {
+            filePath: "src/a.ts",
+            contentHash: "hash-a",
+            lastTierBProcessedAt: "2026-09-23 12:00:00",
+            lastTierBCommitSha: "source-a",
+          },
+        ],
+      },
+    });
+
+    const metadata = JSON.parse(
+      fs.readFileSync(path.join(outDir, "graph", "metadata.json"), "utf8"),
+    );
+    expect(metadata).toEqual({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [
+        {
+          filePath: "src/a.ts",
+          contentHash: "hash-a",
+          lastTierBProcessedAt: "2026-09-23 12:00:00",
+          lastTierBCommitSha: "source-a",
+        },
+        {
+          filePath: "src/b.ts",
+          contentHash: "hash-b",
+          lastTierBProcessedAt: null,
+          lastTierBCommitSha: null,
+        },
+      ],
+      lastIngestedSourceSha: "source-head",
+    });
+  });
+
   it("skips graph files and reports zero counts for an empty graph", async () => {
     const result = await renderer.render({ outDir, l2Rows: [], linkRows: [] });
 

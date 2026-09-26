@@ -7,10 +7,18 @@ import { GitLocalProvider } from "./git-local-provider.js";
  * once, for its side effect only, by the Presentation layer. Every `resolve()` afterwards
  * returns a fresh, transient `GitLocalProvider` (it holds no state, so transience costs nothing).
  */
-docuviaFactory.register(TOKENS.GitProvider, () => new GitLocalProvider());
+docuviaFactory.register(
+  TOKENS.GitProvider,
+  (factory) =>
+    new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
+);
 // Same transient provider, registered under the narrow blame-ownership capability token
 // (issue #68) so consumers depend on `ILineBlameProvider`, not the whole `IGitProvider`.
-docuviaFactory.register(TOKENS.LineBlameProvider, () => new GitLocalProvider());
+docuviaFactory.register(
+  TOKENS.LineBlameProvider,
+  (factory) =>
+    new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
+);
 import { GitDiagnosticRunner } from "./diagnostic-runner.js";
 docuviaFactory.register(
   TOKENS.DiagnosticRunnerGit,

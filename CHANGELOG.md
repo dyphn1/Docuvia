@@ -2,6 +2,27 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.13.1](https://github.com/dyphn1/Docuvia/compare/v1.13.0...v1.13.1) (2026-09-26)
+
+### Bug Fixes
+
+- **contracts:** export snapshot metadata types ([363b3da](https://github.com/dyphn1/Docuvia/commit/363b3da382d4555d9502064d59f657cafd9d92ef))
+- **core:** load hydrated graph under restored project ([d3bf89b](https://github.com/dyphn1/Docuvia/commit/d3bf89b02acd968884b976feb41c26a191cf7b5d))
+- **core:** render graph freshness metadata ([cd2a454](https://github.com/dyphn1/Docuvia/commit/cd2a454c8e6e3cccd5d2d0bda200b226dad15e78))
+- **core:** render snapshot restore metadata ([189423d](https://github.com/dyphn1/Docuvia/commit/189423d4fa6f0af8e333d1ca635fbf7873b8e0b8))
+- **core:** restore exact Tier-B processed timestamp ([b71ebb1](https://github.com/dyphn1/Docuvia/commit/b71ebb12951f207a08639b14b9d36ce4b11faa08))
+- **core:** restore graph freshness meta on hydrate ([2d87a2b](https://github.com/dyphn1/Docuvia/commit/2d87a2bfda3ce05c988206c7cd42e2f654df9cf7))
+- **core:** restore project and Tier-B metadata on hydrate ([a31e590](https://github.com/dyphn1/Docuvia/commit/a31e590277489863e1f8bde3407b5ccba07c79b1))
+- **core:** retain ingested sha when parsing snapshot metadata ([47fa808](https://github.com/dyphn1/Docuvia/commit/47fa80859e331d8fce33924fb7f6f02524f0f9f8))
+- **core:** validate hydrated snapshot metadata ([cad1e2e](https://github.com/dyphn1/Docuvia/commit/cad1e2e2b376405f8a8807ff8ff30fe7e15152c0))
+- **hydrate:** harden restore metadata contract ([39b4eb7](https://github.com/dyphn1/Docuvia/commit/39b4eb7de909468caa46be4e7deed66d60f7aa24))
+- **schema:** export hydrate restore metadata ([c49572b](https://github.com/dyphn1/Docuvia/commit/c49572b23bdf39db7e2454c90677bd142b802633))
+- **schema:** preserve Tier-B processed timestamp on restore ([c76b1c4](https://github.com/dyphn1/Docuvia/commit/c76b1c403dd88ade98eaef2a2a2de6322fec3a0b))
+- **snapshot:** verify metadata on matching knowledge commit ([76f997c](https://github.com/dyphn1/Docuvia/commit/76f997c46aa9cc54fc5569a265efa6c8ac7982cc))
+- **ui-core:** include project metadata in snapshots ([cddc84e](https://github.com/dyphn1/Docuvia/commit/cddc84e73f62666e4646d7ee904a98e7a244745d))
+- **ui-core:** migrate legacy snapshots before skip ([323a291](https://github.com/dyphn1/Docuvia/commit/323a29134f72f109ccf7238b9da4b58460caabf8))
+- **ui-core:** snapshot graph freshness meta ([df113ea](https://github.com/dyphn1/Docuvia/commit/df113ea7c03847651884c6798523548ff930f0d4))
+
 # [1.13.0](https://github.com/dyphn1/Docuvia/compare/v1.12.3...v1.13.0) (2026-09-23)
 
 ### Bug Fixes

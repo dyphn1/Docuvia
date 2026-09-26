@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/utils/resolve-output-format.unit.test.ts#anonymous@L15
+id: artifacts/cli/test/unit/utils/resolve-output-format.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/utils/resolve-output-format.unit.test.ts

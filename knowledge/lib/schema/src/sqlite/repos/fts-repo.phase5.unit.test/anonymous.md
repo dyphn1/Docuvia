@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/fts-repo.phase5.unit.test.ts#anonymous
+id: lib/schema/src/sqlite/repos/fts-repo.phase5.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/fts-repo.phase5.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/schema/src/sqlite/repos/fts-repo.phase5.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/repos/fts-repo.phase5.unit.test.ts`
-ts`

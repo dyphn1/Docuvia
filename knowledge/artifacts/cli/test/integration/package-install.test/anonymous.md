@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/package-install.test.ts#anonymous@L70
+id: artifacts/cli/test/integration/package-install.test.ts#anonymous@L80
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/package-install.test.ts

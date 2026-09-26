@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/commands/uninstall.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/uninstall.test.ts`
+

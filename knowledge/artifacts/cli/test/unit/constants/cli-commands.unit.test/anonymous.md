@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/unit/constants/cli-commands.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/constants/cli-commands.unit.test.ts`
-ts`

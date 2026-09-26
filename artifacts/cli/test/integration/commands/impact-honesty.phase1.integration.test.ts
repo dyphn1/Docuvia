@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
 import { CORPUS_FILES, GOLDEN_CASES } from "../../support/impact-corpus.js";
+import { aggregateImpactHonesty } from "../../support/impact-eval-honesty.js";
 import {
   PHASE1_CORPUS_FILES,
   PHASE1_GOLDEN_CASES,
@@ -10,7 +12,9 @@ import {
   evaluateLegacyImpactCorpus,
   evaluatePhase1ImpactHonesty,
   poisonNegativePrediction,
+  poisonObservedStatus,
   poisonTargetIdentity,
+  runImpact,
 } from "../../support/impact-honesty-corpus.phase1.js";
 
 // TDD-SOURCE: issue #508 Phase 1 negative + ambiguity adversarial corpus
@@ -126,4 +130,101 @@ describe("Phase 1: impact benchmark negative/ambiguity adversarial corpus (#508)
       /wrong-target/,
     );
   });
+
+  it("[invalid-input] an unknown target is not-found and cannot pass as a true negative", async () => {
+    const run = await runImpact(sandbox, "evalTargetThatDoesNotExist");
+    expect(run).toEqual({ status: "not-found", impact: null });
+
+    const poisoned = poisonObservedStatus(results, "not-found");
+    const aggregate = aggregateImpactHonesty(poisoned);
+    expect(aggregate.totalCases).toBe(results.length);
+    expect(aggregate.statusCounts["not-found"]).toBe(1);
+    expect(aggregate.negative.trueNegativeCases).toBe(
+      aggregateImpactHonesty(results).negative.trueNegativeCases - 1,
+    );
+    expect(() => assertPhase1ImpactHonestyGates(poisoned)).toThrow(
+      /unexpected status in zero-dependents/,
+    );
+  });
+
+  it("[error-handling] an errored case stays in the denominator and fails the gate", () => {
+    const poisoned = poisonObservedStatus(results, "error");
+    const aggregate = aggregateImpactHonesty(poisoned);
+
+    expect(aggregate.totalCases).toBe(results.length);
+    expect(aggregate.errorCases).toBe(1);
+    expect(() => assertPhase1ImpactHonestyGates(poisoned)).toThrow(
+      /1 case\(s\) errored/,
+    );
+  });
+
+  it("[stress] concurrent evaluations over the shared graph match the sequential baseline", async () => {
+    const concurrent = await Promise.all(
+      [0, 1, 2].map(() => evaluatePhase1ImpactHonesty(sandbox, db)),
+    );
+
+    expect(concurrent).toHaveLength(3);
+    for (const run of concurrent) expect(run).toEqual(results);
+  }, 240_000);
+});
+
+describe("Phase 1: impact honesty gate tracks graph changes (#508)", () => {
+  let sandbox: TestSandbox;
+  let db: Database.Database;
+
+  beforeAll(async () => {
+    sandbox = new TestSandbox();
+    await sandbox.setup({ initGit: true, files: PHASE1_CORPUS_FILES });
+    await sandbox.runGit(["add", "-A"]);
+    await sandbox.runGit(["commit", "-m", "impact-honesty-phase1-corpus"]);
+    const init = await sandbox.runCli(["init"], { reject: false });
+    expect(init.exitCode).toBe(0);
+    db = new Database(join(sandbox.dir, ".docuvia/local.db"), {
+      readonly: true,
+    });
+  }, 240_000);
+
+  afterAll(() => {
+    db?.close();
+    return sandbox?.teardown();
+  });
+
+  it("[state-diff] a new real caller turns the zero-dependents true negative into a caught false positive", async () => {
+    const zeroDependents = (
+      results: Awaited<ReturnType<typeof evaluatePhase1ImpactHonesty>>,
+    ) => results.find((result) => result.scenario === "zero-dependents");
+
+    const before = await evaluatePhase1ImpactHonesty(sandbox, db);
+    expect(zeroDependents(before)?.predictions).toEqual([]);
+    expect(() => assertPhase1ImpactHonestyGates(before)).not.toThrow();
+
+    writeFileSync(
+      join(sandbox.dir, "src/adversarial/unused-caller.ts"),
+      [
+        'import { evalUnusedTarget } from "./unused";',
+        "",
+        "export function evalUnusedCaller(): string {",
+        "  return evalUnusedTarget();",
+        "}",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await sandbox.runGit(["add", "-A"]);
+    await sandbox.runGit(["commit", "-m", "add caller for unused target"]);
+    const analyze = await sandbox.runCli(["analyze"], { reject: false });
+    expect(analyze.exitCode).toBe(0);
+
+    const after = await evaluatePhase1ImpactHonesty(sandbox, db);
+    expect(zeroDependents(after)?.predictions).toEqual([
+      { file: "src/adversarial/unused-caller.ts", channel: "static" },
+    ]);
+    expect(() => assertPhase1ImpactHonestyGates(after)).toThrow(
+      /negative specificity|false-positive rate/,
+    );
+    // Only the mutated scenario changed; every other case is byte-identical.
+    expect(
+      after.filter((result) => result.scenario !== "zero-dependents"),
+    ).toEqual(before.filter((result) => result.scenario !== "zero-dependents"));
+  }, 240_000);
 });

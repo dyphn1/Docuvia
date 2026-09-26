@@ -338,7 +338,7 @@ function dependencyPredictions(
   return predictions;
 }
 
-async function runImpact(
+export async function runImpact(
   sandbox: TestSandbox,
   target: string,
 ): Promise<{
@@ -561,6 +561,37 @@ export function poisonNegativePrediction(
             ...result.predictions,
             { file: "src/adversarial/__poison__.ts", channel: "static" },
           ],
+        })
+      : result,
+  );
+}
+
+/** Re-scores the first negative case as if `impact` had returned `status` instead of resolving
+ *  it, with no predictions. A not-found/errored case must fail the gate and stay in the
+ *  denominator rather than passing as an empty (true-negative-looking) result. */
+export function poisonObservedStatus(
+  results: readonly ImpactHonestyCaseResult[],
+  status: Extract<
+    ImpactHonestyCaseResult["observedStatus"],
+    "not-found" | "error"
+  >,
+): ImpactHonestyCaseResult[] {
+  const index = results.findIndex((result) => result.intent === "negative");
+  if (index < 0) throw new Error("Phase 1 poison control: no negative case");
+
+  return results.map((result, current) =>
+    current === index
+      ? scoreImpactHonestyCase({
+          schemaVersion: IMPACT_HONESTY_SCHEMA_VERSION,
+          scenario: result.scenario,
+          target: result.target,
+          expectedTargetIdentity: result.expectedTargetIdentity,
+          intent: result.intent,
+          expectedStatus: result.expectedStatus,
+          expectedConfirmedFiles: result.expectedConfirmedFiles,
+          expectedCandidateFiles: result.expectedCandidateFiles,
+          observedStatus: status,
+          predictions: [],
         })
       : result,
   );

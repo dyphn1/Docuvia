@@ -213,7 +213,7 @@ describe("runFastImport — git tree structure verification", () => {
       Math.floor(Date.now() / 1000),
       "Snapshot [root]",
     );
-    await runFastImport(repoDir, stream);
+    await runFastImport(repoDir, stream, { ...process.env });
 
     const { stdout: branchExists } = await git(repoDir, [
       "branch",
@@ -261,7 +261,7 @@ describe("runFastImport — git tree structure verification", () => {
       Math.floor(Date.now() / 1000),
       "Snapshot [first]",
     );
-    await runFastImport(repoDir, stream);
+    await runFastImport(repoDir, stream, { ...process.env });
     const { stdout: firstShaOut } = await git(repoDir, [
       "rev-parse",
       "docuvia-knowledge",
@@ -278,7 +278,7 @@ describe("runFastImport — git tree structure verification", () => {
       "Snapshot [second]",
       firstSha,
     );
-    await runFastImport(repoDir, stream);
+    await runFastImport(repoDir, stream, { ...process.env });
 
     const { stdout: lsOutput } = await git(repoDir, [
       "ls-tree",
@@ -322,7 +322,7 @@ describe("runFastImport — git tree structure verification", () => {
       Math.floor(Date.now() / 1000),
       "Snapshot [nested]",
     );
-    await runFastImport(repoDir, stream);
+    await runFastImport(repoDir, stream, { ...process.env });
 
     const { stdout: lsOutput } = await git(repoDir, [
       "ls-tree",

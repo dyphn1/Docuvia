@@ -229,6 +229,8 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
   SHOW_COMMIT_TIMESTAMP_FAILED: "git show --format=%ct failed",
   COMMIT_TREE_MERGE_FAILED: "git commit-tree (merge) failed",
   KNOWLEDGE_LOCK_ACQUIRE_FAILED: "Failed to acquire knowledge lock",
+  HOST_ENVIRONMENT_MISSING:
+    "GitLocalProvider requires a host environment snapshot (resolve TOKENS.HostEnvironment)",
   KNOWLEDGE_LOCK_TIMED_OUT: (lockPath: string) =>
     `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`,
 } as const;
@@ -246,6 +248,14 @@ export class GitLocalProvider implements IGitProvider {
   private readonly hostEnvironment: HostEnvironmentSnapshot;
 
   public constructor(hostEnvironment: HostEnvironmentSnapshot) {
+    // Fail at composition time: a missing snapshot would otherwise surface much later as
+    // "git not found" (no PATH) or missing git config (no HOME) on the first shell-out.
+    if (typeof hostEnvironment !== "object" || hostEnvironment === null) {
+      throw new DocuviaError(
+        ErrorCodes.INVALID_INPUT,
+        GIT_PROVIDER_ERROR_MESSAGES.HOST_ENVIRONMENT_MISSING,
+      );
+    }
     // Copy once: later mutations of the caller-owned host environment cannot silently change the
     // subprocess environment used by an already-created provider.
     this.hostEnvironment = Object.freeze({ ...hostEnvironment });
@@ -1068,7 +1078,11 @@ export class GitLocalProvider implements IGitProvider {
         commitMessage,
         parentCommitSha,
       );
-      await runFastImport(cwd, fastImportData);
+      await runFastImport(
+        cwd,
+        fastImportData,
+        buildGitProcessEnvironment(this.hostEnvironment, undefined),
+      );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_FAST_IMPORT_FAILED,

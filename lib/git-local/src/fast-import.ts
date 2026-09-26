@@ -193,6 +193,7 @@ export function buildFastImportData(
 export function runFastImport(
   cwd: string,
   fastImportData: string,
+  env: NodeJS.ProcessEnv,
   timeoutMs: number = FAST_IMPORT_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -201,6 +202,8 @@ export function runFastImport(
       [GIT_FAST_IMPORT_SUBCOMMAND, GIT_FAST_IMPORT_QUIET_FLAG],
       {
         cwd,
+        // Explicit, caller-composed environment (issue #458): never inherit global process.env.
+        env,
         stdio: [
           CHILD_PROCESS_STDIO_MODE.PIPE,
           CHILD_PROCESS_STDIO_MODE.IGNORE,

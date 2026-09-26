@@ -272,6 +272,55 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     }
   });
 
+  it("git fast-import runs with the injected host-environment snapshot, not the global environment", async () => {
+    const sourceDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-env-pack-src-"),
+    );
+    const tracePath = path.join(
+      sourceDir,
+      "..",
+      `${path.basename(sourceDir)}.trace`,
+    );
+    const previousTrace = process.env.GIT_TRACE;
+    delete process.env.GIT_TRACE;
+    try {
+      fs.writeFileSync(path.join(sourceDir, "readme.md"), "# hello\n");
+      const tracedProvider = new GitLocalProvider({
+        ...process.env,
+        GIT_TRACE: tracePath,
+      });
+
+      await tracedProvider.packDirectoryToBranch(
+        tmpDir,
+        sourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [env]",
+        undefined,
+        true,
+      );
+
+      // GIT_TRACE exists only in the injected snapshot, so only a child that received that
+      // snapshot can log itself to the trace file.
+      expect(fs.readFileSync(tracePath, "utf8")).toMatch(
+        /built-in: git fast-import/,
+      );
+    } finally {
+      if (previousTrace === undefined) delete process.env.GIT_TRACE;
+      else process.env.GIT_TRACE = previousTrace;
+      fs.rmSync(tracePath, { force: true });
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("[invalid-input] rejects a missing host-environment snapshot at construction", () => {
+    for (const missing of [undefined, null]) {
+      expect(
+        () =>
+          new GitLocalProvider(missing as unknown as Record<string, string>),
+      ).toThrow(/host environment snapshot/);
+    }
+  });
+
   it("listTrackedFilesWithBlobHash / listUntrackedFiles / listModifiedFiles reflect working tree state", async () => {
     fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
     await git(tmpDir, ["add", "tracked.ts"]);
@@ -637,9 +686,9 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
         "Snapshot [timeout]",
       );
 
-      await expect(runFastImport(tmpDir, fastImportData, 1)).rejects.toThrow(
-        /timed out after 1ms/,
-      );
+      await expect(
+        runFastImport(tmpDir, fastImportData, { ...process.env }, 1),
+      ).rejects.toThrow(/timed out after 1ms/);
     } finally {
       fs.rmSync(sourceDir, { recursive: true, force: true });
     }

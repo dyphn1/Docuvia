@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.13.2](https://github.com/dyphn1/Docuvia/compare/v1.13.1...v1.13.2) (2026-09-26)
+
+### Bug Fixes
+
+- **schema:** take SQLite write lock at BEGIN for write transactions ([c225d2d](https://github.com/dyphn1/Docuvia/commit/c225d2dfa143eff688d994267d4205e0a10685e9)), closes [#480](https://github.com/dyphn1/Docuvia/issues/480)
+
 ## [1.13.1](https://github.com/dyphn1/Docuvia/compare/v1.13.0...v1.13.1) (2026-09-26)
 
 ### Bug Fixes

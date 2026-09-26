@@ -205,27 +205,26 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     const previousValues = new Map(
       configEnvKeys.map((key) => [key, process.env[key]]),
     );
-    const injectedRemoteUrl = "https://injected.example.test/repo.git";
-    const laterGlobalRemoteUrl = "https://global.example.test/repo.git";
     const isolatedProvider = new GitLocalProvider({
       ...process.env,
       GIT_CONFIG_COUNT: "1",
-      GIT_CONFIG_KEY_0: "remote.origin.url",
-      GIT_CONFIG_VALUE_0: injectedRemoteUrl,
+      GIT_CONFIG_KEY_0: "status.showUntrackedFiles",
+      GIT_CONFIG_VALUE_0: "no",
       SSH_AUTH_SOCK: "/tmp/docuvia-test-agent.sock",
       HTTPS_PROXY: "https://proxy.example.test",
     });
 
-    // Mutate the ambient host only *after* construction. A provider that still consults the
-    // global environment at shell-out time would observe this conflicting remote instead.
+    // Mutate the ambient host only *after* construction. With the ambient value below, the
+    // untracked file is visible to `git status --porcelain`; the injected snapshot hides it.
+    // A provider that still consults global process.env at shell-out time would therefore return
+    // true from hasUncommittedChanges().
     process.env.GIT_CONFIG_COUNT = "1";
-    process.env.GIT_CONFIG_KEY_0 = "remote.origin.url";
-    process.env.GIT_CONFIG_VALUE_0 = laterGlobalRemoteUrl;
+    process.env.GIT_CONFIG_KEY_0 = "status.showUntrackedFiles";
+    process.env.GIT_CONFIG_VALUE_0 = "all";
+    fs.writeFileSync(path.join(tmpDir, "snapshot-env-untracked.txt"), "test\n");
 
     try {
-      expect(await isolatedProvider.getRemoteUrl(tmpDir)).toBe(
-        injectedRemoteUrl,
-      );
+      expect(await isolatedProvider.hasUncommittedChanges(tmpDir)).toBe(false);
     } finally {
       for (const key of configEnvKeys) {
         const previous = previousValues.get(key);

@@ -196,6 +196,45 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     );
   });
 
+  it("uses the injected host-environment snapshot even when the global environment changes later", async () => {
+    const configEnvKeys = [
+      "GIT_CONFIG_COUNT",
+      "GIT_CONFIG_KEY_0",
+      "GIT_CONFIG_VALUE_0",
+    ] as const;
+    const previousValues = new Map(
+      configEnvKeys.map((key) => [key, process.env[key]]),
+    );
+    const injectedRemoteUrl = "https://injected.example.test/repo.git";
+    const laterGlobalRemoteUrl = "https://global.example.test/repo.git";
+    const isolatedProvider = new GitLocalProvider({
+      ...process.env,
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "remote.origin.url",
+      GIT_CONFIG_VALUE_0: injectedRemoteUrl,
+      SSH_AUTH_SOCK: "/tmp/docuvia-test-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+    });
+
+    // Mutate the ambient host only *after* construction. A provider that still consults the
+    // global environment at shell-out time would observe this conflicting remote instead.
+    process.env.GIT_CONFIG_COUNT = "1";
+    process.env.GIT_CONFIG_KEY_0 = "remote.origin.url";
+    process.env.GIT_CONFIG_VALUE_0 = laterGlobalRemoteUrl;
+
+    try {
+      expect(await isolatedProvider.getRemoteUrl(tmpDir)).toBe(
+        injectedRemoteUrl,
+      );
+    } finally {
+      for (const key of configEnvKeys) {
+        const previous = previousValues.get(key);
+        if (previous === undefined) delete process.env[key];
+        else process.env[key] = previous;
+      }
+    }
+  });
+
   it("listTrackedFilesWithBlobHash / listUntrackedFiles / listModifiedFiles reflect working tree state", async () => {
     fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
     await git(tmpDir, ["add", "tracked.ts"]);

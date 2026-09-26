@@ -296,9 +296,7 @@ function inferObservedTarget(
       filePath: parsePathPatterns(row.path_patterns)[0],
     }))
     .filter(
-      (
-        candidate,
-      ): candidate is { identity: string; filePath: string } =>
+      (candidate): candidate is { identity: string; filePath: string } =>
         candidate.identity !== null &&
         candidate.filePath !== undefined &&
         blastNames.has(candidate.filePath),
@@ -401,11 +399,7 @@ export async function evaluatePhase1ImpactHonesty(
           expectedConfirmedFiles: golden.expectedConfirmedFiles,
           expectedCandidateFiles: [],
           observedStatus: "resolved",
-          predictions: dependencyPredictions(
-            db,
-            run.impact,
-            selected.filePath,
-          ),
+          predictions: dependencyPredictions(db, run.impact, selected.filePath),
         }),
       );
     } catch {

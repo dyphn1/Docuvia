@@ -10,15 +10,13 @@ import { GitLocalProvider } from "./git-local-provider.js";
  */
 docuviaFactory.register(
   TOKENS.GitProvider,
-  (factory) =>
-    new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
+  (factory) => new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
 );
 // Same transient provider, registered under the narrow blame-ownership capability token
 // (issue #68) so consumers depend on `ILineBlameProvider`, not the whole `IGitProvider`.
 docuviaFactory.register(
   TOKENS.LineBlameProvider,
-  (factory) =>
-    new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
+  (factory) => new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
 );
 import { GitDiagnosticRunner } from "./diagnostic-runner.js";
 docuviaFactory.register(

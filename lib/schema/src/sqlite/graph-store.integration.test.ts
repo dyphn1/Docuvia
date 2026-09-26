@@ -2217,3 +2217,54 @@ describe("Self-analysis: verify real knowledge graph structure", () => {
     expect(count.l2Nodes).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("GraphStore.withTransaction cross-process write coordination (issue #480)", () => {
+  let tempDir: string;
+  let dbPath: string;
+  let store: GraphStore;
+
+  beforeEach(async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-graph-store-tx-"));
+    dbPath = path.join(tempDir, ".docuvia", "local.db");
+    store = await GraphStore.open({ dbPath });
+  });
+
+  afterEach(async () => {
+    await store.close();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("a read-then-write transaction is not invalidated by another connection's commit", () => {
+    // Stands in for a concurrent `docuvia analyze` process. busy_timeout 0 so it fails fast
+    // instead of waiting when this store already holds the write lock.
+    const otherProcess = new Database(dbPath);
+    otherProcess.pragma("busy_timeout = 0");
+    try {
+      let otherProcessWrote = false;
+      const write = () =>
+        store.withTransaction(() => {
+          store.meta.get("issue-480.key");
+          try {
+            otherProcess
+              .prepare(
+                "INSERT INTO docuvia_meta (key, value) VALUES ('issue-480.other', '1')",
+              )
+              .run();
+            otherProcessWrote = true;
+          } catch (err) {
+            expect((err as { code?: string }).code).toMatch(/^SQLITE_BUSY/);
+          }
+          store.meta.set("issue-480.key", "persisted");
+        });
+
+      // A deferred BEGIN takes its read snapshot on the first SELECT; if the other connection
+      // commits before this transaction's first write, upgrading to a writer fails with
+      // SQLITE_BUSY_SNAPSHOT immediately — busy_timeout cannot help.
+      expect(write).not.toThrow();
+      expect(otherProcessWrote).toBe(false);
+      expect(store.meta.get("issue-480.key")).toBe("persisted");
+    } finally {
+      otherProcess.close();
+    }
+  });
+});

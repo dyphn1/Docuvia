@@ -194,7 +194,9 @@ export class L3NodesRepo implements IL3NodesRepo {
         return { id: Number(result.lastInsertRowid), deduped: false };
       });
 
-      return run();
+      // Dedup SELECT then INSERT/UPDATE: IMMEDIATE so a concurrent writer can't invalidate the
+      // read snapshot before the write (SQLITE_BUSY_SNAPSHOT, issue #480).
+      return run.immediate();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
@@ -268,7 +270,9 @@ export class L3NodesRepo implements IL3NodesRepo {
         return { id: Number(result.lastInsertRowid), imported: true };
       });
 
-      return run();
+      // Dedup SELECT then INSERT/UPDATE: IMMEDIATE so a concurrent writer can't invalidate the
+      // read snapshot before the write (SQLITE_BUSY_SNAPSHOT, issue #480).
+      return run.immediate();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,

@@ -7,13 +7,13 @@ import {
   mkdir,
   readFile,
   readdir,
-  rm,
   writeFile,
 } from "fs/promises";
 import { join, resolve } from "path";
 import { tmpdir } from "os";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { buildDistCli } from "../support/sandbox.js";
+import { removeTempDir } from "../support/integration-env.js";
 
 const CLI_PACKAGE_DIR = resolve(import.meta.dirname, "../..");
 const CLI_DIST_PATH = join(CLI_PACKAGE_DIR, "dist", "cli.js");
@@ -47,14 +47,10 @@ describe("packed npm distribution", () => {
     }
   }, SUBPROCESS_TEST_TIMEOUT_MS);
 
-  afterEach(async () => {
-    if (!tempDir) return;
-    await rm(tempDir, {
-      recursive: true,
-      force: true,
-      maxRetries: 3,
-      retryDelay: 100,
-    });
+  afterEach(() => {
+    // npm's child processes can still hold handles in the consumer dir on Windows (EBUSY);
+    // removeTempDir() retries longer and never turns a cleanup race into a test failure.
+    removeTempDir(tempDir);
     tempDir = undefined;
   });
 

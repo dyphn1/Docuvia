@@ -2140,15 +2140,24 @@ describe("callSites repo: callee evidence columns (issue #192, migration 0012)",
 
 describe("Self-analysis: verify real knowledge graph structure", () => {
   const DB_PATH = path.resolve(__dirname, "../../../../.docuvia/local.db");
-  let store: GraphStore;
+  let store: GraphStore | undefined;
   let project: { id: number };
 
   beforeEach(async () => {
+    store = undefined;
     if (!fs.existsSync(DB_PATH)) {
       // Skip if no knowledge graph exists yet.
       return;
     }
-    store = await GraphStore.open({ dbPath: DB_PATH });
+    const opened = await GraphStore.open({ dbPath: DB_PATH });
+    if (opened.graph.count().l2Nodes === 0) {
+      // A DB that exists but was never indexed (e.g. created by the pre-push hook's Tier B
+      // `analyze --escalate-to-lsp` tail on a fresh clone) is "no knowledge graph yet", not a
+      // dishonest graph — treat it like a missing DB instead of failing every assertion.
+      await opened.close();
+      return;
+    }
+    store = opened;
     project = store.projects.getOrInsert({
       name: "docuvia2",
       repoUrl: "file:///docuvia2",
@@ -2157,6 +2166,7 @@ describe("Self-analysis: verify real knowledge graph structure", () => {
 
   afterEach(async () => {
     if (store) await store.close();
+    store = undefined;
   });
 
   it("scope-resolver.ts exists as a node in the graph", () => {

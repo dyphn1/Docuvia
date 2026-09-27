@@ -35,6 +35,13 @@ node_modules
 
 # misc
 coverage
+# Test-category ratchet evidence written by scripts/test-category-ratchet.sh during the pre-push
+# gate. Must stay ignored: prettier --check honors .gitignore, and an unignored leftover from one
+# push fails the next push's formatting check.
+.test-results/
+# Isolated compiled-CLI fixtures from artifacts/cli/test/support/sandbox.ts buildDistCli();
+# normally removed by cleanup(), left behind only when a test run is killed mid-way.
+artifacts/cli/.docuvia-cli-dist-*/
 npm-debug.log
 yarn-error.log
 

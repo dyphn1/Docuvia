@@ -2,6 +2,21 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.14.0](https://github.com/dyphn1/Docuvia/compare/v1.13.2...v1.14.0) (2026-09-27)
+
+### Bug Fixes
+
+- **git-local:** inject host environment snapshot ([986a7d2](https://github.com/dyphn1/Docuvia/commit/986a7d256b7236962eeec3bd51b1b64dbf44cf26))
+- **git-local:** pass injected env to fast-import and validate snapshot ([c44cd61](https://github.com/dyphn1/Docuvia/commit/c44cd61a740fa4b7edd5d06729c5b7122867c110)), closes [#458](https://github.com/dyphn1/Docuvia/issues/458)
+- **git-local:** resolve host environment through composition ([7f01430](https://github.com/dyphn1/Docuvia/commit/7f0143085b08453e01d9465e7879335ce042e2ff))
+
+### Features
+
+- **cli:** compose host environment provider ([7733ab6](https://github.com/dyphn1/Docuvia/commit/7733ab6485d72fcc0b26389f175b2440763cc258))
+- **contracts:** define host environment snapshot ([548d8a2](https://github.com/dyphn1/Docuvia/commit/548d8a2c737a39d3510181492ebaaba2c22b990d))
+- **contracts:** export host environment snapshot ([bf8cdb4](https://github.com/dyphn1/Docuvia/commit/bf8cdb4d30252e9f9790d3cdf2968f034c6f8a62))
+- **contracts:** register host environment token ([1bdec80](https://github.com/dyphn1/Docuvia/commit/1bdec8026a70a4d82d68d8048b17549b5138394a))
+
 ## [1.13.2](https://github.com/dyphn1/Docuvia/compare/v1.13.1...v1.13.2) (2026-09-26)
 
 ### Bug Fixes

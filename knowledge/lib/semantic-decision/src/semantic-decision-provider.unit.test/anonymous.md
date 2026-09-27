@@ -7,4 +7,3 @@ filePath: lib/semantic-decision/src/semantic-decision-provider.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/semantic-decision/src/semantic-decision-provider.unit.test.ts`
-

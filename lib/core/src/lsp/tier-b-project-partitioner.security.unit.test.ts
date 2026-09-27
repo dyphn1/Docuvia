@@ -82,8 +82,6 @@ describe("partitionTierBBucket() path containment", () => {
   });
 
   it("[error-handling] drops symlinked project references that escape workspace", () => {
-    if (process.platform === "win32") return;
-
     const root = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierb-symlink-"),
     );
@@ -105,7 +103,13 @@ describe("partitionTierBBucket() path containment", () => {
         "utf8",
       );
       fs.writeFileSync(path.join(projectRoot, "src", "index.ts"), "", "utf8");
-      fs.symlinkSync(outside, path.join(root, "packages", "escape"), "dir");
+      // Windows directory symlinks need Developer Mode / SeCreateSymbolicLinkPrivilege;
+      // a junction does not and still resolves outside the workspace via realpath.
+      fs.symlinkSync(
+        outside,
+        path.join(root, "packages", "escape"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
 
       const partition = partitionTierBBucket({
         workspaceRoot: root,

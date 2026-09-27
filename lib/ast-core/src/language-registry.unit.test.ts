@@ -56,16 +56,33 @@ describe("LanguageRegistry.load() graceful fallback", () => {
     expect(registry.getConfig()).toEqual({ languages: {} });
   });
 
-  it("rejects a languages.toml symlink that escapes the project root", async () => {
-    if (process.platform === "win32") return;
-
+  it("rejects a languages.toml symlink that escapes the project root", async (ctx) => {
     const outsidePath = path.join(
       path.dirname(tmpDir),
       `${path.basename(tmpDir)}-outside.toml`,
     );
     try {
       fs.writeFileSync(outsidePath, VALID_CUSTOM_LANGUAGE_TOML, UTF8_ENCODING);
-      fs.symlinkSync(outsidePath, path.join(tmpDir, "languages.toml"));
+      try {
+        fs.symlinkSync(
+          outsidePath,
+          path.join(tmpDir, "languages.toml"),
+          "file",
+        );
+      } catch (err) {
+        // Windows file symlinks need Developer Mode / SeCreateSymbolicLinkPrivilege and have
+        // no junction equivalent, so report an explicit skip instead of a silent pass (#485).
+        if (
+          process.platform === "win32" &&
+          (err as NodeJS.ErrnoException).code === "EPERM"
+        ) {
+          console.warn(
+            "[skip] languages.toml symlink escape test: Windows file symlink creation is not permitted (EPERM); enable Developer Mode or grant SeCreateSymbolicLinkPrivilege to run it.",
+          );
+          ctx.skip();
+        }
+        throw err;
+      }
 
       const registry = await LanguageRegistry.load(tmpDir);
 

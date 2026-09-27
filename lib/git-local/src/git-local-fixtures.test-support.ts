@@ -76,7 +76,7 @@ export async function createTempGitRepo(
   }
   return {
     dir,
-    provider: new GitLocalProvider(),
+    provider: new GitLocalProvider({ ...process.env }),
     async commitFile(name: string, content: string) {
       fs.writeFileSync(path.join(dir, name), content);
       await git(dir, ["add", name]);

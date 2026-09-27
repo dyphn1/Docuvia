@@ -158,8 +158,10 @@ describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failur
         // Force the next pack attempt to fail exactly like the reported Windows git fast-import
         // crash: the branch ref still advances (to a valid-but-empty-tree commit) before the
         // failure surfaces to Docuvia's own code.
-        docuviaFactory.register(TOKENS.GitProvider, () =>
-          makeBreakingGitProvider(new GitLocalProvider()),
+        docuviaFactory.register(TOKENS.GitProvider, (factory) =>
+          makeBreakingGitProvider(
+            new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
+          ),
         );
 
         await expect(docuviaApi.snapshot(scopeId, logger)).rejects.toThrow(
@@ -175,7 +177,8 @@ describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failur
         // status/query) would not know anything about the broken one above.
         docuviaFactory.register(
           TOKENS.GitProvider,
-          () => new GitLocalProvider(),
+          (factory) =>
+            new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
         );
 
         // Step 3: exactly what ensureHydrated() does on every read-path command -- isStale() then,
@@ -204,7 +207,8 @@ describe("HydrationService.hydrate() destructive-rebuild guard: real pack-failur
       } finally {
         docuviaFactory.register(
           TOKENS.GitProvider,
-          () => new GitLocalProvider(),
+          (factory) =>
+            new GitLocalProvider(factory.resolve(TOKENS.HostEnvironment)),
         );
         docuviaMemory.deleteScope(scopeId);
         fs.rmSync(tmpDir, { recursive: true, force: true });

@@ -35,6 +35,7 @@ import type {
   TierBLanguageId,
 } from "../interfaces/edge-resolution.interfaces.js";
 import type { AcquireProcessLock } from "../utils/process-lock.js";
+import type { HostEnvironmentSnapshot } from "../interfaces/process.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -71,6 +72,11 @@ type KnowledgeGitServiceParams = LoggerParams & {
  * `register()`/`resolve()` infer everything from whichever `TOKENS.X` value is passed in.
  */
 export const TOKENS = {
+  /** Presentation-owned snapshot of the host process environment. Technology Providers may
+   *  consume it for subprocess inheritance, but must never read process.env themselves. */
+  HostEnvironment: createToken<HostEnvironmentSnapshot>(
+    "HostEnvironmentSnapshot",
+  ),
   GitProvider: createToken<IGitProvider>("IGitProvider"),
   /** Per-line blame ownership (issue #68) — implemented by the same GitLocalProvider instance factory as `GitProvider`, registered separately because it is a narrow analysis-read capability with one consumer (the L3 validity pass). */
   LineBlameProvider: createToken<ILineBlameProvider>("ILineBlameProvider"),

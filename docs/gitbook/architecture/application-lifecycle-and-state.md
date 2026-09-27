@@ -3,6 +3,8 @@
 > **Mandatory Architecture Protocol:**
 > Implementation libraries must never instantiate their own heavy resources (like DB connections or WASM workers) at the module level. Lifecycle ownership (Initialization and Teardown) belongs strictly to the Orchestration Layer (`ui-core`). Furthermore, libraries are strictly forbidden from reading `process.env` directly; all configuration must be injected via `docuviaMemory`.
 
+Raw host-process environment inherited by a subprocess is **execution context, not application configuration**. When a Technology Provider must preserve host inheritance semantics (for example Git's `PATH`/`HOME`/SSH-agent/proxy/TLS variables), the Presentation composition root must expose an immutable `HostEnvironmentSnapshot` through the factory. The provider may snapshot that injected value at construction, but must never read `process.env` itself. Secrets contained in the raw host environment are therefore not copied into `docuviaMemory`; normal Docuvia configuration continues to use the scoped memory contract above.
+
 ---
 
 ## 1. How It Works

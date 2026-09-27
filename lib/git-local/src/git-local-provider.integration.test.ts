@@ -7,7 +7,10 @@ import {
   collectDirectoryFiles,
   runFastImport,
 } from "./fast-import.js";
-import { GitLocalProvider } from "./git-local-provider.js";
+import {
+  buildGitProcessEnvironment,
+  GitLocalProvider,
+} from "./git-local-provider.js";
 import {
   HOOK_MARKER,
   HOOK_NAME,
@@ -48,6 +51,41 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     } finally {
       fs.rmSync(nonGitDir, { recursive: true, force: true });
     }
+  });
+
+  it("[happy] preserves arbitrary injected host keys, caller overrides, and stable locale precedence", () => {
+    const hostEnvironment = Object.freeze({
+      PATH: "/custom/bin",
+      HOME: "/home/tester",
+      SSH_AUTH_SOCK: "/tmp/ssh-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+      NODE_EXTRA_CA_CERTS: "/etc/company-ca.pem",
+      SECRET_TOKEN: "host-secret",
+      LC_ALL: "zh_TW.UTF-8",
+      LANG: "zh_TW.UTF-8",
+      LC_MESSAGES: "zh_TW.UTF-8",
+    });
+
+    const env = buildGitProcessEnvironment(hostEnvironment, {
+      SECRET_TOKEN: "caller-secret",
+      CUSTOM_GIT_CONTEXT: "preserved",
+      LANG: "ja_JP.UTF-8",
+    });
+
+    expect(env).toMatchObject({
+      PATH: "/custom/bin",
+      HOME: "/home/tester",
+      SSH_AUTH_SOCK: "/tmp/ssh-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+      NODE_EXTRA_CA_CERTS: "/etc/company-ca.pem",
+      SECRET_TOKEN: "caller-secret",
+      CUSTOM_GIT_CONTEXT: "preserved",
+      LC_ALL: "C",
+      LANG: "C",
+      LC_MESSAGES: "C",
+    });
+    expect(hostEnvironment.SECRET_TOKEN).toBe("host-secret");
+    expect(hostEnvironment.LANG).toBe("zh_TW.UTF-8");
   });
 
   it("branchExists / commitEmptyTree / updateBranchRef create a branch pointing at a rootless commit", async () => {
@@ -194,6 +232,93 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     expect(await provider.getRemoteUrl(tmpDir)).toBe(
       "https://example.com/repo.git",
     );
+  });
+
+  it("uses the injected host-environment snapshot even when the global environment changes later", async () => {
+    const configEnvKeys = [
+      "GIT_CONFIG_COUNT",
+      "GIT_CONFIG_KEY_0",
+      "GIT_CONFIG_VALUE_0",
+    ] as const;
+    const previousValues = new Map(
+      configEnvKeys.map((key) => [key, process.env[key]]),
+    );
+    const isolatedProvider = new GitLocalProvider({
+      ...process.env,
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "status.showUntrackedFiles",
+      GIT_CONFIG_VALUE_0: "no",
+      SSH_AUTH_SOCK: "/tmp/docuvia-test-agent.sock",
+      HTTPS_PROXY: "https://proxy.example.test",
+    });
+
+    // Mutate the ambient host only *after* construction. With the ambient value below, the
+    // untracked file is visible to `git status --porcelain`; the injected snapshot hides it.
+    // A provider that still consults global process.env at shell-out time would therefore return
+    // true from hasUncommittedChanges().
+    process.env.GIT_CONFIG_COUNT = "1";
+    process.env.GIT_CONFIG_KEY_0 = "status.showUntrackedFiles";
+    process.env.GIT_CONFIG_VALUE_0 = "all";
+    fs.writeFileSync(path.join(tmpDir, "snapshot-env-untracked.txt"), "test\n");
+
+    try {
+      expect(await isolatedProvider.hasUncommittedChanges(tmpDir)).toBe(false);
+    } finally {
+      for (const key of configEnvKeys) {
+        const previous = previousValues.get(key);
+        if (previous === undefined) delete process.env[key];
+        else process.env[key] = previous;
+      }
+    }
+  });
+
+  it("git fast-import runs with the injected host-environment snapshot, not the global environment", async () => {
+    const sourceDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-env-pack-src-"),
+    );
+    const tracePath = path.join(
+      sourceDir,
+      "..",
+      `${path.basename(sourceDir)}.trace`,
+    );
+    const previousTrace = process.env.GIT_TRACE;
+    delete process.env.GIT_TRACE;
+    try {
+      fs.writeFileSync(path.join(sourceDir, "readme.md"), "# hello\n");
+      const tracedProvider = new GitLocalProvider({
+        ...process.env,
+        GIT_TRACE: tracePath,
+      });
+
+      await tracedProvider.packDirectoryToBranch(
+        tmpDir,
+        sourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [env]",
+        undefined,
+        true,
+      );
+
+      // GIT_TRACE exists only in the injected snapshot, so only a child that received that
+      // snapshot can log itself to the trace file.
+      expect(fs.readFileSync(tracePath, "utf8")).toMatch(
+        /built-in: git fast-import/,
+      );
+    } finally {
+      if (previousTrace === undefined) delete process.env.GIT_TRACE;
+      else process.env.GIT_TRACE = previousTrace;
+      fs.rmSync(tracePath, { force: true });
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("[invalid-input] rejects a missing host-environment snapshot at construction", () => {
+    for (const missing of [undefined, null]) {
+      expect(
+        () =>
+          new GitLocalProvider(missing as unknown as Record<string, string>),
+      ).toThrow(/host environment snapshot/);
+    }
   });
 
   it("listTrackedFilesWithBlobHash / listUntrackedFiles / listModifiedFiles reflect working tree state", async () => {
@@ -561,9 +686,9 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
         "Snapshot [timeout]",
       );
 
-      await expect(runFastImport(tmpDir, fastImportData, 1)).rejects.toThrow(
-        /timed out after 1ms/,
-      );
+      await expect(
+        runFastImport(tmpDir, fastImportData, { ...process.env }, 1),
+      ).rejects.toThrow(/timed out after 1ms/);
     } finally {
       fs.rmSync(sourceDir, { recursive: true, force: true });
     }

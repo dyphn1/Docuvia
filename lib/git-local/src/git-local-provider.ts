@@ -16,6 +16,7 @@ import {
   type ChangedFileEntry,
   type ChangedFileStatus,
   type DiffLineRange,
+  type HostEnvironmentSnapshot,
   type IGitProvider,
   type WorktreeEntry,
 } from "@workspace/contracts";
@@ -44,20 +45,23 @@ const STABLE_GIT_LOCALE_ENV: Readonly<Record<string, string>> = {
   LC_MESSAGES: "C",
 };
 
-const execFileAsync = (
-  file: string,
-  args: readonly string[],
-  options: ExecFileOptions = {},
-): Promise<{ stdout: string; stderr: string }> =>
-  rawGitExecFileAsync(file, args, {
-    ...options,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      ...(options.env ?? {}),
-      ...STABLE_GIT_LOCALE_ENV,
-    },
-  });
+/**
+ * Compose the exact environment passed to a git child process.
+ *
+ * Host inheritance is injected by the Presentation composition root and snapshotted by
+ * `GitLocalProvider` at construction. Caller-specific overrides are layered second, while the
+ * stable locale is authoritative so diagnostic parsing remains deterministic on every host.
+ */
+export function buildGitProcessEnvironment(
+  hostEnvironment: HostEnvironmentSnapshot,
+  overrides: ExecFileOptions["env"] | undefined,
+): NodeJS.ProcessEnv {
+  return {
+    ...hostEnvironment,
+    ...(overrides ?? {}),
+    ...STABLE_GIT_LOCALE_ENV,
+  };
+}
 
 /** Git subcommand names (the first positional argv element after `git`) this provider shells
  *  out to. */
@@ -225,6 +229,8 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
   SHOW_COMMIT_TIMESTAMP_FAILED: "git show --format=%ct failed",
   COMMIT_TREE_MERGE_FAILED: "git commit-tree (merge) failed",
   KNOWLEDGE_LOCK_ACQUIRE_FAILED: "Failed to acquire knowledge lock",
+  HOST_ENVIRONMENT_MISSING:
+    "GitLocalProvider requires a host environment snapshot (resolve TOKENS.HostEnvironment)",
   KNOWLEDGE_LOCK_TIMED_OUT: (lockPath: string) =>
     `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`,
 } as const;
@@ -239,9 +245,37 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
  * arrays (no shell string interpolation).
  */
 export class GitLocalProvider implements IGitProvider {
+  private readonly hostEnvironment: HostEnvironmentSnapshot;
+
+  public constructor(hostEnvironment: HostEnvironmentSnapshot) {
+    // Fail at composition time: a missing snapshot would otherwise surface much later as
+    // "git not found" (no PATH) or missing git config (no HOME) on the first shell-out.
+    if (typeof hostEnvironment !== "object" || hostEnvironment === null) {
+      throw new DocuviaError(
+        ErrorCodes.INVALID_INPUT,
+        GIT_PROVIDER_ERROR_MESSAGES.HOST_ENVIRONMENT_MISSING,
+      );
+    }
+    // Copy once: later mutations of the caller-owned host environment cannot silently change the
+    // subprocess environment used by an already-created provider.
+    this.hostEnvironment = Object.freeze({ ...hostEnvironment });
+  }
+
+  private async execFileAsync(
+    file: string,
+    args: readonly string[],
+    options: ExecFileOptions = {},
+  ): Promise<{ stdout: string; stderr: string }> {
+    return rawGitExecFileAsync(file, args, {
+      ...options,
+      encoding: "utf8",
+      env: buildGitProcessEnvironment(this.hostEnvironment, options.env),
+    });
+  }
+
   private async getGitDir(cwd: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_DIR_FLAG],
         { cwd },
@@ -254,7 +288,7 @@ export class GitLocalProvider implements IGitProvider {
 
   private async getGitCommonDir(cwd: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_COMMON_DIR_FLAG],
         { cwd },
@@ -278,7 +312,7 @@ export class GitLocalProvider implements IGitProvider {
   public async resolveHooksDir(cwd: string): Promise<string> {
     let resolved: string;
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_PATH_FLAG, GIT_HOOKS_DIR_NAME],
         { cwd },
@@ -296,7 +330,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async isGitRepository(cwd: string): Promise<boolean> {
     try {
-      await execFileAsync(
+      await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.IS_INSIDE_WORK_TREE],
         { cwd },
@@ -309,7 +343,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async branchExists(cwd: string, branchName: string): Promise<boolean> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.BRANCH, GIT_ARG.LIST, branchName],
         { cwd },
@@ -326,7 +360,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async deleteBranch(cwd: string, branchName: string): Promise<void> {
     try {
-      await execFileAsync(
+      await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.BRANCH, GIT_ARG.DELETE_FORCE, branchName],
         { cwd },
@@ -342,7 +376,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async commitEmptyTree(cwd: string, message: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.COMMIT_TREE,
@@ -368,7 +402,7 @@ export class GitLocalProvider implements IGitProvider {
     commitSha: string,
   ): Promise<void> {
     try {
-      await execFileAsync(
+      await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.UPDATE_REF,
@@ -467,7 +501,7 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<Map<string, string>> {
     const blobHashes = new Map<string, string>();
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.STAGED],
         { cwd, maxBuffer: 64 * 1024 * 1024 },
@@ -490,7 +524,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async listUntrackedFiles(cwd: string): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.OTHERS, GIT_ARG.EXCLUDE_STANDARD],
         { cwd, maxBuffer: 64 * 1024 * 1024 },
@@ -510,7 +544,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async listModifiedFiles(cwd: string): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.DIFF, GIT_ARG.NAME_ONLY],
         { cwd },
@@ -530,7 +564,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async readBlobContent(cwd: string, sha: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.CAT_FILE, GIT_ARG.BLOB, sha],
         {
@@ -555,7 +589,7 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<string | undefined> {
     try {
       const posixPath = filePath.split(path.sep).join(path.posix.sep);
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.SHOW, `${ref}:${posixPath}`],
         {
@@ -585,7 +619,7 @@ export class GitLocalProvider implements IGitProvider {
       const dirPathspec = posixDirPath.endsWith("/")
         ? posixDirPath
         : `${posixDirPath}/`;
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.LS_TREE,
@@ -615,7 +649,7 @@ export class GitLocalProvider implements IGitProvider {
     try {
       // See `GIT_LOG_RECORD_SEPARATOR`/`GIT_LOG_FIELD_SEPARATOR`'s doc comment on why the log is
       // parsed on these separators rather than split on `\n`.
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.LOG,
@@ -649,7 +683,7 @@ export class GitLocalProvider implements IGitProvider {
     maxCount = 1000,
   ): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.REV_LIST,
@@ -670,7 +704,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async getRemoteUrl(cwd: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REMOTE, GIT_ARG.GET_URL, GIT_DEFAULT_REMOTE_NAME],
         { cwd },
@@ -687,7 +721,7 @@ export class GitLocalProvider implements IGitProvider {
     maxCommits = 100,
   ): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.LOG,
@@ -710,7 +744,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async hasUncommittedChanges(cwd: string): Promise<boolean> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.STATUS, GIT_ARG.PORCELAIN],
         { cwd },
@@ -757,7 +791,7 @@ export class GitLocalProvider implements IGitProvider {
         baseRef ?? GIT_HEAD_REF,
         ...(toRef ? [toRef] : []),
       ];
-      const { stdout } = await execFileAsync(GIT_BIN, diffArgs, { cwd });
+      const { stdout } = await this.execFileAsync(GIT_BIN, diffArgs, { cwd });
 
       this.collectNameStatusEntries(stdout, entries, seen);
     } catch {
@@ -863,7 +897,7 @@ export class GitLocalProvider implements IGitProvider {
       // See getChangedFilesSince()'s comment above on `--end-of-options` vs a bare `--`; here a
       // literal `--` is also needed regardless, to separate the two refs from the trailing
       // pathspec.
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.DIFF,
@@ -913,7 +947,7 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<string[]> {
     try {
       // See `getChangedFilesSince()`'s comment above on `--end-of-options` vs a bare `--`.
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.DIFF_TREE,
@@ -940,7 +974,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async getHeadSha(cwd: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_HEAD_REF],
         { cwd },
@@ -965,7 +999,7 @@ export class GitLocalProvider implements IGitProvider {
   public async listWorktrees(cwd: string): Promise<WorktreeEntry[]> {
     let stdout: string;
     try {
-      const result = await execFileAsync(
+      const result = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.WORKTREE, GIT_ARG.WORKTREE_LIST, GIT_ARG.PORCELAIN],
         { cwd },
@@ -1003,7 +1037,7 @@ export class GitLocalProvider implements IGitProvider {
     branchName: string,
   ): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.REV_PARSE,
@@ -1044,7 +1078,11 @@ export class GitLocalProvider implements IGitProvider {
         commitMessage,
         parentCommitSha,
       );
-      await runFastImport(cwd, fastImportData);
+      await runFastImport(
+        cwd,
+        fastImportData,
+        buildGitProcessEnvironment(this.hostEnvironment, undefined),
+      );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_FAST_IMPORT_FAILED,
@@ -1061,7 +1099,7 @@ export class GitLocalProvider implements IGitProvider {
     timeoutMs?: number,
   ): Promise<void> {
     try {
-      await execFileAsync(GIT_BIN, [GIT_SUBCOMMAND.FETCH, remote, ref], {
+      await this.execFileAsync(GIT_BIN, [GIT_SUBCOMMAND.FETCH, remote, ref], {
         cwd,
         ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
       });
@@ -1081,7 +1119,7 @@ export class GitLocalProvider implements IGitProvider {
   ): Promise<void> {
     try {
       const branchRef = `${GIT_BRANCH_REF_PREFIX}${branchName}`;
-      await execFileAsync(
+      await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.PUSH,
@@ -1125,7 +1163,7 @@ export class GitLocalProvider implements IGitProvider {
     ref: string,
   ): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.VERIFY, GIT_ARG.QUIET, ref],
         {
@@ -1145,7 +1183,7 @@ export class GitLocalProvider implements IGitProvider {
     descendantSha: string,
   ): Promise<boolean> {
     try {
-      await execFileAsync(
+      await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.MERGE_BASE,
@@ -1179,7 +1217,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async getTreeSha(cwd: string, commitish: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.REV_PARSE, `${commitish}${GIT_ARG.TREE_SUFFIX}`],
         { cwd },
@@ -1196,7 +1234,7 @@ export class GitLocalProvider implements IGitProvider {
 
   public async getCommitTimestamp(cwd: string, sha: string): Promise<number> {
     try {
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.SHOW,
@@ -1227,7 +1265,7 @@ export class GitLocalProvider implements IGitProvider {
         GIT_ARG.PARENT_FLAG,
         sha,
       ]);
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.COMMIT_TREE,
@@ -1239,7 +1277,6 @@ export class GitLocalProvider implements IGitProvider {
         {
           cwd,
           env: {
-            ...process.env,
             GIT_AUTHOR_NAME: DOCUVIA_GIT_IDENTITY.NAME,
             GIT_AUTHOR_EMAIL: DOCUVIA_GIT_IDENTITY.EMAIL,
             GIT_COMMITTER_NAME: DOCUVIA_GIT_IDENTITY.NAME,
@@ -1317,7 +1354,7 @@ export class GitLocalProvider implements IGitProvider {
       // pinned by execFileAsync anyway) over `-l`: the long form is for humans. Each line entry
       // reads `<sha> <origLine> <finalLine>[ <count>]`; a count N means this sha owns final
       // lines finalLine..finalLine+N-1.
-      const { stdout } = await execFileAsync(
+      const { stdout } = await this.execFileAsync(
         GIT_BIN,
         [
           GIT_SUBCOMMAND.BLAME,

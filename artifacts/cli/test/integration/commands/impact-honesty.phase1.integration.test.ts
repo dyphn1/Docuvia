@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { TestSandbox } from "../../support/sandbox.js";
 import { CORPUS_FILES, GOLDEN_CASES } from "../../support/impact-corpus.js";
 import { aggregateImpactHonesty } from "../../support/impact-eval-honesty.js";
@@ -20,6 +21,14 @@ import {
 // TDD-SOURCE: issue #508 Phase 1 negative + ambiguity adversarial corpus
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase1.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase0.md
+
+/**
+ * The corpus beforeAll runs five sequential subprocess stages (`init` + four evaluation passes,
+ * each a serial batch of spawned `docuvia impact` processes), so it gets one shared subprocess
+ * budget per stage. Measured on Windows: the file takes ~106s alone but 264s under the full
+ * parallel pre-push suite, which overran the previous flat 240s hook budget.
+ */
+const PHASE1_CORPUS_SETUP_TIMEOUT_MS = 5 * SUBPROCESS_TEST_TIMEOUT_MS;
 
 describe("Phase 1: impact benchmark negative/ambiguity adversarial corpus (#508)", () => {
   let sandbox: TestSandbox;
@@ -51,7 +60,7 @@ describe("Phase 1: impact benchmark negative/ambiguity adversarial corpus (#508)
     repeatedResults = await evaluatePhase1ImpactHonesty(sandbox, db);
     legacyResults = await evaluateLegacyImpactCorpus(sandbox, db);
     repeatedLegacyResults = await evaluateLegacyImpactCorpus(sandbox, db);
-  }, 240_000);
+  }, PHASE1_CORPUS_SETUP_TIMEOUT_MS);
 
   afterAll(() => {
     db?.close();

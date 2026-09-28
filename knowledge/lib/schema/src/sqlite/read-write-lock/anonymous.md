@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.anonymous@L68
+id: lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.anonymous
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/read-write-lock.ts
@@ -7,3 +7,4 @@ filePath: lib/schema/src/sqlite/read-write-lock.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/read-write-lock.ts`
+ts`

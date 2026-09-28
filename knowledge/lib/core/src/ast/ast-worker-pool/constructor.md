@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.constructor
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerCrashError.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/ast/ast-worker-pool.ts

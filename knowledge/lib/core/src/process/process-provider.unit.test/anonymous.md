@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/process/process-provider.unit.test.ts#anonymous@L6
+id: lib/core/src/process/process-provider.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/process/process-provider.unit.test.ts

@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/commands/impact-honesty.phase1.integrat
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/impact-honesty.phase1.integration.test.ts`
-

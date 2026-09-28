@@ -54,7 +54,7 @@ import {
 // TDD-SOURCE: docs/gitbook/guidelines/phase-based-test-quality-hardening.md
 
 /**
- * Two complete transition runs (each: ~50 checkpoints of 3-5 concurrent `impact` calls plus
+ * Two complete transition runs (each: 48 checkpoints of 3-5 concurrent `impact` calls plus
  * `status`, ~30 `analyze` runs, ~11 fresh-`init` oracles, and two 10 s knowledge-lock waits)
  * through the compiled CLI, plus one tsup build. Declared next to the Phase 2 constant pattern.
  */

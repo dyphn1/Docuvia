@@ -407,6 +407,41 @@ ignored ([#524](https://github.com/dyphn1/Docuvia/issues/524)); the Phase 2 D5
 knowledge-branch round trip stays with
 [#516](https://github.com/dyphn1/Docuvia/issues/516).
 
+### Results after the fixes
+
+Real CLI, one complete run (the two-run determinism check S12 compares a second,
+identical run). 223 Phase 0 records over 48 checkpoints; the gated corpus
+excludes the two registered checkpoints (`T10@after`, `T12@after`).
+
+| slice (gated corpus)      | cases | metric               | value |
+| ------------------------- | ----: | -------------------- | ----: |
+| positive                  |    75 | mean P / R / F1      | 1.000 |
+| negative                  |     9 | specificity          | 1.000 |
+| candidate                 |     9 | candidate coverage   | 1.000 |
+| provenance                |   186 | mismatch rate        | 0.000 |
+| epistemic                 |   114 | correct-unknown rate | 1.000 |
+| epistemic                 |   114 | false-safe rate      | 0.000 |
+| not-found                 |     4 | accuracy             | 1.000 |
+| target resolution         |   207 | wrong-target rate    | 0.000 |
+| incomplete certainty (S4) |    75 | exact with a miss    |     0 |
+
+Case accounting: 211 gated records, 0 errored; wrong-certainty = 0. One run
+takes about 50 s through the compiled CLI.
+
+### Implementation notes (differences from the plan)
+
+- T10 and T12 run last (§2.2) so the registered D10/D12 rows cannot leak into
+  later checkpoints.
+- `mustDisappear` is per target, S7/S11 run before S6, and S10 also checks the
+  golden evidence state (contract amendment before any fix, §4).
+- Q9 marks its poisoned result lower-bound, so it fails S7 for the missing
+  edge instead of S4 for a certainty claim.
+- A delete-only delta refreshes the #393 evidence through the injected
+  `GraphPersister` with an empty batch rather than a new exported core
+  function: `lib/ui-core` reaches `lib/core` only through the factory.
+- R1 did not show growth: the 7 dangling rows stayed 7 across cycles, but they
+  were never removed, which S11 treats as accumulation.
+
 ## 8. Registered product defects
 
 A registered checkpoint keeps its golden. The integration test asserts that the
@@ -419,6 +454,10 @@ the registry entry's removal.
 | `T12@after` | D12    | [#521](https://github.com/dyphn1/Docuvia/issues/521) |
 
 ## 9. Exit gate
+
+Status: every item below holds for the non-registered checkpoints. D10 and D12
+are registered with child issues #522 and #521 and their checkpoints are
+asserted to keep failing.
 
 Phase 3 is complete when S0–S13 pass on real CLI output in two clean runs for
 every non-registered checkpoint, Q1–Q10 each fail their named gate while the

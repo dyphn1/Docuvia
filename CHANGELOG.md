@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.14.2](https://github.com/dyphn1/Docuvia/compare/v1.14.1...v1.14.2) (2026-09-28)
+
+### Bug Fixes
+
+- **ci:** configure OpenCodeReview's preset openrouter provider ([4feabd9](https://github.com/dyphn1/Docuvia/commit/4feabd9e1c3f070da7cfdaba4057c993edc92d68))
+
 ## [1.14.1](https://github.com/dyphn1/Docuvia/compare/v1.14.0...v1.14.1) (2026-09-28)
 
 ### Bug Fixes

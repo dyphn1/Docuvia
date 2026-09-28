@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.anonymous
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.anonymous@L495
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker-pool.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/ast/ast-worker-pool.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/ast-worker-pool.ts`
-.ts`

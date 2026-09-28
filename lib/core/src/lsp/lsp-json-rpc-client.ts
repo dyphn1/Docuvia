@@ -1,6 +1,11 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { UTF8_ENCODING } from "@workspace/contracts";
-import { LspWireConstants, LSP_MESSAGES } from "./lsp-constants.js";
+import {
+  LspErrorCodes,
+  LspRequestRetryConstants,
+  LspWireConstants,
+  LSP_MESSAGES,
+} from "./lsp-constants.js";
 import { buildMinimalLspEnv } from "./lsp-process-env.js";
 import {
   needsWindowsShellWrapper,
@@ -36,7 +41,32 @@ interface PendingRequest {
 interface JsonRpcResponse {
   id?: number;
   result?: unknown;
-  error?: { code: number; message: string };
+  error?: { code?: number; message?: string };
+}
+
+/** Error returned by an LSP server in a rejected JSON-RPC response. The code is optional because
+ * malformed error objects must still reject safely without becoming eligible for a retry. */
+export class LspJsonRpcError extends Error {
+  constructor(
+    public readonly code: number | undefined,
+    message: string,
+  ) {
+    super(message);
+    this.name = "LspJsonRpcError";
+  }
+}
+
+const RETRIABLE_LSP_ERROR_CODES = new Set<number>([
+  LspErrorCodes.CONTENT_MODIFIED,
+  LspErrorCodes.SERVER_CANCELLED,
+]);
+
+function isRetriableLspError(error: Error): error is LspJsonRpcError {
+  return (
+    error instanceof LspJsonRpcError &&
+    error.code !== undefined &&
+    RETRIABLE_LSP_ERROR_CODES.has(error.code)
+  );
 }
 
 /** Cap on how much of the child process's stderr `onStderr` keeps around -- a bounded tail, not
@@ -149,33 +179,97 @@ export class LspJsonRpcClient {
     if (!this.child || this.stopped) {
       return Promise.reject(new Error(LSP_MESSAGES.clientNotRunning(method)));
     }
-    const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      const timer =
-        timeoutMs > 0
-          ? setTimeout(() => {
-              this.pending.delete(id);
-              reject(
-                new Error(LSP_MESSAGES.requestTimedOut(method, timeoutMs)),
-              );
-            }, timeoutMs)
-          : undefined;
-      this.pending.set(id, {
-        resolve: (value) => {
-          if (timer) clearTimeout(timer);
-          resolve(value as T);
-        },
-        reject: (err) => {
-          if (timer) clearTimeout(timer);
-          reject(err);
-        },
-      });
-      this.write({
-        jsonrpc: LspWireConstants.JSON_RPC_VERSION,
-        id,
-        method,
-        params,
-      });
+      const deadline = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
+      let attemptCount = 0;
+      let activeId: number | undefined;
+      let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+      let retryTimer: ReturnType<typeof setTimeout> | undefined;
+      let settled = false;
+
+      const clearTimers = (): void => {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+        if (retryTimer) clearTimeout(retryTimer);
+        timeoutTimer = undefined;
+        retryTimer = undefined;
+      };
+
+      const settle = (settler: () => void): void => {
+        if (settled) return;
+        settled = true;
+        clearTimers();
+        if (activeId !== undefined) this.pending.delete(activeId);
+        activeId = undefined;
+        settler();
+      };
+
+      const rejectOnTimeout = (): void => {
+        settle(() =>
+          reject(new Error(LSP_MESSAGES.requestTimedOut(method, timeoutMs))),
+        );
+      };
+
+      const sendAttempt = (): void => {
+        if (settled) return;
+        if (!this.child || this.stopped) {
+          settle(() =>
+            reject(new Error(LSP_MESSAGES.clientNotRunning(method))),
+          );
+          return;
+        }
+        if (deadline !== undefined && Date.now() >= deadline) {
+          rejectOnTimeout();
+          return;
+        }
+
+        attemptCount += 1;
+        const id = this.nextId++;
+        activeId = id;
+        this.pending.set(id, {
+          resolve: (value) => settle(() => resolve(value as T)),
+          reject: (err) => {
+            if (
+              !isRetriableLspError(err) ||
+              attemptCount >= LspRequestRetryConstants.MAX_ATTEMPTS
+            ) {
+              settle(() => reject(err));
+              return;
+            }
+
+            const remainingMs =
+              deadline === undefined ? Infinity : deadline - Date.now();
+            if (remainingMs <= 0) {
+              rejectOnTimeout();
+              return;
+            }
+
+            retryTimer = setTimeout(
+              () => {
+                retryTimer = undefined;
+                if (settled) return;
+                if (deadline !== undefined && Date.now() >= deadline) {
+                  rejectOnTimeout();
+                  return;
+                }
+                this.pending.delete(id);
+                activeId = undefined;
+                sendAttempt();
+              },
+              Math.min(LspRequestRetryConstants.BACKOFF_MS, remainingMs),
+            );
+          },
+        });
+        this.write({
+          jsonrpc: LspWireConstants.JSON_RPC_VERSION,
+          id,
+          method,
+          params,
+        });
+      };
+
+      timeoutTimer =
+        timeoutMs > 0 ? setTimeout(rejectOnTimeout, timeoutMs) : undefined;
+      sendAttempt();
     });
   }
 
@@ -292,9 +386,14 @@ export class LspJsonRpcClient {
     if (msg.id === undefined) return; // a notification/request *from* the server -- ignored
     const pending = this.pending.get(msg.id);
     if (!pending) return;
-    this.pending.delete(msg.id);
-    if (msg.error) pending.reject(new Error(msg.error.message));
-    else pending.resolve(msg.result);
+    if (msg.error) {
+      pending.reject(
+        new LspJsonRpcError(
+          typeof msg.error.code === "number" ? msg.error.code : undefined,
+          msg.error.message ?? "",
+        ),
+      );
+    } else pending.resolve(msg.result);
   }
 
   /** Keeps only the last `STDERR_TAIL_MAX_CHARS` characters seen so far -- see that constant's

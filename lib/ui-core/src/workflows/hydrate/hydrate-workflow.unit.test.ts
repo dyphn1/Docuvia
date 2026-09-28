@@ -55,6 +55,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      getExternalIncomingLinks: vi.fn().mockReturnValue([]),
       withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {

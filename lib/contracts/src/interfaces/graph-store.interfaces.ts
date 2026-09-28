@@ -289,8 +289,37 @@ export interface L2NodeWithL3Children {
   l3Nodes: L3NodeRow[];
 }
 
+/**
+ * Issue #508 Phase 3 (D9): one incoming `node_links` row into a node of a file being re-parsed,
+ * whose source node lives in a file *outside* the re-parse batch. Keyed by the target's STOR-005
+ * `node_key` (not its rowid, which the per-file replace reassigns) so Tier A can re-attach it.
+ */
+export interface ExternalIncomingLink {
+  sourceNodeId: number;
+  targetNodeKey: string;
+  linkType: string;
+}
+
 export interface IGraphNodesRepo {
+  /**
+   * Deletes every `l2_nodes` row for `filePath` together with its `l2_node_l1_tags` rows and
+   * every `node_links` row that touches a deleted id -- outgoing *and* incoming (#508 Phase 3
+   * D9), so the delete never leaves a dangling row behind. A caller that re-parses the file and
+   * wants to keep incoming edges from unchanged files captures them first with
+   * `getExternalIncomingLinks` and re-attaches them by `node_key` after the re-insert (Tier A's
+   * per-file replace, PLAT-007). Returns the deleted node ids.
+   */
   deleteNodesForPath(filePath: string): number[];
+  /**
+   * Issue #508 Phase 3 (D9): incoming `node_links` rows (`contains` excluded) into the nodes of
+   * `filePaths` whose source node belongs to a file outside `filePaths`, deduplicated. Target
+   * nodes are found through the `node_key` index (`<path>` and `<path>#...`) and sources through
+   * `node_links.target_node_id`'s index -- no full scan of `l2_nodes`, so it is safe per re-parse
+   * batch at 100k+ nodes. Rows with no `node_key` (pre-STOR-005) are not returned.
+   */
+  getExternalIncomingLinks(
+    filePaths: readonly string[],
+  ): ExternalIncomingLink[];
   insertNode(input: {
     projectId: number;
     name: string;
@@ -406,13 +435,13 @@ export interface IGraphNodesRepo {
   }): { nodesLoaded: number; edgesLoaded: number; edgesDropped: number };
   /**
    * Deletes `node_links` rows whose `source_node_id` or `target_node_id` no longer references an
-   * existing `l2_nodes` row — hygiene for the dangling rows `deleteNodesForPath` leaves behind
-   * (it only deletes a deleted node's *outgoing* links; a still-live node's *incoming* link into
-   * the now-gone id is left pointing nowhere). This is the "repair" half of the Tier B batch's
-   * incoming-edge fix (phase1-decision-integration.md §8d, PLAT-007 Tier B): stale rows are
-   * pruned here, and correct replacements are re-derived by the LSP reference pass, keyed fresh
-   * by `node_key` (`findNodeIdByNodeKey`) rather than recovered from the pruned rows themselves.
-   * Returns the number of rows removed.
+   * existing `l2_nodes` row. Until #508 Phase 3 (D9) `deleteNodesForPath` deleted only a node's
+   * *outgoing* links, leaving every still-live node's *incoming* link into the gone id pointing
+   * nowhere; it now deletes both directions and Tier A re-attaches external incoming edges by
+   * `node_key`, so no current path creates such rows. This remains the Tier B batch's hygiene
+   * pass (phase1-decision-integration.md §8d, PLAT-007 Tier B) for databases written before that
+   * fix; LSP-precision replacements are still re-derived by the reference pass, keyed fresh by
+   * `node_key` (`findNodeIdByNodeKey`). Returns the number of rows removed.
    */
   pruneOrphanedLinks(): number;
   /**

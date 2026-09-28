@@ -1,4 +1,5 @@
 import {
+  type ExternalIncomingLink,
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
@@ -108,6 +109,13 @@ export class GraphPersisterService implements IGraphPersister {
       const resolver = new ScopeResolver(workspaceRoot);
       this.registerResolverFiles(resolver, parsedResults);
 
+      // #508 Phase 3 D9: incoming edges from files outside this batch point at node ids the
+      // per-file replace below is about to delete. Capture them by node_key first and re-attach
+      // them after the re-insert, or every unchanged dependent of a re-parsed file is lost.
+      const externalIncoming = store.graph.getExternalIncomingLinks(
+        parsedResults.map((result) => result.file),
+      );
+
       const fileIdMap = new Map<string, number>();
       // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
       // actual function/class node instead of collapsing to a file-to-file edge.
@@ -142,6 +150,7 @@ export class GraphPersisterService implements IGraphPersister {
         symbolIdMap,
         callResolutionByFile,
       );
+      this.reattachExternalIncomingLinks(store, externalIncoming);
 
       const files = Object.keys(callResolutionByFile);
       const callResolution =
@@ -151,6 +160,27 @@ export class GraphPersisterService implements IGraphPersister {
 
       return { updatedCount, callResolution, callResolutionByFile };
     });
+  }
+
+  /**
+   * Issue #508 Phase 3 (D9): re-attaches incoming edges from files outside the batch to the
+   * re-inserted nodes by `node_key` (the identity PLAT-007 already relies on for Tier B). A key
+   * that no longer resolves means the symbol was removed or renamed, so its edge is correctly
+   * dropped. Sources are outside the batch, so the linking pass never inserted the same edge.
+   */
+  private reattachExternalIncomingLinks(
+    store: IGraphStore,
+    links: readonly ExternalIncomingLink[],
+  ): void {
+    for (const link of links) {
+      const targetNodeId = store.graph.findNodeIdByNodeKey(link.targetNodeKey);
+      if (targetNodeId === undefined) continue;
+      store.graph.insertLink({
+        sourceNodeId: link.sourceNodeId,
+        targetNodeId,
+        linkType: link.linkType,
+      });
+    }
   }
 
   /** Registers every parsed file's imports/locals with the resolver up front, so cross-file
@@ -192,8 +222,9 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
   ): void {
     for (const result of parsedResults) {
-      // Delete any stale nodes (and their outgoing links/tag-links) for this path so a
-      // re-parsed file's old graph state doesn't linger.
+      // Delete any stale nodes (and their links, both directions, and tag-links) for this path
+      // so a re-parsed file's old graph state doesn't linger. External incoming edges were
+      // captured by node_key in persistLocked and are re-attached after linking (#508 D9).
       store.graph.deleteNodesForPath(result.file);
 
       // Same delete-then-reinsert-on-reparse symmetry as l2_nodes above, for the raw call-site

@@ -126,6 +126,7 @@ export type {
   IProjectFilesRepo,
   ITagsRepo,
   IGraphNodesRepo,
+  ExternalIncomingLink,
   IL3NodesRepo,
   IFtsRepo,
   IMetaRepo,

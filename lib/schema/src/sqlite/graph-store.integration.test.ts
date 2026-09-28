@@ -953,7 +953,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.graph.findNodeIdByNodeKey("src/missing.ts")).toBeUndefined();
   });
 
-  it("graph repo: pruneOrphanedLinks() removes node_links rows left dangling by deleteNodesForPath's outgoing-only delete (§8d incoming-edge repair hygiene)", () => {
+  it("graph repo: pruneOrphanedLinks() removes dangling node_links rows left by databases written before #508 D9 (§8d incoming-edge repair hygiene)", () => {
     const project = store.projects.insert({
       name: "demo",
       repoUrl: "file:///demo",
@@ -964,28 +964,115 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       pathPatterns: ["src/caller.ts"],
       nodeKey: "src/caller.ts#caller",
     });
-    const calleeId = store.graph.insertNode({
-      projectId: project.id,
-      name: "callee",
-      pathPatterns: ["src/callee.ts"],
-      nodeKey: "src/callee.ts#callee",
-    });
+    // A pre-D9 per-file replace left the caller's incoming link pointing at a deleted id; no
+    // current path produces this row, so it is written directly as legacy state.
     store.graph.insertLink({
       sourceNodeId: callerId,
-      targetNodeId: calleeId,
+      targetNodeId: callerId + 1000,
       linkType: "calls",
     });
-
-    // Simulates Tier A's per-file replace of src/callee.ts: deleteNodesForPath only removes
-    // *outgoing* links from the deleted node, leaving the caller's incoming link dangling
-    // (target_node_id now references a row that no longer exists).
-    store.graph.deleteNodesForPath("src/callee.ts");
     expect(store.graph.getAllLinks()).toHaveLength(1);
 
     const pruned = store.graph.pruneOrphanedLinks();
 
     expect(pruned).toBe(1);
     expect(store.graph.getAllLinks()).toHaveLength(0);
+  });
+
+  describe("#508 Phase 3 D9: incoming edges across a per-file replace", () => {
+    // TDD-SOURCE: issue #508 Phase 3 staleness and graph state-transition robustness (D9)
+    // TDD-SOURCE: docs/gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md
+    function seed() {
+      const projectId = store.projects.insert({
+        name: "demo",
+        repoUrl: "file:///demo",
+      }).id;
+      const node = (path: string, name: string, nodeKey?: string) =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          pathPatterns: [path],
+          ...(nodeKey ? { nodeKey } : {}),
+        });
+      const ids = {
+        targetFile: node("src/a.ts", "src/a.ts"),
+        target: node("src/a.ts", "evalTarget"),
+        base: node("src/a.ts", "EvalBase"),
+        prefixTwin: node("src/a.tsx", "evalTwin"),
+        caller: node("src/b.ts", "evalCaller"),
+        sub: node("src/c.ts", "EvalSub"),
+        barrel: node("src/barrel.ts", "src/barrel.ts"),
+        sibling: node("src/a2.ts", "evalSibling"),
+      };
+      const link = (source: number, target: number, linkType: string) =>
+        store.graph.insertLink({
+          sourceNodeId: source,
+          targetNodeId: target,
+          linkType,
+        });
+      link(ids.targetFile, ids.target, "contains");
+      link(ids.targetFile, ids.base, "contains");
+      link(ids.caller, ids.target, "calls");
+      link(ids.caller, ids.target, "calls"); // duplicate row: returned once
+      link(ids.sub, ids.base, "extends");
+      link(ids.barrel, ids.target, "depends_on");
+      link(ids.sibling, ids.target, "calls"); // src/a2.ts is part of the batch below
+      link(ids.caller, ids.prefixTwin, "calls"); // src/a.tsx is not src/a.ts
+      return ids;
+    }
+
+    it("[happy] getExternalIncomingLinks returns external incoming edges by node_key, deduplicated, without contains", () => {
+      const ids = seed();
+      const links = store.graph.getExternalIncomingLinks(["src/a.ts"]);
+      expect(
+        links
+          .map((l) => `${l.sourceNodeId}>${l.targetNodeKey}:${l.linkType}`)
+          .sort(),
+      ).toEqual(
+        [
+          `${ids.barrel}>src/a.ts#evalTarget:depends_on`,
+          `${ids.caller}>src/a.ts#evalTarget:calls`,
+          `${ids.sibling}>src/a.ts#evalTarget:calls`,
+          `${ids.sub}>src/a.ts#EvalBase:extends`,
+        ].sort(),
+      );
+    });
+
+    it("[state-diff] sources inside the re-parse batch are excluded (the linking pass re-derives them)", () => {
+      const ids = seed();
+      const links = store.graph.getExternalIncomingLinks([
+        "src/a.ts",
+        "src/a2.ts",
+      ]);
+      expect(links.map((l) => l.sourceNodeId)).not.toContain(ids.sibling);
+      expect(links).toHaveLength(3);
+    });
+
+    it("[invalid-input] an empty batch or a path with no nodes returns no links", () => {
+      seed();
+      expect(store.graph.getExternalIncomingLinks([])).toEqual([]);
+      expect(store.graph.getExternalIncomingLinks(["src/missing.ts"])).toEqual(
+        [],
+      );
+    });
+
+    it("[state-diff] deleteNodesForPath removes incoming links too, so no dangling row is left", () => {
+      const ids = seed();
+      const before = store.graph.getAllLinks().length;
+      store.graph.deleteNodesForPath("src/a.ts");
+      const nodeIds = new Set(store.graph.getAllNodes().map((n) => n.id));
+      const remaining = store.graph.getAllLinks();
+      expect(
+        remaining.filter(
+          (l) =>
+            !nodeIds.has(l.source_node_id) || !nodeIds.has(l.target_node_id),
+        ),
+      ).toEqual([]);
+      // 2 contains + 2 caller calls + extends + depends_on + sibling calls were touching src/a.ts.
+      expect(remaining).toHaveLength(before - 7);
+      expect(remaining.map((l) => l.target_node_id)).toEqual([ids.prefixTwin]);
+      expect(store.graph.pruneOrphanedLinks()).toBe(0);
+    });
   });
 
   it("l3 repo: upsertDecision() inserts a new row with full provenance on the first call", () => {

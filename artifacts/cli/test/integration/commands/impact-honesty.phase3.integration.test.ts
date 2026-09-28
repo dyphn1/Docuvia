@@ -200,31 +200,24 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
-  it.fails(
-    "[state-diff] a re-parse keeps incoming edges from unchanged files: T2-T4 exact and static, no dangling rows, no accumulation (#508 D9)",
-    () => {
-      expect(gatesFor(merged, ["T2@after", "T3@after", "T4@after"])).toEqual(
-        [],
-      );
-      for (const id of INGESTED_IDS.filter(
-        (i) => !(i in PHASE3_KNOWN_PRODUCT_DEFECTS),
-      )) {
-        const observation = first.observations.find(
-          (o) => o.checkpointId === id,
-        );
-        expect({ id, dangling: observation?.facts.dangling }).toEqual({
-          id,
-          dangling: 0,
-        });
-      }
-      expect(
-        gatesFor(merged, R1_AFTER_IDS).filter((v) => v.gate === "S11"),
-      ).toEqual([]);
-      expect(incompleteCertaintyRecords(subset(merged, ["T3@after"]))).toEqual(
-        [],
-      );
-    },
-  );
+  it("[state-diff] a re-parse keeps incoming edges from unchanged files: T2-T4 exact and static, no dangling rows, no accumulation (#508 D9)", () => {
+    expect(gatesFor(merged, ["T2@after", "T3@after", "T4@after"])).toEqual([]);
+    for (const id of INGESTED_IDS.filter(
+      (i) => !(i in PHASE3_KNOWN_PRODUCT_DEFECTS),
+    )) {
+      const observation = first.observations.find((o) => o.checkpointId === id);
+      expect({ id, dangling: observation?.facts.dangling }).toEqual({
+        id,
+        dangling: 0,
+      });
+    }
+    expect(
+      gatesFor(merged, R1_AFTER_IDS).filter((v) => v.gate === "S11"),
+    ).toEqual([]);
+    expect(incompleteCertaintyRecords(subset(merged, ["T3@after"]))).toEqual(
+      [],
+    );
+  });
 
   it.fails(
     "[state-diff] deleted and renamed files leave no per-path rows or edges behind (T5, T6, T7) (#508 D11)",
@@ -407,21 +400,18 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     expect(phase3DeterminismViolations(first, second)).toEqual([]);
   });
 
-  it.fails(
-    "[negative-control] Q1: a removed dependent that survives re-ingest fails stale edge (masked by #508 D9)",
-    () => {
-      const observations = poisonPhase3Target(
-        first.observations,
-        "T6@after",
-        T.TARGET,
-        poisonAddDependent("evalP3CallerA"),
-        { evalP3CallerA: [F.CALLER_A] },
-      );
-      expect(poisoned(first, observations, "T6@after", T.TARGET)).toThrow(
-        /stale edge/,
-      );
-    },
-  );
+  it("[negative-control] Q1: a removed dependent that survives re-ingest fails stale edge (masked by #508 D9)", () => {
+    const observations = poisonPhase3Target(
+      first.observations,
+      "T6@after",
+      T.TARGET,
+      poisonAddDependent("evalP3CallerA"),
+      { evalP3CallerA: [F.CALLER_A] },
+    );
+    expect(poisoned(first, observations, "T6@after", T.TARGET)).toThrow(
+      /stale edge/,
+    );
+  });
 
   it("[negative-control] Q2: a stale graph reported fresh and empty fails false-safe", () => {
     const observations = poisonPhase3Target(
@@ -476,19 +466,16 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
-  it.fails(
-    "[negative-control] Q6: a phantom store record fails stale record (masked by #508 D9)",
-    () => {
-      const observations = poisonPhase3Observation(
-        first.observations,
-        "T6@after",
-        poisonPhantomRecord(F.CALLER_A),
-      );
-      expect(poisoned(first, observations, "T6@after", T.TARGET)).toThrow(
-        /stale record/,
-      );
-    },
-  );
+  it("[negative-control] Q6: a phantom store record fails stale record (masked by #508 D9)", () => {
+    const observations = poisonPhase3Observation(
+      first.observations,
+      "T6@after",
+      poisonPhantomRecord(F.CALLER_A),
+    );
+    expect(poisoned(first, observations, "T6@after", T.TARGET)).toThrow(
+      /stale record/,
+    );
+  });
 
   it("[negative-control] Q7: one byte of raw stdout differing in run 2 fails determinism", () => {
     const observations = poisonPhase3Observation(

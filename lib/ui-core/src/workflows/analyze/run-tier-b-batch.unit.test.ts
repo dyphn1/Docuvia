@@ -113,6 +113,7 @@ function makeStore(
         });
       },
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      getExternalIncomingLinks: vi.fn().mockReturnValue([]),
     },
     withWriteLock: async (fn: () => unknown) => fn(),
     withTransaction: (fn: () => unknown) => fn(),

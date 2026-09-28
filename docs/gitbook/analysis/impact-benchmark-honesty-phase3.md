@@ -368,6 +368,18 @@ committed as `it.fails` → implementation → flip).
   already prints `riskNote`, and the MCP `docuvia_impact` description mentions
   `graphFreshness`.
 
+- **D9 — fixed (Q2: correctness).** `IGraphNodesRepo.getExternalIncomingLinks(filePaths)`
+  returns incoming links (`contains` excluded) into a batch's nodes whose source
+  lives outside the batch, found through the `node_key` index and
+  `node_links.target_node_id`'s index (no `l2_nodes` scan). `GraphPersisterService`
+  captures them before the per-file replace and re-inserts each one whose
+  `node_key` still resolves after the insert and linking passes, in the same
+  transaction; an edge into a removed or renamed symbol is dropped.
+  `deleteNodesForPath` now deletes incoming links too (its interface doc is
+  updated), so no dangling row remains. PLAT-007 carries a dated update. The
+  schema test that simulated a dangling row through `deleteNodesForPath`
+  encoded the defect and now writes the legacy row directly.
+
 Observations, not gated: **O1** dirty working tree (#523); **H2** Docuvia's own
 generated hook scripts are ingested by the full-ingestion fallback when not
 ignored ([#524](https://github.com/dyphn1/Docuvia/issues/524)); the Phase 2 D5

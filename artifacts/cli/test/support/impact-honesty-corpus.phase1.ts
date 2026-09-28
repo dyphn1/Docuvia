@@ -278,7 +278,7 @@ function nodePathsByName(db: Database.Database, name: string): string[] {
   ].sort();
 }
 
-function inferObservedTarget(
+export function inferObservedTarget(
   db: Database.Database,
   target: string,
   impact: ImpactJsonResult,
@@ -310,7 +310,7 @@ function inferObservedTarget(
   return matched[0];
 }
 
-function mapEvidenceChannel(
+export function mapEvidenceChannel(
   edgeSource: string | undefined,
 ): ImpactHonestyEvidenceChannel {
   if (edgeSource === undefined) return "static";
@@ -320,7 +320,7 @@ function mapEvidenceChannel(
   throw new Error(`unknown impact edgeSource: ${edgeSource}`);
 }
 
-function dependencyPredictions(
+export function dependencyPredictions(
   db: Database.Database,
   impact: ImpactJsonResult,
   targetFilePath: string,

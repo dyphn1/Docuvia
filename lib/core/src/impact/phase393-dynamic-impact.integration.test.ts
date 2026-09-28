@@ -13,6 +13,8 @@ import { ImpactService } from "./phase393-impact.service.js";
 import { readDynamicDependencyEvidence } from "./dynamic-dependency-evidence.js";
 
 // TDD-SOURCE: https://github.com/dyphn1/Docuvia/issues/393
+// TDD-SOURCE: issue #508 Phase 2 (D1 corrupt evidence, D2 stale universe, D3 NodeNext specifiers)
+// TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase2.md
 
 describe("issue #393 dynamic dependency evidence", () => {
   let tmpDir: string;
@@ -363,4 +365,209 @@ describe("issue #393 dynamic dependency evidence", () => {
       }),
     ]);
   });
+
+  function writePluginFamily(dir: string, count: number): string[] {
+    const files = Array.from(
+      { length: count },
+      (_, index) => `${dir}/plugin-${String(index).padStart(2, "0")}.ts`,
+    );
+    for (const file of files) {
+      write(file, `export const plugin = ${JSON.stringify(file)};\n`);
+    }
+    return files;
+  }
+
+  function writeTemplateLoader(sourceFile: string, suffix = ""): void {
+    write(
+      sourceFile,
+      [
+        "export async function loadPlugin(pluginName: string) {",
+        `  return import(\`./plugins/\${pluginName}${suffix}\`);`,
+        "}",
+        "",
+      ].join("\n"),
+    );
+  }
+
+  const loaderParse = (sourceFile: string) =>
+    parsed(sourceFile, {
+      functions: [{ name: "loadPlugin", startLine: 0, endLine: 2 }],
+    });
+
+  it("[stress] sends a 65-candidate local pattern down the overflow path, never a truncated bounded set", async () => {
+    const sourceFile = "src/plugin-loader.ts";
+    const candidateFiles = writePluginFamily("src/plugins", 65);
+    writeTemplateLoader(sourceFile);
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        ...candidateFiles.map((file) => parsed(file)),
+        loaderParse(sourceFile),
+      ],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile,
+        status: DynamicDependencyStatuses.UNRESOLVED,
+        candidatePaths: [],
+        reason: "candidate-set-exceeds-64",
+      }),
+    ]);
+  });
+
+  // #508 D2: red until the product fix lands; that commit flips it.fails -> it.
+  it.fails(
+    "[state-diff] re-resolves retained evidence when a candidate joins without the loader being re-parsed (#508 D2)",
+    async () => {
+      const sourceFile = "src/plugin-loader.ts";
+      const alpha = "src/plugins/alpha.ts";
+      const gamma = "src/plugins/gamma.ts";
+      write(alpha, "export function alphaPlugin() {}\n");
+      writeTemplateLoader(sourceFile);
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          parsed(alpha, {
+            functions: [{ name: "alphaPlugin", startLine: 0, endLine: 0 }],
+          }),
+          loaderParse(sourceFile),
+        ],
+        tags: [],
+      });
+
+      write(gamma, "export function gammaPlugin() {}\n");
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          parsed(gamma, {
+            functions: [{ name: "gammaPlugin", startLine: 0, endLine: 0 }],
+          }),
+        ],
+        tags: [],
+      });
+
+      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+        expect.objectContaining({
+          sourceFile,
+          status: DynamicDependencyStatuses.BOUNDED,
+          candidatePaths: [alpha, gamma],
+        }),
+      ]);
+      expect(dynamicCandidates("gammaPlugin")).toEqual([
+        expect.objectContaining({ name: sourceFile }),
+      ]);
+    },
+  );
+
+  // #508 D2: red until the product fix lands; that commit flips it.fails -> it.
+  it.fails(
+    "[state-diff] incremental growth from 64 to 65 candidates moves retained evidence to overflow (#508 D2)",
+    async () => {
+      const sourceFile = "src/plugin-loader.ts";
+      const initial = writePluginFamily("src/plugins", 64);
+      writeTemplateLoader(sourceFile);
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          ...initial.map((file) => parsed(file)),
+          loaderParse(sourceFile),
+        ],
+        tags: [],
+      });
+      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+        expect.objectContaining({ candidatePaths: initial }),
+      ]);
+
+      const extra = "src/plugins/plugin-64.ts";
+      write(extra, "export const plugin = 64;\n");
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [parsed(extra)],
+        tags: [],
+      });
+
+      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+        expect.objectContaining({
+          sourceFile,
+          status: DynamicDependencyStatuses.UNRESOLVED,
+          candidatePaths: [],
+          reason: "candidate-set-exceeds-64",
+        }),
+      ]);
+    },
+  );
+
+  // #508 D3: red until the product fix lands; that commit flips it.fails -> it.
+  it.fails(
+    "[happy] binds NodeNext `.js` template and literal specifiers to .ts sources (#508 D3)",
+    async () => {
+      const templateLoader = "src/plugin-loader.ts";
+      const literalLoader = "src/literal-loader.ts";
+      const target = "src/plugins/one.ts";
+      const mjsTarget = "src/plugins/two.mts";
+      write(target, "export function onePlugin() {}\n");
+      write(mjsTarget, "export function twoPlugin() {}\n");
+      writeTemplateLoader(templateLoader, ".js");
+      write(
+        literalLoader,
+        [
+          "export async function loadTwo() {",
+          '  return import("./plugins/two.mjs");',
+          "}",
+          "",
+        ].join("\n"),
+      );
+
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          parsed(target, {
+            functions: [{ name: "onePlugin", startLine: 0, endLine: 0 }],
+          }),
+          parsed(mjsTarget, {
+            functions: [{ name: "twoPlugin", startLine: 0, endLine: 0 }],
+          }),
+          loaderParse(templateLoader),
+          parsed(literalLoader, {
+            functions: [{ name: "loadTwo", startLine: 0, endLine: 2 }],
+          }),
+        ],
+        tags: [],
+      });
+
+      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+        expect.objectContaining({
+          sourceFile: literalLoader,
+          status: DynamicDependencyStatuses.BOUNDED,
+          candidatePaths: [mjsTarget],
+          reason: "literal-dynamic-import",
+        }),
+        expect.objectContaining({
+          sourceFile: templateLoader,
+          status: DynamicDependencyStatuses.BOUNDED,
+          // `.js` is the runtime spelling of .ts/.tsx/.js/.jsx only -- never of .mts.
+          candidatePaths: [target],
+          reason: "bounded-local-pattern",
+        }),
+      ]);
+      expect(dynamicCandidates("onePlugin")).toEqual([
+        expect.objectContaining({ name: templateLoader }),
+      ]);
+    },
+  );
 });

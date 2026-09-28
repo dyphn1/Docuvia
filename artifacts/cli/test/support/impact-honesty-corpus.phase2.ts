@@ -224,7 +224,7 @@ export const PHASE2_OUTPUT_FORMATS = {
 export type Phase2OutputFormat =
   (typeof PHASE2_OUTPUT_FORMATS)[keyof typeof PHASE2_OUTPUT_FORMATS];
 
-function parseImpactJson(
+export function parseImpactJson(
   stdout: string,
 ): Pick<RawImpactRun, "json" | "parseError"> {
   try {
@@ -731,7 +731,7 @@ function parsePathPatterns(raw: string | null): string[] {
 }
 
 /** Same `l2_nodes.path_patterns` lookup as Phase 1's `dependencyPredictions`. */
-function entryFilesFor(
+export function entryFilesFor(
   db: Database.Database,
   names: readonly string[],
 ): Record<string, string[]> {

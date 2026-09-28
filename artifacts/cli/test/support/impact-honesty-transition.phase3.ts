@@ -1212,7 +1212,13 @@ function gatePositiveAndProvenance(
     violations.push(
       violation(
         "S10",
-        mismatched.map((record) => checkpointOf(record.scenario)),
+        evaluation.records
+          .filter(
+            (record) =>
+              record.provenance.mismatches > 0 ||
+              record.provenance.checked < record.expectedPredictions.length,
+          )
+          .map((record) => checkpointOf(record.scenario)),
         `provenance mismatches ${aggregate.provenance.mismatches}, checked ${aggregate.provenance.checked} of declared ${declared}`,
       ),
     );

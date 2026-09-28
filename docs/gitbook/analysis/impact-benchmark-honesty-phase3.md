@@ -329,6 +329,29 @@ recorded from the corpus before any product change.
 | **D10** | A dependent that grows past `MAX_FILE_SIZE_BYTES` in a delta is skipped, but its old rows and edges stay while `lastIngestedSourceSha` moves to HEAD.                                                                                                           | T10                          | #522 |
 | **D12** | The full-ingestion fallback (HEAD rewound, `delta.head_not_descendant`) hash-skips files over lingering `project_files` rows and never prunes vanished paths: phantom and missing dependents, reported exact.                                                   | T12                          | #521 |
 
+### Verdicts (real CLI, before any product change)
+
+Recorded by running the corpus against the compiled CLI at `143ff12e` plus the
+Phase 3 harness only. No golden was altered by the run.
+
+| ID      | Verdict       | Evidence (checkpoint: observation)                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D8**  | **Confirmed** | Every before/failed/inflight checkpoint (T1…T12, F1, I1, R1b, R1c\*, C1): impact had no freshness field and non-empty targets were **exact** (S3 wrong-certainty, 3 per checkpoint) while `status` read `stale`. `evalP3CtrlTarget` could never be observed stale (S13).                                                                                                                                                                                                                     |
+| **D9**  | **Confirmed** | T2: 7 dangling `node_links`; `EvalP3Base` lost both subclasses (UNKNOWN), `evalP3Target` callers fell back to `lsp-fallback` (5 provenance mismatches). T3: `EvalP3Base` **exact** with only `sub2.ts` (S4). T5 (stronger than predicted): after the rename, `evalP3Target` was **exact** with only `caller-b-renamed.ts`, silently missing `caller-c.ts` and `grow.ts` (S4). R1: every step kept 7 dangling rows (S11); the count did not grow across cycles, but the rows never went away. |
+| **D11** | **Confirmed** | T5: `ast_call_sites` and `project_files` rows for `caller-b.ts` survive (R3, R4); T6: likewise for `caller-a.ts`; T7: the `project_files` row for `core/target.ts` survives (R4).                                                                                                                                                                                                                                                                                                            |
+| **D6**  | **Confirmed** | T8: `beta.ts` still in the loader's `candidatePaths` (S5, R5). T9: the deleted loader's evidence record remains and `loader.ts` is still surfaced as a `dynamic-candidate` of `evalP3Alpha` (S5, R4, R5).                                                                                                                                                                                                                                                                                    |
+| **D10** | **Confirmed** | T10: after `grow.ts` grew past 512,000 bytes (`delta.summary.filesSkippedOversized = 1`), its `l2_nodes` and `ast_call_sites` rows remain (R2, R3) while `lastIngestedSourceSha` moved to HEAD.                                                                                                                                                                                                                                                                                              |
+| **D12** | **Confirmed** | T12 (`analyze.delta.head_not_descendant` emitted): phantom `core/target-moved.ts` nodes and a phantom `caller-f.ts` dependent (S5, R2), `grow.ts` and the restored `loader.ts` candidate missing (S7, S10), oracle mismatch for every changed target.                                                                                                                                                                                                                                        |
+
+Unaffected before any fix: T0 (baseline equals the oracle), T1 `afterTierA`
+(partial coverage through the product's own Tier B state), T1 `after`, the T11
+`not-found` result, F1's operation facts (exit 1 with `analyze.auto.error`, meta
+sha unchanged), I1's in-flight graph, the concurrent-read `[stress]` pass, C1's
+two concurrent `analyze` runs (both exit 0), and S12 determinism across two
+clean runs. Q1 and Q6 cannot be demonstrated on the real corpus while D9 holds:
+the poisoned `T6@after` target already fails S4, so their tests are tagged as
+masked by D9.
+
 Observations, not gated: **O1** dirty working tree (#523); **H2** Docuvia's own
 generated hook scripts are ingested by the full-ingestion fallback when not
 ignored ([#524](https://github.com/dyphn1/Docuvia/issues/524)); the Phase 2 D5

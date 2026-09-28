@@ -2,6 +2,16 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.14.3](https://github.com/dyphn1/Docuvia/compare/v1.14.2...v1.14.3) (2026-09-28)
+
+### Bug Fixes
+
+- **core:** keep dynamic evidence unavailable after an incomplete scan ([#508](https://github.com/dyphn1/Docuvia/issues/508)) ([3fca348](https://github.com/dyphn1/Docuvia/commit/3fca348fe032d1a4b48751d475ae02155642bafb)), closes [#520](https://github.com/dyphn1/Docuvia/issues/520)
+- **core:** match NodeNext runtime extensions in dynamic import patterns ([#508](https://github.com/dyphn1/Docuvia/issues/508) D3) ([ff36843](https://github.com/dyphn1/Docuvia/commit/ff368438eee412498d9611e47dfbd03290a02ae4))
+- **core:** re-resolve retained dynamic evidence against the current file universe ([#508](https://github.com/dyphn1/Docuvia/issues/508) D2) ([e9578a0](https://github.com/dyphn1/Docuvia/commit/e9578a0ef9f3df82de56dacc972eef9bfa5be932))
+- **core:** report unreadable dynamic evidence as unavailable, never as none ([#508](https://github.com/dyphn1/Docuvia/issues/508) D1, D5) ([0c8f500](https://github.com/dyphn1/Docuvia/commit/0c8f50070f95dad0b32caf3c7dfc92abb764c531)), closes [#393](https://github.com/dyphn1/Docuvia/issues/393)
+- **ui-core:** do not count a symbol's own file as a dependent in the epistemic verdict ([#508](https://github.com/dyphn1/Docuvia/issues/508) D7) ([53beaa4](https://github.com/dyphn1/Docuvia/commit/53beaa4def6a50a37d23a6d296326259eeb2af7a))
+
 ## [1.14.2](https://github.com/dyphn1/Docuvia/compare/v1.14.1...v1.14.2) (2026-09-28)
 
 ### Bug Fixes

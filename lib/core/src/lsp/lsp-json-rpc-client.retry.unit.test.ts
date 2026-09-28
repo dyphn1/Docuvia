@@ -82,6 +82,7 @@ class FakeLspServer {
 function createFakeClient(responseHandler: FakeResponseHandler): {
   client: LspJsonRpcClient;
   server: FakeLspServer;
+  child: EventEmitter;
 } {
   const input = new PassThrough();
   const output = new PassThrough();
@@ -100,12 +101,18 @@ function createFakeClient(responseHandler: FakeResponseHandler): {
     child: ChildProcessWithoutNullStreams | undefined;
     stopped: boolean;
     onData: (chunk: Buffer) => void;
+    onExit: (code: number | null) => void;
   };
   internals.child = child;
   internals.stopped = false;
   output.on("data", (chunk: Buffer) => internals.onData.call(client, chunk));
+  child.on("exit", (code) => internals.onExit.call(client, code));
 
-  return { client, server: new FakeLspServer(input, output, responseHandler) };
+  return {
+    client,
+    server: new FakeLspServer(input, output, responseHandler),
+    child,
+  };
 }
 
 afterEach(() => {
@@ -185,6 +192,52 @@ describe("LspJsonRpcClient transient JSON-RPC errors", () => {
       await client.stop();
     }
   });
+
+  it.each([
+    ["ContentModified", LspErrorCodes.CONTENT_MODIFIED],
+    ["ServerCancelled", LspErrorCodes.SERVER_CANCELLED],
+  ])(
+    "[error-handling] rejects %s with server-exited error during retry backoff",
+    async (errorName, errorCode) => {
+      vi.useFakeTimers();
+      const { client, server, child } = createFakeClient(
+        (request, fakeServer) => {
+          fakeServer.send({
+            jsonrpc: "2.0",
+            id: request.id,
+            error: { code: errorCode, message: "retry pending" },
+          });
+        },
+      );
+
+      try {
+        const resultPromise = client.request(
+          "textDocument/references",
+          { key: `exit-during-${errorName}` },
+          RETRY_SETTLE_WAIT_MS,
+        );
+        const pending = (client as unknown as { pending: Map<number, unknown> })
+          .pending;
+
+        expect(server.requests).toHaveLength(1);
+        expect(pending.size).toBe(1);
+
+        child.emit("exit", 1);
+
+        await expect(resultPromise).rejects.toThrow(
+          "LSP server process exited (code=1) before responding",
+        );
+        await vi.advanceTimersByTimeAsync(
+          LspRequestRetryConstants.BACKOFF_MS * 2,
+        );
+
+        expect(server.requests).toHaveLength(1);
+        expect(pending.size).toBe(0);
+      } finally {
+        await client.stop();
+      }
+    },
+  );
 
   it("[error-handling] rejects after the maximum attempts with ContentModified's code", async () => {
     vi.useFakeTimers();

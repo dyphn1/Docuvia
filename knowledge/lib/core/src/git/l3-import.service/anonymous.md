@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/l3-import.service.ts#anonymous
+id: lib/core/src/git/l3-import.service.ts#anonymous@L32
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/l3-import.service.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/git/l3-import.service.ts
 # Symbol: anonymous
 
 File: `lib/core/src/git/l3-import.service.ts`
-ts`

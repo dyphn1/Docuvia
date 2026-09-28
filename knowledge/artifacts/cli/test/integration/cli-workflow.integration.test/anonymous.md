@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/cli-workflow.integration.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/cli-workflow.integration.test.ts`
+

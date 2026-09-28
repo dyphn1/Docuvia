@@ -3,10 +3,14 @@ import {
   DynamicDependencyStatuses,
   type BlastRadiusEntry,
   type DynamicDependencyEvidence,
+  type DynamicEvidenceAvailability,
   type IGraphStore,
 } from "@workspace/contracts";
 import { ImpactService as Phase6ImpactService } from "./phase6-impact.service.js";
-import { dynamicEvidenceForTarget } from "./dynamic-dependency-evidence.js";
+import {
+  dynamicEvidenceAvailability,
+  dynamicEvidenceForTarget,
+} from "./dynamic-dependency-evidence.js";
 
 /**
  * Issue #393 impact layer. Static/Phase-6 edges remain authoritative; bounded runtime-import
@@ -36,6 +40,13 @@ export class ImpactService extends Phase6ImpactService {
     target: string,
   ): DynamicDependencyEvidence[] {
     return dynamicEvidenceForTarget(store, target);
+  }
+
+  /** Issue #508 Phase 2 (D1/D5): whether the evidence behind `getDynamicEvidence` is trusted. */
+  public getDynamicEvidenceAvailability(
+    store: IGraphStore,
+  ): DynamicEvidenceAvailability {
+    return dynamicEvidenceAvailability(store);
   }
 
   private resolveDynamicCandidateEntries(

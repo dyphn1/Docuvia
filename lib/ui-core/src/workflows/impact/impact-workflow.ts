@@ -1,5 +1,6 @@
 import {
   BlastRadiusEdgeSources,
+  DynamicEvidenceAvailabilityStates,
   docuviaFactory,
   TOKENS,
   DocuviaError,
@@ -7,6 +8,7 @@ import {
   UTF8_ENCODING,
   type DynamicDependencyEvidence,
   type IGraphStore,
+  type IImpactService,
   type ILogger,
   type RiskLevel,
   type TierBCoverageHint,
@@ -25,6 +27,18 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 import * as path from "path";
 import * as fs from "fs/promises";
+
+/** Issue #508 Phase 2 (D1/D5): the additive `dynamicEvidenceUnavailable` field, or undefined
+ *  when the evidence is available. An absent accessor (pre-#508 test doubles) means available. */
+function resolveEvidenceUnavailable(
+  impactService: IImpactService,
+  store: IGraphStore,
+): ImpactResult["dynamicEvidenceUnavailable"] {
+  const availability = impactService.getDynamicEvidenceAvailability?.(store);
+  return availability?.state === DynamicEvidenceAvailabilityStates.UNAVAILABLE
+    ? { reason: availability.reason }
+    : undefined;
+}
 
 /**
  * The `impact` workflow — 1-hop blast-radius lookup by target name (exact-then-LIKE), via the
@@ -91,6 +105,10 @@ export class ImpactWorkflow {
 
       const dynamicEvidence =
         impactService.getDynamicEvidence?.(store, target) ?? [];
+      const dynamicEvidenceUnavailable = resolveEvidenceUnavailable(
+        impactService,
+        store,
+      );
       // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
       // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
       // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
@@ -114,12 +132,14 @@ export class ImpactWorkflow {
       return {
         blastRadius,
         ...(dynamicEvidence.length > 0 ? { dynamicEvidence } : {}),
+        ...(dynamicEvidenceUnavailable ? { dynamicEvidenceUnavailable } : {}),
         ...(await this.resolveEpistemicFields(
           store,
           target,
           confirmedBlastRadiusCount,
           riskLevel,
           dynamicEvidence,
+          dynamicEvidenceUnavailable?.reason,
         )),
       };
     } finally {
@@ -135,7 +155,13 @@ export class ImpactWorkflow {
     confirmedBlastRadiusCount: number,
     computedRiskLevel: RiskLevel,
     dynamicEvidence: DynamicDependencyEvidence[],
-  ): Promise<Omit<ImpactResult, "blastRadius" | "dynamicEvidence">> {
+    dynamicEvidenceUnavailableReason: string | undefined,
+  ): Promise<
+    Omit<
+      ImpactResult,
+      "blastRadius" | "dynamicEvidence" | "dynamicEvidenceUnavailable"
+    >
+  > {
     const { tierBCoverage, registryMediated, targetFileResolution } =
       await this.resolveTargetContext(store, target, confirmedBlastRadiusCount);
 
@@ -152,6 +178,7 @@ export class ImpactWorkflow {
       registryMediated,
       targetFileResolution,
       dynamicEvidence,
+      dynamicEvidenceUnavailableReason,
     });
 
     // Issue #192: partialCoverage flag -- true when Tier B coverage is incomplete. This remains

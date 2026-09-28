@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DynamicDependencyKinds,
   DynamicDependencyStatuses,
+  DynamicEvidenceUnavailableReasons,
   EpistemicLevels,
   RiskLevels,
   type DynamicDependencyEvidence,
@@ -9,6 +10,8 @@ import {
 import { resolveImpactEpistemic } from "./resolve-impact-epistemic.js";
 
 // TDD-SOURCE: https://github.com/dyphn1/Docuvia/issues/393
+// TDD-SOURCE: issue #508 Phase 2 D1/D5 (evidence-unavailable rung)
+// TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase2.md
 
 const evidence: DynamicDependencyEvidence = {
   sourceFile: "src/plugin-loader.ts",
@@ -87,5 +90,62 @@ describe("issue #393 dynamic impact epistemics", () => {
 
     expect(result.epistemic).toBe(EpistemicLevels.LOWER_BOUND);
     expect(result.riskNote).toContain("5 of 10 workspace files");
+  });
+
+  it("[error-handling] unavailable runtime evidence keeps a non-empty confirmed result lower-bound with the reason (#508 D1)", () => {
+    const result = resolveImpactEpistemic({
+      blastRadiusCount: 1,
+      computedRiskLevel: RiskLevels.MEDIUM,
+      ...completeCoverage(),
+      dynamicEvidence: [],
+      dynamicEvidenceUnavailableReason:
+        DynamicEvidenceUnavailableReasons.CORRUPT_JSON,
+    });
+
+    expect(result).toEqual({
+      riskLevel: RiskLevels.MEDIUM,
+      epistemic: EpistemicLevels.LOWER_BOUND,
+      riskNote: expect.stringContaining("(corrupt-json)"),
+    });
+  });
+
+  it("[error-handling] unavailable runtime evidence is named on an empty confirmed result at full coverage (#508 D5)", () => {
+    const result = resolveImpactEpistemic({
+      blastRadiusCount: 0,
+      computedRiskLevel: RiskLevels.LOW,
+      ...completeCoverage(),
+      dynamicEvidenceUnavailableReason:
+        DynamicEvidenceUnavailableReasons.MISSING,
+    });
+
+    expect(result.riskLevel).toBe(RiskLevels.UNKNOWN);
+    expect(result.epistemic).toBe(EpistemicLevels.LOWER_BOUND);
+    expect(result.riskNote).toContain("(missing)");
+    expect(result.riskNote).toContain("docuvia analyze --force");
+  });
+
+  it("[state-diff] partial coverage still pre-empts the evidence-unavailable note", () => {
+    const result = resolveImpactEpistemic({
+      blastRadiusCount: 1,
+      computedRiskLevel: RiskLevels.MEDIUM,
+      workspaceFilesProcessed: 5,
+      workspaceFilesTotal: 10,
+      registryMediated: false,
+      dynamicEvidenceUnavailableReason:
+        DynamicEvidenceUnavailableReasons.NOT_ARRAY,
+    });
+
+    expect(result.riskNote).toContain("5 of 10 workspace files");
+  });
+
+  it("[invalid-input] an absent unavailable reason leaves the exact ladder untouched", () => {
+    expect(
+      resolveImpactEpistemic({
+        blastRadiusCount: 1,
+        computedRiskLevel: RiskLevels.MEDIUM,
+        ...completeCoverage(),
+        dynamicEvidenceUnavailableReason: undefined,
+      }),
+    ).toEqual({ riskLevel: RiskLevels.MEDIUM });
   });
 });

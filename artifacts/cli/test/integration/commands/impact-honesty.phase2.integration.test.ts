@@ -224,7 +224,7 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     }
   });
 
-  // #508 D1, D2, D3, D5 and D7: red until the product fix lands; that commit flips it.fails -> it.
+  // #508 D2, D3 and D7: red until the product fix lands; that commit flips it.fails -> it.
   it.fails(
     "[happy] the merged real-CLI corpus passes every Phase 2 gate (G1-G9, G11, G12)",
     () => {
@@ -346,21 +346,17 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     ).toThrow(/errored/);
   });
 
-  // #508 D1: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[error-handling] corrupted evidence artifacts degrade to explicit evidence-unavailable (C2a/b/c)",
-    () => {
-      for (const stage of ["C2a", "C2b", "C2c"] as const) {
-        const [fixture] = c[stage].evaluation.fixtures;
-        expect(fixture.observation?.run.exitCode).toBe(0);
-        expect(fixture.epistemicStatus).toBe("unknown");
-        expect(fixture.evidence.evidenceUnavailableReason).toBe(
-          fixture.golden.expectedUnavailableReason,
-        );
-        expect(gatesFor(c[stage].evaluation, [stage])).toEqual([]);
-      }
-    },
-  );
+  it("[error-handling] corrupted evidence artifacts degrade to explicit evidence-unavailable (C2a/b/c)", () => {
+    for (const stage of ["C2a", "C2b", "C2c"] as const) {
+      const [fixture] = c[stage].evaluation.fixtures;
+      expect(fixture.observation?.run.exitCode).toBe(0);
+      expect(fixture.epistemicStatus).toBe("unknown");
+      expect(fixture.evidence.evidenceUnavailableReason).toBe(
+        fixture.golden.expectedUnavailableReason,
+      );
+      expect(gatesFor(c[stage].evaluation, [stage])).toEqual([]);
+    }
+  });
 
   it("[error-handling] an errored record stays in the denominator and fails G1", () => {
     const observations = a.observations.map((observation) =>
@@ -481,18 +477,12 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     },
   );
 
-  // #508 D5: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[state-diff] snapshot -> clean -> auto-hydrate reports missing evidence, not exact (C3)",
-    () => {
-      expect(gatesFor(c.C3.evaluation, ["C3"])).toEqual([]);
-      const [fixture] = c.C3.evaluation.fixtures;
-      expect(fixture.observation?.run.json).not.toHaveProperty(
-        "partialCoverage",
-      );
-      expect(fixture.epistemicStatus).toBe("unknown");
-    },
-  );
+  it("[state-diff] snapshot -> clean -> auto-hydrate reports missing evidence, not exact (C3)", () => {
+    expect(gatesFor(c.C3.evaluation, ["C3"])).toEqual([]);
+    const [fixture] = c.C3.evaluation.fixtures;
+    expect(fixture.observation?.run.json).not.toHaveProperty("partialCoverage");
+    expect(fixture.epistemicStatus).toBe("unknown");
+  });
 
   it("[negative-control] P1: a promoted dynamic candidate fails provenance (and positive) gates", () => {
     const poisoned = poisonedSingle(

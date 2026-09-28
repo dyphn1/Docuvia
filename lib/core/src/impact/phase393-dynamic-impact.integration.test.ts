@@ -6,11 +6,16 @@ import { GraphStore } from "@workspace/schema";
 import {
   BlastRadiusEdgeSources,
   DynamicDependencyStatuses,
+  DynamicEvidenceAvailabilityStates,
+  DynamicEvidenceUnavailableReasons,
   type ParsedAstFileResult,
 } from "@workspace/contracts";
 import { GraphPersisterService } from "../graph/phase393-graph-persister.js";
 import { ImpactService } from "./phase393-impact.service.js";
-import { readDynamicDependencyEvidence } from "./dynamic-dependency-evidence.js";
+import {
+  readDynamicDependencyEvidence,
+  readDynamicDependencyEvidenceState,
+} from "./dynamic-dependency-evidence.js";
 
 // TDD-SOURCE: https://github.com/dyphn1/Docuvia/issues/393
 // TDD-SOURCE: issue #508 Phase 2 (D1 corrupt evidence, D2 stale universe, D3 NodeNext specifiers)
@@ -247,9 +252,120 @@ describe("issue #393 dynamic dependency evidence", () => {
     ]);
   });
 
-  it("[error-handling] degrades corrupted persisted evidence to an empty evidence set", () => {
-    store.meta.set(`impact.dynamic-dependencies.v1:${projectId}`, "{not-json");
+  const evidenceKey = () => `impact.dynamic-dependencies.v1:${projectId}`;
 
+  // #508 Phase 2 D1: this test used to assert `readDynamicDependencyEvidence(...) === []` for a
+  // corrupted row -- that encoded the defect ("corrupt" silently read as "no runtime imports",
+  // which the epistemic ladder then reported as an exact answer). Corruption is now an explicit
+  // unavailable state that keeps every impact result lower-bound.
+  it("[error-handling] reports corrupted persisted evidence as explicitly unavailable, never as an empty set (#508 D1)", () => {
+    store.meta.set(evidenceKey(), "{not-json");
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.CORRUPT_JSON,
+    });
+    expect(impact.getDynamicEvidenceAvailability(store)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.CORRUPT_JSON,
+    });
+  });
+
+  it("[invalid-input] a non-array or shape-invalid evidence payload is unavailable and never throws (#508 D1)", async () => {
+    const targetFile = "src/plugins/cleanup-plugin.ts";
+    write(targetFile, 'export function runCleanupPlugin() { return "x"; }\n');
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(targetFile, {
+          functions: [{ name: "runCleanupPlugin", startLine: 0, endLine: 0 }],
+        }),
+      ],
+      tags: [],
+    });
+
+    store.meta.set(evidenceKey(), "{}");
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.NOT_ARRAY,
+    });
+
+    // A record without `candidatePaths` used to crash `dynamicEvidenceForTarget` with a
+    // TypeError (the CLI exited 1). One invalid record makes the whole set untrusted.
+    store.meta.set(
+      evidenceKey(),
+      JSON.stringify([
+        {
+          sourceFile: "src/plugin-loader.ts",
+          kind: "dynamic-import",
+          expression: "x",
+          startLine: 0,
+          startColumn: 0,
+          status: "bounded",
+          reason: "x",
+        },
+      ]),
+    );
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.INVALID_RECORD,
+    });
+    expect(impact.getDynamicEvidence(store, "runCleanupPlugin")).toEqual([]);
+    expect(impact.getBlastRadius(store, "runCleanupPlugin")).toEqual([
+      expect.objectContaining({ name: targetFile }),
+    ]);
+  });
+
+  it("[state-diff] a missing evidence row over tracked JS/TS sources is unavailable, and the next persist rebuilds every source (#508 D1/D5)", async () => {
+    const loader = "src/plugin-loader.ts";
+    const plugin = "src/plugins/alpha.ts";
+    const other = "src/other.ts";
+    writeTemplateLoader(loader);
+    write(plugin, "export function alphaPlugin() {}\n");
+    write(other, "export const other = 1;\n");
+    // Tracked files whose evidence was never written -- the state a knowledge-branch hydrate
+    // leaves behind (the evidence row is not part of the snapshot).
+    for (const filePath of [loader, plugin]) {
+      store.files.upsertFile({ projectId, filePath, contentHash: filePath });
+    }
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.MISSING,
+    });
+
+    // An incremental batch that does not include the loader must not launder the unavailable
+    // set into an "available" partial one: every tracked source is rescanned.
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+      items: [
+        expect.objectContaining({
+          sourceFile: loader,
+          status: DynamicDependencyStatuses.BOUNDED,
+          candidatePaths: [plugin],
+        }),
+      ],
+    });
+  });
+
+  it("[happy] a missing evidence row without any JS/TS source is simply empty evidence", () => {
+    store.files.upsertFile({
+      projectId,
+      filePath: "src/app.py",
+      contentHash: "py",
+    });
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+      items: [],
+    });
     expect(readDynamicDependencyEvidence(store, projectId)).toEqual([]);
   });
 

@@ -162,6 +162,76 @@ describe("ImpactWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(2);
   });
 
+  it("[error-handling] passes an unavailable evidence state through as dynamicEvidenceUnavailable and lower-bound (#508 D1)", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const impactService: IImpactService = {
+      getBlastRadius: vi
+        .fn()
+        .mockReturnValue([{ name: "caller", type: "module" }]),
+      computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      getDynamicEvidence: vi.fn().mockReturnValue([]),
+      getDynamicEvidenceAvailability: vi
+        .fn()
+        .mockReturnValue({ state: "unavailable", reason: "invalid-record" }),
+    };
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
+
+    expect(result).toEqual({
+      blastRadius: [{ name: "caller", type: "module" }],
+      riskLevel: "MEDIUM",
+      epistemic: "lower-bound",
+      riskNote:
+        IMPACT_MESSAGES.RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE(
+          "invalid-record",
+        ),
+      dynamicEvidenceUnavailable: { reason: "invalid-record" },
+    });
+  });
+
+  it("[happy] omits dynamicEvidenceUnavailable when the evidence set is available (#508 D1)", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const impactService: IImpactService = {
+      getBlastRadius: vi
+        .fn()
+        .mockReturnValue([{ name: "caller", type: "module" }]),
+      computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      getDynamicEvidence: vi.fn().mockReturnValue([]),
+      getDynamicEvidenceAvailability: vi
+        .fn()
+        .mockReturnValue({ state: "available" }),
+    };
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
+
+    expect(result).toEqual({
+      blastRadius: [{ name: "caller", type: "module" }],
+      riskLevel: "MEDIUM",
+    });
+  });
+
   it("returns null when the target does not resolve", async () => {
     const store = makeMockStore();
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>

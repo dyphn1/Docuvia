@@ -2,7 +2,11 @@ import * as path from "path";
 import {
   DynamicDependencyKinds,
   DynamicDependencyStatuses,
+  DynamicEvidenceAvailabilityStates,
+  DynamicEvidenceUnavailableReasons,
   type DynamicDependencyEvidence,
+  type DynamicEvidenceAvailability,
+  type DynamicEvidenceUnavailableReason,
   type IGraphStore,
   type ParsedAstFileResult,
 } from "@workspace/contracts";
@@ -306,44 +310,174 @@ function sortEvidence(
   );
 }
 
+/** Issue #508 Phase 2 (D1/D5): the persisted evidence set, or why it cannot be trusted. */
+export type DynamicDependencyEvidenceState =
+  | {
+      state: typeof DynamicEvidenceAvailabilityStates.AVAILABLE;
+      items: DynamicDependencyEvidence[];
+    }
+  | {
+      state: typeof DynamicEvidenceAvailabilityStates.UNAVAILABLE;
+      reason: DynamicEvidenceUnavailableReason;
+    };
+
+const DYNAMIC_DEPENDENCY_STATUS_VALUES: ReadonlySet<unknown> = new Set(
+  Object.values(DynamicDependencyStatuses),
+);
+
+const EVIDENCE_STRING_FIELDS = [
+  "sourceFile",
+  "kind",
+  "expression",
+  "reason",
+] as const satisfies ReadonlyArray<keyof DynamicDependencyEvidence>;
+const EVIDENCE_NUMBER_FIELDS = [
+  "startLine",
+  "startColumn",
+] as const satisfies ReadonlyArray<keyof DynamicDependencyEvidence>;
+const EVIDENCE_OPTIONAL_STRING_FIELDS = [
+  "literalPrefix",
+  "literalSuffix",
+] as const satisfies ReadonlyArray<keyof DynamicDependencyEvidence>;
+
+function isStringArray(value: unknown): boolean {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
+}
+
+/** Shape check for one persisted record: every field the impact read path dereferences. */
+function isEvidenceRecord(value: unknown): value is DynamicDependencyEvidence {
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    EVIDENCE_STRING_FIELDS.every(
+      (field) => typeof record[field] === "string",
+    ) &&
+    EVIDENCE_NUMBER_FIELDS.every(
+      (field) => typeof record[field] === "number",
+    ) &&
+    EVIDENCE_OPTIONAL_STRING_FIELDS.every(
+      (field) =>
+        record[field] === undefined || typeof record[field] === "string",
+    ) &&
+    DYNAMIC_DEPENDENCY_STATUS_VALUES.has(record.status) &&
+    isStringArray(record.candidatePaths)
+  );
+}
+
+function isProjectSourceFile(filePath: string): boolean {
+  return PROJECT_SOURCE_EXTENSIONS.has(path.posix.extname(filePath));
+}
+
+function unavailable(
+  reason: DynamicEvidenceUnavailableReason,
+): DynamicDependencyEvidenceState {
+  return { state: DynamicEvidenceAvailabilityStates.UNAVAILABLE, reason };
+}
+
+function parseEvidencePayload(raw: string): DynamicDependencyEvidenceState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return unavailable(DynamicEvidenceUnavailableReasons.CORRUPT_JSON);
+  }
+  if (!Array.isArray(parsed)) {
+    return unavailable(DynamicEvidenceUnavailableReasons.NOT_ARRAY);
+  }
+  // Never partially trusted: one invalid record makes the whole set unavailable.
+  if (!parsed.every(isEvidenceRecord)) {
+    return unavailable(DynamicEvidenceUnavailableReasons.INVALID_RECORD);
+  }
+  return {
+    state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+    items: sortEvidence(parsed),
+  };
+}
+
+/**
+ * Issue #508 Phase 2 (D1/D5): reads the persisted evidence without ever converting a corrupt,
+ * wrong-shaped or missing set into "no runtime imports". A missing row is only benign when no
+ * JS/TS source is tracked at all (nothing could contain an `import()`); otherwise it means the
+ * evidence was never computed for this database (e.g. it was rebuilt by a knowledge-branch
+ * hydrate, which does not carry this row).
+ */
+export function readDynamicDependencyEvidenceState(
+  store: IGraphStore,
+  projectId: number,
+): DynamicDependencyEvidenceState {
+  const raw = store.meta.get(metaKey(projectId));
+  if (raw !== undefined) return parseEvidencePayload(raw);
+  const tracksSources = store.files
+    .getAllHashes()
+    .some(({ filePath }) =>
+      isProjectSourceFile(normalizeWorkspacePath(filePath)),
+    );
+  return tracksSources
+    ? unavailable(DynamicEvidenceUnavailableReasons.MISSING)
+    : { state: DynamicEvidenceAvailabilityStates.AVAILABLE, items: [] };
+}
+
+/** Compatibility accessor: the trusted evidence set, or `[]` when it is unavailable. Callers that
+ *  report confidence must use `readDynamicDependencyEvidenceState` instead. */
 export function readDynamicDependencyEvidence(
   store: IGraphStore,
   projectId: number,
 ): DynamicDependencyEvidence[] {
-  const raw = store.meta.get(metaKey(projectId));
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as DynamicDependencyEvidence[];
-    return Array.isArray(parsed) ? sortEvidence(parsed) : [];
-  } catch {
-    return [];
-  }
+  const evidence = readDynamicDependencyEvidenceState(store, projectId);
+  return evidence.state === DynamicEvidenceAvailabilityStates.AVAILABLE
+    ? evidence.items
+    : [];
 }
 
-/** Replaces evidence for the files in this parse batch while retaining other files' rows. */
+/** Project-wide availability of the persisted evidence (`IImpactService` contract shape). */
+export function dynamicEvidenceAvailability(
+  store: IGraphStore,
+): DynamicEvidenceAvailability {
+  const projectId = store.projects.getFirst()?.id;
+  if (!projectId) return { state: DynamicEvidenceAvailabilityStates.AVAILABLE };
+  const evidence = readDynamicDependencyEvidenceState(store, projectId);
+  return evidence.state === DynamicEvidenceAvailabilityStates.AVAILABLE
+    ? { state: DynamicEvidenceAvailabilityStates.AVAILABLE }
+    : evidence;
+}
+
+/**
+ * Replaces evidence for the files in this parse batch while retaining other files' rows. When the
+ * previous set is unavailable (#508 D1/D5) nothing is retained and every tracked source is
+ * rescanned, so an incremental batch heals the set instead of laundering it into an "available"
+ * but partial one.
+ */
 export function persistDynamicDependencyEvidence(
   store: IGraphStore,
   workspaceRoot: string,
   projectId: number,
   parsedResults: ParsedAstFileResult[],
 ): void {
-  const replacedFiles = new Set(parsedResults.map((result) => result.file));
-  const retained = readDynamicDependencyEvidence(store, projectId).filter(
-    (item) => !replacedFiles.has(item.sourceFile),
-  );
+  const previous = readDynamicDependencyEvidenceState(store, projectId);
   const knownFiles = store.files
     .getAllHashes()
     .map(({ filePath }) => normalizeWorkspacePath(filePath))
     .sort((a, b) => a.localeCompare(b));
+  const filesToScan =
+    previous.state === DynamicEvidenceAvailabilityStates.AVAILABLE
+      ? parsedResults.map((result) => result.file)
+      : knownFiles;
+  const replacedFiles = new Set(filesToScan);
+  const retained =
+    previous.state === DynamicEvidenceAvailabilityStates.AVAILABLE
+      ? previous.items.filter((item) => !replacedFiles.has(item.sourceFile))
+      : [];
   const fresh: DynamicDependencyEvidence[] = [];
 
-  for (const result of parsedResults) {
-    if (!/\.[cm]?[jt]sx?$/.test(result.file)) continue;
-    const source = readFileWithinRoot(workspaceRoot, result.file);
+  for (const file of filesToScan) {
+    if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
+    const source = readFileWithinRoot(workspaceRoot, file);
     if (source === null) continue;
     for (const scanned of scanDynamicImports(source)) {
       fresh.push({
-        sourceFile: normalizeWorkspacePath(result.file),
+        sourceFile: normalizeWorkspacePath(file),
         kind: DynamicDependencyKinds.DYNAMIC_IMPORT,
         expression: scanned.expression,
         startLine: scanned.startLine,
@@ -354,7 +488,7 @@ export function persistDynamicDependencyEvidence(
         ...(scanned.literalSuffix !== undefined
           ? { literalSuffix: scanned.literalSuffix }
           : {}),
-        ...resolveCandidates(result.file, scanned, knownFiles),
+        ...resolveCandidates(file, scanned, knownFiles),
       });
     }
   }
@@ -374,6 +508,7 @@ export function dynamicEvidenceForTarget(
   const node = store.graph.findNodeByName(target);
   if (!projectId || !node?.filePath) return [];
   const targetFile = normalizeWorkspacePath(node.filePath);
+  // Unavailable evidence yields no records here; `dynamicEvidenceAvailability` reports it.
   return readDynamicDependencyEvidence(store, projectId).filter((item) => {
     if (item.candidatePaths.includes(targetFile)) return true;
     if (item.status !== DynamicDependencyStatuses.UNRESOLVED) return false;

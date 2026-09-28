@@ -23,6 +23,12 @@ export const IMPACT_MESSAGES = {
     reason: string,
   ) =>
     `Observed ${count} target-relevant runtime dependency evidence record(s); e.g. ${sourceFile}:${line} uses import(${expression}) [${reason}]. Dynamic candidates are possible targets, not confirmed runtime edges, so this result is a lower bound.`,
+  /** Issue #508 Phase 2 (D1/D5): the persisted #393 runtime-dependency evidence could not be
+   *  trusted (corrupt, wrong-shaped, or missing after a hydrate). Same ladder rung as the dynamic
+   *  note: without the evidence, no `import()` boundary was checked, so the result is a lower
+   *  bound. A forced full re-ingestion rebuilds the evidence from source. */
+  RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE: (reason: string) =>
+    `Runtime dependency evidence is unavailable (${reason}) -- dynamic import() boundaries could not be checked, so this result is a lower bound. Run "docuvia analyze --force" to rebuild it.`,
   /** Issue #192: attached to an empty blast radius even at full Tier B coverage -- the static
    *  edge graph only models calls/implements/extends, so dynamic-loading patterns produce no
    *  edge no matter how complete ingestion was (AGENTS.md's documented impact blind spots). */

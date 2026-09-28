@@ -35,6 +35,9 @@ export interface ImpactEpistemicInput {
   targetFileResolution?: TargetFileResolution;
   /** Issue #393 target-relevant bounded/unresolved runtime dependency evidence. */
   dynamicEvidence?: DynamicDependencyEvidence[];
+  /** Issue #508 Phase 2 (D1/D5): set when the persisted evidence could not be trusted at all;
+   *  a lower-bound cause at the same rung as `dynamicEvidence`. */
+  dynamicEvidenceUnavailableReason?: string;
 }
 
 export interface ImpactEpistemicResult {
@@ -57,7 +60,13 @@ function isCoverageIncomplete(
 
 function dynamicRiskNote(
   dynamicEvidence: DynamicDependencyEvidence[] | undefined,
+  unavailableReason: string | undefined,
 ): string | undefined {
+  if (unavailableReason !== undefined) {
+    return IMPACT_MESSAGES.RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE(
+      unavailableReason,
+    );
+  }
   if (!dynamicEvidence || dynamicEvidence.length === 0) return undefined;
   const sample = dynamicEvidence[0];
   return IMPACT_MESSAGES.RISK_NOTE_DYNAMIC_DEPENDENCY(
@@ -99,6 +108,7 @@ function pickEmptyRiskNote(
   registryMediated: boolean,
   targetFileResolution: TargetFileResolution | undefined,
   dynamicEvidence: DynamicDependencyEvidence[] | undefined,
+  unavailableReason: string | undefined,
 ): string {
   if (isCoverageIncomplete(workspaceFilesProcessed, workspaceFilesTotal)) {
     return IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(
@@ -109,7 +119,7 @@ function pickEmptyRiskNote(
   if (registryMediated) {
     return IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE;
   }
-  const dynamicNote = dynamicRiskNote(dynamicEvidence);
+  const dynamicNote = dynamicRiskNote(dynamicEvidence, unavailableReason);
   if (dynamicNote) return dynamicNote;
   const resolutionNote = lowResolutionRiskNote(targetFileResolution);
   if (resolutionNote) return resolutionNote;
@@ -124,7 +134,8 @@ function pickEmptyRiskNote(
  * Decision ladder (first match wins):
  * - Zero confirmed dependents -> risk UNKNOWN, always lower-bound.
  * - Non-empty but partial workspace Tier B coverage -> keep earned risk band, lower-bound.
- * - Non-empty with target-relevant dynamic evidence -> keep earned risk band, lower-bound.
+ * - Non-empty with target-relevant dynamic evidence, or with evidence that is unavailable
+ *   (#508 D1/D5: corrupt/wrong-shaped/missing) -> keep earned risk band, lower-bound.
  * - Otherwise exact: all epistemic fields omitted.
  */
 export function resolveImpactEpistemic(
@@ -148,6 +159,7 @@ export function resolveImpactEpistemic(
         registryMediated,
         input.targetFileResolution,
         input.dynamicEvidence,
+        input.dynamicEvidenceUnavailableReason,
       ),
     };
   }
@@ -163,7 +175,10 @@ export function resolveImpactEpistemic(
     };
   }
 
-  const dynamicNote = dynamicRiskNote(input.dynamicEvidence);
+  const dynamicNote = dynamicRiskNote(
+    input.dynamicEvidence,
+    input.dynamicEvidenceUnavailableReason,
+  );
   if (dynamicNote) {
     return {
       riskLevel: computedRiskLevel,

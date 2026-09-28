@@ -16,7 +16,7 @@ docuvia impact <target>
 
 ### Flags
 
-- `--format=<human|json>`: Specify the output format. `human` (default) renders the blast-radius table and risk level; `json` emits the structured `ImpactResult` verbatim (`blastRadius`, `riskLevel`, optional `epistemic`/`riskNote`/`tierBCoverage`/`coverageNote`) as pure JSON on stdout with the banner/spinner suppressed. When the target doesn't resolve, `--format=json` prints the JSON literal `null` (exit `0`), so a consumer can distinguish "not found" from "found but zero dependents". An unknown value fails fast with a list of the available formats.
+- `--format=<human|json>`: Specify the output format. `human` (default) renders the blast-radius table and risk level; `json` emits the structured `ImpactResult` verbatim (`blastRadius`, `riskLevel`, optional `epistemic`/`riskNote`/`dynamicEvidence`/`dynamicEvidenceUnavailable`/`tierBCoverage`/`coverageNote`) as pure JSON on stdout with the banner/spinner suppressed. When the target doesn't resolve, `--format=json` prints the JSON literal `null` (exit `0`), so a consumer can distinguish "not found" from "found but zero dependents". An unknown value fails fast with a list of the available formats.
 
 ## Empty results are UNKNOWN, not zero (issue #192)
 
@@ -25,8 +25,10 @@ An empty blast radius is reported as `Risk level: UNKNOWN` — never `LOW`. Abse
 - **Partial Tier B ingestion** — "only N of M workspace files have been analyzed"; re-run `docuvia analyze --escalate-to-lsp --full`.
 - **Registry-mediated dependents** (issue #136) — the target's own file resolves dependencies through the `docuviaFactory`/`TOKENS` registry.
 - **Static-edges-only caveat** — full coverage, but dynamic-loading patterns remain invisible by design.
+- **Runtime dependency evidence** (issue #393) — a TS/JS `import(expr)` could load the target. The records are listed in `dynamicEvidence`; a statically bounded candidate loader also appears as a `dynamic-candidate` entry, which never counts toward the risk band.
+- **Runtime dependency evidence unavailable** (issue #508) — the persisted `import()` evidence could not be trusted, so no runtime boundary was checked. `dynamicEvidenceUnavailable: { "reason": ... }` names why: `corrupt-json` or `not-array` (the stored payload is damaged or from another schema), `invalid-record` (one record is malformed — the whole set is then untrusted, never partially used), or `missing` (JS/TS sources are tracked but the evidence was never computed for this database, e.g. after `snapshot` → `clean` → auto-hydrate, whose knowledge branch does not carry it). `docuvia analyze --force` rebuilds it; any ingestion batch that meets an unavailable set rescans every tracked JS/TS source instead of trusting a partial set.
 
-A non-empty blast radius at full Tier B coverage omits `epistemic` entirely (omit-when-confident). Accuracy against human-labeled ground truth is measured weekly in CI by the eval workflow (`.github/workflows/eval.yml`) over `artifacts/cli/test/support/impact-corpus.ts`; run it locally with `pnpm run eval:impact`.
+A non-empty blast radius at full Tier B coverage, with no target-relevant runtime dependency evidence and an available evidence set, omits `epistemic` entirely (omit-when-confident). Accuracy against human-labeled ground truth is measured weekly in CI by the eval workflow (`.github/workflows/eval.yml`) over `artifacts/cli/test/support/impact-corpus.ts`; run it locally with `pnpm run eval:impact`.
 
 ## The call-site fallback (`edgeSource: "lsp-fallback"`, issue #217)
 

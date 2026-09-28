@@ -332,6 +332,30 @@ the gates observe the frozen projections, not the risk band.)
 | **D7** (found by the corpus, not predicted) | IMPT-001 keeps the target's own containing-file `contains` entry in the blast radius **and** in the confirmed count fed to the epistemic ladder, so a symbol with no real dependent at complete coverage is reported exact `MEDIUM` — a verified zero-impact claim.                                                    | E7       | **Confirmed.** `evalP2ComputedTarget` (reachable only through `svc["evalP2ComputedTarget"]()`) returned `blastRadius = [its own file]`, `riskLevel: MEDIUM`, no `epistemic`: false-safe under §1.1.                                                                          |
 | D6                                          | A deleted loader file leaves phantom evidence behind (over-conservative, safe direction).                                                                                                                                                                                                                              | —        | Observation only, not gated. `project_files` rows are never deleted by any product path, so a deleted candidate also stays a candidate (same safe direction).                                                                                                                |
 
+### Resolution
+
+Each confirmed defect is fixed in its own commit (doc → failing test →
+implementation). The failing tests were first committed as `it.fails`, tagged
+with the defect, so the fix commit flips them to `it`.
+
+- **D1 — fixed.** `readDynamicDependencyEvidenceState()` validates the
+  persisted payload and returns `unavailable` with reason `corrupt-json`,
+  `not-array` or `invalid-record` (one invalid record makes the whole set
+  untrusted). `ImpactService.getDynamicEvidenceAvailability()` surfaces it,
+  `ImpactResult.dynamicEvidenceUnavailable: { reason }` is added (omitted when
+  available), and the epistemic ladder treats it as a lower-bound cause at the
+  dynamic-evidence rung (`RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE`). An ingestion
+  batch that meets an unavailable set rescans every tracked JS/TS source, so the
+  next `analyze` heals it instead of writing an "available" partial set. The
+  core test that asserted corrupt evidence reads as `[]` encoded the defect and
+  was tightened.
+- **D5 — honest state fixed with D1; round trip deferred.** A missing evidence
+  row while JS/TS sources are tracked is `unavailable/missing`, so C3 reports a
+  lower bound with an explicit reason. Carrying the evidence (and
+  `ast_call_sites`) through the knowledge branch is a knowledge-branch format
+  change, drafted as a child issue of #508 (not gated here, so not registered in
+  `KNOWN_PRODUCT_DEFECTS`).
+
 Open question (not gated): an `lsp-fallback`-only result can be **exact**,
 because Phase 0 counts `lsp-fallback` as a confirmed channel. Phase 2 gates
 only its provenance and records the observed level for Phase 3.

@@ -74,6 +74,37 @@ export interface DynamicDependencyEvidence {
 }
 
 /**
+ * Issue #508 Phase 2 (D1/D5): why the persisted #393 evidence set cannot be trusted. Evidence
+ * that is corrupt, wrong-shaped, or absent while JS/TS sources are tracked is never read as
+ * "no runtime imports" -- that would turn a lower-bound result into a fabricated exact one.
+ */
+export const DynamicEvidenceUnavailableReasons = {
+  /** The persisted payload is not valid JSON (torn write, foreign writer). */
+  CORRUPT_JSON: "corrupt-json",
+  /** The payload parsed but is not an array of records (schema/version skew). */
+  NOT_ARRAY: "not-array",
+  /** At least one record lacks a required field; the whole set is untrusted. */
+  INVALID_RECORD: "invalid-record",
+  /** No evidence row exists although JS/TS sources are tracked (e.g. after a hydrate). */
+  MISSING: "missing",
+} as const;
+export type DynamicEvidenceUnavailableReason =
+  (typeof DynamicEvidenceUnavailableReasons)[keyof typeof DynamicEvidenceUnavailableReasons];
+
+export const DynamicEvidenceAvailabilityStates = {
+  AVAILABLE: "available",
+  UNAVAILABLE: "unavailable",
+} as const;
+
+/** Issue #508 Phase 2: whether the persisted #393 evidence set can be trusted at all. */
+export type DynamicEvidenceAvailability =
+  | { state: typeof DynamicEvidenceAvailabilityStates.AVAILABLE }
+  | {
+      state: typeof DynamicEvidenceAvailabilityStates.UNAVAILABLE;
+      reason: DynamicEvidenceUnavailableReason;
+    };
+
+/**
  * Issue #217/#393: which source produced a blast-radius entry. Static entries (`node_links`
  * incoming edges) OMIT the field entirely (omit-when-confident convention). `lsp-fallback`
  * identifies an unresolved call-site recovery; `dynamic-candidate` identifies a source file that
@@ -128,4 +159,9 @@ export interface IImpactService {
     store: IGraphStore,
     target: string,
   ): DynamicDependencyEvidence[];
+  /** Issue #508 Phase 2 (D1/D5): whether the evidence behind `getDynamicEvidence` is trustworthy.
+   * Optional for the same compatibility reason; absence is treated as available. */
+  getDynamicEvidenceAvailability?(
+    store: IGraphStore,
+  ): DynamicEvidenceAvailability;
 }

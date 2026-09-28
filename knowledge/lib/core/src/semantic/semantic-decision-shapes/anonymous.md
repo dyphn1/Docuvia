@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-decision-shapes.ts#anonymous@L41
+id: lib/core/src/semantic/semantic-decision-shapes.ts#anonymous@L39
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-decision-shapes.ts

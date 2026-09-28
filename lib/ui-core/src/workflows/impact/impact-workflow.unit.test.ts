@@ -232,6 +232,96 @@ describe("ImpactWorkflow.execute()", () => {
     });
   });
 
+  describe("issue #508 Phase 2 D7: the target's own containing-file entry is context, not a dependent", () => {
+    function registerSymbolTarget(
+      blastRadius: Array<{ name: string; type: string }>,
+    ) {
+      const store = makeMockStore({
+        graph: {
+          ...makeMockStore().graph,
+          findNodeByName: vi.fn().mockReturnValue({
+            id: 7,
+            name: "evalTarget",
+            type: "function",
+            filePath: "src/target.ts",
+          }),
+        },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      const impactService: IImpactService = {
+        getBlastRadius: vi.fn().mockReturnValue(blastRadius),
+        computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      };
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+      return { store, impactService };
+    }
+
+    it("[state-diff] a symbol whose only confirmed entry is its own file is UNKNOWN lower-bound, never exact", async () => {
+      const { store, impactService } = registerSymbolTarget([
+        { name: "src/target.ts", type: "module" },
+      ]);
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result).toEqual({
+        blastRadius: [{ name: "src/target.ts", type: "module" }],
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      });
+      // IMPT-001's reported radius and risk-band input are unchanged.
+      expect(impactService.computeRiskLevel).toHaveBeenCalledWith(store, 1);
+    });
+
+    it("[happy] a symbol with a real caller besides its own file keeps its exact band", async () => {
+      registerSymbolTarget([
+        { name: "src/target.ts", type: "module" },
+        { name: "evalCaller", type: "function" },
+      ]);
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result).toEqual({
+        blastRadius: [
+          { name: "src/target.ts", type: "module" },
+          { name: "evalCaller", type: "function" },
+        ],
+        riskLevel: "MEDIUM",
+      });
+    });
+
+    it("[invalid-input] an lsp-fallback or candidate entry named like the target file is never mistaken for the context row", async () => {
+      registerSymbolTarget([
+        { name: "src/target.ts", type: "module" },
+        {
+          name: "src/target.ts",
+          type: "module",
+          edgeSource: "lsp-fallback",
+        } as { name: string; type: string },
+      ]);
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result?.riskLevel).toBe("MEDIUM");
+      expect(result).not.toHaveProperty("epistemic");
+    });
+  });
+
   it("returns null when the target does not resolve", async () => {
     const store = makeMockStore();
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>

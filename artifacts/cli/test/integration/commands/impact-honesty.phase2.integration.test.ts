@@ -224,21 +224,17 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     }
   });
 
-  // #508 D7: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[happy] the merged real-CLI corpus passes every Phase 2 gate (G1-G9, G11, G12)",
-    () => {
-      const { gated } = partitionKnownDefects(merged, KNOWN_PRODUCT_DEFECTS);
+  it("[happy] the merged real-CLI corpus passes every Phase 2 gate (G1-G9, G11, G12)", () => {
+    const { gated } = partitionKnownDefects(merged, KNOWN_PRODUCT_DEFECTS);
 
-      expect(phase2GateViolations(gated)).toEqual([]);
-      const aggregate = assertPhase2ImpactHonestyGates(gated);
-      expect(aggregate.errorCases).toBe(0);
-      expect(aggregate.epistemic.falseSafeRate).toBe(0);
-      expect(aggregate.epistemic.wrongCertaintyCases).toBe(0);
-      expect(aggregate.candidate.coverage).toBe(1);
-      expect(aggregate.provenance.mismatches).toBe(0);
-    },
-  );
+    expect(phase2GateViolations(gated)).toEqual([]);
+    const aggregate = assertPhase2ImpactHonestyGates(gated);
+    expect(aggregate.errorCases).toBe(0);
+    expect(aggregate.epistemic.falseSafeRate).toBe(0);
+    expect(aggregate.epistemic.wrongCertaintyCases).toBe(0);
+    expect(aggregate.candidate.coverage).toBe(1);
+    expect(aggregate.provenance.mismatches).toBe(0);
+  });
 
   it("[happy] bounded single/literal/multi evidence stays candidate-only and matches golden (E1a, E1b, E2)", () => {
     expect(gatesFor(merged, ["E1a", "E1b", "E2"])).toEqual([]);
@@ -272,21 +268,17 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     ]);
   });
 
-  // #508 D7: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[happy] a computed member call is never reported as verified zero-impact (E7)",
-    () => {
-      expect(gatesFor(merged, ["E7"])).toEqual([]);
-      const [record] = merged.fixtures.find(
-        (fixture) => fixture.golden.id === "E7",
-      )!.records;
-      expect(record.epistemic).toEqual({
-        correctUnknown: true,
-        falseSafe: false,
-        wrongCertainty: false,
-      });
-    },
-  );
+  it("[happy] a computed member call is never reported as verified zero-impact (E7)", () => {
+    expect(gatesFor(merged, ["E7"])).toEqual([]);
+    const [record] = merged.fixtures.find(
+      (fixture) => fixture.golden.id === "E7",
+    )!.records;
+    expect(record.epistemic).toEqual({
+      correctUnknown: true,
+      falseSafe: false,
+      wrongCertainty: false,
+    });
+  });
 
   it("[happy] NodeNext `.js` template specifiers bound .ts candidates (E9)", () => {
     expect(gatesFor(merged, ["E9"])).toEqual([]);

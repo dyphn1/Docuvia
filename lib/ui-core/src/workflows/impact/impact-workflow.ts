@@ -6,6 +6,7 @@ import {
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
+  type BlastRadiusEntry,
   type DynamicDependencyEvidence,
   type IGraphStore,
   type IImpactService,
@@ -38,6 +39,28 @@ function resolveEvidenceUnavailable(
   return availability?.state === DynamicEvidenceAvailabilityStates.UNAVAILABLE
     ? { reason: availability.reason }
     : undefined;
+}
+
+/**
+ * Issue #508 Phase 2 (D7): confirmed entries that are real dependents. IMPT-001 keeps a symbol
+ * target's own containing-file `contains` row in the reported radius (and in the risk-band count),
+ * but that row is context, not evidence that anything depends on the symbol -- counting it made a
+ * symbol with no real dependent read as an exact, non-empty answer (a verified zero-impact claim).
+ * File targets never list themselves, so only symbol targets are adjusted.
+ */
+function countRealDependents(
+  store: IGraphStore,
+  target: string,
+  confirmedEntries: readonly BlastRadiusEntry[],
+): number {
+  const node = store.graph.findNodeByName(target);
+  const ownFile =
+    node?.filePath !== undefined && node.name !== node.filePath
+      ? node.filePath
+      : undefined;
+  return confirmedEntries.filter(
+    (entry) => !(entry.edgeSource === undefined && entry.name === ownFile),
+  ).length;
 }
 
 /**
@@ -113,10 +136,11 @@ export class ImpactWorkflow {
       // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
       // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
       // dependency that may not occur at runtime.
-      const confirmedBlastRadiusCount = blastRadius.filter(
+      const confirmedEntries = blastRadius.filter(
         (entry) =>
           entry.edgeSource !== BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
-      ).length;
+      );
+      const confirmedBlastRadiusCount = confirmedEntries.length;
       const riskLevel = impactService.computeRiskLevel(
         store,
         confirmedBlastRadiusCount,
@@ -137,6 +161,7 @@ export class ImpactWorkflow {
           store,
           target,
           confirmedBlastRadiusCount,
+          countRealDependents(store, target, confirmedEntries),
           riskLevel,
           dynamicEvidence,
           dynamicEvidenceUnavailable?.reason,
@@ -153,6 +178,7 @@ export class ImpactWorkflow {
     store: IGraphStore,
     target: string,
     confirmedBlastRadiusCount: number,
+    realDependentCount: number,
     computedRiskLevel: RiskLevel,
     dynamicEvidence: DynamicDependencyEvidence[],
     dynamicEvidenceUnavailableReason: string | undefined,
@@ -170,8 +196,10 @@ export class ImpactWorkflow {
     // flagged too -- a partially-populated graph must never read as a complete answer.
     const coverage = store.files.getTierBCoverage();
 
+    // #508 D7: "is the confirmed set empty?" ignores the symbol's own containing-file row; the
+    // risk band itself (`computedRiskLevel`) stays on IMPT-001's count.
     const epistemicResult = resolveImpactEpistemic({
-      blastRadiusCount: confirmedBlastRadiusCount,
+      blastRadiusCount: realDependentCount,
       computedRiskLevel,
       workspaceFilesProcessed: coverage?.processedFiles,
       workspaceFilesTotal: coverage?.totalFiles,

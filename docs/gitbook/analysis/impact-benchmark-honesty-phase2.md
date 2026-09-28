@@ -361,6 +361,12 @@ with the defect, so the fix commit flips them to `it`.
   → `.js`, `.mts/.mjs` → `.mjs`, `.cts/.cjs` → `.cjs`), in both the literal and
   the interpolated branch. A `.js` suffix never admits an `.mts` source.
 - **D4 — refuted, no change.** See the verdict above.
+- **D7 — fixed (unplanned, found by E7).** `ImpactWorkflow` decides "is the
+  confirmed set empty?" without the symbol target's own containing-file row
+  (a static entry named exactly the target node's `filePath`, only for symbol
+  targets). The reported blast radius and the IMPT-001 risk-band input are
+  unchanged, so only results with no real dependent change: exact `MEDIUM`
+  becomes `UNKNOWN`/lower-bound with the existing empty-result note.
 - **D5 — honest state fixed with D1; round trip deferred.** A missing evidence
   row while JS/TS sources are tracked is `unavailable/missing`, so C3 reports a
   lower bound with an explicit reason. Carrying the evidence (and

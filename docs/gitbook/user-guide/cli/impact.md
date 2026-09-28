@@ -20,7 +20,7 @@ docuvia impact <target>
 
 ## Empty results are UNKNOWN, not zero (issue #192)
 
-An empty blast radius is reported as `Risk level: UNKNOWN` — never `LOW`. Absence of static edges is **not** evidence that no code depends on the target: the edge graph only models `calls`/`implements`/`extends` (+ worker spawns), so runtime-variable imports, computed `import()` specifiers, and `child_process` spawns produce no edge no matter how complete ingestion was. Every non-exact result carries an `epistemic: "lower-bound"` flag plus a human-readable `riskNote` explaining which coverage gap applies:
+An empty blast radius is reported as `Risk level: UNKNOWN` — never `LOW`. For a symbol target the table always lists the symbol's own containing file (IMPT-001); that context row is not a dependent, so a symbol whose only entry is its own file is treated as empty too (issue #508) — `UNKNOWN`, lower-bound — while the risk band of a symbol with real dependents is unchanged. Absence of static edges is **not** evidence that no code depends on the target: the edge graph only models `calls`/`implements`/`extends` (+ worker spawns), so runtime-variable imports, computed `import()` specifiers, and `child_process` spawns produce no edge no matter how complete ingestion was. Every non-exact result carries an `epistemic: "lower-bound"` flag plus a human-readable `riskNote` explaining which coverage gap applies:
 
 - **Partial Tier B ingestion** — "only N of M workspace files have been analyzed"; re-run `docuvia analyze --escalate-to-lsp --full`.
 - **Registry-mediated dependents** (issue #136) — the target's own file resolves dependencies through the `docuviaFactory`/`TOKENS` registry.

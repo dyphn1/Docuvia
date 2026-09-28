@@ -7317,7 +7317,6 @@
 {"source":"lib/core/src/index.ts","target":"lib/core/src/utils/language-detection.ts","type":"depends_on"}
 {"source":"lib/core/src/lsp/cpp-lsp-constants.ts","target":"lib/core/src/lsp/cpp-lsp-constants.ts#CPP_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/cpp-lsp-constants.ts","target":"lib/core/src/lsp/cpp-lsp-constants.ts#CppLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"lib/core/src/lsp/cpp-lsp-constants.ts#CppLspConstants","type":"imports"}
@@ -7328,9 +7327,6 @@
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#LspLanguageConfig","type":"imports"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.ts#CppLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/cpp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -7409,7 +7405,6 @@
 {"source":"lib/core/src/lsp/cpp-lsp-preflight.unit.test.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-constants.ts","target":"lib/core/src/lsp/csharp-lsp-constants.ts#CSHARP_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/csharp-lsp-constants.ts","target":"lib/core/src/lsp/csharp-lsp-constants.ts#CsharpLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"lib/core/src/lsp/csharp-lsp-constants.ts#CsharpLspConstants","type":"imports"}
@@ -7420,9 +7415,6 @@
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#LspLanguageConfig","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.ts#CsharpLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -7515,7 +7507,6 @@
 {"source":"lib/core/src/lsp/go-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/go-lsp-constants.unit.test.ts#anonymous@L21","type":"contains"}
 {"source":"lib/core/src/lsp/go-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/go-lsp-constants.unit.test.ts#anonymous@L4","type":"contains"}
 {"source":"lib/core/src/lsp/go-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/go-lsp-constants.unit.test.ts#anonymous@L8","type":"contains"}
-{"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"lib/core/src/lsp/go-lsp-constants.ts#GoLspConstants","type":"imports"}
@@ -7527,9 +7518,6 @@
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#LspLanguageConfig","type":"imports"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.ts#GoLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/go-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -7630,7 +7618,6 @@
 {"source":"lib/core/src/lsp/go-lsp-preflight.unit.test.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-constants.ts","target":"lib/core/src/lsp/java-lsp-constants.ts#JAVA_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/java-lsp-constants.ts","target":"lib/core/src/lsp/java-lsp-constants.ts#JavaLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"lib/core/src/lsp/java-lsp-constants.ts#JavaLspConstants","type":"imports"}
@@ -7641,9 +7628,6 @@
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#LspLanguageConfig","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.ts#JavaLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/java-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -7822,9 +7806,6 @@
 {"source":"lib/core/src/lsp/lsp-constants.ts","target":"lib/core/src/lsp/lsp-constants.ts#serverExited","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-constants.ts","target":"lib/core/src/lsp/lsp-constants.ts#skippedMultiLocationDefinition","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-constants.ts","target":"lib/core/src/lsp/lsp-constants.ts#spawnFailed","type":"contains"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -7990,9 +7971,6 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts","target":"lib/core/src/lsp/typescript-lsp-edge-provider.ts#TypescriptLspEdgeProvider","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#FakeLspClient.request","target":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#handler@L751","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#FakeLspClient.request","target":"lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts#latencyMs@L757","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -8113,10 +8091,6 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#request@L321","target":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#handler@L530","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#request@L321","target":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#handler@L530","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#request@L321","target":"lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts#handler@L530","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"l2:13528","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"lib/contracts/src/constants/encoding.ts#UTF8_ENCODING","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#EdgeResolutionAvailability","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#EdgeResolutionCallSite","type":"imports"}
@@ -8229,14 +8203,10 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.doOpenAndGetSymbols","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.pickEvictionVictim","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.doOpenAndGetSymbols","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#normalizeDocumentSymbols","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.doOpenAndGetSymbols","target":"lib/core/src/lsp/lsp-workspace-path.ts#resolveLspWorkspacePath","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveConcurrency","target":"l2:13526","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"l2:13532","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"l2:13533","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcessMemoryMb","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcessMemoryMb","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processMemoryEstimateMb","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processMemoryEstimateMb","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.markUnreachedFilesFailed","target":"l2:13524","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcessMemoryMb","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcesses","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processMemoryEstimateMb","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.maxProcessMemoryMb","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processMemoryEstimateMb","type":"calls"}
@@ -8245,7 +8215,6 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.probeServerReady","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.closeOpenFile","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.probeServerReady","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.openAndGetSymbols","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.probeServerReady","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#flattenCallSiteSymbols","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processAllFiles","target":"l2:13524","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processAllFiles","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveConcurrency","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processAllFiles","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.markUnreachedFilesFailed","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processOneFile","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processOneFileForward","type":"calls"}
@@ -8265,7 +8234,6 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveEdges","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.effectiveProcesses","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveEdges","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.mergeShardOutcomes","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveEdges","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveFirstDefinitionTarget","target":"l2:13537","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveFirstDefinitionTarget","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveTargetNodeKey","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveNodeKeyForFile","target":"lib/core/src/graph/node-key.ts#buildQualifiedBaseKey","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveNodeKeyForFile","target":"lib/core/src/graph/node-key.ts#buildQualifiedBaseKey","type":"calls"}
@@ -8286,16 +8254,11 @@
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveTargetNodeKey","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#findDeepestContainingSymbol","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveTargetNodeKey","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#toNodeKey","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveTargetNodeKey","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#toNodeKey","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"l2:13527","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"l2:13527","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"l2:13538","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.initializeSession","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processAllFiles","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.shutdownSession","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.shutdownSession","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.waitForColdStart","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runOneSlot","target":"l2:13524","type":"calls"}
-{"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runOneSlot","target":"l2:13535","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runOneSlot","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.closeAndEvict","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runOneSlot","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.closeAndEvict","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runOneSlot","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.processOneFile","type":"calls"}
@@ -8361,8 +8324,6 @@
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts#kill","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts#unref","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","target":"l2:13528","type":"imports"}
-{"source":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts#anonymous@L8","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.ts","target":"lib/contracts/src/index.ts","type":"imports"}
@@ -8450,7 +8411,6 @@
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.stop","target":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.rejectAllPending","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.tryConsumeOneMessage","target":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.handleMessage","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcError","target":"lib/contracts/src/errors/docuvia-error.ts#DocuviaError","type":"extends"}
-{"source":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts#anonymous@L108","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts","target":"lib/core/src/lsp/lsp-json-rpc-client.unit.test.ts#anonymous@L130","type":"contains"}
@@ -8498,7 +8458,6 @@
 {"source":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts","target":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts#anonymous@L31","type":"contains"}
 {"source":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts","target":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts#expectTraversal","type":"calls"}
 {"source":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts","target":"lib/core/src/lsp/lsp-workspace-path.unit.test.ts#expectTraversal","type":"contains"}
-{"source":"lib/core/src/lsp/phase7-lsp-quality.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/phase7-lsp-quality.unit.test.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/phase7-lsp-quality.unit.test.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolveNpmNpxBinary","type":"calls"}
 {"source":"lib/core/src/lsp/phase7-lsp-quality.unit.test.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolveNpmNpxBinary","type":"calls"}
@@ -8523,7 +8482,6 @@
 {"source":"lib/core/src/lsp/phase7-lsp-quality.unit.test.ts","target":"lib/core/src/lsp/tier-b-project-partitioner.ts#partitionTierBBucket","type":"calls"}
 {"source":"lib/core/src/lsp/php-lsp-constants.ts","target":"lib/core/src/lsp/php-lsp-constants.ts#PHP_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/php-lsp-constants.ts","target":"lib/core/src/lsp/php-lsp-constants.ts#PhpLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolveNpmNpxBinary","type":"calls"}
@@ -8535,9 +8493,6 @@
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"lib/core/src/lsp/php-lsp-edge-provider.ts#resolveBinary","type":"contains"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts","target":"lib/core/src/lsp/php-lsp-preflight.ts#checkPhpLspPreflight","type":"imports"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.ts#PhpLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -8615,7 +8570,6 @@
 {"source":"lib/core/src/lsp/php-lsp-preflight.unit.test.ts","target":"lib/core/src/lsp/windows-rm-retry.test-support.ts#rmSyncRetrying","type":"calls"}
 {"source":"lib/core/src/lsp/python-lsp-constants.ts","target":"lib/core/src/lsp/python-lsp-constants.ts#PY_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/python-lsp-constants.ts","target":"lib/core/src/lsp/python-lsp-constants.ts#PyLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolveNpmNpxBinary","type":"calls"}
@@ -8627,9 +8581,6 @@
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"lib/core/src/lsp/python-lsp-edge-provider.ts#resolveBinary","type":"contains"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts","target":"lib/core/src/lsp/python-lsp-preflight.ts#checkPythonLspPreflight","type":"imports"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.ts#PythonLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -8729,7 +8680,6 @@
 {"source":"lib/core/src/lsp/python-lsp-preflight.unit.test.ts","target":"lib/core/src/lsp/windows-rm-retry.test-support.ts#rmSyncRetrying","type":"calls"}
 {"source":"lib/core/src/lsp/ruby-lsp-constants.ts","target":"lib/core/src/lsp/ruby-lsp-constants.ts#RUBY_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/ruby-lsp-constants.ts","target":"lib/core/src/lsp/ruby-lsp-constants.ts#RubyLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
@@ -8740,9 +8690,6 @@
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"lib/core/src/lsp/ruby-lsp-edge-provider.ts#RubyLspEdgeProvider.constructor","type":"contains"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts","target":"lib/core/src/lsp/ruby-lsp-preflight.ts#checkRubyLspPreflight","type":"imports"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.ts#RubyLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -8828,9 +8775,6 @@
 {"source":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts#anonymous@L19","type":"contains"}
 {"source":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts#anonymous@L23","type":"contains"}
 {"source":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts","target":"lib/core/src/lsp/rust-lsp-constants.unit.test.ts#anonymous@L4","type":"contains"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#ResolvedCallEdge","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts#anonymous@L102","type":"contains"}
@@ -8852,8 +8796,6 @@
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts#pollImplSymbols","type":"contains"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/core/src/lsp/rust-lsp-edge-provider.ts#RustLspEdgeProvider","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts","target":"lib/core/src/lsp/windows-rm-retry.test-support.ts#rmSyncRetrying","type":"calls"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-binary-resolver-strategies.ts#resolvePathNativeBinary","type":"calls"}
@@ -8867,9 +8809,6 @@
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"lib/core/src/lsp/rust-lsp-edge-provider.ts#RustLspEdgeProvider.constructor","type":"contains"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts","target":"lib/core/src/lsp/rust-lsp-preflight.ts#checkRustLspPreflight","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.ts#RustLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
@@ -9179,9 +9118,6 @@
 {"source":"lib/core/src/lsp/typescript-lsp-constants.ts","target":"lib/core/src/lsp/typescript-lsp-constants.ts#DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB","type":"contains"}
 {"source":"lib/core/src/lsp/typescript-lsp-constants.ts","target":"lib/core/src/lsp/typescript-lsp-constants.ts#TS_LSP_MESSAGES","type":"contains"}
 {"source":"lib/core/src/lsp/typescript-lsp-constants.ts","target":"lib/core/src/lsp/typescript-lsp-constants.ts#TsLspConstants","type":"contains"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"l2:13748","type":"imports"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"l2:13773","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#EdgeResolutionCallSite","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#ResolvedCallEdge","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/core/src/ast/ast-worker.ts#buildParseResponse","type":"calls"}
@@ -9209,7 +9145,6 @@
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts#toCallSites","type":"contains"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/core/src/lsp/typescript-lsp-edge-provider.ts#TypescriptLspEdgeProvider","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts","target":"lib/core/src/lsp/windows-rm-retry.test-support.ts#rmSyncRetrying","type":"calls"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"lib/contracts/src/interfaces/edge-resolution.interfaces.ts#TIER_B_LANGUAGE_IDS","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"lib/contracts/src/logging/types.ts#ILogger","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#LspLanguageConfig","type":"imports"}
@@ -9222,9 +9157,6 @@
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"lib/core/src/lsp/typescript-lsp-edge-provider.ts#TypescriptLspEdgeProvider.constructor","type":"contains"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts","target":"lib/core/src/lsp/typescript-lsp-preflight.ts#checkTypeScriptLspPreflight","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.ts#TypescriptLspEdgeProvider","target":"lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider","type":"extends"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"l2:13529","type":"imports"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"l2:13530","type":"imports"}
-{"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"l2:13748","type":"imports"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}

@@ -1,3 +1,6 @@
+/** Abbreviated sha length used in human-readable notes. */
+const SHORT_SHA_LENGTH = 7;
+
 /** Progress/result messages for the `impact` workflow. */
 export const IMPACT_MESSAGES = {
   RESOLVING: "Resolving blast radius...",
@@ -42,6 +45,12 @@ export const IMPACT_MESSAGES = {
    *  (`DEFAULT_CALL_RESOLUTION_MIN_SAMPLE`). */
   RISK_NOTE_EMPTY_LOW_RESOLUTION: (resolved: number, applicable: number) =>
     `No static dependents found, but only ${resolved} of ${applicable} call sites in this symbol's own file resolved into edges during ingestion -- dependents calling it from here may be missing from the graph. Run "docuvia analyze --escalate-to-lsp --full" to recover them.`,
+  /** Issue #508 Phase 3 (D8): the graph was last ingested at a commit other than HEAD (the
+   *  HEAD-sha freshness of #193's `status`). Every dependent added, removed or renamed since then is
+   *  invisible, so neither an empty nor a non-empty answer is complete -- the first rung of the
+   *  epistemic ladder. */
+  RISK_NOTE_GRAPH_STALE: (graphSourceSha: string, headSha: string) =>
+    `The knowledge graph reflects ${graphSourceSha.slice(0, SHORT_SHA_LENGTH)} but HEAD is ${headSha.slice(0, SHORT_SHA_LENGTH)} -- dependents added, removed or renamed since then are not reflected. Run 'docuvia analyze'.`,
   /** Issue #192: attached to a NON-EMPTY blast radius when workspace Tier B coverage is
    *  incomplete -- a partially-populated graph must never read as a complete answer
    *  (self-verification 2026-08-05's "confidently wrong non-empty result" failure mode). */

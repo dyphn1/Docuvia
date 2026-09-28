@@ -8,10 +8,10 @@ import {
 } from "@workspace/contracts";
 import { STATUS_EVENTS, STATUS_MESSAGES } from "./status-messages.js";
 import { appendStatusLogLine } from "./status-log-writer.js";
-import type { StatusResult, GraphFreshness } from "./status-result.js";
+import type { StatusResult } from "./status-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
-import { GitConstants } from "@workspace/contracts";
+import { resolveGraphFreshness } from "../../utils/resolve-graph-freshness.js";
 import { readTierCQueue } from "../analyze/tier-c-queue.js";
 
 /**
@@ -73,7 +73,9 @@ export class StatusWorkflow {
         // Issue #58: a permanently-empty Tier C queue is the exact "Tier C never backfills"
         // symptom -- surface its size alongside the other graph metrics.
         tierCQueued: readTierCQueue(store).length,
-        graphFreshness: await this.resolveGraphFreshness(store),
+        // Issue #193: see `resolveGraphFreshness` (shared with `impact` since #508 D8).
+        graphFreshness: (await resolveGraphFreshness(workspaceRoot, store))
+          .state,
       };
       await appendStatusLogLine(workspaceRoot, {
         event: STATUS_EVENTS.SUMMARY,
@@ -82,30 +84,6 @@ export class StatusWorkflow {
       return result;
     } finally {
       await store.close();
-    }
-  }
-
-  /**
-   * Issue #193: cheap HEAD-vs-last-ingested comparison for `status` (doctor's
-   * `post_commit_ingestion` is the thorough diagnostic; this is the quick check
-   * for agents/hooks). Fail-open to `"unknown"` on any missing input or error --
-   * freshness must never crash `status`.
-   */
-  private async resolveGraphFreshness(
-    store: IGraphStore,
-  ): Promise<GraphFreshness> {
-    try {
-      if (!docuviaFactory.has(TOKENS.GitProvider)) return "unknown";
-      const git = docuviaFactory.resolve(TOKENS.GitProvider);
-      const headSha = await git.getHeadSha(this.workspaceRoot);
-      if (!headSha) return "unknown";
-      const lastIngested = store.meta.get(
-        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
-      );
-      if (!lastIngested) return "unknown";
-      return lastIngested === headSha ? "fresh" : "stale";
-    } catch {
-      return "unknown";
     }
   }
 }

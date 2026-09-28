@@ -352,6 +352,22 @@ clean runs. Q1 and Q6 cannot be demonstrated on the real corpus while D9 holds:
 the poisoned `T6@after` target already fails S4, so their tests are tagged as
 masked by D9.
 
+### Resolution
+
+Each fixed defect lands in its own commit (doc → the failing test already
+committed as `it.fails` → implementation → flip).
+
+- **D8 — fixed.** `resolveGraphFreshness(workspaceRoot, store)`
+  (`lib/ui-core/src/utils/resolve-graph-freshness.ts`) is extracted from
+  `StatusWorkflow` (whose output is unchanged) and shared with `ImpactWorkflow`.
+  `ImpactResult.graphFreshness: { state: "stale", graphSourceSha, headSha }` is
+  additive and emitted only when stale (Q3). A stale graph is the first rung of
+  `resolveImpactEpistemic`, for empty and non-empty results alike: `lower-bound`
+  with `RISK_NOTE_GRAPH_STALE` naming both short shas; empty results stay
+  `UNKNOWN` and non-empty ones keep the earned band. The human `Note:` line
+  already prints `riskNote`, and the MCP `docuvia_impact` description mentions
+  `graphFreshness`.
+
 Observations, not gated: **O1** dirty working tree (#523); **H2** Docuvia's own
 generated hook scripts are ingested by the full-ingestion fallback when not
 ignored ([#524](https://github.com/dyphn1/Docuvia/issues/524)); the Phase 2 D5

@@ -184,25 +184,21 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
-  it.fails(
-    "[state-diff] every stale, failed and in-flight checkpoint reports stale + lower-bound, never the old graph as fresh (#508 D8)",
-    () => {
-      expect(gatesFor(merged, STALE_IDS)).toEqual([]);
-      expect(
-        violationsOf(
-          partitionPhase3KnownDefects(merged, PHASE3_KNOWN_PRODUCT_DEFECTS)
-            .gated,
-          "S13",
-        ),
-      ).toEqual([]);
-      const staleTargets = subset(merged, STALE_IDS).checkpoints.flatMap(
-        (c) => c.targets,
-      );
-      expect(staleTargets.every((target) => target.freshness === "stale")).toBe(
-        true,
-      );
-    },
-  );
+  it("[state-diff] every stale, failed and in-flight checkpoint reports stale + lower-bound, never the old graph as fresh (#508 D8)", () => {
+    expect(gatesFor(merged, STALE_IDS)).toEqual([]);
+    expect(
+      violationsOf(
+        partitionPhase3KnownDefects(merged, PHASE3_KNOWN_PRODUCT_DEFECTS).gated,
+        "S13",
+      ),
+    ).toEqual([]);
+    const staleTargets = subset(merged, STALE_IDS).checkpoints.flatMap(
+      (c) => c.targets,
+    );
+    expect(staleTargets.every((target) => target.freshness === "stale")).toBe(
+      true,
+    );
+  });
 
   it.fails(
     "[state-diff] a re-parse keeps incoming edges from unchanged files: T2-T4 exact and static, no dangling rows, no accumulation (#508 D9)",

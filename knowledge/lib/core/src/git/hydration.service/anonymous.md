@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.ts#HydrationService.anonymous@L391
+id: lib/core/src/git/hydration.service.ts#anonymous@L61
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/hydration.service.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/git/hydration.service.ts
 # Symbol: anonymous
 
 File: `lib/core/src/git/hydration.service.ts`
+ation.service.ts`

@@ -28,6 +28,7 @@ export function makeMockStore(
       getAllHashes: vi.fn().mockReturnValue([]),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       getTierBCoverage: vi.fn(),

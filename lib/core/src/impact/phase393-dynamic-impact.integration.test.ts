@@ -19,6 +19,7 @@ import {
 
 // TDD-SOURCE: https://github.com/dyphn1/Docuvia/issues/393
 // TDD-SOURCE: issue #508 Phase 2 (D1 corrupt evidence, D2 stale universe, D3 NodeNext specifiers)
+// TDD-SOURCE: issue #508 Phase 3 (D6 stale candidates and phantom evidence)
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase2.md
 
 describe("issue #393 dynamic dependency evidence", () => {
@@ -743,6 +744,47 @@ describe("issue #393 dynamic dependency evidence", () => {
     expect(dynamicCandidates("gammaPlugin")).toEqual([
       expect.objectContaining({ name: sourceFile }),
     ]);
+  });
+
+  it("[state-diff] an empty batch after a deleted candidate and a deleted loader drops the stale candidate and the phantom record (#508 Phase 3 D6)", async () => {
+    const sourceFile = "src/plugin-loader.ts";
+    const alpha = "src/plugins/alpha.ts";
+    const beta = "src/plugins/beta.ts";
+    write(alpha, "export function alphaPlugin() {}\n");
+    write(beta, "export function betaPlugin() {}\n");
+    writeTemplateLoader(sourceFile);
+    const persistBatch = (parsedResults: ParsedAstFileResult[]) =>
+      persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults,
+        tags: [],
+      });
+    await persistBatch([
+      parsed(alpha, {
+        functions: [{ name: "alphaPlugin", startLine: 0, endLine: 0 }],
+      }),
+      parsed(beta, {
+        functions: [{ name: "betaPlugin", startLine: 0, endLine: 0 }],
+      }),
+      loaderParse(sourceFile),
+    ]);
+
+    // Delta retirement of beta.ts (project_files row gone), then the delete-only refresh.
+    store.files.deleteFile(projectId, beta);
+    await persistBatch([]);
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({ sourceFile, candidatePaths: [alpha] }),
+    ]);
+
+    store.files.deleteFile(projectId, sourceFile);
+    await persistBatch([]);
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+      items: [],
+    });
+    expect(dynamicCandidates("alphaPlugin")).toEqual([]);
   });
 
   it("[state-diff] incremental growth from 64 to 65 candidates moves retained evidence to overflow (#508 D2)", async () => {

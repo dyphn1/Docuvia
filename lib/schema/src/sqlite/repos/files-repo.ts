@@ -68,6 +68,15 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
       .run(input.projectId, input.filePath, input.contentHash);
   }
 
+  /** Removes one path's row (see `IProjectFilesRepo.deleteFile`, #508 D6/D11). */
+  deleteFile(projectId: number, filePath: string): void {
+    this.db
+      .prepare(
+        `DELETE FROM ${SchemaTables.PROJECT_FILES} WHERE ${SchemaColumns.PROJECT_ID} = ? AND ${SchemaColumns.FILE_PATH} = ?`,
+      )
+      .run(projectId, filePath);
+  }
+
   /**
    * Stamps a file's `last_tier_b_processed_at`/`last_tier_b_commit_sha` after Tier B (re)computes
    * its calls-edges, keyed on (project_id, file_path) — mirrors `upsertFile()`'s own upsert shape

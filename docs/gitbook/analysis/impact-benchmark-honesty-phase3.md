@@ -380,6 +380,27 @@ committed as `it.fails` → implementation → flip).
   schema test that simulated a dangling row through `deleteNodesForPath`
   encoded the defect and now writes the legacy row directly.
 
+- **D6 and D11 — fixed together (one root cause: per-path state was never
+  retired).** `IProjectFilesRepo.deleteFile(projectId, filePath)` is added. The
+  delta's `persistDelta` retires every path that left the tree (deleted, or the
+  old side of a rename) through `retirePath`: `deleteNodesForPath` (which since
+  D9 also removes incoming links), `callSites.deleteForFile` and
+  `files.deleteFile`. A delete-only delta, which parses nothing, now calls the
+  injected `GraphPersister` with an empty batch, which refreshes the #393
+  evidence. `persistDynamicDependencyEvidence` drops retained records whose
+  source file is no longer tracked, and its existing D2 re-resolution against
+  the tracked files removes a deleted candidate. The Phase 2 D6 row carries a
+  pointer to this section.
+- **D10 — registered, not fixed:** [#522](https://github.com/dyphn1/Docuvia/issues/522).
+  After the fixes above, T10 still keeps `grow.ts`'s `l2_nodes`,
+  `ast_call_sites` and `project_files` rows and its `calls` edge (S5, S6, S7,
+  S8, S10).
+- **D12 — registered, not fixed:** [#521](https://github.com/dyphn1/Docuvia/issues/521).
+  After the fixes above, T12 still keeps phantom nodes and rows for
+  `core/target-moved.ts` and `caller-d/e/f.ts`, which the full-ingestion
+  fallback never prunes; `evalP3Target` resolves to the phantom and reads exact
+  while missing `grow.ts` (S4, S5, S6, S7, S8, S10).
+
 Observations, not gated: **O1** dirty working tree (#523); **H2** Docuvia's own
 generated hook scripts are ingested by the full-ingestion fallback when not
 ignored ([#524](https://github.com/dyphn1/Docuvia/issues/524)); the Phase 2 D5

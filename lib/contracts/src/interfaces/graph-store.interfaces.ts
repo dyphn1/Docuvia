@@ -240,6 +240,13 @@ export interface IProjectFilesRepo {
     contentHash: string | null;
   }): void;
   /**
+   * Issue #508 Phase 3 (D6/D11): removes the `project_files` row of a path that left the tree
+   * (deleted, or the old side of a rename), keyed on (project_id, file_path). A missing row is a
+   * no-op. Without it the row outlived its file: it kept counting toward Tier B coverage, stayed a
+   * #393 dynamic-import candidate, and let the full-ingestion hash diff skip a later re-add.
+   */
+  deleteFile(projectId: number, filePath: string): void;
+  /**
    * Stamps `last_tier_b_processed_at`/`last_tier_b_commit_sha` for a file whose calls-edges Tier
    * B just (re)computed — called once per file in `outcome.filesProcessed` right after
    * `applyResolvedEdges` durably inserts that batch's edges (not staged/gated on a later

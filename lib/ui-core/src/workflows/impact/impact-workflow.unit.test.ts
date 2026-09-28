@@ -58,6 +58,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllHashes: vi.fn(),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       // Full-coverage default -- issue #192's epistemic ladder treats unreadable counts as

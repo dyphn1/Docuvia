@@ -138,6 +138,7 @@ function makeMockStore(): IGraphStore {
       getAllHashes: vi.fn().mockReturnValue([]),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       getTierBCoverage: vi.fn(),
@@ -317,6 +318,77 @@ describe("runDeltaIngestion()", () => {
     expect(astProcessor.processFiles).not.toHaveBeenCalled();
     expect(result.kind).toBe("autoDelta");
     if (result.kind === "autoDelta") expect(result.filesDeleted).toBe(1);
+  });
+
+  it("[state-diff] retires every per-path record of a deleted file and refreshes #393 evidence with an empty batch (#508 D6/D11)", async () => {
+    const entries: ChangedFileEntry[] = [
+      { file: "src/gone.ts", status: "deleted" },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.graph.deleteNodesForPath).toHaveBeenCalledWith("src/gone.ts");
+    expect(store.callSites.deleteForFile).toHaveBeenCalledWith(
+      1,
+      "src/gone.ts",
+    );
+    expect(store.files.deleteFile).toHaveBeenCalledWith(1, "src/gone.ts");
+    expect(graphPersister.persist).toHaveBeenCalledTimes(1);
+    expect(graphPersister.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ parsedResults: [], projectId: 1 }),
+    );
+  });
+
+  it("[state-diff] a rename retires the old path's records and re-parses only the new path (#508 D11)", async () => {
+    const entries: ChangedFileEntry[] = [
+      {
+        file: "src/new-name.ts",
+        status: "renamed",
+        oldFile: "src/old-name.ts",
+      },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef: vi.fn().mockResolvedValue("renamed content"),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.callSites.deleteForFile).toHaveBeenCalledWith(
+      1,
+      "src/old-name.ts",
+    );
+    expect(store.files.deleteFile).toHaveBeenCalledWith(1, "src/old-name.ts");
+    expect(store.files.deleteFile).not.toHaveBeenCalledWith(
+      1,
+      "src/new-name.ts",
+    );
+    // The re-parse batch itself refreshes evidence; no extra empty batch.
+    expect(graphPersister.persist).toHaveBeenCalledTimes(1);
+    expect(graphPersister.persist).not.toHaveBeenCalledWith(
+      expect.objectContaining({ parsedResults: [] }),
+    );
   });
 
   it("treats a renamed file as delete (old path) plus add (new path), skipping detector classification", async () => {

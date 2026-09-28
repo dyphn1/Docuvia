@@ -332,7 +332,16 @@ async function classifyChangedFile(
   };
 }
 
-/** The lock-held persist step: drop L2 rows for deleted/renamed-old paths, re-parse + persist the
+/** #508 Phase 3 (D11): retires every per-path record of a path that left the tree (deleted, or
+ *  the old side of a rename) -- its L2 nodes and their links, its Tier A call sites, and its
+ *  `project_files` row -- so nothing about it outlives the file. */
+function retirePath(store: IGraphStore, projectId: number, file: string): void {
+  store.graph.deleteNodesForPath(file);
+  store.callSites.deleteForFile(projectId, file);
+  store.files.deleteFile(projectId, file);
+}
+
+/** The lock-held persist step: retire deleted/renamed-old paths (`retirePath`), re-parse + persist the
  *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B/C queues,
  *  advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1), and stamp the
  *  last-ingested source sha. Returns the parse failures. */
@@ -352,17 +361,29 @@ async function persistDelta(
 
   if (toDelete.size > 0) {
     await store.withWriteLock(() => {
-      for (const file of toDelete) store.graph.deleteNodesForPath(file);
+      for (const file of toDelete) retirePath(store, projectId, file);
     });
   }
 
   let failures: AstParseFailure[] = [];
   let callResolutionByFile: Record<string, CallResolutionStats> | undefined;
+  const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+  if (filesToParse.length === 0 && toDelete.size > 0) {
+    // #508 D6: a delete-only delta parses nothing, but the #393 evidence still names the retired
+    // paths as loaders or candidates. An empty persist batch is exactly that refresh: it
+    // re-resolves every retained record against the remaining tracked files.
+    await graphPersister.persist({
+      store,
+      workspaceRoot,
+      projectId,
+      parsedResults: [],
+      tags: [],
+    });
+  }
   if (filesToParse.length > 0) {
     const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
       logger,
     });
-    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
 
     const result = await runParseAndPersist({
       astProcessor,

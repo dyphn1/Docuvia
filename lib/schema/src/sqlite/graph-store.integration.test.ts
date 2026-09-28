@@ -126,6 +126,29 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     );
   });
 
+  it("files repo: deleteFile() removes exactly one project's path row and is a no-op when absent (#508 D6/D11)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    for (const filePath of ["src/keep.ts", "src/gone.ts"]) {
+      store.files.upsertFile({
+        projectId: project.id,
+        filePath,
+        contentHash: `hash-${filePath}`,
+      });
+    }
+
+    store.files.deleteFile(project.id, "src/gone.ts");
+    store.files.deleteFile(project.id, "src/never-tracked.ts");
+    store.files.deleteFile(project.id + 1, "src/keep.ts");
+
+    expect(store.files.getAllHashes()).toEqual([
+      { filePath: "src/keep.ts", contentHash: "hash-src/keep.ts" },
+    ]);
+    expect(store.files.getTierBCoverage().totalFiles).toBe(1);
+  });
+
   it("files repo: markTierBProcessed()/getTierBFileStatus()/getTierBCoverage() round-trip", () => {
     const project = store.projects.insert({
       name: "demo",

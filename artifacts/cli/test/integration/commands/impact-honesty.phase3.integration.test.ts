@@ -219,38 +219,27 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
-  it.fails(
-    "[state-diff] deleted and renamed files leave no per-path rows or edges behind (T5, T6, T7) (#508 D11)",
-    () => {
-      expect(gatesFor(merged, ["T5@after", "T6@after", "T7@after"])).toEqual(
-        [],
-      );
-    },
-  );
+  it("[state-diff] deleted and renamed files leave no per-path rows or edges behind (T5, T6, T7) (#508 D11)", () => {
+    expect(gatesFor(merged, ["T5@after", "T6@after", "T7@after"])).toEqual([]);
+  });
 
-  it.fails(
-    "[state-diff] a deleted candidate or loader leaves no stale candidate and no phantom evidence (T8, T9) (#508 D6)",
-    () => {
-      expect(gatesFor(merged, ["T8@after", "T9@after"])).toEqual([]);
-    },
-  );
+  it("[state-diff] a deleted candidate or loader leaves no stale candidate and no phantom evidence (T8, T9) (#508 D6)", () => {
+    expect(gatesFor(merged, ["T8@after", "T9@after"])).toEqual([]);
+  });
 
-  it.fails(
-    "[happy] the merged gated corpus passes S0-S13 on real CLI output (#508 D6, D8, D9, D11)",
-    () => {
-      const { gated } = partitionPhase3KnownDefects(
-        merged,
-        PHASE3_KNOWN_PRODUCT_DEFECTS,
-      );
-      expect(phase3GateViolations(gated)).toEqual([]);
-      const aggregate = assertPhase3ImpactHonestyGates(gated);
-      expect(aggregate.errorCases).toBe(0);
-      expect(aggregate.epistemic.falseSafeRate).toBe(0);
-      expect(aggregate.epistemic.wrongCertaintyCases).toBe(0);
-      expect(incompleteCertaintyRecords(gated)).toEqual([]);
-      expect(aggregate.provenance.mismatches).toBe(0);
-    },
-  );
+  it("[happy] the merged gated corpus passes S0-S13 on real CLI output (#508 D6, D8, D9, D11)", () => {
+    const { gated } = partitionPhase3KnownDefects(
+      merged,
+      PHASE3_KNOWN_PRODUCT_DEFECTS,
+    );
+    expect(phase3GateViolations(gated)).toEqual([]);
+    const aggregate = assertPhase3ImpactHonestyGates(gated);
+    expect(aggregate.errorCases).toBe(0);
+    expect(aggregate.epistemic.falseSafeRate).toBe(0);
+    expect(aggregate.epistemic.wrongCertaintyCases).toBe(0);
+    expect(incompleteCertaintyRecords(gated)).toEqual([]);
+    expect(aggregate.provenance.mismatches).toBe(0);
+  });
 
   it("[state-diff] T1 afterTierA: a delta that adds a file is partial through the product's own Tier B state", () => {
     expect(gatesFor(merged, ["T1@afterTierA"])).toEqual([]);
@@ -388,13 +377,10 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     for (const pass of first.concurrentReads) expect(pass).toEqual(sequential);
   });
 
-  it.fails(
-    "[stress] C1: two concurrent analyze runs converge to the oracle after one sequential analyze (#480; #508 D6, D9, D11)",
-    () => {
-      expect(first.concurrentExitCodes).toHaveLength(2);
-      expect(gatesFor(merged, ["C1@after"])).toEqual([]);
-    },
-  );
+  it("[stress] C1: two concurrent analyze runs converge to the oracle after one sequential analyze (#480; #508 D6, D9, D11)", () => {
+    expect(first.concurrentExitCodes).toHaveLength(2);
+    expect(gatesFor(merged, ["C1@after"])).toEqual([]);
+  });
 
   it("[state-diff] S12 determinism: two clean runs produce identical records, raw stdout, facts and events", () => {
     expect(phase3DeterminismViolations(first, second)).toEqual([]);
@@ -513,24 +499,21 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
-  it.fails(
-    "[negative-control] unpoisoned poison targets pass every gate on their own (#508 D8, D9, D11)",
-    () => {
-      const controls: Array<[string, string]> = [
-        ["T6@after", T.TARGET],
-        ["T1@before", T.TARGET],
-        ["F1@failed", T.TARGET],
-        ["T3@after", T.BASE],
-        ["R1c2r@after", T.TARGET],
-        ["T4@after", T.OTHER],
-      ];
-      for (const [id, target] of controls) {
-        expect({
-          id,
-          target,
-          violations: gatesFor(merged, [id], target),
-        }).toEqual({ id, target, violations: [] });
-      }
-    },
-  );
+  it("[negative-control] unpoisoned poison targets pass every gate on their own (#508 D8, D9, D11)", () => {
+    const controls: Array<[string, string]> = [
+      ["T6@after", T.TARGET],
+      ["T1@before", T.TARGET],
+      ["F1@failed", T.TARGET],
+      ["T3@after", T.BASE],
+      ["R1c2r@after", T.TARGET],
+      ["T4@after", T.OTHER],
+    ];
+    for (const [id, target] of controls) {
+      expect({
+        id,
+        target,
+        violations: gatesFor(merged, [id], target),
+      }).toEqual({ id, target, violations: [] });
+    }
+  });
 });

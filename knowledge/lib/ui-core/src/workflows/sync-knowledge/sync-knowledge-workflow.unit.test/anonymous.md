@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.unit.test.ts#anonymous@L286
+id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.unit.test.ts#anonymous@L174
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.unit.test.ts

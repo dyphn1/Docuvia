@@ -367,12 +367,11 @@ async function persistDelta(
 
   let failures: AstParseFailure[] = [];
   let callResolutionByFile: Record<string, CallResolutionStats> | undefined;
-  const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
   if (filesToParse.length === 0 && toDelete.size > 0) {
     // #508 D6: a delete-only delta parses nothing, but the #393 evidence still names the retired
     // paths as loaders or candidates. An empty persist batch is exactly that refresh: it
     // re-resolves every retained record against the remaining tracked files.
-    await graphPersister.persist({
+    await docuviaFactory.resolve(TOKENS.GraphPersister).persist({
       store,
       workspaceRoot,
       projectId,
@@ -384,6 +383,7 @@ async function persistDelta(
     const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
       logger,
     });
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
 
     const result = await runParseAndPersist({
       astProcessor,

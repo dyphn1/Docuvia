@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.test.ts#anonymous@L67
+id: artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.test.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.t
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.test.ts`
+ts`

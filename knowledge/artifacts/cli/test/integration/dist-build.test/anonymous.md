@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/dist-build.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/dist-build.test.ts`
-

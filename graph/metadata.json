@@ -1357,8 +1357,8 @@
     {
       "filePath": "lib/contracts/src/interfaces/impact.interfaces.ts",
       "contentHash": "4f663fcf3c4878b602e8d3206cffbfd6fe181e24",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/contracts/src/interfaces/integration.interfaces.ts",
@@ -1915,14 +1915,14 @@
     {
       "filePath": "lib/core/src/impact/dynamic-dependency-evidence.ts",
       "contentHash": "032efab3b455148ef66c12408e47ebab5813db9b",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/core/src/impact/dynamic-dependency-evidence.unit.test.ts",
       "contentHash": "ff7895335dd2a40a5689587ad38f3c13e434530b",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/core/src/impact/file-impact-aggregation.integration.test.ts",
@@ -1945,8 +1945,8 @@
     {
       "filePath": "lib/core/src/impact/phase393-dynamic-impact.integration.test.ts",
       "contentHash": "bd10c270aaf1764ffae6d0889f98dfe3105ca110",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/core/src/impact/phase393-impact.service.ts",
@@ -2137,8 +2137,8 @@
     {
       "filePath": "lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts",
       "contentHash": "3361e9d8b0ad3a0b7bf18dbf204a2718334771f4",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/core/src/lsp/lsp-json-rpc-client.stop.unit.test.ts",
@@ -2617,8 +2617,8 @@
     {
       "filePath": "lib/core/src/utils/safe-fs.ts",
       "contentHash": "fa161580cde092ead38138f11ae8f742085bb390",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/core/src/utils/safe-fs.unit.test.ts",
@@ -3601,8 +3601,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/impact/dynamic-epistemic.unit.test.ts",
       "contentHash": "3223608778522d1a1aee406500c5ba221a5c3671",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-log-writer.ts",
@@ -3631,8 +3631,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts",
       "contentHash": "bbccd322ab34b9902ecd80372be696ffeddf0d94",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-28 16:33:21",
+      "lastTierBCommitSha": "37a8ce8529c396acfc620e12d82b52aa5e2474d2"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/resolve-impact-epistemic.ts",

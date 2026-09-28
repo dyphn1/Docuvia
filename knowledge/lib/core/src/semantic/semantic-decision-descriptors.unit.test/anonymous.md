@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/semantic-decision-descriptors.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/semantic-decision-descriptors.unit.test.ts`
-

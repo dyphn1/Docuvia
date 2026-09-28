@@ -1,6 +1,7 @@
 import type {
   BlastRadiusEntry,
   DynamicDependencyEvidence,
+  DynamicEvidenceUnavailableReason,
   EpistemicLevel,
   RiskLevel,
   TierBCoverageHint,
@@ -18,6 +19,10 @@ export interface ImpactResult {
   /** Issue #393: target-relevant runtime dependency boundaries, including bounded candidate sets
    *  and unresolved expressions. Omitted when none were observed. */
   dynamicEvidence?: DynamicDependencyEvidence[];
+  /** Issue #508 Phase 2 (D1/D5): additive, omit-when-available. Present when the persisted #393
+   *  evidence set is corrupt, wrong-shaped, or missing -- runtime `import()` boundaries could not
+   *  be checked at all, so the result is always `lower-bound` and `dynamicEvidence` is omitted. */
+  dynamicEvidenceUnavailable?: { reason: DynamicEvidenceUnavailableReason };
   /** Additive, omit-when-confident "not yet Tier B-processed" signal (see `TierBCoverageHint`'s
    *  own doc comment) -- attached only when an empty `blastRadius` might mean "never looked at"
    *  rather than "confirmed zero", computed one layer up from `ImpactService` (`ImpactWorkflow`). */

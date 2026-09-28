@@ -196,6 +196,8 @@ export {
   EpistemicLevels,
   DynamicDependencyStatuses,
   DynamicDependencyKinds,
+  DynamicEvidenceUnavailableReasons,
+  DynamicEvidenceAvailabilityStates,
   BlastRadiusEdgeSources,
 } from "./interfaces/impact.interfaces.js";
 export type {
@@ -204,6 +206,8 @@ export type {
   DynamicDependencyStatus,
   DynamicDependencyKind,
   DynamicDependencyEvidence,
+  DynamicEvidenceUnavailableReason,
+  DynamicEvidenceAvailability,
   BlastRadiusEdgeSource,
   BlastRadiusEntry,
   IImpactService,

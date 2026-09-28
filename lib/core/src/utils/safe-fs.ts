@@ -27,6 +27,47 @@ export function resolveWithinRoot(
     : null;
 }
 
+export const ReadFileWithinRootStatuses = {
+  READABLE: "readable",
+  MISSING: "missing",
+  UNREADABLE: "unreadable",
+  OUTSIDE_ROOT: "outside-root",
+} as const;
+
+export type ReadFileWithinRootResult =
+  | {
+      status: typeof ReadFileWithinRootStatuses.READABLE;
+      source: string;
+    }
+  | {
+      status:
+        | typeof ReadFileWithinRootStatuses.MISSING
+        | typeof ReadFileWithinRootStatuses.UNREADABLE
+        | typeof ReadFileWithinRootStatuses.OUTSIDE_ROOT;
+    };
+
+/** Result-typed read for callers that must distinguish a deleted path from an incomplete read. */
+export function readFileWithinRootResult(
+  rootDir: string,
+  relativePath: string,
+): ReadFileWithinRootResult {
+  const absolute = resolveWithinRoot(rootDir, relativePath);
+  if (!absolute) {
+    return { status: ReadFileWithinRootStatuses.OUTSIDE_ROOT };
+  }
+  if (!fs.existsSync(absolute)) {
+    return { status: ReadFileWithinRootStatuses.MISSING };
+  }
+  try {
+    return {
+      status: ReadFileWithinRootStatuses.READABLE,
+      source: fs.readFileSync(absolute, UTF8_ENCODING),
+    };
+  } catch {
+    return { status: ReadFileWithinRootStatuses.UNREADABLE };
+  }
+}
+
 /**
  * `resolveWithinRoot` + exists-check + `readFileSync(utf8)` in one call: returns the file's text,
  * or `null` when the path escapes `rootDir`, doesn't exist, or can't be read. Lets callers replace
@@ -37,11 +78,8 @@ export function readFileWithinRoot(
   rootDir: string,
   relativePath: string,
 ): string | null {
-  const absolute = resolveWithinRoot(rootDir, relativePath);
-  if (!absolute || !fs.existsSync(absolute)) return null;
-  try {
-    return fs.readFileSync(absolute, UTF8_ENCODING);
-  } catch {
-    return null;
-  }
+  const result = readFileWithinRootResult(rootDir, relativePath);
+  return result.status === ReadFileWithinRootStatuses.READABLE
+    ? result.source
+    : null;
 }

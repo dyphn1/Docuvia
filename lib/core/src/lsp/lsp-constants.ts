@@ -7,6 +7,21 @@ export const LspWireConstants = {
   JSON_RPC_VERSION: "2.0",
 } as const;
 
+/** LSP-defined transient request failures. A server may return either code while its document or
+ * index is changing; the client can safely send the request again. */
+export const LspErrorCodes = {
+  CONTENT_MODIFIED: -32801,
+  SERVER_CANCELLED: -32802,
+} as const;
+
+/** Bounded retry policy for transient LSP request failures. The attempt count includes the first
+ * request, and the backoff is deliberately short because the caller's timeout remains the overall
+ * request budget. */
+export const LspRequestRetryConstants = {
+  MAX_ATTEMPTS: 3,
+  BACKOFF_MS: 25,
+} as const;
+
 export const LspMethods = {
   INITIALIZE: "initialize",
   INITIALIZED: "initialized",

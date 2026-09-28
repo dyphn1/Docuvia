@@ -278,9 +278,18 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     expect(failed?.metaSha).toBe(failed?.metaShaBeforeOperation);
     expect(failed?.metaSha).not.toBe(failed?.headSha);
     // The failed operation stays a counted row: its records are in the denominators.
+    const failedCheckpoint = PHASE3_CHECKPOINTS.find(
+      (c) => c.id === "F1@failed",
+    )!;
     expect(
-      merged.records.filter((r) => r.scenario.startsWith("F1@failed:")).length,
-    ).toBeGreaterThan(0);
+      merged.records
+        .filter((r) => r.scenario.startsWith("F1@failed:"))
+        .map((r) => r.scenario),
+    ).toEqual(
+      failedCheckpoint.targets.map(
+        (t) => `F1@failed:${t.target}#epistemic-unknown`,
+      ),
+    );
   });
 
   it("[error-handling] an errored checkpoint stays in the denominator and fails S0", () => {

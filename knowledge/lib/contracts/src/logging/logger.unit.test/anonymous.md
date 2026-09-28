@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.unit.test.ts#anonymous@L4
+id: lib/contracts/src/logging/logger.unit.test.ts#anonymous@L7
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/logging/logger.unit.test.ts

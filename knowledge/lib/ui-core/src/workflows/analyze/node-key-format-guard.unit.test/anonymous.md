@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/node-key-format-guard.unit.test.ts#anonymous@L28
+id: lib/ui-core/src/workflows/analyze/node-key-format-guard.unit.test.ts#anonymous@L22
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/node-key-format-guard.unit.test.ts

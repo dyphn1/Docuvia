@@ -165,6 +165,13 @@ describe("GraphPersisterService: incoming edges survive a per-file replace (#508
     expect(store.graph.pruneOrphanedLinks()).toBe(0);
   });
 
+  it("[invalid-input] an empty batch captures and re-attaches nothing and leaves the graph unchanged", async () => {
+    const before = linkTriples();
+    await persist([]);
+    expect(linkTriples()).toEqual(before);
+    expect(store.graph.getExternalIncomingLinks([])).toEqual([]);
+  });
+
   it("[error-handling] deleting target.ts (delta toDelete path) removes its incoming edges with it", () => {
     store.graph.deleteNodesForPath(TARGET);
     const after = linkTriples();

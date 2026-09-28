@@ -60,6 +60,19 @@ describe("resolveGraphFreshness() (#193, shared with impact since #508 D8)", () 
     });
   });
 
+  it("[invalid-input] an empty HEAD sha or an empty last-ingested value is unknown, never fresh or stale", async () => {
+    registerHead(async () => "");
+    expect(await resolveGraphFreshness("/ws", storeWith(GRAPH_SHA))).toEqual({
+      state: GraphFreshnessStates.UNKNOWN,
+    });
+    docuviaFactory.reset();
+    resetFactoryForTests();
+    registerHead(async () => HEAD_SHA);
+    expect(await resolveGraphFreshness("/ws", storeWith(""))).toEqual({
+      state: GraphFreshnessStates.UNKNOWN,
+    });
+  });
+
   it("[error-handling] fails open to unknown without a provider, HEAD, meta, or when git throws", async () => {
     docuviaFactory.lock();
     expect(await resolveGraphFreshness("/ws", storeWith(GRAPH_SHA))).toEqual({

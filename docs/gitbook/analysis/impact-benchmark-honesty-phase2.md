@@ -356,6 +356,11 @@ with the defect, so the fix commit flips them to `it`.
   crossing 64 → 65 moves the record to `candidate-set-exceeds-64`. Removal is
   not exercised: no product path deletes `project_files` rows, so a deleted
   candidate stays a candidate (the safe direction, as D6).
+- **D3 — fixed.** `patternCouldMatchTarget` matches a target by its
+  extension-less stem **or** its NodeNext runtime spelling (`.ts/.tsx/.js/.jsx`
+  → `.js`, `.mts/.mjs` → `.mjs`, `.cts/.cjs` → `.cjs`), in both the literal and
+  the interpolated branch. A `.js` suffix never admits an `.mts` source.
+- **D4 — refuted, no change.** See the verdict above.
 - **D5 — honest state fixed with D1; round trip deferred.** A missing evidence
   row while JS/TS sources are tracked is `unavailable/missing`, so C3 reports a
   lower bound with an explicit reason. Carrying the evidence (and

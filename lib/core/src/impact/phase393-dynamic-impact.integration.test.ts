@@ -618,64 +618,60 @@ describe("issue #393 dynamic dependency evidence", () => {
     ]);
   });
 
-  // #508 D3: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[happy] binds NodeNext `.js` template and literal specifiers to .ts sources (#508 D3)",
-    async () => {
-      const templateLoader = "src/plugin-loader.ts";
-      const literalLoader = "src/literal-loader.ts";
-      const target = "src/plugins/one.ts";
-      const mjsTarget = "src/plugins/two.mts";
-      write(target, "export function onePlugin() {}\n");
-      write(mjsTarget, "export function twoPlugin() {}\n");
-      writeTemplateLoader(templateLoader, ".js");
-      write(
-        literalLoader,
-        [
-          "export async function loadTwo() {",
-          '  return import("./plugins/two.mjs");',
-          "}",
-          "",
-        ].join("\n"),
-      );
+  it("[happy] binds NodeNext `.js` template and literal specifiers to .ts sources (#508 D3)", async () => {
+    const templateLoader = "src/plugin-loader.ts";
+    const literalLoader = "src/literal-loader.ts";
+    const target = "src/plugins/one.ts";
+    const mjsTarget = "src/plugins/two.mts";
+    write(target, "export function onePlugin() {}\n");
+    write(mjsTarget, "export function twoPlugin() {}\n");
+    writeTemplateLoader(templateLoader, ".js");
+    write(
+      literalLoader,
+      [
+        "export async function loadTwo() {",
+        '  return import("./plugins/two.mjs");',
+        "}",
+        "",
+      ].join("\n"),
+    );
 
-      await persister.persist({
-        store,
-        workspaceRoot: tmpDir,
-        projectId,
-        parsedResults: [
-          parsed(target, {
-            functions: [{ name: "onePlugin", startLine: 0, endLine: 0 }],
-          }),
-          parsed(mjsTarget, {
-            functions: [{ name: "twoPlugin", startLine: 0, endLine: 0 }],
-          }),
-          loaderParse(templateLoader),
-          parsed(literalLoader, {
-            functions: [{ name: "loadTwo", startLine: 0, endLine: 2 }],
-          }),
-        ],
-        tags: [],
-      });
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(target, {
+          functions: [{ name: "onePlugin", startLine: 0, endLine: 0 }],
+        }),
+        parsed(mjsTarget, {
+          functions: [{ name: "twoPlugin", startLine: 0, endLine: 0 }],
+        }),
+        loaderParse(templateLoader),
+        parsed(literalLoader, {
+          functions: [{ name: "loadTwo", startLine: 0, endLine: 2 }],
+        }),
+      ],
+      tags: [],
+    });
 
-      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
-        expect.objectContaining({
-          sourceFile: literalLoader,
-          status: DynamicDependencyStatuses.BOUNDED,
-          candidatePaths: [mjsTarget],
-          reason: "literal-dynamic-import",
-        }),
-        expect.objectContaining({
-          sourceFile: templateLoader,
-          status: DynamicDependencyStatuses.BOUNDED,
-          // `.js` is the runtime spelling of .ts/.tsx/.js/.jsx only -- never of .mts.
-          candidatePaths: [target],
-          reason: "bounded-local-pattern",
-        }),
-      ]);
-      expect(dynamicCandidates("onePlugin")).toEqual([
-        expect.objectContaining({ name: templateLoader }),
-      ]);
-    },
-  );
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile: literalLoader,
+        status: DynamicDependencyStatuses.BOUNDED,
+        candidatePaths: [mjsTarget],
+        reason: "literal-dynamic-import",
+      }),
+      expect.objectContaining({
+        sourceFile: templateLoader,
+        status: DynamicDependencyStatuses.BOUNDED,
+        // `.js` is the runtime spelling of .ts/.tsx/.js/.jsx only -- never of .mts.
+        candidatePaths: [target],
+        reason: "bounded-local-pattern",
+      }),
+    ]);
+    expect(dynamicCandidates("onePlugin")).toEqual([
+      expect.objectContaining({ name: templateLoader }),
+    ]);
+  });
 });

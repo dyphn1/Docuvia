@@ -25,6 +25,23 @@ const PROJECT_SOURCE_EXTENSIONS = new Set([
   ".cjs",
 ]);
 
+/**
+ * Issue #508 D3: the runtime spelling a TS/JS source is imported by under NodeNext/ESM
+ * resolution -- `./x.js` names `x.ts`/`x.tsx`/`x.js`/`x.jsx`, `./x.mjs` names `x.mts`/`x.mjs`,
+ * and `./x.cjs` names `x.cts`/`x.cjs`.
+ */
+const RUNTIME_EXTENSION_BY_SOURCE_EXTENSION: Readonly<Record<string, string>> =
+  {
+    ".ts": ".js",
+    ".tsx": ".js",
+    ".js": ".js",
+    ".jsx": ".js",
+    ".mts": ".mjs",
+    ".mjs": ".mjs",
+    ".cts": ".cjs",
+    ".cjs": ".cjs",
+  };
+
 interface ScannedDynamicImport {
   expression: string;
   startLine: number;
@@ -219,6 +236,14 @@ function stripProjectExtension(filePath: string): string {
     : filePath;
 }
 
+/** Extension-less stem plus, for TS/JS sources, the NodeNext runtime spelling (#508 D3). */
+function importSpellings(targetFile: string): string[] {
+  const stem = stripProjectExtension(targetFile);
+  const runtimeExtension =
+    RUNTIME_EXTENSION_BY_SOURCE_EXTENSION[path.posix.extname(targetFile)];
+  return runtimeExtension ? [stem, `${stem}${runtimeExtension}`] : [stem];
+}
+
 function resolveLocalPatternPrefix(
   sourceFile: string,
   literalPrefix: string | undefined,
@@ -244,13 +269,13 @@ function patternCouldMatchTarget(
   const prefix = resolveLocalPatternPrefix(sourceFile, scanned.literalPrefix);
   if (!prefix) return !scanned.literalPrefix;
   const target = normalizeWorkspacePath(targetFile);
-  const targetStem = stripProjectExtension(target);
+  const spellings = importSpellings(target);
   if (!scanned.interpolated) {
-    return target === prefix || targetStem === prefix;
+    return target === prefix || spellings.includes(prefix);
   }
-  return (
-    targetStem.startsWith(prefix) &&
-    targetStem.endsWith(scanned.literalSuffix ?? "")
+  const suffix = scanned.literalSuffix ?? "";
+  return spellings.some(
+    (spelling) => spelling.startsWith(prefix) && spelling.endsWith(suffix),
   );
 }
 

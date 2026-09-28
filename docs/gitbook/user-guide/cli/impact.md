@@ -30,6 +30,8 @@ An empty blast radius is reported as `Risk level: UNKNOWN` — never `LOW`. Abse
 
 Runtime `import()` evidence is recomputed against the **current** file universe on every ingestion batch, not only for the loader files that batch re-parsed (issue #508): adding a plugin file next to an unchanged loader makes it a candidate immediately, and growing a pattern past 64 candidates moves it to the `candidate-set-exceeds-64` overflow state (never a stale bounded set).
 
+Specifiers written with the NodeNext/ESM runtime extension match their sources: ``import(`./plugins/${name}.js`)`` bounds `plugins/*.ts`/`.tsx`/`.js`/`.jsx`, `.mjs` bounds `.mts`/`.mjs`, and `.cjs` bounds `.cts`/`.cjs` — in both template and literal specifiers (issue #508).
+
 A non-empty blast radius at full Tier B coverage, with no target-relevant runtime dependency evidence and an available evidence set, omits `epistemic` entirely (omit-when-confident). Accuracy against human-labeled ground truth is measured weekly in CI by the eval workflow (`.github/workflows/eval.yml`) over `artifacts/cli/test/support/impact-corpus.ts`; run it locally with `pnpm run eval:impact`.
 
 ## The call-site fallback (`edgeSource: "lsp-fallback"`, issue #217)

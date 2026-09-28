@@ -224,7 +224,7 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     }
   });
 
-  // #508 D3 and D7: red until the product fix lands; that commit flips it.fails -> it.
+  // #508 D7: red until the product fix lands; that commit flips it.fails -> it.
   it.fails(
     "[happy] the merged real-CLI corpus passes every Phase 2 gate (G1-G9, G11, G12)",
     () => {
@@ -288,13 +288,9 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     },
   );
 
-  // #508 D3: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[happy] NodeNext `.js` template specifiers bound .ts candidates (E9)",
-    () => {
-      expect(gatesFor(merged, ["E9"])).toEqual([]);
-    },
-  );
+  it("[happy] NodeNext `.js` template specifiers bound .ts candidates (E9)", () => {
+    expect(gatesFor(merged, ["E9"])).toEqual([]);
+  });
 
   it("[happy] the pure prediction mapping equals Phase 1 dependencyPredictions on real output", () => {
     const db = new Database(sandboxDbPath(sandboxA), { readonly: true });

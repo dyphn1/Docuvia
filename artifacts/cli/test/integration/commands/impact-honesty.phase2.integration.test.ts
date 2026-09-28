@@ -224,7 +224,7 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     }
   });
 
-  // #508 D2, D3 and D7: red until the product fix lands; that commit flips it.fails -> it.
+  // #508 D3 and D7: red until the product fix lands; that commit flips it.fails -> it.
   it.fails(
     "[happy] the merged real-CLI corpus passes every Phase 2 gate (G1-G9, G11, G12)",
     () => {
@@ -393,24 +393,18 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     }
   });
 
-  // #508 D2 (C1b): red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[stress] 64 candidates stay bounded and 65 take the overflow path (E3, E4a, E4b, G8)",
-    () => {
-      expect(violationsOf(merged, "G8")).toEqual([]);
-      expect(gatesFor(merged, ["E3", "E4a", "E4b"])).toEqual([]);
-      const e3 = merged.fixtures.find((fixture) => fixture.golden.id === "E3");
-      expect(e3?.evidence.candidateSetSize).toBe(64);
-      const e4a = merged.fixtures.find(
-        (fixture) => fixture.golden.id === "E4a",
-      );
-      expect(e4a?.evidence).toMatchObject({
-        candidateSetSize: null,
-        goldInCandidateSet: null,
-        truncatedOrOverflow: true,
-      });
-    },
-  );
+  it("[stress] 64 candidates stay bounded and 65 take the overflow path (E3, E4a, E4b, G8)", () => {
+    expect(violationsOf(merged, "G8")).toEqual([]);
+    expect(gatesFor(merged, ["E3", "E4a", "E4b"])).toEqual([]);
+    const e3 = merged.fixtures.find((fixture) => fixture.golden.id === "E3");
+    expect(e3?.evidence.candidateSetSize).toBe(64);
+    const e4a = merged.fixtures.find((fixture) => fixture.golden.id === "E4a");
+    expect(e4a?.evidence).toMatchObject({
+      candidateSetSize: null,
+      goldInCandidateSet: null,
+      truncatedOrOverflow: true,
+    });
+  });
 
   it("[stress] unbounded runtime imports never produce verified zero-impact (E5a, E5b)", () => {
     expect(gatesFor(merged, ["E5a", "E5b"])).toEqual([]);
@@ -460,22 +454,18 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     expect(gatesFor(c.C0.evaluation, ["C0-alpha", "C0-deg64"])).toEqual([]);
   });
 
-  // #508 D2: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[state-diff] a stale candidate universe never creates certainty (C1a, C1b vs C0)",
-    () => {
-      expect(gatesFor(c.C1a.evaluation, ["C1a"])).toEqual([]);
-      expect(gatesFor(c.C1b.evaluation, ["C1b-p00", "C1b-p64"])).toEqual([]);
-      const before = c.C0.evaluation.fixtures.find(
-        (fixture) => fixture.golden.id === "C0-deg64",
-      );
-      const after = c.C1b.evaluation.fixtures.find(
-        (fixture) => fixture.golden.id === "C1b-p00",
-      );
-      expect(before?.evidence.candidateSetSize).toBe(64);
-      expect(after?.evidence.truncatedOrOverflow).toBe(true);
-    },
-  );
+  it("[state-diff] a stale candidate universe never creates certainty (C1a, C1b vs C0)", () => {
+    expect(gatesFor(c.C1a.evaluation, ["C1a"])).toEqual([]);
+    expect(gatesFor(c.C1b.evaluation, ["C1b-p00", "C1b-p64"])).toEqual([]);
+    const before = c.C0.evaluation.fixtures.find(
+      (fixture) => fixture.golden.id === "C0-deg64",
+    );
+    const after = c.C1b.evaluation.fixtures.find(
+      (fixture) => fixture.golden.id === "C1b-p00",
+    );
+    expect(before?.evidence.candidateSetSize).toBe(64);
+    expect(after?.evidence.truncatedOrOverflow).toBe(true);
+  });
 
   it("[state-diff] snapshot -> clean -> auto-hydrate reports missing evidence, not exact (C3)", () => {
     expect(gatesFor(c.C3.evaluation, ["C3"])).toEqual([]);

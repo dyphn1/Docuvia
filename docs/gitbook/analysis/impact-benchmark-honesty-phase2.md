@@ -349,6 +349,13 @@ with the defect, so the fix commit flips them to `it`.
   next `analyze` heals it instead of writing an "available" partial set. The
   core test that asserted corrupt evidence reads as `[]` encoded the defect and
   was tightened.
+- **D2 — fixed.** `persistDynamicDependencyEvidence` re-resolves every
+  retained record against the current `knownFiles` (the expression and literal
+  parts are persisted; `interpolated` is derived exactly as the read path does),
+  so no source re-read is needed. A new candidate joins the bounded set, and
+  crossing 64 → 65 moves the record to `candidate-set-exceeds-64`. Removal is
+  not exercised: no product path deletes `project_files` rows, so a deleted
+  candidate stays a candidate (the safe direction, as D6).
 - **D5 — honest state fixed with D1; round trip deferred.** A missing evidence
   row while JS/TS sources are tracked is `unavailable/missing`, so C3 reports a
   lower bound with an explicit reason. Carrying the evidence (and

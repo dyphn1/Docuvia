@@ -536,95 +536,87 @@ describe("issue #393 dynamic dependency evidence", () => {
     ]);
   });
 
-  // #508 D2: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[state-diff] re-resolves retained evidence when a candidate joins without the loader being re-parsed (#508 D2)",
-    async () => {
-      const sourceFile = "src/plugin-loader.ts";
-      const alpha = "src/plugins/alpha.ts";
-      const gamma = "src/plugins/gamma.ts";
-      write(alpha, "export function alphaPlugin() {}\n");
-      writeTemplateLoader(sourceFile);
-      await persister.persist({
-        store,
-        workspaceRoot: tmpDir,
-        projectId,
-        parsedResults: [
-          parsed(alpha, {
-            functions: [{ name: "alphaPlugin", startLine: 0, endLine: 0 }],
-          }),
-          loaderParse(sourceFile),
-        ],
-        tags: [],
-      });
-
-      write(gamma, "export function gammaPlugin() {}\n");
-      await persister.persist({
-        store,
-        workspaceRoot: tmpDir,
-        projectId,
-        parsedResults: [
-          parsed(gamma, {
-            functions: [{ name: "gammaPlugin", startLine: 0, endLine: 0 }],
-          }),
-        ],
-        tags: [],
-      });
-
-      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
-        expect.objectContaining({
-          sourceFile,
-          status: DynamicDependencyStatuses.BOUNDED,
-          candidatePaths: [alpha, gamma],
+  it("[state-diff] re-resolves retained evidence when a candidate joins without the loader being re-parsed (#508 D2)", async () => {
+    const sourceFile = "src/plugin-loader.ts";
+    const alpha = "src/plugins/alpha.ts";
+    const gamma = "src/plugins/gamma.ts";
+    write(alpha, "export function alphaPlugin() {}\n");
+    writeTemplateLoader(sourceFile);
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(alpha, {
+          functions: [{ name: "alphaPlugin", startLine: 0, endLine: 0 }],
         }),
-      ]);
-      expect(dynamicCandidates("gammaPlugin")).toEqual([
-        expect.objectContaining({ name: sourceFile }),
-      ]);
-    },
-  );
+        loaderParse(sourceFile),
+      ],
+      tags: [],
+    });
 
-  // #508 D2: red until the product fix lands; that commit flips it.fails -> it.
-  it.fails(
-    "[state-diff] incremental growth from 64 to 65 candidates moves retained evidence to overflow (#508 D2)",
-    async () => {
-      const sourceFile = "src/plugin-loader.ts";
-      const initial = writePluginFamily("src/plugins", 64);
-      writeTemplateLoader(sourceFile);
-      await persister.persist({
-        store,
-        workspaceRoot: tmpDir,
-        projectId,
-        parsedResults: [
-          ...initial.map((file) => parsed(file)),
-          loaderParse(sourceFile),
-        ],
-        tags: [],
-      });
-      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
-        expect.objectContaining({ candidatePaths: initial }),
-      ]);
-
-      const extra = "src/plugins/plugin-64.ts";
-      write(extra, "export const plugin = 64;\n");
-      await persister.persist({
-        store,
-        workspaceRoot: tmpDir,
-        projectId,
-        parsedResults: [parsed(extra)],
-        tags: [],
-      });
-
-      expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
-        expect.objectContaining({
-          sourceFile,
-          status: DynamicDependencyStatuses.UNRESOLVED,
-          candidatePaths: [],
-          reason: "candidate-set-exceeds-64",
+    write(gamma, "export function gammaPlugin() {}\n");
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        parsed(gamma, {
+          functions: [{ name: "gammaPlugin", startLine: 0, endLine: 0 }],
         }),
-      ]);
-    },
-  );
+      ],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile,
+        status: DynamicDependencyStatuses.BOUNDED,
+        candidatePaths: [alpha, gamma],
+      }),
+    ]);
+    expect(dynamicCandidates("gammaPlugin")).toEqual([
+      expect.objectContaining({ name: sourceFile }),
+    ]);
+  });
+
+  it("[state-diff] incremental growth from 64 to 65 candidates moves retained evidence to overflow (#508 D2)", async () => {
+    const sourceFile = "src/plugin-loader.ts";
+    const initial = writePluginFamily("src/plugins", 64);
+    writeTemplateLoader(sourceFile);
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        ...initial.map((file) => parsed(file)),
+        loaderParse(sourceFile),
+      ],
+      tags: [],
+    });
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({ candidatePaths: initial }),
+    ]);
+
+    const extra = "src/plugins/plugin-64.ts";
+    write(extra, "export const plugin = 64;\n");
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(extra)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidence(store, projectId)).toEqual([
+      expect.objectContaining({
+        sourceFile,
+        status: DynamicDependencyStatuses.UNRESOLVED,
+        candidatePaths: [],
+        reason: "candidate-set-exceeds-64",
+      }),
+    ]);
+  });
 
   // #508 D3: red until the product fix lands; that commit flips it.fails -> it.
   it.fails(

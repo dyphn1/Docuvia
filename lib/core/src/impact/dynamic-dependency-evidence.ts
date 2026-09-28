@@ -298,6 +298,22 @@ function resolveCandidates(
   };
 }
 
+/** Rebuilds the scan-time pattern of a persisted record (expression + literal parts are stored,
+ *  `interpolated` is derived), so it can be re-matched without re-reading its source file. */
+function scannedFromEvidence(
+  item: DynamicDependencyEvidence,
+): ScannedDynamicImport {
+  return {
+    expression: item.expression,
+    startLine: item.startLine,
+    startColumn: item.startColumn,
+    literalPrefix: item.literalPrefix,
+    literalSuffix: item.literalSuffix,
+    interpolated:
+      item.expression.startsWith("`") && item.expression.includes("${"),
+  };
+}
+
 function sortEvidence(
   items: DynamicDependencyEvidence[],
 ): DynamicDependencyEvidence[] {
@@ -465,9 +481,21 @@ export function persistDynamicDependencyEvidence(
       ? parsedResults.map((result) => result.file)
       : knownFiles;
   const replacedFiles = new Set(filesToScan);
+  // #508 D2: retained records are re-resolved against the current file universe -- a candidate
+  // file added (or a 65th one crossing MAX_BOUNDED_CANDIDATES) without its loader being
+  // re-parsed must not leave a stale bounded set behind.
   const retained =
     previous.state === DynamicEvidenceAvailabilityStates.AVAILABLE
-      ? previous.items.filter((item) => !replacedFiles.has(item.sourceFile))
+      ? previous.items
+          .filter((item) => !replacedFiles.has(item.sourceFile))
+          .map((item) => ({
+            ...item,
+            ...resolveCandidates(
+              item.sourceFile,
+              scannedFromEvidence(item),
+              knownFiles,
+            ),
+          }))
       : [];
   const fresh: DynamicDependencyEvidence[] = [];
 
@@ -514,12 +542,7 @@ export function dynamicEvidenceForTarget(
     if (item.status !== DynamicDependencyStatuses.UNRESOLVED) return false;
     return patternCouldMatchTarget(
       item.sourceFile,
-      {
-        literalPrefix: item.literalPrefix,
-        literalSuffix: item.literalSuffix,
-        interpolated:
-          item.expression.startsWith("`") && item.expression.includes("${"),
-      },
+      scannedFromEvidence(item),
       targetFile,
     );
   });

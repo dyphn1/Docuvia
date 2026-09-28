@@ -10,7 +10,10 @@ import {
   type IGraphStore,
   type ParsedAstFileResult,
 } from "@workspace/contracts";
-import { readFileWithinRoot } from "../utils/safe-fs.js";
+import {
+  readFileWithinRootResult,
+  ReadFileWithinRootStatuses,
+} from "../utils/safe-fs.js";
 
 const META_KEY_PREFIX = "impact.dynamic-dependencies.v1";
 const MAX_BOUNDED_CANDIDATES = 64;
@@ -325,7 +328,7 @@ function resolveCandidates(
 
 /** Rebuilds the scan-time pattern of a persisted record (expression + literal parts are stored,
  *  `interpolated` is derived), so it can be re-matched without re-reading its source file. */
-function scannedFromEvidence(
+export function scannedFromEvidence(
   item: DynamicDependencyEvidence,
 ): ScannedDynamicImport {
   return {
@@ -335,7 +338,9 @@ function scannedFromEvidence(
     literalPrefix: item.literalPrefix,
     literalSuffix: item.literalSuffix,
     interpolated:
-      item.expression.startsWith("`") && item.expression.includes("${"),
+      item.expression.startsWith("`") &&
+      item.expression.endsWith("`") &&
+      item.expression.includes("${"),
   };
 }
 
@@ -424,6 +429,16 @@ function parseEvidencePayload(raw: string): DynamicDependencyEvidenceState {
   } catch {
     return unavailable(DynamicEvidenceUnavailableReasons.CORRUPT_JSON);
   }
+  if (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    (parsed as Record<string, unknown>).state ===
+      DynamicEvidenceAvailabilityStates.UNAVAILABLE &&
+    (parsed as Record<string, unknown>).reason ===
+      DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN
+  ) {
+    return unavailable(DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN);
+  }
   if (!Array.isArray(parsed)) {
     return unavailable(DynamicEvidenceUnavailableReasons.NOT_ARRAY);
   }
@@ -484,6 +499,43 @@ export function dynamicEvidenceAvailability(
     : evidence;
 }
 
+interface DynamicEvidenceFileScan {
+  items: DynamicDependencyEvidence[];
+  incomplete: boolean;
+}
+
+function scanDynamicEvidenceFile(
+  workspaceRoot: string,
+  file: string,
+  knownFiles: string[],
+): DynamicEvidenceFileScan {
+  const readResult = readFileWithinRootResult(workspaceRoot, file);
+  if (readResult.status === ReadFileWithinRootStatuses.MISSING) {
+    return { items: [], incomplete: false };
+  }
+  if (readResult.status !== ReadFileWithinRootStatuses.READABLE) {
+    return { items: [], incomplete: true };
+  }
+
+  return {
+    incomplete: false,
+    items: scanDynamicImports(readResult.source).map((scanned) => ({
+      sourceFile: normalizeWorkspacePath(file),
+      kind: DynamicDependencyKinds.DYNAMIC_IMPORT,
+      expression: scanned.expression,
+      startLine: scanned.startLine,
+      startColumn: scanned.startColumn,
+      ...(scanned.literalPrefix !== undefined
+        ? { literalPrefix: scanned.literalPrefix }
+        : {}),
+      ...(scanned.literalSuffix !== undefined
+        ? { literalSuffix: scanned.literalSuffix }
+        : {}),
+      ...resolveCandidates(file, scanned, knownFiles),
+    })),
+  };
+}
+
 /**
  * Replaces evidence for the files in this parse batch while retaining other files' rows. When the
  * previous set is unavailable (#508 D1/D5) nothing is retained and every tracked source is
@@ -523,27 +575,24 @@ export function persistDynamicDependencyEvidence(
           }))
       : [];
   const fresh: DynamicDependencyEvidence[] = [];
+  let scanIncomplete = false;
 
   for (const file of filesToScan) {
     if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
-    const source = readFileWithinRoot(workspaceRoot, file);
-    if (source === null) continue;
-    for (const scanned of scanDynamicImports(source)) {
-      fresh.push({
-        sourceFile: normalizeWorkspacePath(file),
-        kind: DynamicDependencyKinds.DYNAMIC_IMPORT,
-        expression: scanned.expression,
-        startLine: scanned.startLine,
-        startColumn: scanned.startColumn,
-        ...(scanned.literalPrefix !== undefined
-          ? { literalPrefix: scanned.literalPrefix }
-          : {}),
-        ...(scanned.literalSuffix !== undefined
-          ? { literalSuffix: scanned.literalSuffix }
-          : {}),
-        ...resolveCandidates(file, scanned, knownFiles),
-      });
-    }
+    const scan = scanDynamicEvidenceFile(workspaceRoot, file, knownFiles);
+    scanIncomplete ||= scan.incomplete;
+    fresh.push(...scan.items);
+  }
+
+  if (scanIncomplete) {
+    store.meta.set(
+      metaKey(projectId),
+      JSON.stringify({
+        state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+        reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+      }),
+    );
+    return;
   }
 
   store.meta.set(

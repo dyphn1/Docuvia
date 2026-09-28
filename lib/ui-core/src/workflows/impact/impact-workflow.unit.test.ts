@@ -8,6 +8,7 @@ vi.mock("fs/promises");
 import * as fs from "fs/promises";
 import {
   docuviaFactory,
+  DynamicEvidenceUnavailableReasons,
   TOKENS,
   DocuviaError,
   resetFactoryForTests,
@@ -173,9 +174,10 @@ describe("ImpactWorkflow.execute()", () => {
         .mockReturnValue([{ name: "caller", type: "module" }]),
       computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
       getDynamicEvidence: vi.fn().mockReturnValue([]),
-      getDynamicEvidenceAvailability: vi
-        .fn()
-        .mockReturnValue({ state: "unavailable", reason: "invalid-record" }),
+      getDynamicEvidenceAvailability: vi.fn().mockReturnValue({
+        state: "unavailable",
+        reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+      }),
     };
     docuviaFactory.register(TOKENS.ImpactService, () => impactService);
     docuviaFactory.register(TOKENS.HydrationService, () =>
@@ -192,11 +194,12 @@ describe("ImpactWorkflow.execute()", () => {
       blastRadius: [{ name: "caller", type: "module" }],
       riskLevel: "MEDIUM",
       epistemic: "lower-bound",
-      riskNote:
-        IMPACT_MESSAGES.RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE(
-          "invalid-record",
-        ),
-      dynamicEvidenceUnavailable: { reason: "invalid-record" },
+      riskNote: IMPACT_MESSAGES.RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE(
+        DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+      ),
+      dynamicEvidenceUnavailable: {
+        reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+      },
     });
   });
 

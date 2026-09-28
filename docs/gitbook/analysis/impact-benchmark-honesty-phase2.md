@@ -347,8 +347,12 @@ with the defect, so the fix commit flips them to `it`.
   dynamic-evidence rung (`RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE`). An ingestion
   batch that meets an unavailable set rescans every tracked JS/TS source, so the
   next `analyze` heals it instead of writing an "available" partial set. The
-  core test that asserted corrupt evidence reads as `[]` encoded the defect and
-  was tightened.
+  PR #520 review fix closes the remaining incomplete-scan hole: deleted tracked
+  files are skipped, but an existing source that is unreadable or outside the
+  workspace persists `unavailable/incomplete-scan` rather than laundering a
+  partial rescan into `available`; a later fully readable scan heals normally.
+  The core test that asserted corrupt evidence reads as `[]` encoded the defect
+  and was tightened.
 - **D2 — fixed.** `persistDynamicDependencyEvidence` re-resolves every
   retained record against the current `knownFiles` (the expression and literal
   parts are persisted; `interpolated` is derived exactly as the read path does),

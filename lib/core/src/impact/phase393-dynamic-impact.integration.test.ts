@@ -52,6 +52,30 @@ describe("issue #393 dynamic dependency evidence", () => {
     fs.writeFileSync(absolute, content, "utf8");
   }
 
+  function trackFiles(filePaths: string[]): void {
+    for (const filePath of filePaths) {
+      store.files.upsertFile({
+        projectId,
+        filePath,
+        contentHash: `tracked:${filePath}`,
+      });
+    }
+  }
+
+  function replaceWithDirectory(relativePath: string): void {
+    const absolute = path.join(tmpDir, relativePath);
+    fs.rmSync(absolute, { recursive: true, force: true });
+    fs.mkdirSync(absolute, { recursive: true });
+  }
+
+  function restoreFile(relativePath: string, content: string): void {
+    fs.rmSync(path.join(tmpDir, relativePath), {
+      recursive: true,
+      force: true,
+    });
+    write(relativePath, content);
+  }
+
   function parsed(
     file: string,
     data: Partial<ParsedAstFileResult["data"]> = {},
@@ -353,6 +377,147 @@ describe("issue #393 dynamic dependency evidence", () => {
           candidatePaths: [plugin],
         }),
       ],
+    });
+  });
+
+  it("[error-handling] an unreadable tracked loader keeps an incomplete heal unavailable (#508 D5)", async () => {
+    const loader = "src/plugin-loader.ts";
+    const plugin = "src/plugins/alpha.ts";
+    const other = "src/other.ts";
+    writeTemplateLoader(loader);
+    write(plugin, "export function alphaPlugin() {}\n");
+    write(other, "export const other = 1;\n");
+    trackFiles([loader, plugin, other]);
+    store.meta.set(evidenceKey(), "{not-json");
+    replaceWithDirectory(loader);
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+    });
+  });
+
+  it("[error-handling] a tracked source outside the workspace keeps the scan unavailable (#508 D5)", async () => {
+    const outside = "../outside.ts";
+    const other = "src/other.ts";
+    write(other, "export const other = 1;\n");
+    trackFiles([outside, other]);
+    store.meta.set(evidenceKey(), "{not-json");
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+    });
+  });
+
+  it("[state-diff] heals incomplete evidence after the unreadable loader is restored (#508 D5)", async () => {
+    const loader = "src/plugin-loader.ts";
+    const plugin = "src/plugins/alpha.ts";
+    const other = "src/other.ts";
+    const loaderSource = [
+      "export async function loadPlugin(pluginName: string) {",
+      "  return import(`./plugins/${pluginName}`);",
+      "}",
+      "",
+    ].join("\n");
+    write(loader, loaderSource);
+    write(plugin, "export function alphaPlugin() {}\n");
+    write(other, "export const other = 1;\n");
+    trackFiles([loader, plugin, other]);
+    store.meta.set(evidenceKey(), "{not-json");
+    replaceWithDirectory(loader);
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+    restoreFile(loader, loaderSource);
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+      items: [
+        expect.objectContaining({
+          sourceFile: loader,
+          candidatePaths: [plugin],
+        }),
+      ],
+    });
+  });
+
+  it("[happy] skips a deleted tracked source during an incomplete heal (#508 D5)", async () => {
+    const loader = "src/plugin-loader.ts";
+    const other = "src/other.ts";
+    write(other, "export const other = 1;\n");
+    trackFiles([loader, other]);
+    store.meta.set(evidenceKey(), "{not-json");
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(other)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.AVAILABLE,
+      items: [],
+    });
+  });
+
+  it("[error-handling] an unreadable reparsed source makes an ordinary incremental scan unavailable (#508 D5)", async () => {
+    const loader = "src/plugin-loader.ts";
+    const plugin = "src/plugins/alpha.ts";
+    writeTemplateLoader(loader);
+    write(plugin, "export function alphaPlugin() {}\n");
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsed(plugin), loaderParse(loader)],
+      tags: [],
+    });
+    replaceWithDirectory(loader);
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [loaderParse(loader)],
+      tags: [],
+    });
+
+    expect(readDynamicDependencyEvidenceState(store, projectId)).toEqual({
+      state: DynamicEvidenceAvailabilityStates.UNAVAILABLE,
+      reason: DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
     });
   });
 

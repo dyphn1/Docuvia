@@ -87,6 +87,8 @@ export const DynamicEvidenceUnavailableReasons = {
   INVALID_RECORD: "invalid-record",
   /** No evidence row exists although JS/TS sources are tracked (e.g. after a hydrate). */
   MISSING: "missing",
+  /** A required source existed but was unreadable or outside the workspace during a scan. */
+  INCOMPLETE_SCAN: "incomplete-scan",
 } as const;
 export type DynamicEvidenceUnavailableReason =
   (typeof DynamicEvidenceUnavailableReasons)[keyof typeof DynamicEvidenceUnavailableReasons];

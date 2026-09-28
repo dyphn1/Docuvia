@@ -124,6 +124,21 @@ describe("issue #393 dynamic impact epistemics", () => {
     expect(result.riskNote).toContain("docuvia analyze --force");
   });
 
+  it("[error-handling] an incomplete scan keeps a full-coverage result lower-bound with its reason (#508 D5)", () => {
+    const result = resolveImpactEpistemic({
+      blastRadiusCount: 1,
+      computedRiskLevel: RiskLevels.MEDIUM,
+      ...completeCoverage(),
+      dynamicEvidenceUnavailableReason:
+        DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN,
+    });
+
+    expect(result.epistemic).toBe(EpistemicLevels.LOWER_BOUND);
+    expect(result.riskNote).toContain(
+      `(${DynamicEvidenceUnavailableReasons.INCOMPLETE_SCAN})`,
+    );
+  });
+
   it("[state-diff] partial coverage still pre-empts the evidence-unavailable note", () => {
     const result = resolveImpactEpistemic({
       blastRadiusCount: 1,

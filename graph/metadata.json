@@ -534,7 +534,7 @@
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty.phase3.integration.test.ts",
-      "contentHash": "7390f09323a59494bfbfd35619fc0420b64bf44e",
+      "contentHash": "893e30a5f80b816636bd7170a5e74a93a794507e",
       "lastTierBProcessedAt": "2026-09-28 16:27:54",
       "lastTierBCommitSha": "1354b57f1dd4f75031481ce9d88fb5f1b9ab1dd5"
     },
@@ -3264,7 +3264,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
-      "contentHash": "a90afcef56e02b39d89f4dabb8f153ad4b38fc48",
+      "contentHash": "b227d51a7a70167bf7aaaa024c7a1537c4f76adb",
       "lastTierBProcessedAt": "2026-09-28 16:27:54",
       "lastTierBCommitSha": "1354b57f1dd4f75031481ce9d88fb5f1b9ab1dd5"
     },

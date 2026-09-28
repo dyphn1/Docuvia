@@ -535,8 +535,8 @@
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty.phase3.integration.test.ts",
       "contentHash": "893e30a5f80b816636bd7170a5e74a93a794507e",
-      "lastTierBProcessedAt": "2026-09-28 16:27:54",
-      "lastTierBCommitSha": "1354b57f1dd4f75031481ce9d88fb5f1b9ab1dd5"
+      "lastTierBProcessedAt": "2026-09-28 17:08:51",
+      "lastTierBCommitSha": "6f952b66563ef6b610e5d93cae2ccc01ac35b0ee"
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/init-multi-language.test.ts",
@@ -3265,8 +3265,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       "contentHash": "b227d51a7a70167bf7aaaa024c7a1537c4f76adb",
-      "lastTierBProcessedAt": "2026-09-28 16:27:54",
-      "lastTierBCommitSha": "1354b57f1dd4f75031481ce9d88fb5f1b9ab1dd5"
+      "lastTierBProcessedAt": "2026-09-28 17:08:51",
+      "lastTierBCommitSha": "6f952b66563ef6b610e5d93cae2ccc01ac35b0ee"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts",

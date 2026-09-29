@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.14.5](https://github.com/dyphn1/Docuvia/compare/v1.14.4...v1.14.5) (2026-09-29)
+
+### Bug Fixes
+
+- **ui-core:** retire call-resolution stats for deleted and re-parsed files ([#508](https://github.com/dyphn1/Docuvia/issues/508)) ([370e3a5](https://github.com/dyphn1/Docuvia/commit/370e3a591e0414f3fae310dffa1b97795bd98a38))
+
 ## [1.14.4](https://github.com/dyphn1/Docuvia/compare/v1.14.3...v1.14.4) (2026-09-29)
 
 ### Bug Fixes

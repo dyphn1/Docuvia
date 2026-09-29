@@ -2130,7 +2130,7 @@
     },
     {
       "filePath": "lib/core/src/lsp/lsp-edge-provider-base.ts",
-      "contentHash": "84cd79849a3fc25d001337984e24796c191be615",
+      "contentHash": "64ff21aa7ed1a1c2d52838387c538c777003c920",
       "lastTierBProcessedAt": "2026-09-29 08:37:33",
       "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
@@ -2376,15 +2376,15 @@
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-edge-provider.ts",
-      "contentHash": "e2e15fcac50d45c4170d07ea1d8646ed4de82ede",
-      "lastTierBProcessedAt": "2026-09-29 08:37:33",
-      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
+      "contentHash": "0c0126caba901e61d95500dee2e4790e83aa52d0",
+      "lastTierBProcessedAt": "2026-09-29 11:40:07",
+      "lastTierBCommitSha": "f9f2ee061473b1f313636cb5bd71f94fee9deb9e"
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts",
-      "contentHash": "0be1f6e9e6456b7c0a98f5057adfa34cba954f9f",
-      "lastTierBProcessedAt": "2026-09-29 08:37:33",
-      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
+      "contentHash": "c68418f36f7bb5a1921db98c853a7d006e9f2467",
+      "lastTierBProcessedAt": "2026-09-29 11:40:07",
+      "lastTierBCommitSha": "f9f2ee061473b1f313636cb5bd71f94fee9deb9e"
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-preflight.ts",
@@ -4139,5 +4139,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "86719caa076d9a064229f58d878bbf74edf73024"
+  "lastIngestedSourceSha": "f9f2ee061473b1f313636cb5bd71f94fee9deb9e"
 }

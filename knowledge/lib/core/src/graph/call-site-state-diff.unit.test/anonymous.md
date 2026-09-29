@@ -7,5 +7,3 @@ filePath: lib/core/src/graph/call-site-state-diff.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/graph/call-site-state-diff.unit.test.ts`
-ts`
-

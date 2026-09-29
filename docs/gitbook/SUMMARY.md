@@ -76,3 +76,4 @@
 - [Impact benchmark honesty — Phase 1 adversarial corpus](analysis/impact-benchmark-honesty-phase1.md)
 - [Impact benchmark honesty — Phase 2 epistemic and dynamic-boundary corpus](analysis/impact-benchmark-honesty-phase2.md)
 - [Impact benchmark honesty — Phase 3 staleness and state-transition robustness](analysis/impact-benchmark-honesty-phase3.md)
+- [Impact benchmark honesty — Phase 4 CI report and hard regression gates](analysis/impact-benchmark-honesty-phase4.md)

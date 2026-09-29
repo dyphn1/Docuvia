@@ -2,6 +2,17 @@ import { defineConfig } from "vitest/config";
 
 import { SUBPROCESS_PROJECT_TIMEOUTS } from "@workspace/contracts/testing/timeouts";
 
+const PHASE4_EVAL_MODE = "phase4-honesty";
+const VITEST_MODE_FLAG = "--mode";
+const PHASE4_EVAL_DEFINE_KEY = "import.meta.env.PHASE4_EVAL";
+
+const isPhase4Eval = process.argv.some(
+  (argument, index, argumentsList) =>
+    (argument === VITEST_MODE_FLAG &&
+      argumentsList[index + 1] === PHASE4_EVAL_MODE) ||
+    argument === `${VITEST_MODE_FLAG}=${PHASE4_EVAL_MODE}`,
+);
+
 /**
  * Issue #230 follow-up — the `docuvia` CLI project runs its files **one at a time**.
  *
@@ -20,6 +31,12 @@ import { SUBPROCESS_PROJECT_TIMEOUTS } from "@workspace/contracts/testing/timeou
  * `lib/git-local` and `lib/core` carry the same setting for the same reason; see their configs.
  */
 export default defineConfig({
+  // Vitest workspace projects retain MODE=test even when --mode is supplied. Convert the
+  // cross-platform CLI argument into a test define so the corpus can opt in without shell env
+  // assignment syntax such as VAR=value or its Windows-specific counterpart.
+  define: {
+    [PHASE4_EVAL_DEFINE_KEY]: JSON.stringify(isPhase4Eval),
+  },
   test: {
     name: "docuvia",
     fileParallelism: false,

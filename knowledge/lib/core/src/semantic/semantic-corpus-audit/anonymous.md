@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-corpus-audit.ts#anonymous
+id: lib/core/src/semantic/semantic-corpus-audit.ts#anonymous@L78
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-corpus-audit.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/semantic-corpus-audit.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/semantic-corpus-audit.ts`
-ts`

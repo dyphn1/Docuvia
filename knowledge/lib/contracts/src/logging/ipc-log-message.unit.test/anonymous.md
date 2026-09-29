@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-log-message.unit.test.ts#anonymous@L42
+id: lib/contracts/src/logging/ipc-log-message.unit.test.ts#anonymous@L80
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/logging/ipc-log-message.unit.test.ts

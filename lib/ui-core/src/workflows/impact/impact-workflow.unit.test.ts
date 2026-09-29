@@ -777,6 +777,23 @@ describe("ImpactWorkflow.execute()", () => {
         riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
       });
     });
+
+    it("does not derive target resolution from an empty delta map after a no-call re-add (#526)", async () => {
+      const { store, impactService } = makeStoreWithResolution(
+        "src/readded.ts",
+        {},
+      );
+
+      const result = await executeWith(store, impactService);
+
+      expect(result).toMatchObject({
+        riskLevel: "UNKNOWN",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_STATIC_EDGES_ONLY,
+      });
+      expect(result).not.toBeNull();
+      if (result === null) return;
+      expect(result.riskNote).not.toContain("call sites resolved");
+    });
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

@@ -139,6 +139,7 @@ function facts(
     callSitePaths: [...tree],
     projectFilePaths: [...tree],
     evidencePaths: [],
+    callResolutionPaths: [...tree],
     headTree: [...tree],
     ...overrides,
   };
@@ -865,23 +866,25 @@ describe("Phase 3 gates and poisoned controls (contract §4, §5)", () => {
 });
 
 describe("Phase 3 stale-record invariants and registry (contract §3, §8)", () => {
-  it("[state-diff] R1-R5 report every stale path and dangling link", () => {
+  it("[state-diff] R1-R6 report every stale path and dangling link", () => {
     expect(staleRecordProblems(facts())).toEqual([]);
-    const problems = staleRecordProblems(
-      facts({
+    const problems = staleRecordProblems({
+      ...facts({
         dangling: 2,
         nodePaths: [...TREE, "src/gone.ts"],
         callSitePaths: [...TREE, "src/gone-call.ts"],
         projectFilePaths: [...TREE, "src/gone-row.ts"],
         evidencePaths: ["src/gone-plugin.ts"],
       }),
-    );
+      callResolutionPaths: [...TREE, "src/gone-call-resolution.ts"],
+    } as Phase3StoreFacts);
     expect(problems).toEqual([
       "R1 dangling node_links: 2",
       "R2 l2_nodes: src/gone.ts",
       "R3 ast_call_sites: src/gone-call.ts",
       "R4 project_files: src/gone-row.ts",
       "R5 evidence: src/gone-plugin.ts",
+      "R6 call-resolution: src/gone-call-resolution.ts",
     ]);
   });
 

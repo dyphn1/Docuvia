@@ -83,6 +83,9 @@ const REPORT_MARKDOWN_PATH = join(
   RESULTS_DIR,
   "impact_honesty_phase4.summary.md",
 );
+const PHASE4_EVAL_ENABLED_VALUE = "true";
+const PHASE4_EVAL_ENABLED =
+  import.meta.env.PHASE4_EVAL === PHASE4_EVAL_ENABLED_VALUE;
 const PHASE4_CORPUS_SETUP_TIMEOUT_MS = 5 * SUBPROCESS_TEST_TIMEOUT_MS;
 const C_STAGE_ORDER = ["C0", "C2a", "C2b", "C2c", "C1a", "C1b", "C3"] as const;
 const PHASE4_UPSTREAM_GATE_IDS = {
@@ -282,226 +285,242 @@ function createReportInput(
   };
 }
 
-describe("Phase 4: honest CI report and hard regression gates (#508)", () => {
-  let reportJson = "";
-  let reportMarkdown = "";
-  let repeatedReportJson = "";
-  let repeatedReportMarkdown = "";
-  let reportGates: () => void;
-  let dist: DistCliBuild | undefined;
-  let legacySandbox: TestSandbox | undefined;
-  let legacyDb: Database.Database | undefined;
-  const phase2Sandboxes: TestSandbox[] = [];
+// The corpus replays the legacy and Phase 1–3 CLI suites through real subprocesses. Keep it out
+// of the default suite because it duplicates roughly 18 minutes of work and can exceed Windows'
+// ten-minute hook budget. The dedicated eval job is the authoritative lane for these six tests.
+describe.skipIf(!PHASE4_EVAL_ENABLED)(
+  "Phase 4: honest CI report and hard regression gates (#508)",
+  () => {
+    let reportJson = "";
+    let reportMarkdown = "";
+    let repeatedReportJson = "";
+    let repeatedReportMarkdown = "";
+    let reportGates: () => void;
+    let dist: DistCliBuild | undefined;
+    let legacySandbox: TestSandbox | undefined;
+    let legacyDb: Database.Database | undefined;
+    const phase2Sandboxes: TestSandbox[] = [];
 
-  beforeAll(async () => {
-    legacySandbox = new TestSandbox();
-    await legacySandbox.setup({
-      initGit: true,
-      files: { ...CORPUS_FILES, ...PHASE1_CORPUS_FILES },
-    });
-    await legacySandbox.runGit(["add", "-A"]);
-    await legacySandbox.runGit([
-      "commit",
-      "-m",
-      "impact-honesty-phase4-corpus",
-    ]);
-    const init = await legacySandbox.runCli(["init"], { reject: false });
-    if (init.exitCode !== 0) {
-      throw new Error(`Phase 4 legacy corpus init failed: ${init.stderr}`);
-    }
-    legacyDb = new Database(join(legacySandbox.dir, ".docuvia/local.db"), {
-      readonly: true,
-    });
-    const legacyResults = await evaluateLegacyImpactCorpus(
-      legacySandbox,
-      legacyDb,
-    );
-    const phase1Results = await evaluatePhase1ImpactHonesty(
-      legacySandbox,
-      legacyDb,
-    );
+    beforeAll(async () => {
+      legacySandbox = new TestSandbox();
+      await legacySandbox.setup({
+        initGit: true,
+        files: { ...CORPUS_FILES, ...PHASE1_CORPUS_FILES },
+      });
+      await legacySandbox.runGit(["add", "-A"]);
+      await legacySandbox.runGit([
+        "commit",
+        "-m",
+        "impact-honesty-phase4-corpus",
+      ]);
+      const init = await legacySandbox.runCli(["init"], { reject: false });
+      if (init.exitCode !== 0) {
+        throw new Error(`Phase 4 legacy corpus init failed: ${init.stderr}`);
+      }
+      legacyDb = new Database(join(legacySandbox.dir, ".docuvia/local.db"), {
+        readonly: true,
+      });
+      const legacyResults = await evaluateLegacyImpactCorpus(
+        legacySandbox,
+        legacyDb,
+      );
+      const phase1Results = await evaluatePhase1ImpactHonesty(
+        legacySandbox,
+        legacyDb,
+      );
 
-    const sandboxA = new TestSandbox();
-    const sandboxB = new TestSandbox();
-    const sandboxC = new TestSandbox();
-    phase2Sandboxes.push(sandboxA, sandboxB, sandboxC);
-    await setupPhase2Sandbox(sandboxA, PHASE2_SANDBOX_A_FILES);
-    const phase2A = await evaluatePhase2Stage(
-      sandboxA,
-      PHASE2_GOLDEN_AB.filter((golden) => golden.sandbox === "A"),
-      { human: true },
-    );
-    await setupPhase2Sandbox(sandboxB, PHASE2_SANDBOX_B_FILES);
-    const phase2B = await evaluatePhase2Stage(
-      sandboxB,
-      PHASE2_GOLDEN_AB.filter((golden) => golden.sandbox === "B"),
-      { human: true },
-    );
-    await setupPhase2Sandbox(sandboxC, PHASE2_SANDBOX_C_FILES);
-    const phase2C = {} as Record<
-      (typeof C_STAGE_ORDER)[number],
-      Phase2StageResult
-    >;
-    const observeC = async (stage: (typeof C_STAGE_ORDER)[number]) => {
-      phase2C[stage] = await evaluatePhase2Stage(
-        sandboxC,
-        PHASE2_GOLDEN_C[stage],
+      const sandboxA = new TestSandbox();
+      const sandboxB = new TestSandbox();
+      const sandboxC = new TestSandbox();
+      phase2Sandboxes.push(sandboxA, sandboxB, sandboxC);
+      await setupPhase2Sandbox(sandboxA, PHASE2_SANDBOX_A_FILES);
+      const phase2A = await evaluatePhase2Stage(
+        sandboxA,
+        PHASE2_GOLDEN_AB.filter((golden) => golden.sandbox === "A"),
         { human: true },
       );
-    };
-    await observeC("C0");
-    for (const stage of ["C2a", "C2b", "C2c"] as const) {
-      const original = await corruptDynamicEvidence(
-        sandboxC,
-        PHASE2_CORRUPTIONS[stage],
+      await setupPhase2Sandbox(sandboxB, PHASE2_SANDBOX_B_FILES);
+      const phase2B = await evaluatePhase2Stage(
+        sandboxB,
+        PHASE2_GOLDEN_AB.filter((golden) => golden.sandbox === "B"),
+        { human: true },
       );
-      await observeC(stage);
-      await restoreDynamicEvidence(sandboxC, original);
-    }
-    await addFilesAndAnalyze(sandboxC, PHASE2_C1A_FILES, writeFileEnsuringDir);
-    await observeC("C1a");
-    await addFilesAndAnalyze(sandboxC, PHASE2_C1B_FILES, writeFileEnsuringDir);
-    await observeC("C1b");
-    const snapshot = await sandboxC.runCli(["snapshot"], { reject: false });
-    expect(snapshot.exitCode).toBe(0);
-    const clean = await sandboxC.runCli(["clean"], { reject: false });
-    expect(clean.exitCode).toBe(0);
-    await observeC("C3");
-    const phase2Evaluation = mergePhase2Evaluations([
-      phase2A.evaluation,
-      phase2B.evaluation,
-      ...C_STAGE_ORDER.map((stage) => phase2C[stage].evaluation),
-    ]);
+      await setupPhase2Sandbox(sandboxC, PHASE2_SANDBOX_C_FILES);
+      const phase2C = {} as Record<
+        (typeof C_STAGE_ORDER)[number],
+        Phase2StageResult
+      >;
+      const observeC = async (stage: (typeof C_STAGE_ORDER)[number]) => {
+        phase2C[stage] = await evaluatePhase2Stage(
+          sandboxC,
+          PHASE2_GOLDEN_C[stage],
+          { human: true },
+        );
+      };
+      await observeC("C0");
+      for (const stage of ["C2a", "C2b", "C2c"] as const) {
+        const original = await corruptDynamicEvidence(
+          sandboxC,
+          PHASE2_CORRUPTIONS[stage],
+        );
+        await observeC(stage);
+        await restoreDynamicEvidence(sandboxC, original);
+      }
+      await addFilesAndAnalyze(
+        sandboxC,
+        PHASE2_C1A_FILES,
+        writeFileEnsuringDir,
+      );
+      await observeC("C1a");
+      await addFilesAndAnalyze(
+        sandboxC,
+        PHASE2_C1B_FILES,
+        writeFileEnsuringDir,
+      );
+      await observeC("C1b");
+      const snapshot = await sandboxC.runCli(["snapshot"], { reject: false });
+      expect(snapshot.exitCode).toBe(0);
+      const clean = await sandboxC.runCli(["clean"], { reject: false });
+      expect(clean.exitCode).toBe(0);
+      await observeC("C3");
+      const phase2Evaluation = mergePhase2Evaluations([
+        phase2A.evaluation,
+        phase2B.evaluation,
+        ...C_STAGE_ORDER.map((stage) => phase2C[stage].evaluation),
+      ]);
 
-    dist = await buildDistCli();
-    const firstPhase3 = await runPhase3Corpus(dist.cliPath);
-    const secondPhase3 = await runPhase3Corpus(dist.cliPath);
-    const input = createReportInput(
-      legacyResults,
-      phase1Results,
-      phase2Evaluation,
-      firstPhase3,
-      secondPhase3,
-    );
-    const report = buildImpactHonestyReport(input);
-    const rendered = renderImpactHonestyReport(report);
-    const repeated = renderImpactHonestyReport(buildImpactHonestyReport(input));
-    reportJson = rendered.json;
-    reportMarkdown = rendered.markdown;
-    repeatedReportJson = repeated.json;
-    repeatedReportMarkdown = repeated.markdown;
-    reportGates = () => assertImpactHonestyReportGates(report);
-    await mkdir(RESULTS_DIR, { recursive: true });
-    await writeFile(REPORT_JSON_PATH, reportJson, "utf8");
-    await writeFile(REPORT_MARKDOWN_PATH, reportMarkdown, "utf8");
-  }, PHASE4_CORPUS_SETUP_TIMEOUT_MS);
+      dist = await buildDistCli();
+      const firstPhase3 = await runPhase3Corpus(dist.cliPath);
+      const secondPhase3 = await runPhase3Corpus(dist.cliPath);
+      const input = createReportInput(
+        legacyResults,
+        phase1Results,
+        phase2Evaluation,
+        firstPhase3,
+        secondPhase3,
+      );
+      const report = buildImpactHonestyReport(input);
+      const rendered = renderImpactHonestyReport(report);
+      const repeated = renderImpactHonestyReport(
+        buildImpactHonestyReport(input),
+      );
+      reportJson = rendered.json;
+      reportMarkdown = rendered.markdown;
+      repeatedReportJson = repeated.json;
+      repeatedReportMarkdown = repeated.markdown;
+      reportGates = () => assertImpactHonestyReportGates(report);
+      await mkdir(RESULTS_DIR, { recursive: true });
+      await writeFile(REPORT_JSON_PATH, reportJson, "utf8");
+      await writeFile(REPORT_MARKDOWN_PATH, reportMarkdown, "utf8");
+    }, PHASE4_CORPUS_SETUP_TIMEOUT_MS);
 
-  afterAll(async () => {
-    legacyDb?.close();
-    await legacySandbox?.teardown();
-    for (const sandbox of phase2Sandboxes) await sandbox.teardown();
-    await dist?.cleanup();
-  });
+    afterAll(async () => {
+      legacyDb?.close();
+      await legacySandbox?.teardown();
+      for (const sandbox of phase2Sandboxes) await sandbox.teardown();
+      await dist?.cleanup();
+    });
 
-  it("[happy] publishes one versioned report with all four labeled slices", () => {
-    const parsed = JSON.parse(reportJson) as {
-      schemaVersion: number;
-      slices: Array<{ id: string; sampleCount: number }>;
-    };
-    expect(parsed.schemaVersion).toBe(IMPACT_HONESTY_REPORT_SCHEMA_VERSION);
-    expect(parsed.slices.map((slice) => slice.id)).toEqual([
-      PHASE4_SLICE_IDS.LEGACY,
-      PHASE4_SLICE_IDS.PHASE1,
-      PHASE4_SLICE_IDS.PHASE2,
-      PHASE4_SLICE_IDS.PHASE3,
-    ]);
-    expect(parsed.slices.every((slice) => slice.sampleCount > 0)).toBe(true);
-  });
+    it("[happy] publishes one versioned report with all four labeled slices", () => {
+      const parsed = JSON.parse(reportJson) as {
+        schemaVersion: number;
+        slices: Array<{ id: string; sampleCount: number }>;
+      };
+      expect(parsed.schemaVersion).toBe(IMPACT_HONESTY_REPORT_SCHEMA_VERSION);
+      expect(parsed.slices.map((slice) => slice.id)).toEqual([
+        PHASE4_SLICE_IDS.LEGACY,
+        PHASE4_SLICE_IDS.PHASE1,
+        PHASE4_SLICE_IDS.PHASE2,
+        PHASE4_SLICE_IDS.PHASE3,
+      ]);
+      expect(parsed.slices.every((slice) => slice.sampleCount > 0)).toBe(true);
+    });
 
-  it("[happy] the real golden corpus passes every Phase 4 hard gate", () => {
-    expect(reportGates).toBeDefined();
-    expect(reportGates).not.toThrow();
-  });
+    it("[happy] the real golden corpus passes every Phase 4 hard gate", () => {
+      expect(reportGates).toBeDefined();
+      expect(reportGates).not.toThrow();
+    });
 
-  it("[invalid-input] the human report lists exactly its empty metric denominators", () => {
-    const report = JSON.parse(reportJson) as ImpactHonestyReport;
-    const rates = [
-      [
-        PHASE4_METRIC_IDS.LEGACY_PRECISION,
-        report.metrics.legacyPositiveRegression.precision,
-      ],
-      [
-        PHASE4_METRIC_IDS.LEGACY_RECALL,
-        report.metrics.legacyPositiveRegression.recall,
-      ],
-      [
-        PHASE4_METRIC_IDS.CONFIRMED_PRECISION,
-        report.metrics.confirmedDependencyAccuracy.precision,
-      ],
-      [
-        PHASE4_METRIC_IDS.CONFIRMED_RECALL,
-        report.metrics.confirmedDependencyAccuracy.recall,
-      ],
-      [
-        PHASE4_METRIC_IDS.NEGATIVE_SPECIFICITY,
-        report.metrics.negativeDiscrimination.specificity,
-      ],
-      [
-        PHASE4_METRIC_IDS.NEGATIVE_FALSE_POSITIVE_RATE,
-        report.metrics.negativeDiscrimination.falsePositiveRate,
-      ],
-      [
-        PHASE4_METRIC_IDS.WRONG_TARGET_RATE,
-        report.metrics.targetIdentity.wrongTargetRate,
-      ],
-      [
-        PHASE4_METRIC_IDS.GOLD_IN_CANDIDATE_SET,
-        report.metrics.candidateBoundary.goldInCandidateSet,
-      ],
-      [
-        PHASE4_METRIC_IDS.CORRECT_UNKNOWN_RATE,
-        report.metrics.epistemicHonesty.correctUnknownRate,
-      ],
-      [
-        PHASE4_METRIC_IDS.FALSE_SAFE_RATE,
-        report.metrics.epistemicHonesty.falseSafeRate,
-      ],
-      [
-        PHASE4_METRIC_IDS.PROVENANCE_MISMATCH_RATE,
-        report.metrics.epistemicHonesty.provenanceMismatchRate,
-      ],
-    ] as const;
-    const expectedNaMetrics = rates
-      .filter(([, metric]) => metric.denominator === 0)
-      .map(([metric]) => metric)
-      .sort();
-    expect(report.naMetrics.map((metric) => metric.metric).sort()).toEqual(
-      expectedNaMetrics,
-    );
-    expect(expectedNaMetrics).toEqual([]);
-    expect(reportMarkdown).not.toContain("NaN");
-    expect(reportMarkdown).not.toMatch(/overall|blended/i);
-  });
+    it("[invalid-input] the human report lists exactly its empty metric denominators", () => {
+      const report = JSON.parse(reportJson) as ImpactHonestyReport;
+      const rates = [
+        [
+          PHASE4_METRIC_IDS.LEGACY_PRECISION,
+          report.metrics.legacyPositiveRegression.precision,
+        ],
+        [
+          PHASE4_METRIC_IDS.LEGACY_RECALL,
+          report.metrics.legacyPositiveRegression.recall,
+        ],
+        [
+          PHASE4_METRIC_IDS.CONFIRMED_PRECISION,
+          report.metrics.confirmedDependencyAccuracy.precision,
+        ],
+        [
+          PHASE4_METRIC_IDS.CONFIRMED_RECALL,
+          report.metrics.confirmedDependencyAccuracy.recall,
+        ],
+        [
+          PHASE4_METRIC_IDS.NEGATIVE_SPECIFICITY,
+          report.metrics.negativeDiscrimination.specificity,
+        ],
+        [
+          PHASE4_METRIC_IDS.NEGATIVE_FALSE_POSITIVE_RATE,
+          report.metrics.negativeDiscrimination.falsePositiveRate,
+        ],
+        [
+          PHASE4_METRIC_IDS.WRONG_TARGET_RATE,
+          report.metrics.targetIdentity.wrongTargetRate,
+        ],
+        [
+          PHASE4_METRIC_IDS.GOLD_IN_CANDIDATE_SET,
+          report.metrics.candidateBoundary.goldInCandidateSet,
+        ],
+        [
+          PHASE4_METRIC_IDS.CORRECT_UNKNOWN_RATE,
+          report.metrics.epistemicHonesty.correctUnknownRate,
+        ],
+        [
+          PHASE4_METRIC_IDS.FALSE_SAFE_RATE,
+          report.metrics.epistemicHonesty.falseSafeRate,
+        ],
+        [
+          PHASE4_METRIC_IDS.PROVENANCE_MISMATCH_RATE,
+          report.metrics.epistemicHonesty.provenanceMismatchRate,
+        ],
+      ] as const;
+      const expectedNaMetrics = rates
+        .filter(([, metric]) => metric.denominator === 0)
+        .map(([metric]) => metric)
+        .sort();
+      expect(report.naMetrics.map((metric) => metric.metric).sort()).toEqual(
+        expectedNaMetrics,
+      );
+      expect(expectedNaMetrics).toEqual([]);
+      expect(reportMarkdown).not.toContain("NaN");
+      expect(reportMarkdown).not.toMatch(/overall|blended/i);
+    });
 
-  it("[error-handling] errors, exclusions and known defects stay visible", () => {
-    expect(reportMarkdown).toContain("## Errors, N/A and exclusions");
-    expect(reportMarkdown).toContain("## Known product defects");
-    expect(reportMarkdown).toContain("D10");
-    expect(reportMarkdown).toContain("#522");
-    expect(reportMarkdown).toContain("D12");
-    expect(reportMarkdown).toContain("#521");
-  });
+    it("[error-handling] errors, exclusions and known defects stay visible", () => {
+      expect(reportMarkdown).toContain("## Errors, N/A and exclusions");
+      expect(reportMarkdown).toContain("## Known product defects");
+      expect(reportMarkdown).toContain("D10");
+      expect(reportMarkdown).toContain("#522");
+      expect(reportMarkdown).toContain("D12");
+      expect(reportMarkdown).toContain("#521");
+    });
 
-  it("[stress] renders deterministic JSON and Markdown for identical input", () => {
-    expect(repeatedReportJson).toBe(reportJson);
-    expect(repeatedReportMarkdown).toBe(reportMarkdown);
-    expect(reportMarkdown).toContain("## What these metrics do NOT prove");
-  });
+    it("[stress] renders deterministic JSON and Markdown for identical input", () => {
+      expect(repeatedReportJson).toBe(reportJson);
+      expect(repeatedReportMarkdown).toBe(reportMarkdown);
+      expect(reportMarkdown).toContain("## What these metrics do NOT prove");
+    });
 
-  it("[state-diff] includes transition pass/fail and stale-record columns", () => {
-    expect(reportMarkdown).toContain(
-      "transition kind | pass | fail | stale-edge | stale-record",
-    );
-    expect(reportMarkdown).toContain("Deterministic replay mismatches:");
-  });
-});
+    it("[state-diff] includes transition pass/fail and stale-record columns", () => {
+      expect(reportMarkdown).toContain(
+        "transition kind | pass | fail | stale-edge | stale-record",
+      );
+      expect(reportMarkdown).toContain("Deterministic replay mismatches:");
+    });
+  },
+);

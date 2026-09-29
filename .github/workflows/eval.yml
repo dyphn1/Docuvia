@@ -1,4 +1,6 @@
 # Impact honesty eval (issue #508 Phase 4) — sliced report and hard regression gates.
+# The six-test corpus is opt-in here; the default suite keeps the Phase 4 unit tests without
+# replaying the expensive legacy and Phase 1–3 subprocess corpora.
 #
 # The evaluator runs the real structured `docuvia impact --format=json` path across the legacy
 # #192 slice and Phase 1–3 honesty corpora. It fails independently on case errors/drops,

@@ -173,6 +173,14 @@ positive F1 value.
 
 ## CI and runtime
 
+The six-test Phase 4 corpus integration file is an opt-in lane, not part of the default
+`pnpm run test` suite. The default suite visibly skips that describe while retaining the Phase 4
+unit tests. `pnpm run eval:impact:honesty` is the authoritative corpus gate: it passes the normal
+cross-platform Vitest `--mode phase4-honesty` argument, and `artifacts/cli/vitest.config.ts`
+converts that argument into a test define because Vitest workspace projects keep
+`import.meta.env.MODE` at `test`. This avoids POSIX-only environment assignment syntax and keeps
+the same command shape on Windows and POSIX hosts.
+
 The eval job runs the full honesty report, uploads the versioned JSON and
 Markdown artifacts, preserves the existing CSV/summary artifacts, writes the
 same Markdown to `$GITHUB_STEP_SUMMARY`, and posts the PR comment on a

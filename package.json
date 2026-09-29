@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "test": "rimraf coverage && vitest run --coverage --testTimeout=120000 --hookTimeout=120000",
     "eval:impact": "vitest run artifacts/cli/test/integration/commands/impact-eval.phase6.integration.test.ts artifacts/cli/test/support/impact-eval-scorer.phase6.unit.test.ts --testTimeout=240000 --hookTimeout=240000",
-    "eval:impact:honesty": "vitest run artifacts/cli/test/integration/commands/impact-honesty-report.phase4.integration.test.ts --testTimeout=600000 --hookTimeout=600000",
+    "eval:impact:honesty": "vitest run --mode phase4-honesty artifacts/cli/test/integration/commands/impact-honesty-report.phase4.integration.test.ts --testTimeout=600000 --hookTimeout=600000",
     "format": "prettier --write .",
     "prepare": "husky",
     "eval:semantic": "tsx scripts/semantic-corpus-audit.mts"

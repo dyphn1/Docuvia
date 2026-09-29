@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#handler@L860
+id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#ReadinessProbe
 type: symbol
-name: handler
+name: ReadinessProbe
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts
 ---
-# Symbol: handler
+# Symbol: ReadinessProbe
 
 File: `lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts`

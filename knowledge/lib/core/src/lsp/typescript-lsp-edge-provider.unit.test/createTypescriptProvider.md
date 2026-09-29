@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#handler@L860
+id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#createTypescriptProvider
 type: symbol
-name: handler
+name: createTypescriptProvider
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts
 ---
-# Symbol: handler
+# Symbol: createTypescriptProvider
 
 File: `lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts`

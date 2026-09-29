@@ -1284,9 +1284,9 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "a492e8ea480ec6b13505ad3f555886099e9343c0",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "7c386452e2cd1100ae0811d34e8ceb38c82ddf38",
+      "lastTierBProcessedAt": "2026-09-28 13:05:39",
+      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -1395,12 +1395,6 @@
       "contentHash": "e573c485120de8e0178867cdf41e495ad11fd170",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
-    },
-    {
-      "filePath": "lib/contracts/src/interfaces/semantic-corpus-collection.interfaces.ts",
-      "contentHash": "17f18328b33a0414df220b269a909cab488043b4",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
     },
     {
       "filePath": "lib/contracts/src/interfaces/semantic-corpus.interfaces.ts",
@@ -2124,21 +2118,21 @@
     },
     {
       "filePath": "lib/core/src/lsp/lsp-edge-provider-base.concurrency.unit.test.ts",
-      "contentHash": "a81982391e7a3996b850af2bef693c3a12f243f6",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "2ed57ee4288091121fdaad9738a4da02989c2b66",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/lsp-edge-provider-base.sharding.unit.test.ts",
-      "contentHash": "a28945997102dec86ff7e28fe8a36162f27527ff",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "839ac1422d0f92b5b12e1c0d0fe0c12e0e6be6ca",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/lsp-edge-provider-base.ts",
-      "contentHash": "1b0259c4473e27baac2c0784a3a3aee5809714cb",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "84cd79849a3fc25d001337984e24796c191be615",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/lsp-json-rpc-client.retry.unit.test.ts",
@@ -2376,21 +2370,21 @@
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts",
-      "contentHash": "956fe18776672cf131fbec6d71381610d84b3563",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "4f153142dd9d583f6edcc9adfd6b5344f8e9c4a6",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-edge-provider.ts",
-      "contentHash": "f2b47ce9d702b912c7e6be174b76bc2f155bb0f6",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "e2e15fcac50d45c4170d07ea1d8646ed4de82ede",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts",
-      "contentHash": "1dc30655cbe9ec4462fc09cf42e371d55255105f",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "0be1f6e9e6456b7c0a98f5057adfa34cba954f9f",
+      "lastTierBProcessedAt": "2026-09-29 08:37:33",
+      "lastTierBCommitSha": "86719caa076d9a064229f58d878bbf74edf73024"
     },
     {
       "filePath": "lib/core/src/lsp/typescript-lsp-preflight.ts",
@@ -2475,90 +2469,6 @@
       "contentHash": "e2b8ea40a752e765f351c0ba9ff4ec7499bcd9c5",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.ts",
-      "contentHash": "8e3f4d92f640d55319b1e4defb3f46bf2a7c8bc8",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.unit.test.ts",
-      "contentHash": "202e1b86844f3d91ba387bc71e182cf49c090b1c",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-dedup-splits.ts",
-      "contentHash": "4a9f72c774c9563f0b7f12cae4b5e00b334012a3",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-dedup-splits.unit.test.ts",
-      "contentHash": "74c2bfa26ac419e2dd1a39b62c7ad171118d0b2a",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-import-audit.ts",
-      "contentHash": "470e585177e00a53838d800cf99d00e9714504c6",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts",
-      "contentHash": "d3a2f1895dbeb124de66f2a01554fbad5c016835",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-sample-builder.ts",
-      "contentHash": "49e412b1a48651ed0f9d8a0c8893e4e0ce112065",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-sample-builder.unit.test.ts",
-      "contentHash": "125cd1d5358f2c9483af811f20ff12e6e597bfd0",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-snapshot-hash.ts",
-      "contentHash": "a836a55856643d4158f3f1c67642de6c47261d15",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-snapshot-hash.unit.test.ts",
-      "contentHash": "3ccf0a6fbf5cd4f66cf51503866c70e72ed0accc",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.ts",
-      "contentHash": "d7b81a318cc5c2b25d36c884b3769970e2ca25b3",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.unit.test.ts",
-      "contentHash": "79e7519c14327b480819c1ebbb4a54066daa23f2",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.ts",
-      "contentHash": "20acf847b195e168b09340a4b3eaad39e7776f85",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.unit.test.ts",
-      "contentHash": "ccc45b886e2711564ea019b251dcc2bfb5b996c5",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "lib/core/src/semantic/semantic-corpus-audit.ts",
@@ -4115,72 +4025,6 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
-      "filePath": "scripts/semantic-corpus/baseline.mts",
-      "contentHash": "5aac9e7f586a643abdd1d9082c2eece2bb76bf59",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/checker.mts",
-      "contentHash": "e791916ac6e8a6086863dc85db5a875617eee36a",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/collect.mts",
-      "contentHash": "29a16bdb4fada537a1b28f6db88f96841f55eb18",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/lsp-count-proxy.mjs",
-      "contentHash": "96b41588da1515326966e2c6eff204e6545cafec",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/memory-guard.mts",
-      "contentHash": "2803fb2d6d89140730002515a3529b2e4709b258",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/oracle.mts",
-      "contentHash": "7dac9d5f915d5421c147b686146ce2b51a52163c",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/replay.mts",
-      "contentHash": "ec270296067411318d56c4934f511e67c0021b9f",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/run-support.mts",
-      "contentHash": "f1805c6286035220bbb48ee23d23fb00a65c7907",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/snapshot.mts",
-      "contentHash": "ad361457417b3020ac8a72c658eca95a6e0f9790",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/tier-a.mts",
-      "contentHash": "f37df270aba08aa83106d14d8e0b49188586d2cf",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
-      "filePath": "scripts/semantic-corpus/typescript-language-server.mts",
-      "contentHash": "d63f5b3c61f8db2dadd9a24a74f6a338778cf4aa",
-      "lastTierBProcessedAt": "2026-09-29 08:21:11",
-      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
-    },
-    {
       "filePath": "test/ast-processing-tdd-quality.test.ts",
       "contentHash": "2304e185208e7d56e0c5dab8177e363d7273e213",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -4259,12 +4103,6 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
-      "filePath": "test/semantic-corpus-collect.e2e.test.ts",
-      "contentHash": "3c9fa08407f627a6c7debb1da6c75f6aae877d5e",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
-    },
-    {
       "filePath": "test/semantic-corpus-command.e2e.test.ts",
       "contentHash": "39054efab8b2b2e64afbe8d0d57de9978eb2fd94",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -4301,5 +4139,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
+  "lastIngestedSourceSha": "86719caa076d9a064229f58d878bbf74edf73024"
 }

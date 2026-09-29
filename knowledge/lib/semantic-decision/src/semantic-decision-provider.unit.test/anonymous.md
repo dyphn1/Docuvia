@@ -1,5 +1,5 @@
 ---
-id: lib/semantic-decision/src/semantic-decision-provider.unit.test.ts#anonymous@L127
+id: lib/semantic-decision/src/semantic-decision-provider.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/semantic-decision/src/semantic-decision-provider.unit.test.ts
@@ -7,3 +7,5 @@ filePath: lib/semantic-decision/src/semantic-decision-provider.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/semantic-decision/src/semantic-decision-provider.unit.test.ts`
+ts`
+

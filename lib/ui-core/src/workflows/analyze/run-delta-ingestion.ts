@@ -406,15 +406,22 @@ async function persistDelta(
     callResolutionByFile = result.callResolutionByFile;
   }
 
-  // Issue #221: upsert this run's per-file call-resolution counters and drop deleted files'
-  // entries, so the stored map never accumulates rows for files that left the worktree.
-  if (callResolutionByFile && Object.keys(callResolutionByFile).length > 0) {
-    mergeDeltaCallResolution(store, callResolutionByFile, toDelete);
-    const totals = aggregateCallResolution(callResolutionByFile);
+  // Issue #221 / #526: reconcile every path touched by this delta. A file with zero call sites
+  // has no entry in callResolutionByFile, so the attempted re-parse set is authoritative for
+  // removing its previous record. Delete-only deltas must still write the resulting empty map.
+  if (filesToParse.length > 0 || toDelete.size > 0) {
+    const deltaCallResolution = callResolutionByFile ?? {};
+    mergeDeltaCallResolution(
+      store,
+      deltaCallResolution,
+      filesToParse.map(({ file }) => file),
+      toDelete,
+    );
+    const totals = aggregateCallResolution(deltaCallResolution);
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.DELTA_CALL_RESOLUTION,
       ...totals,
-      files: Object.keys(callResolutionByFile).length,
+      files: Object.keys(deltaCallResolution).length,
     });
   }
 

@@ -66,8 +66,26 @@ describe("call-resolution-stats stamping", () => {
       "kept.ts": STATS_A,
       "deleted.ts": STATS_B,
     });
-    mergeDeltaCallResolution(store, { "kept.ts": STATS_B }, ["deleted.ts"]);
+    mergeDeltaCallResolution(
+      store,
+      { "kept.ts": STATS_B },
+      ["kept.ts"],
+      ["deleted.ts"],
+    );
     expect(readCallResolution(store)).toEqual({ "kept.ts": STATS_B });
+  });
+
+  it("[state-diff] persists an empty map when a delta deletes its last entry (#526)", () => {
+    const { store, meta } = makeStore({ "deleted.ts": STATS_A });
+
+    mergeDeltaCallResolution(store, {}, [], ["deleted.ts"]);
+
+    expect(readCallResolution(store)).toEqual({});
+    expect(
+      JSON.parse(
+        meta.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)! as string,
+      ),
+    ).toEqual({ byFile: {} });
   });
 
   it("readCallResolution tolerates a corrupt stored value", () => {

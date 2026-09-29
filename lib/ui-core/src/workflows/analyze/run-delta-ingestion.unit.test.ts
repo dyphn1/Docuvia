@@ -22,6 +22,7 @@ import {
 } from "@workspace/contracts";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
+import { readCallResolution } from "./call-resolution-stats.js";
 import { readTierBQueue } from "./tier-b-queue.js";
 
 // Mirrors run-full-ingestion.unit.test.ts / init-workflow.unit.test.ts's mocking pattern
@@ -349,6 +350,199 @@ describe("runDeltaIngestion()", () => {
     expect(graphPersister.persist).toHaveBeenCalledWith(
       expect.objectContaining({ parsedResults: [], projectId: 1 }),
     );
+  });
+
+  it("[state-diff] removes call-resolution metadata during a delete-only delta (#526)", async () => {
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          "src/gone.ts": {
+            total: 1,
+            resolved: 1,
+            selfDiscarded: 0,
+            unresolved: 0,
+          },
+        },
+      }),
+    );
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/gone.ts", status: "deleted" }]),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(readCallResolution(store)).toEqual({});
+  });
+
+  it("[state-diff] removes a re-parsed file's stale entry when it now has no calls (#526)", async () => {
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          "src/reparsed.ts": {
+            total: 1,
+            resolved: 1,
+            selfDiscarded: 0,
+            unresolved: 0,
+          },
+          "src/kept.ts": {
+            total: 2,
+            resolved: 2,
+            selfDiscarded: 0,
+            unresolved: 0,
+          },
+        },
+      }),
+    );
+    graphPersister.persist.mockResolvedValue({
+      updatedCount: 1,
+      callResolutionByFile: {},
+    });
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/reparsed.ts", status: "modified" }]),
+      readFileAtRef: vi.fn().mockResolvedValue("export const unchanged = 1;"),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(readCallResolution(store)).toEqual({
+      "src/kept.ts": {
+        total: 2,
+        resolved: 2,
+        selfDiscarded: 0,
+        unresolved: 0,
+      },
+    });
+  });
+
+  it("[state-diff] a delete then re-add with no calls does not restore stale metadata (#526)", async () => {
+    const file = "src/readded.ts";
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          [file]: { total: 1, resolved: 1, selfDiscarded: 0, unresolved: 0 },
+        },
+      }),
+    );
+    const deletedGit = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file, status: "deleted" }]),
+    });
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: deletedGit,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    graphPersister.persist.mockResolvedValue({
+      updatedCount: 1,
+      callResolutionByFile: {},
+    });
+    const readdedGit = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file, status: "added" }]),
+      readFileAtRef: vi.fn().mockResolvedValue("export const noCalls = 1;"),
+    });
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: readdedGit,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(readCallResolution(store)).toEqual({});
+  });
+
+  it("[state-diff] a rename clears the old path and records the new path only when it has calls (#526)", async () => {
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          "src/old-name.ts": {
+            total: 1,
+            resolved: 1,
+            selfDiscarded: 0,
+            unresolved: 0,
+          },
+        },
+      }),
+    );
+    graphPersister.persist.mockResolvedValue({
+      updatedCount: 1,
+      callResolutionByFile: {
+        "src/new-name.ts": {
+          total: 2,
+          resolved: 2,
+          selfDiscarded: 0,
+          unresolved: 0,
+        },
+      },
+    });
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue([
+        {
+          file: "src/new-name.ts",
+          status: "renamed",
+          oldFile: "src/old-name.ts",
+        },
+      ]),
+      readFileAtRef: vi.fn().mockResolvedValue("export const renamed = 1;"),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(readCallResolution(store)).toEqual({
+      "src/new-name.ts": {
+        total: 2,
+        resolved: 2,
+        selfDiscarded: 0,
+        unresolved: 0,
+      },
+    });
   });
 
   it("[state-diff] a rename retires the old path's records and re-parses only the new path (#508 D11)", async () => {

@@ -44,7 +44,6 @@ function writeCallResolution(
   store: IGraphStore,
   byFile: Record<string, CallResolutionStats>,
 ): void {
-  if (Object.keys(byFile).length === 0) return;
   store.meta.set(
     GitConstants.META_KEY_CALL_RESOLUTION_STATS,
     serializeCallResolution(byFile),
@@ -63,14 +62,19 @@ export function stampFullCallResolution(
   writeCallResolution(store, byFile);
 }
 
-/** Delta-ingestion variant: upserts the re-parsed files' entries and removes deleted files'
- *  entries, then writes the merged map back. */
+/** Delta-ingestion variant: replaces every re-parsed file's slice, removes deleted files' entries,
+ *  then writes the merged map back. `reparsedFiles` is separate because a file with zero call
+ *  sites has no entry in `reparsedByFile`. */
 export function mergeDeltaCallResolution(
   store: IGraphStore,
   reparsedByFile: Record<string, CallResolutionStats>,
+  reparsedFiles: Iterable<string>,
   deletedFiles: Iterable<string>,
 ): void {
   const merged = readCallResolution(store);
+  for (const file of reparsedFiles) {
+    delete merged[file];
+  }
   for (const file of deletedFiles) {
     delete merged[file];
   }

@@ -223,6 +223,19 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     expect(gatesFor(merged, ["T5@after", "T6@after", "T7@after"])).toEqual([]);
   });
 
+  it("[state-diff] deleted and renamed files leave no call-resolution rows behind (T5, T6, T7) (#526)", () => {
+    const checkpoints = new Map(
+      first.observations.map((observation) => [
+        observation.checkpointId,
+        observation.facts.callResolutionPaths,
+      ]),
+    );
+
+    expect(checkpoints.get("T5@after")).not.toContain(F.CALLER_B);
+    expect(checkpoints.get("T6@after")).not.toContain(F.CALLER_A);
+    expect(checkpoints.get("T7@after")).not.toContain(F.TARGET);
+  });
+
   it("[state-diff] a deleted candidate or loader leaves no stale candidate and no phantom evidence (T8, T9) (#508 D6)", () => {
     expect(gatesFor(merged, ["T8@after", "T9@after"])).toEqual([]);
   });

@@ -2,6 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
+import { GitConstants } from "@workspace/contracts";
 import { TestSandbox } from "./sandbox.js";
 import { inferObservedTarget } from "./impact-honesty-corpus.phase1.js";
 import {
@@ -706,6 +707,19 @@ function parsePaths(raw: string | null): string[] {
   return Array.isArray(parsed) ? parsed.map(String) : [];
 }
 
+function parseCallResolutionPaths(raw: string | undefined): string[] {
+  if (raw === undefined) return [];
+  const parsed = JSON.parse(raw) as { byFile?: unknown };
+  if (
+    typeof parsed.byFile !== "object" ||
+    parsed.byFile === null ||
+    Array.isArray(parsed.byFile)
+  ) {
+    return [];
+  }
+  return Object.keys(parsed.byFile as Record<string, unknown>);
+}
+
 function sortedUnique(values: readonly string[]): string[] {
   return [...new Set(values)].sort();
 }
@@ -761,6 +775,10 @@ export function readStoreFacts(
       }>
     ).map((row) => row.file_path);
     const evidence = evidenceRecords(db);
+    const callResolution = db
+      .prepare("SELECT value FROM docuvia_meta WHERE key = ?")
+      .get(GitConstants.META_KEY_CALL_RESOLUTION_STATS) as
+      { value: string } | undefined;
     const dangling = (
       db
         .prepare(
@@ -787,6 +805,9 @@ export function readStoreFacts(
             ? record.candidatePaths.map(String)
             : []),
         ]),
+      ),
+      callResolutionPaths: sortedUnique(
+        parseCallResolutionPaths(callResolution?.value),
       ),
       headTree: [...tree],
     };

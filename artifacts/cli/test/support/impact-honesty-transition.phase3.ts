@@ -234,6 +234,8 @@ export interface Phase3StoreFacts {
   readonly callSitePaths: readonly string[];
   readonly projectFilePaths: readonly string[];
   readonly evidencePaths: readonly string[];
+  /** Keys present in the persisted per-file call-resolution map. */
+  readonly callResolutionPaths: readonly string[];
   /** `git ls-files` at HEAD minus files over `MAX_FILE_SIZE_BYTES`. */
   readonly headTree: readonly string[];
 }
@@ -901,7 +903,7 @@ function gateStaleEdge(evaluation: Phase3Evaluation): Phase3GateViolation[] {
       ];
 }
 
-/** Contract §3 R1-R5 for one set of facts; returns every broken invariant. */
+/** Contract §3 R1-R6 for one set of facts; returns every broken invariant. */
 export function staleRecordProblems(facts: Phase3StoreFacts): string[] {
   const tree = new Set(facts.headTree);
   const outside = (label: string, paths: readonly string[]): string[] => {
@@ -916,6 +918,7 @@ export function staleRecordProblems(facts: Phase3StoreFacts): string[] {
     ...outside("R3 ast_call_sites", facts.callSitePaths),
     ...outside("R4 project_files", facts.projectFilePaths),
     ...outside("R5 evidence", facts.evidencePaths),
+    ...outside("R6 call-resolution", facts.callResolutionPaths),
   ];
 }
 

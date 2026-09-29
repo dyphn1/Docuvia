@@ -67,8 +67,15 @@ Review evidence per sample:
   method with body, class, constructor or function-valued variable) — static binding is then
   certain, so every other candidate is an explicit negative. Receiver calls (`member`, `this`,
   `arg-chain`) never get negatives, because dynamic dispatch can legally select another candidate.
-- `evidenceRefs`: `ts-checker:typescript@<version>:<file>:<line>:<column>` per declaration, plus
-  the syntactic source audit result below.
+- `evidenceRefs`: `ts-checker:typescript@<version>:<file>:L<nameLine>` per cross-file declaration
+  (0-based line of the declared name), plus the syntactic source audit result below.
+
+Because every gold target must already exist as a Tier A graph node (C-03), candidate recall is
+conditional on Tier A having extracted the target symbol. Call sites whose target has no node are
+counted as `unmappable-target` in the collection report and must be read next to any recall
+figure. Known audit limitation: a `default` import stops at the imported file, so a module that
+re-exports its default from elsewhere yields a spurious `mismatch` (a conservative quarantine,
+never an inflated ready count).
 
 **Syntactic source audit** (independent of the type checker): for `bare` calls and
 `namespace.member` calls, the caller file's import declaration binding the callee (named, aliased,
@@ -112,7 +119,8 @@ failure, and a resolved set that disagrees with the checker as `label-conflict`.
 
 Deduplication runs before split assignment:
 
-- **Repository families**: a pair of snapshots whose normalized source-file hash sets overlap by
+- **Repository families**: a pair of snapshots whose source-file content-hash sets (SHA-256 of raw
+  bytes, `.json` configs excluded) overlap by
   ≥20% of the smaller set, or that share a root commit, is related. Related snapshots declared in
   different families fail the collection; they must be merged in the spec.
 - **Fragments**: a call site's duplicate group is SHA-256 of its whitespace-normalized ±2-line
@@ -133,13 +141,15 @@ The full collection (snapshot, Tier A, checker, oracle, dedup, splits, audit) ru
 same spec into separate work directories. `eval:semantic:replay` compares the correctness-bearing
 fields: snapshot hashes, candidate IDs/order/sets, oracle status/targets, review evidence, labels
 and reasons, duplicate groups, family relations, split assignment, dataset hash, report metrics
-and gates. Timing fields are excluded. Any mismatch is reported by field and fails the replay.
+and gates. Excluded: wall-clock fields (`durationMs`, `readyMs`) and `readinessProbeRequests`, a
+count of readiness polls that depends only on how long the server took to load. Any other mismatch
+is reported by JSON path and fails the replay.
 
 ## C-08 — Human audit worksheet
 
 The collector emits every `label-conflict` sample plus a stratified ≥10% sample (per repository
-× split × callee kind, seeded by the corpus split seed) with source excerpts for the caller and
-each target. Automated syntactic audit results are pre-filled; entries without one are
+× split, seeded by the corpus split seed) with a ±2-line caller excerpt, the gold and oracle target
+`node_key`s and the automated audit result. Automated syntactic audit results are pre-filled; entries without one are
 `pending-human`. Phase 1 exit still requires this review; automation does not replace it.
 
 ## C-09 — Paired baseline
@@ -157,16 +167,20 @@ Each repetition uses a fresh process and a fresh graph. `cold` means the first r
 materializing the snapshot (process-cold; the OS page cache cannot be flushed without root and is
 not claimed cold); `warm` means subsequent repetitions. Per workload the report keeps raw
 samples, p50, p95, min and max, the Tier B file/edge/process counts parsed from the analyze log,
-and the machine manifest (commit, Node/pnpm, OS, CPU, memory, TypeScript and LSP versions).
+and the machine manifest (commit, Node/pnpm, OS, CPU, memory). The TypeScript and LSP versions are
+those pinned in Docuvia's own `node_modules` at that commit and are recorded by the collection run
+manifest (`oracle.version`).
 `--lsp-processes` is pinned and recorded so memory stays bounded; that pin is a documented
 deviation from the auto-derived default.
 
 ## Memory safety
 
 Stages run strictly one at a time per snapshot (Tier A → checker → oracle). Node stages run with
-an explicit `--max-old-space-size`; tsserver gets `maxTsServerMemory`. A watchdog polls
-`memory_pressure` and aborts the current stage — recording `collection-aborted-memory` — when free
-memory falls below the configured floor, instead of letting macOS swap to exhaustion.
+an explicit `--max-old-space-size`; tsserver gets `maxTsServerMemory`. The collector checks
+`memory_pressure` before every snapshot, checker program and oracle project group and aborts the
+whole run (non-zero exit, no manifest written) when free memory is below the spec's floor. The
+baseline additionally polls every second while a command runs and kills its process group on a
+breach. Neither path writes a partial corpus.
 
 ## Delivery status
 

@@ -21,11 +21,15 @@ export class MemoryFloorError extends Error {
 
 export function freeMemoryPercent(): number {
   if (process.platform === "darwin") {
-    const output = execFileSync("memory_pressure", ["-Q"], {
-      encoding: "utf8",
-    });
-    const match = FREE_PERCENT.exec(output);
-    if (match) return Number(match[1]);
+    try {
+      const output = execFileSync("memory_pressure", ["-Q"], {
+        encoding: "utf8",
+      });
+      const match = FREE_PERCENT.exec(output);
+      if (match) return Number(match[1]);
+    } catch {
+      return Math.floor((os.freemem() / os.totalmem()) * 100);
+    }
   }
   return Math.floor((os.freemem() / os.totalmem()) * 100);
 }

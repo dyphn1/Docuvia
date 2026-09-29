@@ -12,9 +12,10 @@ other languages, impact relevance and `needs-verification` stay out of scope.
 
 ## C-01 — Snapshot identity
 
-Every repository snapshot is materialized from `git archive <revision> [<subtree>]` into a fresh
-directory, then committed into a private throwaway repository so `docuvia analyze` has a `HEAD`.
-The user's checkout is never written to.
+Every repository snapshot is materialized from `git archive <revision> [<subtree>]` (extracted with
+`tar`, which ships with macOS, Linux and Windows 10+) into a fresh directory, then committed into a
+private throwaway repository so `docuvia analyze` has a `HEAD`. The user's checkout is never
+written to.
 
 The **snapshot hash** is computed from bytes on disk, never from a supplied string: SHA-256 over
 the lines `<path>\0<sha256(file bytes)>\n`, sorted by path (UTF-16 code unit order), for every
@@ -154,20 +155,29 @@ The collector emits every `label-conflict` sample plus a stratified ≥10% sampl
 
 ## C-09 — Paired baseline
 
-`eval:semantic:baseline` measures the current production path on the same snapshots:
+`eval:semantic:baseline` measures the current production path on the same snapshots. The LSP batch
+and snapshot are timed separately, and `prePush*Total` is their sum because the real pre-push hook
+runs `analyze --escalate-to-lsp --fallback-ast && snapshot`:
 
-| Workload             | Command                                                             |
-| -------------------- | ------------------------------------------------------------------- |
-| AST-only full        | `docuvia analyze` on an empty graph                                 |
-| AST+LSP full         | the above, then `docuvia analyze --escalate-to-lsp --fallback-ast`  |
-| AST-only incremental | commit a one-file change, `docuvia analyze` (post-commit hook path) |
-| AST+LSP incremental  | the above, then `--escalate-to-lsp --fallback-ast` (pre-push path)  |
+| Workload                   | Command / accounting                                                     |
+| -------------------------- | ------------------------------------------------------------------------ |
+| AST-only full              | `docuvia analyze` on an empty graph                                      |
+| LSP full batch             | `docuvia analyze --escalate-to-lsp --fallback-ast` after AST full        |
+| LSP full snapshot          | `docuvia snapshot` after the LSP full batch                              |
+| Pre-push full total        | LSP full batch + LSP full snapshot                                       |
+| AST-only incremental       | commit a one-file change, `docuvia analyze` (post-commit hook path)      |
+| LSP incremental batch      | `docuvia analyze --escalate-to-lsp --fallback-ast` after AST incremental |
+| LSP incremental snapshot   | `docuvia snapshot` after the LSP incremental batch                       |
+| Pre-push incremental total | LSP incremental batch + LSP incremental snapshot                         |
 
 Each repetition uses a fresh process and a fresh graph. `cold` means the first repetition after
 materializing the snapshot (process-cold; the OS page cache cannot be flushed without root and is
 not claimed cold); `warm` means subsequent repetitions. Per workload the report keeps raw
 samples, p50, p95, min and max, the Tier B file/edge/process counts parsed from the analyze log,
-and the machine manifest (commit, Node/pnpm, OS, CPU, memory). The TypeScript and LSP versions are
+and the machine manifest (commit, Node/pnpm, OS, CPU, memory). `lspFullTotal` and
+`lspIncrementalTotal` retain the AST+LSP sums for comparison and exclude snapshot time; the
+`prePush*Total` fields model the hook's complete analyze-plus-snapshot workload. The TypeScript and
+LSP versions are
 those pinned in Docuvia's own `node_modules` at that commit and are recorded by the collection run
 manifest (`oracle.version`).
 `--lsp-processes` is pinned and recorded so memory stays bounded; that pin is a documented

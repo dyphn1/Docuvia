@@ -151,4 +151,13 @@ describe("split assignment", () => {
       expect.objectContaining(code),
     );
   });
+
+  it("[error-handling] reports the invalid temporal-family rule with context", () => {
+    expect(() => assignSplits([item("a", "t1", "g", true)], families)).toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.SEMANTIC_CORPUS_INVALID,
+        message: "Temporal snapshot of t1 must belong to a test family",
+      }),
+    );
+  });
 });

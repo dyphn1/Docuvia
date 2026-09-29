@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { ErrorCodes } from "@workspace/contracts";
 import type {
   SemanticCollectionCallSite,
   SemanticCollectionGraphEdge,
@@ -112,6 +113,17 @@ describe("tier A candidate set", () => {
     );
     expect(tierACandidates(index, site("run")).candidates).toEqual([]);
     expect(tierACandidates(index, site("anonymous")).candidates).toEqual([]);
+  });
+
+  it("[error-handling] rejects a non-finite or negative candidate limit", () => {
+    const index = createTierAIndex([node("src/a.ts#run")], []);
+    const code = { code: ErrorCodes.SEMANTIC_CORPUS_INVALID };
+    expect(() => tierACandidates(index, site("run"), -1)).toThrow(
+      expect.objectContaining(code),
+    );
+    expect(() => tierACandidates(index, site("run"), Number.NaN)).toThrow(
+      expect.objectContaining(code),
+    );
   });
 
   it("[state-diff] input order does not change the ordered result", () => {

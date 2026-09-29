@@ -4,14 +4,7 @@
  *  One command runs at a time under the memory watchdog; the LSP request counts come from a
  *  separate untimed instrumented pass so the counting proxy never perturbs timed repetitions. */
 import { spawn } from "node:child_process";
-import {
-  appendFileSync,
-  chmodSync,
-  existsSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { summarizeDurations } from "../../lib/core/src/semantic/collection/semantic-collection-reporting.js";
 import { freeMemoryPercent, MemoryFloorError } from "./memory-guard.mjs";
@@ -23,12 +16,10 @@ import {
 } from "./run-support.mjs";
 import { describeRevision, git, materializeSnapshot } from "./snapshot.mjs";
 import { DOCUVIA_CLI } from "./tier-a.mjs";
+import { typescriptLanguageServerEntry } from "./typescript-language-server.mjs";
 
-const ROOT = path.resolve(import.meta.dirname, "../..");
-const REAL_LSP = path.join(
-  ROOT,
-  "node_modules/.bin/typescript-language-server",
-);
+const REAL_LSP = process.execPath;
+const REAL_LSP_ARGS = [typescriptLanguageServerEntry(), "--stdio"];
 const PROXY = path.join(import.meta.dirname, "lsp-count-proxy.mjs");
 const ANALYZE_LOG = ".docuvia/logs/analyze.log";
 const GUARD_POLL_MS = 1_000;
@@ -55,9 +46,13 @@ interface BaselineSpec {
 const WORKLOADS = [
   "astFull",
   "lspFullBatch",
+  "lspFullSnapshot",
+  "prePushFullTotal",
   "lspFullTotal",
   "astIncremental",
   "lspIncrementalBatch",
+  "lspIncrementalSnapshot",
+  "prePushIncrementalTotal",
   "lspIncrementalTotal",
 ] as const;
 type Workload = (typeof WORKLOADS)[number];
@@ -74,7 +69,7 @@ function timedRun(
     const child = spawn(process.execPath, args, {
       cwd,
       env,
-      detached: true,
+      detached: process.platform !== "win32",
       stdio: ["ignore", "ignore", "pipe"],
     });
     let stderr = "";
@@ -87,7 +82,8 @@ function timedRun(
       const free = freeMemoryPercent();
       if (free >= floorPercent || breach) return;
       breach = new MemoryFloorError(free, floorPercent);
-      process.kill(-child.pid!, "SIGKILL");
+      if (process.platform === "win32") child.kill("SIGKILL");
+      else process.kill(-child.pid!, "SIGKILL");
     }, GUARD_POLL_MS);
     child.on("exit", (code) => {
       clearInterval(guard);
@@ -183,6 +179,15 @@ class Runner {
     );
   }
 
+  snapshot(dir: string, env: NodeJS.ProcessEnv = this.lspEnv): Promise<number> {
+    return timedRun(
+      [`--max-old-space-size=${this.spec.heapMb}`, DOCUVIA_CLI, "snapshot"],
+      dir,
+      env,
+      this.spec.memoryFloorPercent,
+    );
+  }
+
   /** One paired repetition on a fresh clone of the materialized snapshot. */
   async repetition(
     base: string,
@@ -195,19 +200,25 @@ class Runner {
     git(path.dirname(runDir), ["clone", "-q", "--local", base, runDir]);
     const astFull = await this.analyze(runDir, false, env);
     const lspFullBatch = await this.analyze(runDir, true, env);
+    const lspFullSnapshot = await this.snapshot(runDir, env);
     const fullTierB = batchFacts(runDir);
     applyEdit(runDir, editFile, rep);
     const astIncremental = await this.analyze(runDir, false, env);
     const lspIncrementalBatch = await this.analyze(runDir, true, env);
+    const lspIncrementalSnapshot = await this.snapshot(runDir, env);
     const incrementalTierB = batchFacts(runDir);
     rmSync(runDir, { recursive: true, force: true });
     return {
       durations: {
         astFull,
         lspFullBatch,
+        lspFullSnapshot,
+        prePushFullTotal: lspFullBatch + lspFullSnapshot,
         lspFullTotal: astFull + lspFullBatch,
         astIncremental,
         lspIncrementalBatch,
+        lspIncrementalSnapshot,
+        prePushIncrementalTotal: lspIncrementalBatch + lspIncrementalSnapshot,
         lspIncrementalTotal: astIncremental + lspIncrementalBatch,
       },
       fullTierB,
@@ -221,14 +232,20 @@ function countingEnv(
   snapshotId: string,
 ): { env: NodeJS.ProcessEnv; log: string } {
   const log = path.join(workDir, `${snapshotId}.lsp-counts.jsonl`);
-  const wrapper = path.join(workDir, `${snapshotId}.lsp-proxy.sh`);
   rmSync(log, { force: true });
-  writeFileSync(
-    wrapper,
-    `#!/bin/sh\nDOCUVIA_BASELINE_REAL_LSP='${REAL_LSP}' DOCUVIA_BASELINE_LSP_COUNT_LOG='${log}' exec '${process.execPath}' '${PROXY}' "$@"\n`,
-  );
-  chmodSync(wrapper, 0o755);
-  return { env: offlineEnv({ DOCUVIA_LSP_BINARY: wrapper }), log };
+  return {
+    env: offlineEnv({
+      DOCUVIA_LSP_BINARY: process.execPath,
+      DOCUVIA_LSP_ARGS: JSON.stringify([
+        PROXY,
+        REAL_LSP,
+        JSON.stringify(REAL_LSP_ARGS),
+        log,
+      ]),
+      DOCUVIA_BASELINE_LSP_COUNT_LOG: log,
+    }),
+    log,
+  };
 }
 
 function readCounts(log: string): {
@@ -271,7 +288,13 @@ async function measureSnapshot(
   const source = describeRevision(sourceDir, snapshot.revision);
   const base = path.join(workDir, `${snapshot.snapshotId}-base`);
   materializeSnapshot(sourceDir, source.revision, snapshot.subtree, base);
-  const runner = new Runner(spec, offlineEnv({ DOCUVIA_LSP_BINARY: REAL_LSP }));
+  const runner = new Runner(
+    spec,
+    offlineEnv({
+      DOCUVIA_LSP_BINARY: REAL_LSP,
+      DOCUVIA_LSP_ARGS: JSON.stringify(REAL_LSP_ARGS),
+    }),
+  );
   const repetitions = snapshot.repetitions ?? spec.repetitions;
   const reps = [];
   for (let rep = 1; rep <= repetitions; rep++) {
@@ -343,14 +366,22 @@ async function main(): Promise<void> {
       astFull: "docuvia analyze on an empty graph (full ingestion)",
       lspFullBatch:
         "docuvia analyze --escalate-to-lsp --fallback-ast right after astFull (Tier B over every parsed file)",
+      lspFullSnapshot:
+        "docuvia snapshot immediately after lspFullBatch (the knowledge snapshot step in the pre-push path)",
+      prePushFullTotal:
+        "lspFullBatch + lspFullSnapshot (the measured analyze-plus-snapshot pre-push workload)",
       lspFullTotal:
-        "astFull + lspFullBatch of the same repetition (AST+LSP full build)",
+        "astFull + lspFullBatch of the same repetition (AST+LSP full build, excluding snapshot)",
       astIncremental:
         "one committed one-file edit, then docuvia analyze (delta; post-commit hook path)",
       lspIncrementalBatch:
-        "docuvia analyze --escalate-to-lsp --fallback-ast after astIncremental (pre-push hook path)",
+        "docuvia analyze --escalate-to-lsp --fallback-ast after astIncremental (pre-push batch step)",
+      lspIncrementalSnapshot:
+        "docuvia snapshot immediately after lspIncrementalBatch (the knowledge snapshot step in the pre-push path)",
+      prePushIncrementalTotal:
+        "lspIncrementalBatch + lspIncrementalSnapshot (the measured analyze-plus-snapshot pre-push workload)",
       lspIncrementalTotal:
-        "astIncremental + lspIncrementalBatch of the same repetition",
+        "astIncremental + lspIncrementalBatch of the same repetition (AST+LSP incremental build, excluding snapshot)",
       cold: "first repetition after materializing the snapshot: fresh processes and graph; OS page cache not flushed",
       warm: "repetitions 2..N: fresh processes and graph, OS page cache warm",
       lspBinary:

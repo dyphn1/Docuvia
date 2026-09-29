@@ -1,15 +1,42 @@
-import type {
-  SemanticDeclarationRef,
-  SemanticOracleAnswer,
-  SemanticOracleOutcome,
+import {
+  DocuviaError,
+  ErrorCodes,
+  type SemanticDeclarationRef,
+  type SemanticOracleAnswer,
+  type SemanticOracleOutcome,
 } from "@workspace/contracts";
 import { buildQualifiedBaseKey } from "../../graph/node-key.js";
+
+function isNonBlankText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function validateDeclaration(declaration: SemanticDeclarationRef): void {
+  const validLines = [declaration.startLine, declaration.nameLine].every(
+    (line) => Number.isInteger(line) && line >= 0,
+  );
+  const validContainer =
+    declaration.containerName === undefined ||
+    isNonBlankText(declaration.containerName);
+  if (
+    !isNonBlankText(declaration.filePath) ||
+    !isNonBlankText(declaration.name) ||
+    !validLines ||
+    !validContainer ||
+    typeof declaration.concrete !== "boolean"
+  )
+    throw new DocuviaError(
+      ErrorCodes.SEMANTIC_CORPUS_INVALID,
+      "Invalid semantic declaration metadata",
+    );
+}
 
 /** C-03: first existing key among `base@L<startLine>`, `base@L<nameLine>`, `base`. */
 export function mapDeclarationToNodeKey(
   declaration: SemanticDeclarationRef,
   nodeKeys: ReadonlySet<string>,
 ): string | undefined {
+  validateDeclaration(declaration);
   const base = buildQualifiedBaseKey(
     declaration.filePath,
     declaration.name,

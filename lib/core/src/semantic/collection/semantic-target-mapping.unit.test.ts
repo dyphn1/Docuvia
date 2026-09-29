@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ErrorCodes } from "@workspace/contracts";
 import type {
   SemanticDeclarationRef,
   SemanticOracleAnswer,
@@ -70,6 +71,12 @@ describe("target identity mapping", () => {
         keys,
       ),
     ).toBe(undefined);
+  });
+
+  it("[invalid-input] rejects malformed declaration metadata", () => {
+    expect(() => mapDeclarationToNodeKey(decl("", "run"), keys)).toThrow(
+      expect.objectContaining({ code: ErrorCodes.SEMANTIC_CORPUS_INVALID }),
+    );
   });
 });
 

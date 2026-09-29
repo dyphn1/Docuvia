@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import {
+  DocuviaError,
+  ErrorCodes,
   SemanticDecisionLimits,
   type SemanticCollectionCallSite,
   type SemanticCollectionGraphEdge,
@@ -78,6 +80,11 @@ export function tierACandidates(
   callSite: SemanticCollectionCallSite,
   limit: number = SemanticDecisionLimits.MAX_CANDIDATES,
 ): SemanticTierACandidateSet {
+  if (!Number.isInteger(limit) || limit < 0)
+    throw new DocuviaError(
+      ErrorCodes.SEMANTIC_CORPUS_INVALID,
+      "Candidate limit must be a nonnegative integer",
+    );
   const ranked = (index.byName.get(callSite.calleeName) ?? [])
     .filter((node) => node.filePath !== callSite.filePath)
     .map((node) => ({ node, rank: rank(index, callSite.filePath, node) }))

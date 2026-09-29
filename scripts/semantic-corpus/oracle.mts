@@ -15,12 +15,10 @@ import { LspJsonRpcClient } from "../../lib/core/src/lsp/lsp-json-rpc-client.js"
 import { oracleOutcome } from "../../lib/core/src/semantic/collection/semantic-target-mapping.js";
 import { callSiteId } from "../../lib/core/src/semantic/collection/semantic-sample-builder.js";
 import { declarationRef } from "./checker.mjs";
+import { typescriptLanguageServerEntry } from "./typescript-language-server.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
-const SERVER_BIN = path.join(
-  ROOT,
-  "node_modules/.bin/typescript-language-server",
-);
+const SERVER_ENTRY = typescriptLanguageServerEntry();
 const LANGUAGE_IDS: Readonly<Record<string, string>> = {
   ".ts": "typescript",
   ".mts": "typescript",
@@ -183,8 +181,8 @@ class OracleSession {
 
   async start(): Promise<void> {
     await this.client.start({
-      command: SERVER_BIN,
-      args: ["--stdio"],
+      command: process.execPath,
+      args: [SERVER_ENTRY, "--stdio"],
       cwd: this.root,
     });
     const rootUri = pathToFileURL(this.root).toString();

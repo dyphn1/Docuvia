@@ -3,6 +3,7 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  type ChangedFileEntry,
   type ILogger,
 } from "@workspace/contracts";
 import { REVIEW_EVENTS, REVIEW_MESSAGES } from "./review-messages.js";
@@ -24,7 +25,10 @@ export class ReviewWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  public async execute(baseRef?: string): Promise<ReviewResult> {
+  public async execute(
+    baseRef?: string,
+    headRef?: string,
+  ): Promise<ReviewResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(REVIEW_MESSAGES.DETECTING_CHANGES);
@@ -34,7 +38,23 @@ export class ReviewWorkflow {
     });
 
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
-    const rawChanges = await git.getChangedFilesSince(workspaceRoot, baseRef);
+    let rawChanges: ChangedFileEntry[];
+    if (headRef) {
+      if (!baseRef) {
+        throw new DocuviaError(
+          ErrorCodes.INVALID_INPUT,
+          REVIEW_MESSAGES.HEAD_REQUIRES_BASE_REF,
+        );
+      }
+      const mergeBase = await git.getMergeBase(workspaceRoot, baseRef, headRef);
+      rawChanges = await git.getChangedFilesSince(
+        workspaceRoot,
+        mergeBase,
+        headRef,
+      );
+    } else {
+      rawChanges = await git.getChangedFilesSince(workspaceRoot, baseRef);
+    }
     const filesChanged = rawChanges.map((c) => ({
       file: c.file,
       status: c.status,

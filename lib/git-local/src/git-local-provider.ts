@@ -224,6 +224,7 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
   FAST_IMPORT_FAILED: "git fast-import failed",
   FETCH_FAILED: "git fetch failed",
   PUSH_FAILED: "git push failed",
+  MERGE_BASE_FAILED: "git merge-base failed",
   MERGE_BASE_IS_ANCESTOR_FAILED: "git merge-base --is-ancestor failed",
   REV_PARSE_TREE_FAILED: "git rev-parse ^{tree} failed",
   SHOW_COMMIT_TIMESTAMP_FAILED: "git show --format=%ct failed",
@@ -1174,6 +1175,32 @@ export class GitLocalProvider implements IGitProvider {
       return sha.length > 0 ? sha : undefined;
     } catch {
       return undefined;
+    }
+  }
+
+  public async getMergeBase(
+    cwd: string,
+    firstRef: string,
+    secondRef: string,
+  ): Promise<string> {
+    try {
+      const { stdout } = await this.execFileAsync(
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.MERGE_BASE,
+          GIT_ARG.END_OF_OPTIONS,
+          firstRef,
+          secondRef,
+        ],
+        { cwd },
+      );
+      return stdout.trim();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        GIT_PROVIDER_ERROR_MESSAGES.MERGE_BASE_FAILED,
+        err,
+      );
     }
   }
 

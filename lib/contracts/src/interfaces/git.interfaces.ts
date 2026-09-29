@@ -184,6 +184,12 @@ export interface IGitProvider {
   ): Promise<void>;
   /** Full 40-char sha `ref` resolves to (`git rev-parse --verify --quiet <ref>`), or `undefined` if it doesn't exist. Unlike `getBranchTipSha`, `ref` may be any ref form (e.g. `refs/remotes/origin/docuvia-knowledge`), not just `refs/heads/<name>`. */
   getRefSha(cwd: string, ref: string): Promise<string | undefined>;
+  /** Full 40-char sha of the best common ancestor of two refs (`git merge-base <firstRef> <secondRef>`). */
+  getMergeBase(
+    cwd: string,
+    firstRef: string,
+    secondRef: string,
+  ): Promise<string>;
   /** `true` if `ancestorSha` is an ancestor of (or equal to) `descendantSha` (`git merge-base --is-ancestor`) — used to detect a plain fast-forward before falling back to a full merge. */
   isAncestor(
     cwd: string,

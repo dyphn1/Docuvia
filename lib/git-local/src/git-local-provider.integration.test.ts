@@ -1249,6 +1249,50 @@ describe("GitLocalProvider — getChangedFilesSince two-ref mode (Slice 2a delta
     expect(entries).toHaveLength(4);
   });
 
+  it("uses the merge-base for a committed range, excluding a dirty hook and commits added only to the base branch", async () => {
+    await git(tmpDir, ["branch", "-M", "main"]);
+    fs.mkdirSync(path.join(tmpDir, ".husky"));
+    fs.writeFileSync(path.join(tmpDir, ".husky", "pre-push"), "#!/bin/sh\n");
+    await git(tmpDir, ["add", ".husky/pre-push"]);
+    await git(tmpDir, ["commit", "-m", "install hook"]);
+    const { stdout: branchPointOutput } = await git(tmpDir, [
+      "rev-parse",
+      "HEAD",
+    ]);
+    const branchPoint = branchPointOutput.trim();
+
+    await git(tmpDir, ["switch", "-c", "feature"]);
+    fs.writeFileSync(
+      path.join(tmpDir, "feature.ts"),
+      "export const feature = true;\n",
+    );
+    await git(tmpDir, ["add", "feature.ts"]);
+    await git(tmpDir, ["commit", "-m", "feature change"]);
+
+    await git(tmpDir, ["switch", "main"]);
+    fs.writeFileSync(
+      path.join(tmpDir, "main-only.ts"),
+      "export const mainOnly = true;\n",
+    );
+    await git(tmpDir, ["add", "main-only.ts"]);
+    await git(tmpDir, ["commit", "-m", "advance base branch"]);
+    await git(tmpDir, ["switch", "feature"]);
+    fs.appendFileSync(
+      path.join(tmpDir, ".husky", "pre-push"),
+      "# installed by CI\n",
+    );
+
+    const mergeBase = await provider.getMergeBase(tmpDir, "main", "feature");
+    expect(mergeBase).toBe(branchPoint);
+
+    const entries = await provider.getChangedFilesSince(
+      tmpDir,
+      mergeBase,
+      "feature",
+    );
+    expect(entries).toEqual([{ file: "feature.ts", status: "added" }]);
+  });
+
   it("single-ref legacy mode (no toRef) still diffs against the working tree and merges untracked files (regression guard)", async () => {
     fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
     await git(tmpDir, ["add", "tracked.ts"]);

@@ -317,7 +317,8 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     const baseRef = docuviaMemory.get<string>(scopeId, MemoryKeys.BASE_REF);
-    return new ReviewWorkflow(workspaceRoot, logger).execute(baseRef);
+    const headRef = docuviaMemory.get<string>(scopeId, MemoryKeys.HEAD_REF);
+    return new ReviewWorkflow(workspaceRoot, logger).execute(baseRef, headRef);
   },
 
   async impact(scopeId: string, logger: ILogger): Promise<ImpactResult | null> {

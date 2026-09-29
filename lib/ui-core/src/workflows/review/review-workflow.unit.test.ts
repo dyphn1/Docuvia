@@ -67,6 +67,7 @@ function makeMockGitProvider(
     fetchRef: vi.fn().mockResolvedValue(undefined),
     pushRef: vi.fn().mockResolvedValue(undefined),
     getRefSha: vi.fn().mockResolvedValue(undefined),
+    getMergeBase: vi.fn().mockResolvedValue("merge-base-sha"),
     isAncestor: vi.fn().mockResolvedValue(false),
     getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
     getCommitTimestamp: vi.fn().mockResolvedValue(0),
@@ -223,6 +224,51 @@ describe("ReviewWorkflow.execute()", () => {
     expect(result).toHaveProperty("analysis");
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses merge-base and strict two-ref diffing when a committed head ref is supplied", async () => {
+    const getMergeBase = vi.fn().mockResolvedValue("merge-base-sha");
+    const gitProvider = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/feature.ts", status: "added" }]),
+      getMergeBase,
+    });
+    docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
+
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.ChangeDetectionService, () => ({
+      detectChanges: vi.fn().mockReturnValue({
+        baseRef: "origin/main",
+        filesChanged: [{ file: "src/feature.ts", status: "added" }],
+        affectedNodes: [],
+        riskLevel: "LOW",
+        analysis: "Base: origin/main\nFiles changed: 1\nRisk level: LOW",
+      }),
+    }));
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    await new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(
+      "origin/main",
+      "HEAD",
+    );
+
+    expect(getMergeBase).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "origin/main",
+      "HEAD",
+    );
+    expect(gitProvider.getChangedFilesSince).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "merge-base-sha",
+      "HEAD",
+    );
   });
 
   it("passes through a full ChangeDetectionResult with affectedNodes and blast-radius data", async () => {

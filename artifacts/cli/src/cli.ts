@@ -142,8 +142,9 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
 async function handleReview(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.REVIEW]);
   const baseRef = ctx.parser.getPositional(0);
+  const headRef = ctx.parser.getFlagValue(CLI_FLAGS.HEAD);
   const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
-  await reviewCommand(baseRef, { format }, ctx.workspaceRoot);
+  await reviewCommand(baseRef, { format, headRef }, ctx.workspaceRoot);
 }
 
 async function handleImpact(ctx: CommandContext): Promise<void> {

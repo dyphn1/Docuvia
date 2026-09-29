@@ -14,6 +14,7 @@ export const MemoryKeys = {
   LLM_BASE_URL: "llmBaseUrl",
   LLM_MODEL: "llmModel",
   BASE_REF: "baseRef",
+  HEAD_REF: "headRef",
   TARGET: "target",
   ESCALATE_TO_LSP: "escalateToLsp",
   /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-

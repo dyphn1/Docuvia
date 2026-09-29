@@ -381,3 +381,16 @@ export type {
   SemanticCorpusReason,
   SemanticCorpusSplit,
 } from "./interfaces/semantic-corpus.interfaces.js";
+export type {
+  SemanticCollectionCallSite,
+  SemanticCollectionExclusion,
+  SemanticCollectionGraphEdge,
+  SemanticCollectionGraphNode,
+  SemanticDeclarationRef,
+  SemanticOracleAnswer,
+  SemanticOracleOutcome,
+  SemanticOracleStatus,
+  SemanticSourceAuditResult,
+  SemanticSplitDropReason,
+  SemanticTierACandidateSet,
+} from "./interfaces/semantic-corpus-collection.interfaces.js";

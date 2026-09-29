@@ -2496,9 +2496,9 @@
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-dedup-splits.unit.test.ts",
-      "contentHash": "0ca9797daf00e917d808ccf7a655870a2f791311",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "74c2bfa26ac419e2dd1a39b62c7ad171118d0b2a",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-import-audit.ts",
@@ -2538,27 +2538,27 @@
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.ts",
-      "contentHash": "7a5eb39ef36d541b668d72d32fad0632ff36d4d9",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "d7b81a318cc5c2b25d36c884b3769970e2ca25b3",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.unit.test.ts",
-      "contentHash": "33c7b4cfa684fac6822a08936c308d840104ab7d",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "79e7519c14327b480819c1ebbb4a54066daa23f2",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.ts",
-      "contentHash": "bee2b63bd3a71da45fd6c37b0461dd6e2c084a25",
+      "contentHash": "20acf847b195e168b09340a4b3eaad39e7776f85",
       "lastTierBProcessedAt": "2026-09-29 04:42:12",
       "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.unit.test.ts",
-      "contentHash": "e4c79d2969b872ab8fc5850c511ca40bab65ca72",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "ccc45b886e2711564ea019b251dcc2bfb5b996c5",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "lib/core/src/semantic/semantic-corpus-audit.ts",
@@ -4116,9 +4116,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/baseline.mts",
-      "contentHash": "57a0b1e0f1094c8f01a6d73ebb461928f858be90",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "5aac9e7f586a643abdd1d9082c2eece2bb76bf59",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "scripts/semantic-corpus/checker.mts",
@@ -4134,21 +4134,21 @@
     },
     {
       "filePath": "scripts/semantic-corpus/lsp-count-proxy.mjs",
-      "contentHash": "a27faf72ed585ad1647c93061229c0d68c03763f",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "96b41588da1515326966e2c6eff204e6545cafec",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "scripts/semantic-corpus/memory-guard.mts",
-      "contentHash": "005d5152778f31af9859b22ff2861b28e349a31f",
+      "contentHash": "2803fb2d6d89140730002515a3529b2e4709b258",
       "lastTierBProcessedAt": "2026-09-29 04:42:12",
       "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
     },
     {
       "filePath": "scripts/semantic-corpus/oracle.mts",
-      "contentHash": "1f3a40fc9f24c7af3cfa08c227c7447b9be787b3",
-      "lastTierBProcessedAt": "2026-09-29 04:42:12",
-      "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+      "contentHash": "7dac9d5f915d5421c147b686146ce2b51a52163c",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "scripts/semantic-corpus/replay.mts",
@@ -4173,6 +4173,12 @@
       "contentHash": "f37df270aba08aa83106d14d8e0b49188586d2cf",
       "lastTierBProcessedAt": "2026-09-29 04:42:12",
       "lastTierBCommitSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/typescript-language-server.mts",
+      "contentHash": "d63f5b3c61f8db2dadd9a24a74f6a338778cf4aa",
+      "lastTierBProcessedAt": "2026-09-29 08:21:11",
+      "lastTierBCommitSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
     },
     {
       "filePath": "test/ast-processing-tdd-quality.test.ts",
@@ -4295,5 +4301,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "a5b12206a169e113a98ab96bcb71656decad27d0"
+  "lastIngestedSourceSha": "ba2150e9f8894d8dcbe3165c977111c7a9ba1cab"
 }

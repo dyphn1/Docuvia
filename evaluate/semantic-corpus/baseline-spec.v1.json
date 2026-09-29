@@ -1,0 +1,33 @@
+{
+  "baselineVersion": "1",
+  "repetitions": 20,
+  "lspProcesses": 2,
+  "memoryFloorPercent": 15,
+  "heapMb": 4096,
+  "snapshots": [
+    {
+      "snapshotId": "typescript-language-server",
+      "stratum": "small (106 TS/JS files)",
+      "sourceDir": "typescript-language-server",
+      "revision": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "subtree": null,
+      "editFile": "src/utils/previewer.ts"
+    },
+    {
+      "snapshotId": "graft",
+      "stratum": "medium (274 TS files, multi-language repo)",
+      "sourceDir": "Graft",
+      "revision": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "subtree": null,
+      "editFile": "src/app/events.ts"
+    },
+    {
+      "snapshotId": "nest",
+      "stratum": "large (2,199 TS/JS files, 144 tsconfig projects)",
+      "sourceDir": "nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "subtree": null,
+      "editFile": "packages/common/utils/shared.utils.ts"
+    }
+  ]
+}

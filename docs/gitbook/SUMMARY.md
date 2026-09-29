@@ -48,6 +48,7 @@
   - [PLAT-011 — Semantic Decision Feature Provider Boundary](adr/platform/PLAT-011-semantic-decision-feature-provider-boundary.md)
   - [Semantic Decision Phase 0 Contract](analysis/semantic-decision-phase0-contract.md)
   - [Semantic decision Phase 1 corpus](analysis/semantic-decision-phase1-corpus.md)
+  - [Semantic decision Phase 1 collection](analysis/semantic-decision-phase1-collection.md)
 
 ## 🔄 Workflows
 

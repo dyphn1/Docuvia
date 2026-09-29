@@ -1,0 +1,137 @@
+{
+  "corpusId": "docuvia-semantic-typescript-cross-file-call",
+  "corpusVersion": "1",
+  "splitSeed": "issue-506-corpus-v1",
+  "maxSamplesPerSnapshot": 8000,
+  "memoryFloorPercent": 12,
+  "tierAHeapMb": 4096,
+  "oracle": {
+    "requestTimeoutMs": 30000,
+    "readinessCapMs": 60000,
+    "readinessPollMs": 500,
+    "maxTsServerMemoryMb": 4096
+  },
+  "families": {
+    "nestjs/nest": "train",
+    "typescript-language-server/typescript-language-server": "train",
+    "trailhq/Graft": "train",
+    "dyphn1/Docuvia": "train",
+    "tirth8205/code-review-graph": "train",
+    "Egonex-AI/Understand-Anything": "calibration",
+    "403errors/repomind": "calibration",
+    "abhigyanpatwari/GitNexus": "test",
+    "onyx-dot-app/onyx": "test"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "family": "nestjs/nest",
+      "sourceDir": "nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "typescript-language-server",
+      "repoId": "github.com/typescript-language-server/typescript-language-server",
+      "family": "typescript-language-server/typescript-language-server",
+      "sourceDir": "typescript-language-server",
+      "revision": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "subtree": null,
+      "license": "Apache-2.0 AND MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "graft",
+      "repoId": "github.com/trailhq/Graft",
+      "family": "trailhq/Graft",
+      "sourceDir": "Graft",
+      "revision": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "docuvia",
+      "repoId": "github.com/dyphn1/Docuvia",
+      "family": "dyphn1/Docuvia",
+      "sourceDir": "Docuvia",
+      "revision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "code-review-graph",
+      "repoId": "github.com/tirth8205/code-review-graph",
+      "family": "tirth8205/code-review-graph",
+      "sourceDir": "code-review-graph",
+      "revision": "343ab7cea29d47a3e805381e09f8243a43d43d88",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "understand-anything",
+      "repoId": "github.com/Egonex-AI/Understand-Anything",
+      "family": "Egonex-AI/Understand-Anything",
+      "sourceDir": "Understand-Anything",
+      "revision": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "family": "403errors/repomind",
+      "sourceDir": "repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "subtree": null,
+      "license": "MIT",
+      "usage": "training-and-evaluation",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "gitnexus-2026-07-24",
+      "repoId": "github.com/abhigyanpatwari/GitNexus",
+      "family": "abhigyanpatwari/GitNexus",
+      "sourceDir": "GitNexus",
+      "revision": "d3d4fa31bb6bc017e20cdb714b0ad4622320f187",
+      "subtree": null,
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "usage": "evaluation-only",
+      "temporalOf": null
+    },
+    {
+      "snapshotId": "gitnexus-2026-09-25",
+      "repoId": "github.com/abhigyanpatwari/GitNexus",
+      "family": "abhigyanpatwari/GitNexus",
+      "sourceDir": "GitNexus",
+      "revision": "58be52885deee423e2079ae05b4a860ab0f3df75",
+      "subtree": null,
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "usage": "evaluation-only",
+      "temporalOf": "gitnexus-2026-07-24"
+    },
+    {
+      "snapshotId": "onyx-web",
+      "repoId": "github.com/onyx-dot-app/onyx",
+      "family": "onyx-dot-app/onyx",
+      "sourceDir": "onyx",
+      "revision": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "subtree": "web",
+      "license": "MIT (non-ee) AND Onyx Enterprise (ee)",
+      "usage": "evaluation-only",
+      "temporalOf": null
+    }
+  ]
+}

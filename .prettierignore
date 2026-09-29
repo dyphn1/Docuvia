@@ -10,3 +10,6 @@ lib/core/src/query/phase5-query-quality.integration.test.ts
 lib/schema/src/sqlite/phase5-fts-quality.integration.test.ts
 test/phase5-query-retrieval-tdd-quality.test.ts
 test/phase5-prettier-dump.test.ts
+
+# Nested git worktrees used by local agents (also ignored by eslint).
+.claude/worktrees/

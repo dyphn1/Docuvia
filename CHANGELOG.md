@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.2](https://github.com/dyphn1/Docuvia/compare/v1.15.1...v1.15.2) (2026-09-29)
+
+### Bug Fixes
+
+- **review:** require --head to be the checked-out HEAD and reject empty --head ([#536](https://github.com/dyphn1/Docuvia/issues/536)) ([79d2e6d](https://github.com/dyphn1/Docuvia/commit/79d2e6d092370eaec55922af80fe9330fc1009be))
+- **review:** use merge-base..HEAD range for CI knowledge graph reviews ([#536](https://github.com/dyphn1/Docuvia/issues/536)) ([b454e3f](https://github.com/dyphn1/Docuvia/commit/b454e3f56163d5b028bef8a115907268d4ba13ea))
+
 ## [1.15.1](https://github.com/dyphn1/Docuvia/compare/v1.15.0...v1.15.1) (2026-09-29)
 
 ### Bug Fixes

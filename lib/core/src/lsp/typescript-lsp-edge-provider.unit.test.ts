@@ -1172,7 +1172,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     );
   });
 
-  it("does not declare readiness from same-file references during the syntax-server phase", async () => {
+  it("accepts a non-empty same-file reference as probe readiness", async () => {
     const aUri = uriFor(workspaceRoot, "a.ts");
     const bUri = uriFor(workspaceRoot, "b.ts");
     let serverReady = false;
@@ -1210,12 +1210,88 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
 
     expect(
       await probeServerReady(asClient(fake), workspaceRoot, ["a.ts", "b.ts"]),
-    ).toBe(false);
+    ).toBe(true);
 
     serverReady = true;
     expect(
       await probeServerReady(asClient(fake), workspaceRoot, ["a.ts", "b.ts"]),
     ).toBe(true);
+  });
+
+  it("terminates promptly for a symbol-bearing single-file topology with no references", async () => {
+    const singleFileRoot = makeWorkspace({
+      "only.ts": "export function only() {}\n",
+    });
+    try {
+      const fake = new FakeLspClient((method) => {
+        if (method === LspMethods.DOCUMENT_SYMBOL) {
+          return [
+            {
+              name: "only",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 0, 25),
+              selectionRange: range(0, 16, 0, 20),
+            },
+          ];
+        }
+        if (method === LspMethods.REFERENCES) return [];
+        return undefined;
+      });
+      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+        asClient(fake),
+      );
+      provider.configure({ coldStartPollMs: 1, coldStartMaxWaitMs: 25 });
+
+      const startedAt = performance.now();
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: singleFileRoot,
+        files: ["only.ts"],
+      });
+
+      expect(performance.now() - startedAt).toBeLessThan(500);
+      expect(outcome.filesProcessed).toEqual(["only.ts"]);
+      expect(outcome.edges).toEqual([]);
+    } finally {
+      fs.rmSync(singleFileRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("exercises settled readiness for a cross-file reference", async () => {
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    let referenceRequests = 0;
+    const fake = new FakeLspClient((method) => {
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        return [
+          {
+            name: "foo",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 0, 25),
+            selectionRange: range(0, 16, 0, 19),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        referenceRequests++;
+        return [{ uri: bUri, range: range(1, 2, 1, 5) }];
+      }
+      return undefined;
+    });
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    provider.configure({
+      coldStartSettleMs: 1,
+      coldStartPollMs: 1,
+      coldStartMaxWaitMs: 100,
+    });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(referenceRequests).toBeGreaterThan(0);
+    expect(outcome.filesFailed).toEqual([]);
   });
 });
 

@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.1](https://github.com/dyphn1/Docuvia/compare/v1.15.0...v1.15.1) (2026-09-29)
+
+### Bug Fixes
+
+- **core:** deterministic Tier B readiness for TypeScript ([#534](https://github.com/dyphn1/Docuvia/issues/534)) ([86719ca](https://github.com/dyphn1/Docuvia/commit/86719caa076d9a064229f58d878bbf74edf73024))
+- **core:** keep PRJ-007 readiness unchanged; syntax server off is sufficient ([#534](https://github.com/dyphn1/Docuvia/issues/534)) ([f9f2ee0](https://github.com/dyphn1/Docuvia/commit/f9f2ee061473b1f313636cb5bd71f94fee9deb9e))
+
 # [1.15.0](https://github.com/dyphn1/Docuvia/compare/v1.14.5...v1.15.0) (2026-09-29)
 
 ### Bug Fixes

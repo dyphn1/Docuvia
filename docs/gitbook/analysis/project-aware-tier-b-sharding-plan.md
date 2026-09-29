@@ -98,14 +98,17 @@ Parallel cold servers all load the same big workspace at once, and the first fil
 any server's crate graph is ready — a sharded tauri run's whole 323-file rust bucket returned _zero_
 references (everything empty post-settle) because the batch finished during the load. After the fixed
 settle, poll a probe `textDocument/references` (burst every call-site symbol of the first symbol-bearing
-files) until any symbol returns a reference, or the cap trips (default poll 5s / cap 120s; contracts
-`coldStartPollMs` / `coldStartMaxWaitMs`). Only engages for languages that opted into cold-start
-awareness (`coldStartSettleMs > 0` — rust, TS); fast-loading servers (clangd) skip the poll. The probe
-must scan _past_ the first symbol-bearing file (its symbols may legitimately have no callers — e.g. a
-bench binary's `main`), and a shard whose first files are symbol-less but is _larger_ than the probe
-window is NOT ready (a cold server returns empty `documentSymbol` for everything — measured on tauri's
-misc rust shard); only a genuinely tiny shard (every file inspected) is treated as ready so it doesn't
-stall the batch.
+files) until any symbol returns a non-empty result, or the cap trips (default poll 5s / cap 120s;
+contracts `coldStartPollMs` / `coldStartMaxWaitMs`). Same-file results are valid readiness evidence for
+languages whose servers use one semantic lifecycle; the probe must scan _past_ the first
+symbol-bearing file because its symbols may legitimately have no callers (e.g. a bench binary's
+`main`), while a later file may be rich in internal call edges. The poll only engages for languages
+that opt into cold-start awareness (`coldStartSettleMs > 0` — currently rust); fast-loading servers
+(clangd) skip it. TypeScript forces `tsserver.useSyntaxServer: "never"` and deliberately has no
+language-level settle, so its single-file/no-reference topology terminates promptly without a probe.
+A shard whose first files are symbol-less but is _larger_ than the probe window is NOT ready (a cold
+server returns empty `documentSymbol` for everything — measured on tauri's misc rust shard); only a
+genuinely tiny shard (every file inspected) is treated as ready so it doesn't stall the batch.
 
 ---
 

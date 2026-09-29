@@ -237,7 +237,7 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
             createMockLogger(),
             () => asClient(new FakeLspClient(handler)),
           );
-          provider.configure({ maxConcurrentFiles });
+          provider.configure({ maxConcurrentFiles, coldStartSettleMs: 0 });
           return provider.resolveEdges({ workspaceRoot, files });
         };
 
@@ -302,7 +302,7 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
               createMockLogger(),
               () => asClient(fake),
             );
-            provider.configure({ maxConcurrentFiles });
+            provider.configure({ maxConcurrentFiles, coldStartSettleMs: 0 });
             const start = Date.now();
             const outcome = await provider.resolveEdges({
               workspaceRoot,
@@ -380,7 +380,7 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
         const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
           asClient(fake),
         );
-        provider.configure({ maxConcurrentFiles: 2 });
+        provider.configure({ maxConcurrentFiles: 2, coldStartSettleMs: 0 });
 
         const outcome = await provider.resolveEdges({
           workspaceRoot,
@@ -516,7 +516,11 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
             createMockLogger(),
             () => asClient(fake),
           );
-          provider.configure({ maxOpenFiles: 5, maxConcurrentFiles: 2 });
+          provider.configure({
+            maxOpenFiles: 5,
+            maxConcurrentFiles: 2,
+            coldStartSettleMs: 0,
+          });
 
           const outcome = await provider.resolveEdges({
             workspaceRoot,
@@ -621,7 +625,11 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
             createMockLogger(),
             () => asClient(fake),
           );
-          provider.configure({ maxOpenFiles: 2, maxConcurrentFiles: 2 });
+          provider.configure({
+            maxOpenFiles: 2,
+            maxConcurrentFiles: 2,
+            coldStartSettleMs: 0,
+          });
 
           const outcome = await provider.resolveEdges({
             workspaceRoot,
@@ -707,7 +715,11 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
           createMockLogger(),
           () => hangingClient,
         );
-        provider.configure({ timeoutMs: 30, maxConcurrentFiles: 3 });
+        provider.configure({
+          timeoutMs: 30,
+          maxConcurrentFiles: 3,
+          coldStartSettleMs: 0,
+        });
 
         const outcome = await provider.resolveEdges({
           workspaceRoot,
@@ -762,7 +774,11 @@ describe("BaseLspEdgeProvider K-way concurrency (Tier B K-way concurrency plan, 
           const provider = new TypescriptLspEdgeProvider(logger, () =>
             asClient(fake),
           );
-          provider.configure({ maxConcurrentFiles: 50, maxOpenFiles: 10 });
+          provider.configure({
+            maxConcurrentFiles: 50,
+            maxOpenFiles: 10,
+            coldStartSettleMs: 0,
+          });
 
           const outcome = await provider.resolveEdges({
             workspaceRoot,

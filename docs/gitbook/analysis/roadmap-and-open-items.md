@@ -945,7 +945,12 @@ one server per owning project at the project root (PRJ-002), projects emitted bo
 persist before caller edges apply (PRJ-003), parallelism capped by cores _and_ memory
 (`processMemoryEstimateMb`, PRJ-004), settle moved outside the deadline window (PRJ-005),
 sub-threshold projects coalesced into a "misc" shard (PRJ-006), and a readiness poll after the settle
-so a shard never processes against a not-yet-loaded graph (PRJ-007).
+so a shard never processes against a not-yet-loaded graph (PRJ-007). The probe uses the original
+non-empty-reference readiness contract; same-file results are valid for a server with one semantic
+lifecycle. TypeScript specifically sets `tsserver.useSyntaxServer: "never"` and does not opt into a
+cold-start settle, so a symbol-bearing single-file project with no references does not wait for the
+120-second probe cap. Languages that still opt into `coldStartSettleMs` retain the bounded PRJ-007
+poll and its existing symbol-scan behavior.
 
 **Measured on tauri (10 cores / 16 GB):** sharded ≈ 95-109 s vs single-process ≈ 113-119 s; edge set is a
 _superset_ (4772 ± ~10 vs a bit-exact single-run 4662 — +110 project-internal TS edges the repo-root

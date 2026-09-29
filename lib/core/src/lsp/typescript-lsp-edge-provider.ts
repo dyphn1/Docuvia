@@ -44,8 +44,13 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   // roadmap item 28: typescript-language-server reads this key directly off the initialize
   // request and forwards it as tsserver's own --max-old-space-size arg -- the mechanism that
   // actually reaches tsserver's heap ceiling (see DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB's doc comment).
+  // Issue #534: the syntax server can answer requests before tsserver's semantic project graph is
+  // ready, making readiness timing leak into the resolved edge set. Force the semantic server so
+  // TypeScript's answers use one lifecycle; the shared cold-start settle remains opt-in for
+  // languages whose servers need it.
   initializationOptions: {
     maxTsServerMemory: DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
+    tsserver: { useSyntaxServer: "never" },
   },
   // issue #11 plan A, Slice 3: TS/JS is the first language calibrated for forward resolution --
   // Tier A's ast_call_sites positions are seeded correctly (Finding C fix) and Phase 3's

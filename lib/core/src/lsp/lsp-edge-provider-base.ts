@@ -343,12 +343,10 @@ export interface LspLanguageConfig {
    *  time to wait after the `initialize` handshake and before the first semantic request, so the
    *  server's own async project/crate-graph load can finish. `textDocument/documentSymbol` is
    *  syntactic and answers immediately, but `textDocument/references`/`textDocument/definition`
-   *  issued too early come back empty even though the same request succeeds moments later
-   *  (verified live: rust-analyzer 1.97.1 on ripgrep returned 0 references for `Searcher::new`
-   *  in 0 ms cold, then 2 after an ~8s settle; the typescript-language-server parity test
-   *  documents the same shape with a 3s settle). This is a per-language default -- a batch can
-   *  override it (including force-disable to 0) via `EdgeResolutionProviderConfig
-   *  .coldStartSettleMs`. A batch-scoped cost, paid once per spawned server, never per file. */
+   *  issued too early can return empty results even though the same request succeeds moments later.
+   *  This is a per-language default -- a batch can override it (including force-disable to 0) via
+   *  `EdgeResolutionProviderConfig.coldStartSettleMs`. A batch-scoped cost, paid once per spawned
+   *  server, never per file. */
   coldStartSettleMs?: number;
   /** Issue #32: the human-readable reason to surface as `unavailableReason` for npm/npx-fallback
    *  languages (typescript-/python-/php-lsp, whose `resolveBinary` can return
@@ -805,7 +803,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // everything was empty post-settle). So after the fixed settle, poll until a probe
     // `references` call returns non-empty, so a shard never processes against a not-yet-loaded
     // graph. Only engages for languages that opted into cold-start awareness
-    // (`coldStartSettleMs > 0` -- rust and TS; fast-loading servers like clangd skip the poll
+    // (`coldStartSettleMs > 0` -- currently rust; fast-loading servers like clangd skip the poll
     // entirely). Capped so a genuinely broken server can't wedge the batch forever.
     await this.waitForColdStart(client, workspaceRoot, files);
 
@@ -857,11 +855,12 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
   }
 
-  /** PRJ-007: after the fixed settle, poll a probe `references` call until it returns non-empty
-   *  (the server's async crate/project graph is genuinely loaded) or the cap trips. Defaults:
-   *  poll every 5s, cap 120s -- a whole-batch timeout still governs overall progress once
-   *  processing starts, and a genuinely broken server fails the poll fast (request errors
-   *  propagate out of the probe, not hang the batch). */
+  /** PRJ-007: after the fixed settle, poll a probe `references` call until it returns a non-empty
+   *  result (the server's async crate/project graph is genuinely loaded) or the cap trips.
+   *  Defaults: poll every 5s, cap 120s -- a whole-batch timeout still governs overall progress
+   *  once processing starts, and a genuinely broken server fails the poll fast (request errors
+   *  propagate out of the probe, not hang the batch). Languages without a cold-start settle skip
+   *  this poll entirely. */
   private async waitForServerReady(
     client: LspJsonRpcClient,
     workspaceRoot: string,
@@ -883,8 +882,8 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
    *  file, burst `references` for every call-site symbol and return true on the FIRST file where
    *  ANY symbol has a reference. Scanning past the first symbol-bearing file matters: that file's
    *  symbols may legitimately have no callers (e.g. a bench binary's `main`), while a later file
-   *  is rich in internal call edges -- a readiness probe that stops at the first file would
-   *  burn the whole wait cap on a ready server (measured live).
+   *  is rich in internal call edges -- a readiness probe that stops at the first file would burn
+   *  the whole wait cap on a ready server (measured live).
    *
    *  When NO symbol-bearing file turns up inside the window, the answer depends on shard size:
    *  a cold server returns EMPTY `documentSymbol` for everything (measured on tauri's misc rust
@@ -936,7 +935,8 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
             ),
           ),
         );
-        if (results.some((r) => (r?.length ?? 0) > 0)) return true;
+        if (results.some((references) => (references?.length ?? 0) > 0))
+          return true;
       }
       return foundAny ? false : files.length <= probeLimit;
     } finally {

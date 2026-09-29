@@ -205,7 +205,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
             createMockLogger(),
             () => asClient(new FakeLspClient(handler, clientSeq++)),
           );
-          provider.configure({ maxProcesses });
+          provider.configure({ maxProcesses, coldStartSettleMs: 0 });
           const outcome = await provider.resolveEdges({ workspaceRoot, files });
           return { outcome, clients: clientSeq };
         };
@@ -276,7 +276,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
           makeClient(clientSeq++),
         );
-        provider.configure({ maxProcesses: 4 });
+        provider.configure({ maxProcesses: 4, coldStartSettleMs: 0 });
 
         await provider.resolveEdges({
           workspaceRoot,
@@ -333,7 +333,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         );
         // 4 projects, budget for only 2 shards: the two largest projects keep their own servers,
         // the two smallest coalesce into one misc shard at the workspace root.
-        provider.configure({ maxProcesses: 2 });
+        provider.configure({ maxProcesses: 2, coldStartSettleMs: 0 });
 
         const outcome = await provider.resolveEdges({
           workspaceRoot,
@@ -427,7 +427,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
             createMockLogger(),
             () => asClient(new FakeLspClient(handler, 0)),
           );
-          provider.configure({ maxProcesses });
+          provider.configure({ maxProcesses, coldStartSettleMs: 0 });
           return provider.resolveEdges({ workspaceRoot, files, callsByFile });
         };
 
@@ -462,7 +462,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         const provider = new TypescriptLspEdgeProvider(logger, () =>
           asClient(new FakeLspClient(handler, clientSeq++)),
         );
-        provider.configure({ maxProcesses: 50 });
+        provider.configure({ maxProcesses: 50, coldStartSettleMs: 0 });
 
         await provider.resolveEdges({
           workspaceRoot,
@@ -502,6 +502,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
           maxProcesses: 5,
           maxProcessMemoryMb: 1200,
           processMemoryEstimateMb: 512,
+          coldStartSettleMs: 0,
         });
 
         await provider.resolveEdges({
@@ -545,6 +546,7 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
           maxProcesses: 4,
           maxProcessMemoryMb: 1,
           processMemoryEstimateMb: 512,
+          coldStartSettleMs: 0,
         });
 
         await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });

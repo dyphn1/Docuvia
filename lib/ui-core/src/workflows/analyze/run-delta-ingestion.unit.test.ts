@@ -88,6 +88,7 @@ function makeMockGitProvider(
     fetchRef: vi.fn().mockResolvedValue(undefined),
     pushRef: vi.fn().mockResolvedValue(undefined),
     getRefSha: vi.fn().mockResolvedValue(undefined),
+    getMergeBase: vi.fn().mockResolvedValue("merge-base-sha"),
     isAncestor: vi.fn().mockResolvedValue(true),
     getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
     getCommitTimestamp: vi.fn().mockResolvedValue(0),

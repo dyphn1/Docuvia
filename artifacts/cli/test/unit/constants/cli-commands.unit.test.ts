@@ -7,6 +7,7 @@ import {
   getCommandUsageText,
 } from "../../../src/constants/cli-commands.js";
 import { CLI_FLAGS } from "../../../src/constants/cli-flags.js";
+import { ArgParser } from "../../../src/utils/arg-parser.js";
 
 describe("cli-commands", () => {
   it("exports commands object", () => {
@@ -64,5 +65,13 @@ describe("cli-commands", () => {
       expect(usage).toContain(CLI_FLAGS.INTERACTIVE);
       expect(usage).toContain(CLI_FLAGS.INTERACTIVE_SHORT);
     });
+  });
+
+  it("allows the committed-range head ref on review", () => {
+    const parser = new ArgParser(["--head", "HEAD"]);
+    expect(() =>
+      parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.REVIEW]),
+    ).not.toThrow();
+    expect(parser.getFlagValue(CLI_FLAGS.HEAD)).toBe("HEAD");
   });
 });

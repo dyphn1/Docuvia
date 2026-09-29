@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { docuviaMemory } from "@workspace/contracts";
+import { docuviaMemory, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { reviewCommand } from "../../../src/commands/review.js";
 import { ui } from "../../../src/ui/wizard.js";
@@ -108,6 +108,26 @@ describe("reviewCommand", () => {
     expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
     expect(ui.header).not.toHaveBeenCalled();
     expect(ui.log).toHaveBeenCalledWith(JSON.stringify(result, null, 2));
+  });
+
+  it("stores the committed-range head ref for the review workflow", async () => {
+    mockReview.mockImplementation(async (scopeId) => {
+      expect(docuviaMemory.get(scopeId, MemoryKeys.HEAD_REF)).toBe("HEAD");
+      return {
+        baseRef: "origin/main",
+        filesChanged: [],
+        affectedNodes: [],
+        riskLevel: "LOW",
+        analysis: "Base: origin/main\nFiles changed: 0\nRisk level: LOW",
+      };
+    });
+
+    await reviewCommand("origin/main", {
+      format: "json",
+      headRef: "HEAD",
+    });
+
+    expect(mockReview).toHaveBeenCalled();
   });
 
   it("reports failures via stderr (ui.error) rather than stdout when --format=json", async () => {

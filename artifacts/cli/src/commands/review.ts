@@ -90,7 +90,7 @@ function printHumanResult(
  *  see them. */
 export async function reviewCommand(
   baseRef?: string,
-  options: { format?: CliOutputFormat } = {},
+  options: { format?: CliOutputFormat; headRef?: string } = {},
   cwd: string = process.cwd(),
 ) {
   const isJsonFormat = options.format === CLI_OUTPUT_FORMATS.JSON;
@@ -105,6 +105,8 @@ export async function reviewCommand(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   if (baseRef) docuviaMemory.set(scopeId, MemoryKeys.BASE_REF, baseRef);
+  if (options.headRef)
+    docuviaMemory.set(scopeId, MemoryKeys.HEAD_REF, options.headRef);
 
   try {
     const result = await docuviaApi.review(scopeId, logger);

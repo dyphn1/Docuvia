@@ -33,6 +33,7 @@ import {
 } from "./constants/cli-commands.js";
 import { CLI_FLAGS } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
+import { CLI_ERROR_MESSAGES } from "./constants/cli-errors.js";
 import { ArgParser } from "./utils/arg-parser.js";
 import { resolveOutputFormat } from "./utils/resolve-output-format.js";
 import { getPackageVersion } from "./utils/package-version.js";
@@ -142,8 +143,15 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
 async function handleReview(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.REVIEW]);
   const baseRef = ctx.parser.getPositional(0);
+  const hasHeadFlag = ctx.parser.hasFlag(CLI_FLAGS.HEAD);
+  const headRef = ctx.parser.getFlagValue(CLI_FLAGS.HEAD);
+  if (hasHeadFlag && !headRef?.trim()) {
+    ui.error(CLI_ERROR_MESSAGES.HEAD_REQUIRES_VALUE);
+    process.exitCode = 1;
+    return;
+  }
   const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
-  await reviewCommand(baseRef, { format }, ctx.workspaceRoot);
+  await reviewCommand(baseRef, { format, headRef }, ctx.workspaceRoot);
 }
 
 async function handleImpact(ctx: CommandContext): Promise<void> {

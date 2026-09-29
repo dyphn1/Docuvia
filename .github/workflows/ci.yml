@@ -383,7 +383,7 @@ jobs:
         # but the JSON result is what the comment below surfaces.
         id: review
         run: |
-          npx --no-install docuvia review "$BASE_REF" --format=json \
+          npx --no-install docuvia review "$BASE_REF" --head HEAD --format=json \
             > /tmp/graph-review.json 2>/tmp/graph-review.err \
             || echo "review_exit=$?" >> "$GITHUB_OUTPUT"
 

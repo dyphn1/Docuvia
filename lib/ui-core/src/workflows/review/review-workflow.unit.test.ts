@@ -7,6 +7,7 @@ import {
   docuviaFactory,
   TOKENS,
   DocuviaError,
+  ErrorCodes,
   resetFactoryForTests,
   createMockLogger,
   type GraphStoreOpenOptions,
@@ -16,6 +17,7 @@ import {
   type IHydrationService,
 } from "@workspace/contracts";
 import { ReviewWorkflow } from "./review-workflow.js";
+import { REVIEW_MESSAGES } from "./review-messages.js";
 
 function makeMockHydrationService(
   overrides: Partial<IHydrationService> = {},
@@ -67,6 +69,7 @@ function makeMockGitProvider(
     fetchRef: vi.fn().mockResolvedValue(undefined),
     pushRef: vi.fn().mockResolvedValue(undefined),
     getRefSha: vi.fn().mockResolvedValue(undefined),
+    getMergeBase: vi.fn().mockResolvedValue("merge-base-sha"),
     isAncestor: vi.fn().mockResolvedValue(false),
     getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
     getCommitTimestamp: vi.fn().mockResolvedValue(0),
@@ -223,6 +226,81 @@ describe("ReviewWorkflow.execute()", () => {
     expect(result).toHaveProperty("analysis");
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses merge-base and strict two-ref diffing when a committed head ref is supplied", async () => {
+    const getMergeBase = vi.fn().mockResolvedValue("merge-base-sha");
+    const gitProvider = makeMockGitProvider({
+      getHeadSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
+      getRefSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/feature.ts", status: "added" }]),
+      getMergeBase,
+    });
+    docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
+
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.ChangeDetectionService, () => ({
+      detectChanges: vi.fn().mockReturnValue({
+        baseRef: "origin/main",
+        filesChanged: [{ file: "src/feature.ts", status: "added" }],
+        affectedNodes: [],
+        riskLevel: "LOW",
+        analysis: "Base: origin/main\nFiles changed: 1\nRisk level: LOW",
+      }),
+    }));
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    await new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(
+      "origin/main",
+      "HEAD",
+    );
+
+    expect(getMergeBase).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "origin/main",
+      "HEAD",
+    );
+    expect(gitProvider.getChangedFilesSince).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "merge-base-sha",
+      "HEAD",
+    );
+  });
+
+  it("rejects a head ref that is not the checked-out HEAD before computing its range", async () => {
+    const getMergeBase = vi
+      .fn()
+      .mockRejectedValue(new Error("range computation should not run"));
+    const getChangedFilesSince = vi.fn();
+    const gitProvider = makeMockGitProvider({
+      getHeadSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
+      getRefSha: vi.fn().mockResolvedValue("different-head-sha"),
+      getMergeBase,
+      getChangedFilesSince,
+    });
+    docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
+    docuviaFactory.lock();
+
+    await expect(
+      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(
+        "origin/main",
+        "feature",
+      ),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.INVALID_INPUT,
+      message: REVIEW_MESSAGES.HEAD_MUST_MATCH_CHECKED_OUT_HEAD,
+    });
+
+    expect(getMergeBase).not.toHaveBeenCalled();
+    expect(getChangedFilesSince).not.toHaveBeenCalled();
   });
 
   it("passes through a full ChangeDetectionResult with affectedNodes and blast-radius data", async () => {

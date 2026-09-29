@@ -1,6 +1,7 @@
 export const CLI_FLAGS = {
   COMMIT_SHA: "--commitSha=",
   BASE_REF: "--baseRef=",
+  HEAD: "--head=",
   ESCALATE_TO_LSP: "--escalate-to-lsp",
   FORMAT: "--format=",
   LIMIT: "--limit=",

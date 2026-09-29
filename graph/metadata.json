@@ -24,7 +24,7 @@
     },
     {
       "filePath": "artifacts/cli/src/cli.ts",
-      "contentHash": "d722e5562abf744b5d4cc74c38ebfc75e14f8ab8",
+      "contentHash": "fdfb777ec0a792a8f402c16732b7d9541406e1ef",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -102,7 +102,7 @@
     },
     {
       "filePath": "artifacts/cli/src/commands/review.ts",
-      "contentHash": "2519a50ac3d10d4c89b47b9b40e34d73f297fecc",
+      "contentHash": "49ce740ea18ce991a7998e53ef8395bc96c0af2f",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -150,7 +150,7 @@
     },
     {
       "filePath": "artifacts/cli/src/constants/cli-commands.ts",
-      "contentHash": "a7e01cd24bdd217eb89d08b4ba82c05cebb710c6",
+      "contentHash": "828de8025de272f089f5b8ff4817663e1b91f936",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -162,7 +162,7 @@
     },
     {
       "filePath": "artifacts/cli/src/constants/cli-flags.ts",
-      "contentHash": "801273708fbc0c9038b7212984f56930e191cfb4",
+      "contentHash": "93ba4da939ba549ca8c239b1c4c34d7f36a67f20",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -786,7 +786,7 @@
     },
     {
       "filePath": "artifacts/cli/test/unit/commands/review.unit.test.ts",
-      "contentHash": "86e4187b163f1b0f20eefd9a7f6ee418e04bcf18",
+      "contentHash": "3595e7344ec2e4fd8270328f4f4a0e9e9e73735d",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -816,7 +816,7 @@
     },
     {
       "filePath": "artifacts/cli/test/unit/constants/cli-commands.unit.test.ts",
-      "contentHash": "fa62041e5c768e49ff52c2c3179ab72a83e43ff9",
+      "contentHash": "a8ddee1b4e94f78604c31c002e2036e046027b45",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -1284,7 +1284,7 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "7c386452e2cd1100ae0811d34e8ceb38c82ddf38",
+      "contentHash": "a492e8ea480ec6b13505ad3f555886099e9343c0",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -1326,7 +1326,7 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/git.interfaces.ts",
-      "contentHash": "9d55890a71c4267a6f6fc2dedb547a0b10712013",
+      "contentHash": "4e7a831064eaddef7b3b24af2e5461d152c5b3dc",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -1395,6 +1395,12 @@
       "contentHash": "e573c485120de8e0178867cdf41e495ad11fd170",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+    },
+    {
+      "filePath": "lib/contracts/src/interfaces/semantic-corpus-collection.interfaces.ts",
+      "contentHash": "17f18328b33a0414df220b269a909cab488043b4",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "lib/contracts/src/interfaces/semantic-corpus.interfaces.ts",
@@ -1488,7 +1494,7 @@
     },
     {
       "filePath": "lib/contracts/src/memory/docuvia-memory.ts",
-      "contentHash": "54ae0312d9bba8e1d2faac02a35f532a8bc0eac7",
+      "contentHash": "ed73aebe09ecbd6bdfd205a962a6033214262a92",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -1500,7 +1506,7 @@
     },
     {
       "filePath": "lib/contracts/src/testing/mocks-test.ts",
-      "contentHash": "4c82f4fa56fd788e52880ccdee748613f0b4b1e9",
+      "contentHash": "be7f36e1faf4983a2bbd033084f500b1bf55faf5",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -1728,7 +1734,7 @@
     },
     {
       "filePath": "lib/core/src/discovery/file-discovery.service.unit.test.ts",
-      "contentHash": "8e19d33b808889ad06c4a66c1deac0583f5b69d4",
+      "contentHash": "9e7148ecc8f1d6ec2ae96c8435dd8f7ab3fbd9ad",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -1770,7 +1776,7 @@
     },
     {
       "filePath": "lib/core/src/git/hydration.service.unit.test.ts",
-      "contentHash": "a8d50c664b0659180b0c9854af79b70bea297fdc",
+      "contentHash": "11c8c200d2f246f359c5a96bb646f7535d451e85",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -1794,7 +1800,7 @@
     },
     {
       "filePath": "lib/core/src/git/knowledge-git.service.unit.test.ts",
-      "contentHash": "58dae56e49c5fdb5826700f362e3896332cdc50c",
+      "contentHash": "2737091023a44bf58b07525faf3c8e3234b9e702",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -2471,6 +2477,90 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
+      "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.ts",
+      "contentHash": "8e3f4d92f640d55319b1e4defb3f46bf2a7c8bc8",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.unit.test.ts",
+      "contentHash": "202e1b86844f3d91ba387bc71e182cf49c090b1c",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-dedup-splits.ts",
+      "contentHash": "4a9f72c774c9563f0b7f12cae4b5e00b334012a3",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-dedup-splits.unit.test.ts",
+      "contentHash": "74c2bfa26ac419e2dd1a39b62c7ad171118d0b2a",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-import-audit.ts",
+      "contentHash": "470e585177e00a53838d800cf99d00e9714504c6",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts",
+      "contentHash": "d3a2f1895dbeb124de66f2a01554fbad5c016835",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-sample-builder.ts",
+      "contentHash": "49e412b1a48651ed0f9d8a0c8893e4e0ce112065",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-sample-builder.unit.test.ts",
+      "contentHash": "125cd1d5358f2c9483af811f20ff12e6e597bfd0",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-snapshot-hash.ts",
+      "contentHash": "a836a55856643d4158f3f1c67642de6c47261d15",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-snapshot-hash.unit.test.ts",
+      "contentHash": "3ccf0a6fbf5cd4f66cf51503866c70e72ed0accc",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.ts",
+      "contentHash": "d7b81a318cc5c2b25d36c884b3769970e2ca25b3",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-target-mapping.unit.test.ts",
+      "contentHash": "79e7519c14327b480819c1ebbb4a54066daa23f2",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.ts",
+      "contentHash": "20acf847b195e168b09340a4b3eaad39e7776f85",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/core/src/semantic/collection/semantic-tier-a-candidates.unit.test.ts",
+      "contentHash": "ccc45b886e2711564ea019b251dcc2bfb5b996c5",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "lib/core/src/semantic/semantic-corpus-audit.ts",
       "contentHash": "86f6e89c7d003b6569cd3016a3ca3ad500cc817d",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -2682,13 +2772,13 @@
     },
     {
       "filePath": "lib/git-local/src/git-local-provider.integration.test.ts",
-      "contentHash": "6d79a0c65c70bebde936a0798a99856318ed50ab",
+      "contentHash": "b50a4ba5c41546b5bfb2596d57cfb08aaa187e7d",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
       "filePath": "lib/git-local/src/git-local-provider.ts",
-      "contentHash": "72a02fd1eb9d7708b7cb64a07da9bd9cc1c0bb26",
+      "contentHash": "962f94c2ef0e95b90b5517160b73581a1b8509f6",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3060,7 +3150,7 @@
     },
     {
       "filePath": "lib/ui-core/src/docuvia-api.ts",
-      "contentHash": "8a58151f4a69e19815e6437f74d06ca40a189f2b",
+      "contentHash": "1caba1dfa690e40f7fc7e0dc82fd69d8c0e6374a",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3162,7 +3252,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts",
-      "contentHash": "9e56070e210452782dbdd3eadf7cb5dd112c5919",
+      "contentHash": "2d84f0c9f0f490310abd1c4298586aa49c52b7b0",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3288,7 +3378,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-agent-authored-write.unit.test.ts",
-      "contentHash": "cf454de6c47e42ec4f9f64fe211da38f5102db33",
+      "contentHash": "96216ec12779b03fbcce2c73d42455c60e5bbd36",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3300,7 +3390,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts",
-      "contentHash": "98a89d094fb1a5a24802146acf400339acb63c87",
+      "contentHash": "3a2a3eb57115595c5d2d22c580c2bfbdf1d79cf1",
       "lastTierBProcessedAt": "2026-09-29 02:27:26",
       "lastTierBCommitSha": "684a721c15dfc9a1d8ca9b2604f3d42d4b56bd9c"
     },
@@ -3312,7 +3402,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-flush-staged-l3.unit.test.ts",
-      "contentHash": "167bd6fc910ce4696fb750678c09ccf22a648ae6",
+      "contentHash": "a8904f875522ea96acbe8b7bcd213d4a99b1a3a5",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3708,7 +3798,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/init-workflow.unit.test.ts",
-      "contentHash": "ef328fc94cd11e948cfb4a2206af0d866feaac80",
+      "contentHash": "476a88cfe7d237b1f121f6ca43b618cfc9239543",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3744,7 +3834,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/seed-project-row.unit.test.ts",
-      "contentHash": "2406d97ee736b643a15b11dfa2297ddbad90c03b",
+      "contentHash": "7475a19cfa65108dafa228034a700ba45d22b7fa",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3798,7 +3888,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-messages.ts",
-      "contentHash": "8f451c55d460b82cfddcc267077ff9623d15021e",
+      "contentHash": "c24f43329c2066136afafcbdd25517c9c48bbce5",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3810,13 +3900,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.ts",
-      "contentHash": "835fa682524a0eba779f9f9e723c4ed4e1f68758",
+      "contentHash": "7eee2bd3a3ce175a13a5223df1bdfd48ca1ebe2b",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.unit.test.ts",
-      "contentHash": "445757af200ec383d560ffdc3f6b75fac6747e79",
+      "contentHash": "f392b2278fdca27901cfb5b6cab3d01604268200",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3930,7 +4020,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.unit.test.ts",
-      "contentHash": "3cac3285da0afa104e02adea1566153171c559dd",
+      "contentHash": "7f97bdfcf393527055194b65267f29d85ec1ec26",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -3978,7 +4068,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts",
-      "contentHash": "93fec90460bf247a94835d6feb4b3a0282281cbe",
+      "contentHash": "86f30fc0e87174cb5467d7731f80b8a8d9ade77c",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -4023,6 +4113,72 @@
       "contentHash": "ee2fc0e0c2be61f33082b48169c0f1761312d094",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/baseline.mts",
+      "contentHash": "5aac9e7f586a643abdd1d9082c2eece2bb76bf59",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/checker.mts",
+      "contentHash": "e791916ac6e8a6086863dc85db5a875617eee36a",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/collect.mts",
+      "contentHash": "29a16bdb4fada537a1b28f6db88f96841f55eb18",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/lsp-count-proxy.mjs",
+      "contentHash": "96b41588da1515326966e2c6eff204e6545cafec",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/memory-guard.mts",
+      "contentHash": "2803fb2d6d89140730002515a3529b2e4709b258",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/oracle.mts",
+      "contentHash": "7dac9d5f915d5421c147b686146ce2b51a52163c",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/replay.mts",
+      "contentHash": "ec270296067411318d56c4934f511e67c0021b9f",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/run-support.mts",
+      "contentHash": "f1805c6286035220bbb48ee23d23fb00a65c7907",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/snapshot.mts",
+      "contentHash": "ad361457417b3020ac8a72c658eca95a6e0f9790",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/tier-a.mts",
+      "contentHash": "f37df270aba08aa83106d14d8e0b49188586d2cf",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/typescript-language-server.mts",
+      "contentHash": "d63f5b3c61f8db2dadd9a24a74f6a338778cf4aa",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "test/ast-processing-tdd-quality.test.ts",
@@ -4103,6 +4259,12 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
+      "filePath": "test/semantic-corpus-collect.e2e.test.ts",
+      "contentHash": "3c9fa08407f627a6c7debb1da6c75f6aae877d5e",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "test/semantic-corpus-command.e2e.test.ts",
       "contentHash": "39054efab8b2b2e64afbe8d0d57de9978eb2fd94",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -4139,5 +4301,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "f9f2ee061473b1f313636cb5bd71f94fee9deb9e"
+  "lastIngestedSourceSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
 }

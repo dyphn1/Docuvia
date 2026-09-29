@@ -106,16 +106,17 @@ leakage, missing files, output failures and preservation of an existing report.
 
 ## Delivery and remaining gates
 
-| Slice         | Scope                                                                                                                     | Status      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| P1-01         | Provenance contract and honest label quarantine                                                                           | Implemented |
-| P1-02         | Split leakage, candidate recall and evidence sufficiency report                                                           | Implemented |
-| P1-03         | Offline audit command, atomic reports and explicit exit status                                                            | Implemented |
-| Collection    | Source hashing, deterministic candidate generation, real LSP capture                                                      | Pending     |
-| Corpus exit   | ≥8 real repo families (4 train / 2 calibration / 2 test), ≥10,000 requests, ≥2,000 sealed-test requests, temporal holdout | Pending     |
-| Baseline exit | Fixed hardware; paired AST-only/AST+LSP; cold/warm and initial/incremental; full analyze/commit/pre-push timings          | Pending     |
+| Slice         | Scope                                                                                                                       | Status      |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| P1-01         | Provenance contract and honest label quarantine                                                                             | Implemented |
+| P1-02         | Split leakage, candidate recall and evidence sufficiency report                                                             | Implemented |
+| P1-03         | Offline audit command, atomic reports and explicit exit status                                                              | Implemented |
+| Collection    | Source hashing, deterministic candidate generation, real LSP capture ([collection](semantic-decision-phase1-collection.md)) | Implemented |
+| Corpus exit   | ≥8 real repo families (4 train / 2 calibration / 2 test), ≥10,000 requests, ≥2,000 sealed-test requests, temporal holdout   | Review      |
+| Baseline exit | Fixed hardware; paired AST-only/AST+LSP; cold/warm and initial/incremental; full analyze/commit/pre-push timings            | Review      |
 
-Unit fixtures demonstrate policy behavior only. They are not a real training corpus,
+"Review" means corpus v1 evidence exists (reported on #506) and awaits the human audit and
+review the exit gate requires; it is not a Pass. Unit fixtures demonstrate policy behavior only. They are not a real training corpus,
 model-quality evidence, a measured baseline or permission to start Phase 2. The existing
 `eval:impact` gate remains mandatory and unchanged. #468 stays open.
 

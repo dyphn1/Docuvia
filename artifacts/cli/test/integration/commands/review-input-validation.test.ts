@@ -1,15 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { execa } from "execa";
 import { CLI_ERROR_MESSAGES } from "../../../src/constants/cli-errors.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import { TestSandbox } from "../../support/sandbox.js";
-
-const require = createRequire(import.meta.url);
-const TSX_LOADER = require.resolve("tsx/esm");
-const SOURCE_CLI_PATH = resolve(__dirname, "../../../src/cli.ts");
 
 async function commitFile(
   sandbox: TestSandbox,
@@ -23,19 +18,10 @@ async function commitFile(
   });
 }
 
+/** The shared sandbox runner spawns the platform tsx shim; a raw `node --import <path>` fails on
+ *  Windows, where an absolute loader path must be a file:// URL. */
 function runSourceCli(sandbox: TestSandbox, args: string[]) {
-  return execa(
-    process.execPath,
-    ["--import", TSX_LOADER, SOURCE_CLI_PATH, ...args],
-    {
-      cwd: sandbox.dir,
-      reject: false,
-      env: {
-        ...process.env,
-        NODE_ENV: "test",
-      },
-    },
-  );
+  return sandbox.runCli(args, { reject: false });
 }
 
 describe("Command: docuvia review --head input validation", () => {

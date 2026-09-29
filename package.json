@@ -20,7 +20,10 @@
     "eval:impact:honesty": "vitest run --mode phase4-honesty artifacts/cli/test/integration/commands/impact-honesty-report.phase4.integration.test.ts --testTimeout=600000 --hookTimeout=600000",
     "format": "prettier --write .",
     "prepare": "husky",
-    "eval:semantic": "tsx scripts/semantic-corpus-audit.mts"
+    "eval:semantic": "tsx scripts/semantic-corpus-audit.mts",
+    "eval:semantic:collect": "tsx scripts/semantic-corpus/collect.mts",
+    "eval:semantic:replay": "tsx scripts/semantic-corpus/replay.mts",
+    "eval:semantic:baseline": "tsx scripts/semantic-corpus/baseline.mts"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",

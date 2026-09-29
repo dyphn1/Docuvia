@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/test/support/impact-honesty-corpus.phase3.ts#Phase3Runner.anonymous@L1000
+id: artifacts/cli/test/support/impact-honesty-corpus.phase3.ts#parseCallResolutionPaths
 type: symbol
-name: anonymous
+name: parseCallResolutionPaths
 filePath: artifacts/cli/test/support/impact-honesty-corpus.phase3.ts
 ---
-# Symbol: anonymous
+# Symbol: parseCallResolutionPaths
 
 File: `artifacts/cli/test/support/impact-honesty-corpus.phase3.ts`

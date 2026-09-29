@@ -24,7 +24,7 @@
     },
     {
       "filePath": "artifacts/cli/src/cli.ts",
-      "contentHash": "fdfb777ec0a792a8f402c16732b7d9541406e1ef",
+      "contentHash": "bb03c40d0b1ab810d04cdd484ef929abd5bb93d3",
       "lastTierBProcessedAt": "2026-09-29 13:31:38",
       "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
     },
@@ -156,7 +156,7 @@
     },
     {
       "filePath": "artifacts/cli/src/constants/cli-errors.ts",
-      "contentHash": "ef3fe18f28591027f19c86cf46198f6787ea78b8",
+      "contentHash": "473655129d8f03e575179c54276494daa626abe8",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -567,6 +567,12 @@
       "contentHash": "0fbae1a8bbc01df27fed85dddda1e8164a6269e1",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+    },
+    {
+      "filePath": "artifacts/cli/test/integration/commands/review-input-validation.test.ts",
+      "contentHash": "e43c40a2be6e3f75b1ae6f1fd5fc7b993115e0c0",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/uninstall.test.ts",
@@ -3888,7 +3894,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-messages.ts",
-      "contentHash": "c24f43329c2066136afafcbdd25517c9c48bbce5",
+      "contentHash": "3dd68115e857def90caa55dbf402a6ce484382e1",
       "lastTierBProcessedAt": "2026-09-29 13:31:38",
       "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
     },
@@ -3900,13 +3906,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.ts",
-      "contentHash": "7eee2bd3a3ce175a13a5223df1bdfd48ca1ebe2b",
+      "contentHash": "af85cbf882a427911507518c1cb948ab4390592e",
       "lastTierBProcessedAt": "2026-09-29 13:31:38",
       "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.unit.test.ts",
-      "contentHash": "f392b2278fdca27901cfb5b6cab3d01604268200",
+      "contentHash": "468e0f36f379039a840f7bebf70068b860ba89b1",
       "lastTierBProcessedAt": "2026-09-29 13:31:38",
       "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
     },
@@ -4301,5 +4307,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+  "lastIngestedSourceSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
 }

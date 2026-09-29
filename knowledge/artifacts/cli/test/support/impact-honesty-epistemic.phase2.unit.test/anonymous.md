@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/support/impact-honesty-epistemic.phase2.unit.test.t
 # Symbol: anonymous
 
 File: `artifacts/cli/test/support/impact-honesty-epistemic.phase2.unit.test.ts`
-

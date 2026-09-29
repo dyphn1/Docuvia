@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/impact-honesty-transition.phase3.ts#kinds@L976
+id: artifacts/cli/test/support/impact-honesty-transition.phase3.ts#kinds@L977
 type: symbol
 name: kinds
 filePath: artifacts/cli/test/support/impact-honesty-transition.phase3.ts

@@ -208,6 +208,20 @@ identity). Incoming edges dropped by Tier A's per-file replace are repaired by r
 `node_key` (the deterministic identity survives the replace), so unchanged callers re-link without
 re-parsing dependents — this is the backstop for the "edge drift" window Tier A accepts.
 
+**Update (2026-09-28, #508 Phase 3 D9):** the drift window above was wider than intended. A
+non-contract change is never queued for Tier B, and without a language server Tier B only runs
+`pruneOrphanedLinks`, so an incoming edge dropped by Tier A's per-file replace was lost for good:
+unchanged `extends` dependents vanished and `calls` dependents fell back to name-matched
+`lsp-fallback` (or disappeared once the file regained any static caller), while the result could
+still read exact. Tier A now applies the same `node_key` re-attachment itself, immediately:
+`GraphPersisterService` captures incoming edges from files outside the re-parse batch
+(`IGraphNodesRepo.getExternalIncomingLinks`, index-backed) before the replace and re-inserts each
+one whose `node_key` still resolves afterward, in the same transaction; an edge into a removed or
+renamed symbol is dropped. `deleteNodesForPath` now deletes incoming links as well, so neither a
+re-parse nor a delete leaves a dangling row. Tier B stays the LSP-precision backstop (new or
+re-resolved cross-file edges); `pruneOrphanedLinks` remains as hygiene for databases written
+before this change.
+
 **Commit-cap: cumulative changed bytes, not raw commit count** (revised 2026-07-19 from the
 original raw-commit-count design — see Consequences). A `docuvia_meta` running total
 (`tierBChangedBytes`) accumulates `Buffer.byteLength` for every file Tier A's delta ingestion

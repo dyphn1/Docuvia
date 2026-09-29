@@ -38,6 +38,9 @@ export interface ImpactEpistemicInput {
   /** Issue #508 Phase 2 (D1/D5): set when the persisted evidence could not be trusted at all;
    *  a lower-bound cause at the same rung as `dynamicEvidence`. */
   dynamicEvidenceUnavailableReason?: string;
+  /** Issue #508 Phase 3 (D8): set when the graph was last ingested at a commit other than HEAD --
+   *  the first rung of the ladder, for empty and non-empty results alike. */
+  graphStale?: { graphSourceSha: string; headSha: string };
 }
 
 export interface ImpactEpistemicResult {
@@ -132,6 +135,8 @@ function pickEmptyRiskNote(
  * displayed as possible dependents but the risk band is based only on confirmed dependencies.
  *
  * Decision ladder (first match wins):
+ * - Stale graph (#508 D8: last ingested at a commit other than HEAD) -> lower-bound with the stale
+ *   note; empty results stay UNKNOWN, non-empty ones keep the earned risk band.
  * - Zero confirmed dependents -> risk UNKNOWN, always lower-bound.
  * - Non-empty but partial workspace Tier B coverage -> keep earned risk band, lower-bound.
  * - Non-empty with target-relevant dynamic evidence, or with evidence that is unavailable
@@ -148,6 +153,18 @@ export function resolveImpactEpistemic(
     workspaceFilesTotal,
     registryMediated,
   } = input;
+
+  if (input.graphStale) {
+    return {
+      riskLevel:
+        blastRadiusCount === 0 ? RiskLevels.UNKNOWN : computedRiskLevel,
+      epistemic: EpistemicLevels.LOWER_BOUND,
+      riskNote: IMPACT_MESSAGES.RISK_NOTE_GRAPH_STALE(
+        input.graphStale.graphSourceSha,
+        input.graphStale.headSha,
+      ),
+    };
+  }
 
   if (blastRadiusCount === 0) {
     return {

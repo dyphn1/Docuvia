@@ -9,6 +9,7 @@ import * as fs from "fs/promises";
 import {
   docuviaFactory,
   DynamicEvidenceUnavailableReasons,
+  GitConstants,
   TOKENS,
   DocuviaError,
   resetFactoryForTests,
@@ -57,6 +58,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllHashes: vi.fn(),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       // Full-coverage default -- issue #192's epistemic ladder treats unreadable counts as
@@ -91,6 +93,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      getExternalIncomingLinks: vi.fn().mockReturnValue([]),
       withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
@@ -322,6 +325,88 @@ describe("ImpactWorkflow.execute()", () => {
 
       expect(result?.riskLevel).toBe("MEDIUM");
       expect(result).not.toHaveProperty("epistemic");
+    });
+  });
+
+  describe("issue #508 Phase 3 D8: graph freshness", () => {
+    const GRAPH_SHA = "a".repeat(40);
+    const HEAD_SHA = "b".repeat(40);
+
+    function registerCallerTarget(headSha: string | undefined) {
+      const store = makeMockStore({
+        meta: {
+          get: vi.fn((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? GRAPH_SHA
+              : undefined,
+          ),
+          set: vi.fn(),
+        },
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      const impactService: IImpactService = {
+        getBlastRadius: vi
+          .fn()
+          .mockReturnValue([{ name: "evalCaller", type: "function" }]),
+        computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      };
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      if (headSha !== undefined) {
+        docuviaFactory.register(
+          TOKENS.GitProvider,
+          () => ({ getHeadSha: vi.fn().mockResolvedValue(headSha) }) as any,
+        );
+      }
+      docuviaFactory.lock();
+    }
+
+    it("[state-diff] a stale graph adds graphFreshness and makes a non-empty result lower-bound", async () => {
+      registerCallerTarget(HEAD_SHA);
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result).toEqual({
+        blastRadius: [{ name: "evalCaller", type: "function" }],
+        graphFreshness: {
+          state: "stale",
+          graphSourceSha: GRAPH_SHA,
+          headSha: HEAD_SHA,
+        },
+        riskLevel: "MEDIUM",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_GRAPH_STALE(GRAPH_SHA, HEAD_SHA),
+      });
+    });
+
+    it("[happy] a fresh graph omits graphFreshness and stays exact", async () => {
+      registerCallerTarget(GRAPH_SHA);
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result).toEqual({
+        blastRadius: [{ name: "evalCaller", type: "function" }],
+        riskLevel: "MEDIUM",
+      });
+    });
+
+    it("[error-handling] unknown freshness (no git provider) is omitted, never reported (fail-open, Q3)", async () => {
+      registerCallerTarget(undefined);
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result).not.toHaveProperty("graphFreshness");
+      expect(result?.riskLevel).toBe("MEDIUM");
     });
   });
 

@@ -26,6 +26,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllHashes: vi.fn(),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       getTierBCoverage: vi.fn(),
@@ -55,6 +56,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      getExternalIncomingLinks: vi.fn().mockReturnValue([]),
       withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {

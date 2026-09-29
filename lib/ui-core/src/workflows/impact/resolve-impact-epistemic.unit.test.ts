@@ -179,4 +179,63 @@ describe("resolveImpactEpistemic()", () => {
       expect(result).toEqual({ riskLevel: RiskLevels.MEDIUM });
     });
   });
+
+  describe("issue #508 Phase 3 D8: a stale graph is the first rung", () => {
+    const graphStale = {
+      graphSourceSha: "a".repeat(40),
+      headSha: "b".repeat(40),
+    };
+    const staleNote = IMPACT_MESSAGES.RISK_NOTE_GRAPH_STALE(
+      graphStale.graphSourceSha,
+      graphStale.headSha,
+    );
+
+    it("[state-diff] a non-empty result on a stale graph keeps its band but is lower-bound with the stale note", () => {
+      expect(
+        resolveImpactEpistemic({
+          blastRadiusCount: 4,
+          computedRiskLevel: RiskLevels.MEDIUM,
+          ...FULL_COVERAGE,
+          registryMediated: false,
+          graphStale,
+        }),
+      ).toEqual({
+        riskLevel: RiskLevels.MEDIUM,
+        epistemic: EpistemicLevels.LOWER_BOUND,
+        riskNote: staleNote,
+      });
+      expect(staleNote).toContain("aaaaaaa");
+      expect(staleNote).toContain("bbbbbbb");
+    });
+
+    it("[state-diff] an empty result on a stale graph stays UNKNOWN and names staleness before coverage or dynamic causes", () => {
+      expect(
+        resolveImpactEpistemic({
+          blastRadiusCount: 0,
+          computedRiskLevel: RiskLevels.LOW,
+          workspaceFilesProcessed: 1,
+          workspaceFilesTotal: 10,
+          registryMediated: true,
+          dynamicEvidenceUnavailableReason: "missing",
+          graphStale,
+        }),
+      ).toEqual({
+        riskLevel: RiskLevels.UNKNOWN,
+        epistemic: EpistemicLevels.LOWER_BOUND,
+        riskNote: staleNote,
+      });
+    });
+
+    it("[happy] without graphStale the ladder is unchanged (exact at full coverage)", () => {
+      expect(
+        resolveImpactEpistemic({
+          blastRadiusCount: 4,
+          computedRiskLevel: RiskLevels.MEDIUM,
+          ...FULL_COVERAGE,
+          registryMediated: false,
+          graphStale: undefined,
+        }),
+      ).toEqual({ riskLevel: RiskLevels.MEDIUM });
+    });
+  });
 });

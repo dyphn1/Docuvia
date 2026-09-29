@@ -2,12 +2,14 @@ import type Database from "better-sqlite3";
 import {
   DocuviaError,
   ErrorCodes,
+  type ExternalIncomingLink,
   type IGraphNodesRepo,
   type L2NodeRow,
   type L2NodeWithL3Children,
   type L3NodeRow,
   type NodeLinkRow,
   L2NodeTypes,
+  LinkTypes,
 } from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
 
@@ -25,6 +27,7 @@ const GRAPH_REPO_ERROR_MESSAGES = {
   ALL_LINKS_FAILED: "Failed to get all node links",
   BULK_LOAD_FAILED: "Failed to bulk-load graph",
   PRUNE_ORPHANED_LINKS_FAILED: "Failed to prune orphaned node_links",
+  EXTERNAL_INCOMING_LINKS_FAILED: "Failed to read external incoming node_links",
   FIND_NODE_BY_NODE_KEY_FAILED: (nodeKey: string) =>
     `Failed to find node by node_key: ${nodeKey}`,
   INCOMING_RELATIONS_FAILED: (nodeId: number) =>
@@ -68,6 +71,11 @@ function parseFirstPathPattern(raw: string | null): string | undefined {
   return undefined;
 }
 
+/** STOR-005 symbol keys are `<path>#<symbol>`; `$` is the code point right after `#`, so the
+ *  half-open range [`<path>#`, `<path>$`) is exactly the symbol keys of one file. */
+const NODE_KEY_SYMBOL_SEPARATOR = "#";
+const NODE_KEY_RANGE_END = "$";
+
 /** FTS5 sync-trigger names on `l2_nodes_fts` (see `migrations/0001_init.sql`) — dropped/recreated around `bulkLoadGraph`'s bulk insert. */
 const SchemaTriggers = {
   L2_NODES_FTS_AFTER_INSERT: "l2_nodes_fts_ai",
@@ -94,9 +102,10 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   constructor(private readonly db: Database.Database) {}
 
   /**
-   * Deletes any existing l2_nodes for `filePath` (and their outgoing node_links /
-   * l2_node_l1_tags rows), so a re-parsed file's stale nodes don't linger. Returns the deleted
-   * node ids.
+   * Deletes any existing l2_nodes for `filePath` (and their l2_node_l1_tags rows and every
+   * node_links row touching them, outgoing and incoming -- #508 Phase 3 D9), so a re-parsed or
+   * deleted file's stale nodes don't linger and no dangling link is left behind. Returns the
+   * deleted node ids.
    */
   deleteNodesForPath(filePath: string): number[] {
     const pattern = JSON.stringify([filePath]);
@@ -117,6 +126,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     this.db
       .prepare(
         `DELETE FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.SOURCE_NODE_ID} IN (${placeholders})`,
+      )
+      .run(...ids);
+    // #508 D9: incoming links too (index node_links_target_node_idx). A re-parsing caller
+    // re-attaches the external ones by node_key (`getExternalIncomingLinks`).
+    this.db
+      .prepare(
+        `DELETE FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.TARGET_NODE_ID} IN (${placeholders})`,
       )
       .run(...ids);
     this.db
@@ -159,6 +175,69 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         input.contentHash ?? null,
       );
     return Number(result.lastInsertRowid);
+  }
+
+  /**
+   * Issue #508 Phase 3 (D9): see `IGraphNodesRepo.getExternalIncomingLinks`. Targets come from the
+   * `node_key` index (`<path>` or the `<path>#` .. `<path>$` range, `$` being the code point after
+   * `#`), sources through `node_links_target_node_idx`; the batch-membership test on the source's
+   * path is done in memory.
+   */
+  getExternalIncomingLinks(
+    filePaths: readonly string[],
+  ): ExternalIncomingLink[] {
+    if (filePaths.length === 0) return [];
+    try {
+      const batch = new Set(filePaths);
+      const targetsOf = this.db.prepare(
+        `SELECT id, ${SchemaColumns.NODE_KEY} AS nodeKey FROM ${SchemaTables.L2_NODES}
+         WHERE ${SchemaColumns.NODE_KEY} = ?
+            OR (${SchemaColumns.NODE_KEY} >= ? AND ${SchemaColumns.NODE_KEY} < ?)`,
+      );
+      const incomingOf = this.db.prepare(
+        `SELECT nl.${SchemaColumns.SOURCE_NODE_ID} AS sourceNodeId,
+                nl.${SchemaColumns.LINK_TYPE} AS linkType,
+                s.${SchemaColumns.PATH_PATTERNS} AS sourcePathPatterns
+         FROM ${SchemaTables.NODE_LINKS} nl
+         JOIN ${SchemaTables.L2_NODES} s ON s.id = nl.${SchemaColumns.SOURCE_NODE_ID}
+         WHERE nl.${SchemaColumns.TARGET_NODE_ID} = ? AND nl.${SchemaColumns.LINK_TYPE} != ?`,
+      );
+      const links: ExternalIncomingLink[] = [];
+      const seen = new Set<string>();
+      for (const filePath of batch) {
+        const targets = targetsOf.all(
+          filePath,
+          `${filePath}${NODE_KEY_SYMBOL_SEPARATOR}`,
+          `${filePath}${NODE_KEY_RANGE_END}`,
+        ) as Array<{ id: number; nodeKey: string }>;
+        for (const target of targets) {
+          const rows = incomingOf.all(target.id, LinkTypes.CONTAINS) as Array<{
+            sourceNodeId: number;
+            linkType: string;
+            sourcePathPatterns: string | null;
+          }>;
+          for (const row of rows) {
+            const sourcePath = parseFirstPathPattern(row.sourcePathPatterns);
+            if (sourcePath !== undefined && batch.has(sourcePath)) continue;
+            const key = `${row.sourceNodeId}\u0000${target.nodeKey}\u0000${row.linkType}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            links.push({
+              sourceNodeId: row.sourceNodeId,
+              targetNodeKey: target.nodeKey,
+              linkType: row.linkType,
+            });
+          }
+        }
+      }
+      return links;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.EXTERNAL_INCOMING_LINKS_FAILED,
+        err,
+      );
+    }
   }
 
   /** Inserts a node_links edge between two l2_nodes. */
@@ -588,8 +667,8 @@ export class GraphNodesRepo implements IGraphNodesRepo {
 
   /**
    * Deletes `node_links` rows whose source or target id no longer exists in `l2_nodes` — see the
-   * `IGraphNodesRepo.pruneOrphanedLinks` doc comment for why these accumulate (Tier B batch
-   * hygiene, PLAT-007/phase1-decision-integration.md §8d). `NOT IN` against a (typically small)
+   * `IGraphNodesRepo.pruneOrphanedLinks` doc comment for where these came from (databases
+   * written before #508 D9; Tier B batch hygiene, PLAT-007/phase1-decision-integration.md §8d). `NOT IN` against a (typically small)
    * `l2_nodes.id` set is simplest and matches this table's expected scale; no index tuning done
    * beyond the existing primary keys.
    */

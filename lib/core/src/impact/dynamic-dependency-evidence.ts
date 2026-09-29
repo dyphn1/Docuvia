@@ -540,7 +540,9 @@ function scanDynamicEvidenceFile(
  * Replaces evidence for the files in this parse batch while retaining other files' rows. When the
  * previous set is unavailable (#508 D1/D5) nothing is retained and every tracked source is
  * rescanned, so an incremental batch heals the set instead of laundering it into an "available"
- * but partial one.
+ * but partial one. Retained rows are re-resolved against the tracked files, and rows whose source
+ * is no longer tracked are dropped (#508 Phase 3 D6), so an empty batch after deletions is a pure
+ * refresh.
  */
 export function persistDynamicDependencyEvidence(
   store: IGraphStore,
@@ -558,13 +560,19 @@ export function persistDynamicDependencyEvidence(
       ? parsedResults.map((result) => result.file)
       : knownFiles;
   const replacedFiles = new Set(filesToScan);
+  const knownSet = new Set(knownFiles);
   // #508 D2: retained records are re-resolved against the current file universe -- a candidate
   // file added (or a 65th one crossing MAX_BOUNDED_CANDIDATES) without its loader being
-  // re-parsed must not leave a stale bounded set behind.
+  // re-parsed must not leave a stale bounded set behind. #508 Phase 3 D6: the same re-resolution
+  // drops a deleted candidate, and a record whose source file left the tree is dropped outright.
   const retained =
     previous.state === DynamicEvidenceAvailabilityStates.AVAILABLE
       ? previous.items
-          .filter((item) => !replacedFiles.has(item.sourceFile))
+          .filter(
+            (item) =>
+              !replacedFiles.has(item.sourceFile) &&
+              knownSet.has(item.sourceFile),
+          )
           .map((item) => ({
             ...item,
             ...resolveCandidates(

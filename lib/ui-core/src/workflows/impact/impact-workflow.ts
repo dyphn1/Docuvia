@@ -23,9 +23,13 @@ import {
   type TargetFileResolution,
 } from "./resolve-impact-epistemic.js";
 import { readCallResolution } from "../analyze/call-resolution-stats.js";
-import type { ImpactResult } from "./impact-result.js";
+import type { ImpactGraphFreshness, ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
+import {
+  GraphFreshnessStates,
+  resolveGraphFreshness,
+} from "../../utils/resolve-graph-freshness.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 
@@ -39,6 +43,29 @@ function resolveEvidenceUnavailable(
   return availability?.state === DynamicEvidenceAvailabilityStates.UNAVAILABLE
     ? { reason: availability.reason }
     : undefined;
+}
+
+/** Issue #508 Phase 3 (D8): the additive `graphFreshness` field, ready to spread -- only a stale
+ *  graph is reported; `fresh` and fail-open `unknown` are omitted, matching #193's `status`. */
+async function resolveStaleGraph(
+  workspaceRoot: string,
+  store: IGraphStore,
+): Promise<{ graphFreshness?: ImpactGraphFreshness }> {
+  const freshness = await resolveGraphFreshness(workspaceRoot, store);
+  if (
+    freshness.state !== GraphFreshnessStates.STALE ||
+    !freshness.graphSourceSha ||
+    !freshness.headSha
+  ) {
+    return {};
+  }
+  return {
+    graphFreshness: {
+      state: GraphFreshnessStates.STALE,
+      graphSourceSha: freshness.graphSourceSha,
+      headSha: freshness.headSha,
+    },
+  };
 }
 
 /**
@@ -132,6 +159,8 @@ export class ImpactWorkflow {
         impactService,
         store,
       );
+      // #508 D8: resolved once -- it feeds both the epistemic ladder and the result field.
+      const freshnessField = await resolveStaleGraph(workspaceRoot, store);
       // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
       // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
       // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
@@ -155,6 +184,7 @@ export class ImpactWorkflow {
 
       return {
         blastRadius,
+        ...freshnessField,
         ...(dynamicEvidence.length > 0 ? { dynamicEvidence } : {}),
         ...(dynamicEvidenceUnavailable ? { dynamicEvidenceUnavailable } : {}),
         ...(await this.resolveEpistemicFields(
@@ -165,6 +195,7 @@ export class ImpactWorkflow {
           riskLevel,
           dynamicEvidence,
           dynamicEvidenceUnavailable?.reason,
+          freshnessField.graphFreshness,
         )),
       };
     } finally {
@@ -173,7 +204,8 @@ export class ImpactWorkflow {
   }
 
   /** Issue #192/#136/#393: resolves every confidence-adjacent field of the result -- the
-   *  epistemic verdict, back-compat coverage note, Tier B coverage, and dynamic evidence. */
+   *  epistemic verdict, back-compat coverage note, Tier B coverage, dynamic evidence, and (#508
+   *  D8) graph freshness. */
   private async resolveEpistemicFields(
     store: IGraphStore,
     target: string,
@@ -182,6 +214,7 @@ export class ImpactWorkflow {
     computedRiskLevel: RiskLevel,
     dynamicEvidence: DynamicDependencyEvidence[],
     dynamicEvidenceUnavailableReason: string | undefined,
+    graphFreshness: ImpactGraphFreshness | undefined,
   ): Promise<
     Omit<
       ImpactResult,
@@ -207,6 +240,7 @@ export class ImpactWorkflow {
       targetFileResolution,
       dynamicEvidence,
       dynamicEvidenceUnavailableReason,
+      graphStale: graphFreshness,
     });
 
     // Issue #192: partialCoverage flag -- true when Tier B coverage is incomplete. This remains

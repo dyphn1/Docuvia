@@ -61,6 +61,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllHashes: vi.fn(),
       getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
       upsertFile: vi.fn(),
+      deleteFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
       getTierBCoverage: vi.fn(),
@@ -92,6 +93,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
         .fn()
         .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      getExternalIncomingLinks: vi.fn().mockReturnValue([]),
       withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
@@ -254,6 +256,7 @@ describe("HydrationService.hydrate()", () => {
           .fn()
           .mockReturnValue({ nodesLoaded: 2, edgesLoaded: 1, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
@@ -326,6 +329,7 @@ describe("HydrationService.hydrate()", () => {
         getAllHashes: vi.fn(),
         getAllSnapshotMetadata: vi.fn(),
         upsertFile,
+        deleteFile: vi.fn(),
         markTierBProcessed,
         getTierBFileStatus: vi.fn(),
         getTierBCoverage: vi.fn(),
@@ -405,6 +409,7 @@ describe("HydrationService.hydrate()", () => {
         getAllHashes: vi.fn(),
         getAllSnapshotMetadata: vi.fn(),
         upsertFile,
+        deleteFile: vi.fn(),
         markTierBProcessed,
         getTierBFileStatus: vi.fn(),
         getTierBCoverage: vi.fn(),
@@ -518,6 +523,7 @@ describe("HydrationService.hydrate()", () => {
           .fn()
           .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
       l3: {
@@ -627,6 +633,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
@@ -685,6 +692,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           edgesDropped: 0,
         }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
@@ -724,6 +732,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
@@ -778,6 +787,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });

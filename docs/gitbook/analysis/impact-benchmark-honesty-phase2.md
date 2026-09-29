@@ -332,6 +332,9 @@ the gates observe the frozen projections, not the risk band.)
 | **D7** (found by the corpus, not predicted) | IMPT-001 keeps the target's own containing-file `contains` entry in the blast radius **and** in the confirmed count fed to the epistemic ladder, so a symbol with no real dependent at complete coverage is reported exact `MEDIUM` — a verified zero-impact claim.                                                    | E7       | **Confirmed.** `evalP2ComputedTarget` (reachable only through `svc["evalP2ComputedTarget"]()`) returned `blastRadius = [its own file]`, `riskLevel: MEDIUM`, no `epistemic`: false-safe under §1.1.                                                                                                                             |
 | D6                                          | A deleted loader file leaves phantom evidence behind (over-conservative, safe direction).                                                                                                                                                                                                                              | —        | Observation only, not gated. `project_files` rows are never deleted by any product path, so a deleted candidate also stays a candidate (same safe direction).                                                                                                                                                                   |
 
+D6 is gated and resolved in Phase 3, see
+[impact-benchmark-honesty-phase3.md §7](impact-benchmark-honesty-phase3.md#7-product-defects).
+
 ### Resolution
 
 Each confirmed defect is fixed in its own commit (doc → failing test →

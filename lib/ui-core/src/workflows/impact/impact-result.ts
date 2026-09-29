@@ -7,6 +7,14 @@ import type {
   TierBCoverageHint,
 } from "@workspace/contracts";
 
+/** Issue #508 Phase 3 (D8): the graph describes `graphSourceSha`, not source `HEAD`. */
+export interface ImpactGraphFreshness {
+  state: "stale";
+  /** `lastIngestedSourceSha` -- the commit the graph was built from. */
+  graphSourceSha: string;
+  headSha: string;
+}
+
 export interface ImpactResult {
   blastRadius: BlastRadiusEntry[];
   /** Issue #192: an empty confirmed blast radius is UNKNOWN, never LOW (see `RiskLevels.UNKNOWN`). */
@@ -16,6 +24,11 @@ export interface ImpactResult {
   epistemic?: EpistemicLevel;
   /** Human-readable reason attached whenever `epistemic` is lower-bound. */
   riskNote?: string;
+  /** Issue #508 Phase 3 (D8): additive, omit-when-fresh. Present only when the graph is stale
+   *  (`lastIngestedSourceSha` differs from `HEAD`), in which case the result is always
+   *  `lower-bound` with a `riskNote` naming both shas. `unknown` freshness (no git provider, unborn
+   *  HEAD, missing meta) is omitted, as `status` fails open (#193). */
+  graphFreshness?: ImpactGraphFreshness;
   /** Issue #393: target-relevant runtime dependency boundaries, including bounded candidate sets
    *  and unresolved expressions. Omitted when none were observed. */
   dynamicEvidence?: DynamicDependencyEvidence[];

@@ -16,6 +16,8 @@ describe("GraphPersisterService", () => {
       },
       graph: {
         deleteNodesForPath: vi.fn(),
+        // #508 D9: external incoming edges captured before the per-file replace.
+        getExternalIncomingLinks: vi.fn().mockReturnValue([]),
         getSemanticCoverage: vi.fn(),
         getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn().mockReturnValue(1),

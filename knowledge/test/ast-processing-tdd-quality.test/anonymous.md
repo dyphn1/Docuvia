@@ -7,3 +7,4 @@ filePath: test/ast-processing-tdd-quality.test.ts
 # Symbol: anonymous
 
 File: `test/ast-processing-tdd-quality.test.ts`
+ts`

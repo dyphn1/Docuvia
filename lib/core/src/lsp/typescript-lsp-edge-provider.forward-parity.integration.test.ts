@@ -9,10 +9,7 @@ import type {
 } from "@workspace/contracts";
 import { TypescriptLspEdgeProvider } from "./typescript-lsp-edge-provider.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
-import {
-  LspJsonRpcClient,
-  type LspJsonRpcClientOptions,
-} from "./lsp-json-rpc-client.js";
+import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { LspMethods } from "./lsp-constants.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
@@ -31,54 +28,12 @@ import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeout
  * Guarded by `provider.checkAvailability()` -- self-skips (does not fail) if the binary can't be
  * resolved/spawned in this environment, per the plan's own "should self-skip gracefully" note.
  *
- * `SettlingLspClient` (below) wraps the real `LspJsonRpcClient` behind `TypescriptLspEdgeProvider`'s
- * own documented test seam (its constructor's `clientFactory` param -- "tests inject a fake client
- * to exercise this class's cross-file edge-resolution logic without spawning a real process"; here
- * it wraps a *real* one instead of faking it). Diagnosed live against this exact fixture: a freshly
- * spawned `typescript-language-server` needs several real elapsed seconds after its first
- * `textDocument/didOpen` before tsserver's own async project load (parsing tsconfig + all included
- * files) completes -- `textDocument/documentSymbol` (purely syntactic, single-file) answers
- * correctly immediately, but the first `textDocument/references`/`textDocument/definition` request
- * issued too early comes back empty even though the exact same request succeeds once that load
- * finishes (confirmed by manually delaying and retrying against a raw session). This is a real
- * characteristic of `typescript-language-server`'s own cold-start behavior, not a bug in
- * `BaseLspEdgeProvider`'s request logic -- see this file's own "flag, don't fix" note below.
+ * A freshly spawned `typescript-language-server` needs several real elapsed seconds after its
+ * first `textDocument/didOpen` before tsserver's own async project load (parsing tsconfig + all
+ * included files) completes. `BaseLspEdgeProvider` owns that settle and the PRJ-007 cross-file
+ * readiness probe; this real-server test therefore uses the plain client so it exercises the
+ * provider's production lifecycle rather than adding a second test-only delay.
  */
-class SettlingLspClient {
-  private readonly real = new LspJsonRpcClient();
-  private settle: Promise<void> | undefined;
-
-  start(options: LspJsonRpcClientOptions): Promise<void> {
-    return this.real.start(options);
-  }
-
-  notify(method: string, params: unknown): void {
-    this.real.notify(method, params);
-  }
-
-  async request<T = unknown>(
-    method: string,
-    params: unknown,
-    timeoutMs: number,
-  ): Promise<T> {
-    if (method === LspMethods.REFERENCES || method === LspMethods.DEFINITION) {
-      // One shared settle wait per session (not per request) -- every semantic request after the
-      // first waits on the same already-resolved promise, so this only costs real wall-clock time
-      // once per spawned `typescript-language-server` process.
-      // Windows CI runners are ~2× slower at LSP server cold-start, so extend the settle
-      // proportionally to avoid premature client shutdown (observed on windows-latest in #175).
-      const settleMs = process.platform === "win32" ? 6_000 : 3_000;
-      this.settle ??= new Promise((resolve) => setTimeout(resolve, settleMs));
-      await this.settle;
-    }
-    return this.real.request<T>(method, params, timeoutMs);
-  }
-
-  stop(): Promise<void> {
-    return this.real.stop();
-  }
-}
-
 const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
@@ -168,7 +123,7 @@ describe("TypescriptLspEdgeProvider forward-vs-reverse parity (real typescript-l
 
     provider = new TypescriptLspEdgeProvider(
       undefined,
-      () => new SettlingLspClient() as unknown as LspJsonRpcClient,
+      () => new LspJsonRpcClient(),
     );
     if (fs.existsSync(TS_LANGUAGE_SERVER_BIN)) {
       provider.configure({ binaryOverride: TS_LANGUAGE_SERVER_BIN });

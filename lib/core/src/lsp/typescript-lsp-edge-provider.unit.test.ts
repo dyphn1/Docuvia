@@ -43,6 +43,15 @@ function asClient(fake: FakeLspClient): LspJsonRpcClient {
   return fake as unknown as LspJsonRpcClient;
 }
 
+function createTypescriptProvider(
+  logger = createMockLogger(),
+  clientFactory?: () => LspJsonRpcClient,
+): TypescriptLspEdgeProvider {
+  const provider = new TypescriptLspEdgeProvider(logger, clientFactory);
+  provider.configure({ coldStartSettleMs: 0 });
+  return provider;
+}
+
 function makeWorkspace(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-lsp-test-"));
   for (const [relPath, content] of Object.entries(files)) {
@@ -81,7 +90,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
 
   it("returns an empty outcome without touching the client factory when files is empty", async () => {
     const clientFactory = vi.fn();
-    const provider = new TypescriptLspEdgeProvider(
+    const provider = createTypescriptProvider(
       createMockLogger(),
       clientFactory,
     );
@@ -138,7 +147,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     };
 
     const fake = new FakeLspClient(handler);
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(fake),
     );
 
@@ -203,7 +212,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     };
 
     const fake = new FakeLspClient(handler);
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(fake),
     );
 
@@ -297,10 +306,10 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     };
 
     const fake = new FakeLspClient(handler);
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(fake),
     );
-    provider.configure({ maxOpenFiles: 2 });
+    provider.configure({ maxOpenFiles: 2, coldStartSettleMs: 0 });
 
     const outcome = await provider.resolveEdges({
       workspaceRoot,
@@ -353,7 +362,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -388,7 +397,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -460,7 +469,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
         return undefined;
       };
 
-      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      const provider = createTypescriptProvider(createMockLogger(), () =>
         asClient(new FakeLspClient(handler)),
       );
 
@@ -517,7 +526,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -583,7 +592,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -671,7 +680,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -753,7 +762,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -792,7 +801,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -820,7 +829,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       return [];
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -859,7 +868,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
         return [];
       };
 
-      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      const provider = createTypescriptProvider(createMockLogger(), () =>
         asClient(new FakeLspClient(handler)),
       );
 
@@ -877,7 +886,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
   it("degrades honestly (unavailableReason set, no edges) when the client fails to spawn", async () => {
     const fake = new FakeLspClient();
     fake.startError = new Error("ENOENT: no such file or directory");
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(fake),
     );
 
@@ -905,7 +914,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       }
       return null;
     });
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(fake),
     );
 
@@ -947,11 +956,11 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       }),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
+    const provider = createTypescriptProvider(
       createMockLogger(),
       () => hangingClient,
     );
-    provider.configure({ timeoutMs: 20 });
+    provider.configure({ timeoutMs: 20, coldStartSettleMs: 0 });
 
     const outcome = await provider.resolveEdges({
       workspaceRoot,
@@ -1014,11 +1023,8 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       }),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
-      createMockLogger(),
-      () => client,
-    );
-    provider.configure({ timeoutMs: 150 });
+    const provider = createTypescriptProvider(createMockLogger(), () => client);
+    provider.configure({ timeoutMs: 150, coldStartSettleMs: 0 });
 
     const outcome = await provider.resolveEdges({
       workspaceRoot,
@@ -1056,11 +1062,11 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       stop: vi.fn().mockResolvedValue(undefined),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
+    const provider = createTypescriptProvider(
       createMockLogger(),
       () => delayedClient,
     );
-    provider.configure({ timeoutMs: 0 });
+    provider.configure({ timeoutMs: 0, coldStartSettleMs: 0 });
 
     const outcome = await provider.resolveEdges({
       workspaceRoot,
@@ -1085,11 +1091,8 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       stop: vi.fn().mockResolvedValue(undefined),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
-      createMockLogger(),
-      () => client,
-    );
-    provider.configure({ timeoutMs: 999_999 });
+    const provider = createTypescriptProvider(createMockLogger(), () => client);
+    provider.configure({ timeoutMs: 999_999, coldStartSettleMs: 0 });
 
     await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
 
@@ -1120,10 +1123,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       stop: vi.fn().mockResolvedValue(undefined),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
-      createMockLogger(),
-      () => client,
-    );
+    const provider = createTypescriptProvider(createMockLogger(), () => client);
 
     await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
 
@@ -1156,20 +1156,66 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       stop: vi.fn().mockResolvedValue(undefined),
     } as unknown as LspJsonRpcClient;
 
-    const provider = new TypescriptLspEdgeProvider(
-      createMockLogger(),
-      () => client,
-    );
+    const provider = createTypescriptProvider(createMockLogger(), () => client);
 
     await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
 
     expect(requestSpy).toHaveBeenCalledWith(
       LspMethods.INITIALIZE,
       expect.objectContaining({
-        initializationOptions: { maxTsServerMemory: 8192 },
+        initializationOptions: {
+          maxTsServerMemory: 8192,
+          tsserver: { useSyntaxServer: "never" },
+        },
       }),
       expect.anything(),
     );
+  });
+
+  it("does not declare readiness from same-file references during the syntax-server phase", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    let serverReady = false;
+    const fake = new FakeLspClient((method, params) => {
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        const uri = (params as { textDocument: { uri: string } }).textDocument
+          .uri;
+        return [
+          {
+            name: uri === aUri ? "foo" : "bar",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 0, 25),
+            selectionRange: range(0, 16, 0, 19),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        const uri = (params as { textDocument: { uri: string } }).textDocument
+          .uri;
+        return [{ uri: serverReady ? (uri === aUri ? bUri : aUri) : uri }];
+      }
+      return undefined;
+    });
+    const provider = createTypescriptProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    type ReadinessProbe = (
+      client: LspJsonRpcClient,
+      root: string,
+      files: string[],
+    ) => Promise<boolean>;
+    const probeServerReady = (
+      provider as unknown as { probeServerReady: ReadinessProbe }
+    ).probeServerReady.bind(provider);
+
+    expect(
+      await probeServerReady(asClient(fake), workspaceRoot, ["a.ts", "b.ts"]),
+    ).toBe(false);
+
+    serverReady = true;
+    expect(
+      await probeServerReady(asClient(fake), workspaceRoot, ["a.ts", "b.ts"]),
+    ).toBe(true);
   });
 });
 
@@ -1233,7 +1279,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -1298,7 +1344,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
       return undefined;
     };
 
-    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+    const provider = createTypescriptProvider(createMockLogger(), () =>
       asClient(new FakeLspClient(handler)),
     );
 
@@ -1358,7 +1404,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
         return undefined;
       };
 
-      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      const provider = createTypescriptProvider(createMockLogger(), () =>
         asClient(new FakeLspClient(handler)),
       );
 
@@ -1431,7 +1477,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
         return undefined;
       };
 
-      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      const provider = createTypescriptProvider(createMockLogger(), () =>
         asClient(new FakeLspClient(handler)),
       );
 
@@ -1464,7 +1510,7 @@ describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
         path.join(os.tmpdir(), "docuvia-lsp-avail-test-"),
       );
       try {
-        const provider = new TypescriptLspEdgeProvider(createMockLogger());
+        const provider = createTypescriptProvider(createMockLogger());
         const availability = await provider.checkAvailability(dir);
 
         expect(availability.available).toBe(false);

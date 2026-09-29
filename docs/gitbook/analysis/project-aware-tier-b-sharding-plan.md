@@ -98,14 +98,17 @@ Parallel cold servers all load the same big workspace at once, and the first fil
 any server's crate graph is ready — a sharded tauri run's whole 323-file rust bucket returned _zero_
 references (everything empty post-settle) because the batch finished during the load. After the fixed
 settle, poll a probe `textDocument/references` (burst every call-site symbol of the first symbol-bearing
-files) until any symbol returns a reference, or the cap trips (default poll 5s / cap 120s; contracts
-`coldStartPollMs` / `coldStartMaxWaitMs`). Only engages for languages that opted into cold-start
-awareness (`coldStartSettleMs > 0` — rust, TS); fast-loading servers (clangd) skip the poll. The probe
-must scan _past_ the first symbol-bearing file (its symbols may legitimately have no callers — e.g. a
+files) until any symbol returns a location in a _different document_ than the probe file, or the cap
+trips (default poll 5s / cap 120s; contracts `coldStartPollMs` / `coldStartMaxWaitMs`). Same-file-only
+answers do not count: a partially initialized syntax server can produce those before its semantic
+project graph is ready. Only engages for languages that opted into cold-start awareness
+(`coldStartSettleMs > 0` — rust, TS); fast-loading servers (clangd) skip the poll. The probe must
+scan _past_ the first symbol-bearing file (its symbols may legitimately have no callers — e.g. a
 bench binary's `main`), and a shard whose first files are symbol-less but is _larger_ than the probe
 window is NOT ready (a cold server returns empty `documentSymbol` for everything — measured on tauri's
-misc rust shard); only a genuinely tiny shard (every file inspected) is treated as ready so it doesn't
-stall the batch.
+misc rust shard); only a genuinely tiny shard (every file inspected) is treated as ready so it
+doesn't stall the batch. If no cross-file relationship exists, the bounded cap is the honest fallback
+and the batch continues without claiming readiness.
 
 ---
 

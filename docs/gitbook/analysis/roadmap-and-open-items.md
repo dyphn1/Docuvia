@@ -945,7 +945,10 @@ one server per owning project at the project root (PRJ-002), projects emitted bo
 persist before caller edges apply (PRJ-003), parallelism capped by cores _and_ memory
 (`processMemoryEstimateMb`, PRJ-004), settle moved outside the deadline window (PRJ-005),
 sub-threshold projects coalesced into a "misc" shard (PRJ-006), and a readiness poll after the settle
-so a shard never processes against a not-yet-loaded graph (PRJ-007).
+so a shard never processes against a not-yet-loaded graph (PRJ-007). The readiness probe now requires
+a reference location in a different document; same-file-only syntax-server answers do not declare the
+semantic project graph ready, and the existing bounded cap remains the honest fallback when no
+cross-file relationship exists.
 
 **Measured on tauri (10 cores / 16 GB):** sharded ≈ 95-109 s vs single-process ≈ 113-119 s; edge set is a
 _superset_ (4772 ± ~10 vs a bit-exact single-run 4662 — +110 project-internal TS edges the repo-root

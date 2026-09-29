@@ -2,6 +2,17 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.15.0](https://github.com/dyphn1/Docuvia/compare/v1.14.5...v1.15.0) (2026-09-29)
+
+### Bug Fixes
+
+- **eval:** portable LSP spawn, category coverage and pre-push baseline ([#506](https://github.com/dyphn1/Docuvia/issues/506), [#533](https://github.com/dyphn1/Docuvia/issues/533)) ([cf0f4a2](https://github.com/dyphn1/Docuvia/commit/cf0f4a26f7aea1c39dd6a7bac0a6ab8ffef4a23f))
+
+### Features
+
+- **eval:** real corpus collector, replay and paired baseline ([#506](https://github.com/dyphn1/Docuvia/issues/506)) ([25aebab](https://github.com/dyphn1/Docuvia/commit/25aebab9176e2100e653d10c2da78b22946602f7))
+- **semantic:** pure policy for [#506](https://github.com/dyphn1/Docuvia/issues/506) corpus collection ([d2540d1](https://github.com/dyphn1/Docuvia/commit/d2540d1f8db9f65dcd2fdfaf888332f68f2e6920))
+
 ## [1.14.5](https://github.com/dyphn1/Docuvia/compare/v1.14.4...v1.14.5) (2026-09-29)
 
 ### Bug Fixes

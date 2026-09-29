@@ -2,6 +2,14 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.14.4](https://github.com/dyphn1/Docuvia/compare/v1.14.3...v1.14.4) (2026-09-29)
+
+### Bug Fixes
+
+- **core,schema:** re-attach external incoming edges by node_key on re-parse ([#508](https://github.com/dyphn1/Docuvia/issues/508) D9) ([7f27061](https://github.com/dyphn1/Docuvia/commit/7f27061732cda68ddb8a670a5929ffc7478c0724))
+- **ui-core,schema,core:** retire per-path state for deleted and renamed files ([#508](https://github.com/dyphn1/Docuvia/issues/508) D6, D11) ([f853477](https://github.com/dyphn1/Docuvia/commit/f853477aff0b27886c7a8da558d7c08a219e8e8c)), closes [#393](https://github.com/dyphn1/Docuvia/issues/393) [#522](https://github.com/dyphn1/Docuvia/issues/522) [#521](https://github.com/dyphn1/Docuvia/issues/521)
+- **ui-core:** report graph freshness in impact and treat a stale graph as lower-bound ([#508](https://github.com/dyphn1/Docuvia/issues/508) D8) ([8242cf9](https://github.com/dyphn1/Docuvia/commit/8242cf9b6ec892ff7b65719c6a9c9bea3266090e))
+
 ## [1.14.3](https://github.com/dyphn1/Docuvia/compare/v1.14.2...v1.14.3) (2026-09-28)
 
 ### Bug Fixes

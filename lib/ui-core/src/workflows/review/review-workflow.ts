@@ -4,6 +4,7 @@ import {
   DocuviaError,
   ErrorCodes,
   type ChangedFileEntry,
+  type IGitProvider,
   type ILogger,
 } from "@workspace/contracts";
 import { REVIEW_EVENTS, REVIEW_MESSAGES } from "./review-messages.js";
@@ -11,6 +12,23 @@ import { appendReviewLogLine } from "./review-log-writer.js";
 import type { ReviewResult } from "./review-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
+
+async function assertHeadMatchesCheckedOutCommit(
+  git: Pick<IGitProvider, "getRefSha" | "getHeadSha">,
+  workspaceRoot: string,
+  headRef: string,
+): Promise<void> {
+  const [headSha, checkedOutHeadSha] = await Promise.all([
+    git.getRefSha(workspaceRoot, headRef),
+    git.getHeadSha(workspaceRoot),
+  ]);
+  if (!headSha || !checkedOutHeadSha || headSha !== checkedOutHeadSha) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      REVIEW_MESSAGES.HEAD_MUST_MATCH_CHECKED_OUT_HEAD,
+    );
+  }
+}
 
 /**
  * The `review` workflow (file-level change detection) — resolves the changed-file set via
@@ -30,15 +48,8 @@ export class ReviewWorkflow {
     headRef?: string,
   ): Promise<ReviewResult> {
     const { workspaceRoot, logger } = this;
-
-    logger.info(REVIEW_MESSAGES.DETECTING_CHANGES);
-    await appendReviewLogLine(workspaceRoot, {
-      event: REVIEW_EVENTS.START,
-      baseRef: baseRef ?? null,
-    });
-
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
-    let rawChanges: ChangedFileEntry[];
+
     if (headRef) {
       if (!baseRef) {
         throw new DocuviaError(
@@ -46,7 +57,23 @@ export class ReviewWorkflow {
           REVIEW_MESSAGES.HEAD_REQUIRES_BASE_REF,
         );
       }
-      const mergeBase = await git.getMergeBase(workspaceRoot, baseRef, headRef);
+
+      await assertHeadMatchesCheckedOutCommit(git, workspaceRoot, headRef);
+    }
+
+    logger.info(REVIEW_MESSAGES.DETECTING_CHANGES);
+    await appendReviewLogLine(workspaceRoot, {
+      event: REVIEW_EVENTS.START,
+      baseRef: baseRef ?? null,
+    });
+
+    let rawChanges: ChangedFileEntry[];
+    if (headRef) {
+      const mergeBase = await git.getMergeBase(
+        workspaceRoot,
+        baseRef!,
+        headRef,
+      );
       rawChanges = await git.getChangedFilesSince(
         workspaceRoot,
         mergeBase,

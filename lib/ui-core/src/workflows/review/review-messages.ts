@@ -4,6 +4,8 @@ export const REVIEW_MESSAGES = {
   DB_NOT_FOUND: 'Local database not found. Please run "docuvia init".',
   HEAD_REQUIRES_BASE_REF:
     "Committed-range review requires a base ref when --head is supplied.",
+  HEAD_MUST_MATCH_CHECKED_OUT_HEAD:
+    "The --head ref must resolve to the checked-out HEAD commit.",
 } as const;
 
 /** Structured-log event names appended to `review.log` by the `review` workflow. */

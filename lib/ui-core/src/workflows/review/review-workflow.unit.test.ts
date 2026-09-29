@@ -7,6 +7,7 @@ import {
   docuviaFactory,
   TOKENS,
   DocuviaError,
+  ErrorCodes,
   resetFactoryForTests,
   createMockLogger,
   type GraphStoreOpenOptions,
@@ -16,6 +17,7 @@ import {
   type IHydrationService,
 } from "@workspace/contracts";
 import { ReviewWorkflow } from "./review-workflow.js";
+import { REVIEW_MESSAGES } from "./review-messages.js";
 
 function makeMockHydrationService(
   overrides: Partial<IHydrationService> = {},
@@ -229,6 +231,8 @@ describe("ReviewWorkflow.execute()", () => {
   it("uses merge-base and strict two-ref diffing when a committed head ref is supplied", async () => {
     const getMergeBase = vi.fn().mockResolvedValue("merge-base-sha");
     const gitProvider = makeMockGitProvider({
+      getHeadSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
+      getRefSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
       getChangedFilesSince: vi
         .fn()
         .mockResolvedValue([{ file: "src/feature.ts", status: "added" }]),
@@ -269,6 +273,34 @@ describe("ReviewWorkflow.execute()", () => {
       "merge-base-sha",
       "HEAD",
     );
+  });
+
+  it("rejects a head ref that is not the checked-out HEAD before computing its range", async () => {
+    const getMergeBase = vi
+      .fn()
+      .mockRejectedValue(new Error("range computation should not run"));
+    const getChangedFilesSince = vi.fn();
+    const gitProvider = makeMockGitProvider({
+      getHeadSha: vi.fn().mockResolvedValue("checked-out-head-sha"),
+      getRefSha: vi.fn().mockResolvedValue("different-head-sha"),
+      getMergeBase,
+      getChangedFilesSince,
+    });
+    docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
+    docuviaFactory.lock();
+
+    await expect(
+      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(
+        "origin/main",
+        "feature",
+      ),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.INVALID_INPUT,
+      message: REVIEW_MESSAGES.HEAD_MUST_MATCH_CHECKED_OUT_HEAD,
+    });
+
+    expect(getMergeBase).not.toHaveBeenCalled();
+    expect(getChangedFilesSince).not.toHaveBeenCalled();
   });
 
   it("passes through a full ChangeDetectionResult with affectedNodes and blast-radius data", async () => {

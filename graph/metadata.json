@@ -25,8 +25,8 @@
     {
       "filePath": "artifacts/cli/src/cli.ts",
       "contentHash": "bb03c40d0b1ab810d04cdd484ef929abd5bb93d3",
-      "lastTierBProcessedAt": "2026-09-29 13:31:38",
-      "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "artifacts/cli/src/commands/analyze.ts",
@@ -157,8 +157,8 @@
     {
       "filePath": "artifacts/cli/src/constants/cli-errors.ts",
       "contentHash": "473655129d8f03e575179c54276494daa626abe8",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "artifacts/cli/src/constants/cli-flags.ts",
@@ -571,8 +571,8 @@
     {
       "filePath": "artifacts/cli/test/integration/commands/review-input-validation.test.ts",
       "contentHash": "e43c40a2be6e3f75b1ae6f1fd5fc7b993115e0c0",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/uninstall.test.ts",
@@ -3895,8 +3895,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/review/review-messages.ts",
       "contentHash": "3dd68115e857def90caa55dbf402a6ce484382e1",
-      "lastTierBProcessedAt": "2026-09-29 13:31:38",
-      "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-result.ts",
@@ -3907,14 +3907,14 @@
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.ts",
       "contentHash": "af85cbf882a427911507518c1cb948ab4390592e",
-      "lastTierBProcessedAt": "2026-09-29 13:31:38",
-      "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "lib/ui-core/src/workflows/review/review-workflow.unit.test.ts",
       "contentHash": "468e0f36f379039a840f7bebf70068b860ba89b1",
-      "lastTierBProcessedAt": "2026-09-29 13:31:38",
-      "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+      "lastTierBProcessedAt": "2026-09-29 15:53:29",
+      "lastTierBCommitSha": "79d2e6d092370eaec55922af80fe9330fc1009be"
     },
     {
       "filePath": "lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts",

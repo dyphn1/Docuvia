@@ -30,8 +30,10 @@ import type { ExtractedDecision } from "./analyze-result.js";
 import {
   TierCCandidateKinds,
   readTierCQueue,
+  parseContractSymbolTarget,
   recordTierCQueueFailure,
   removeTierCQueueEntries,
+  TierCQueueValidationReasons,
   type TierCQueueEntry,
 } from "./tier-c-queue.js";
 import {
@@ -58,6 +60,7 @@ const TierCSkipReasons = {
 /** Per-item extraction failure reasons (`failOutcome`'s `reason` param, §9f). */
 const TierCFailReasons = {
   NO_ANCHOR: "no-anchor",
+  INVALID_ENTRY: TierCQueueValidationReasons.INVALID_ENTRY,
   BRIDGE_UNREACHABLE: "bridge-unreachable",
   /** Issue #134: HTTP 429 from the LLM endpoint -- a transient rate-limit rejection
    *  that should be retried with backoff, not treated as a permanent bridge failure. */
@@ -66,7 +69,6 @@ const TierCFailReasons = {
    *  resolve on retry. */
   AUTH_FAILED: "auth-failed",
   LLM_NON_JSON_OUTPUT: "llm-non-json-output",
-  MISSING_FILE: "missing-file",
   FILE_UNREADABLE: "file-unreadable",
 } as const;
 
@@ -747,8 +749,11 @@ async function processContractSymbolEntry(
   entry: TierCQueueEntry,
 ): Promise<TierCItemOutcome> {
   const { git, workspaceRoot, store, llmModel } = deps;
-  const file = entry.file;
-  if (!file) return failOutcome(TierCFailReasons.MISSING_FILE);
+  const parsedTarget = parseContractSymbolTarget(entry);
+  if (!parsedTarget.ok) {
+    return failOutcome(TierCFailReasons.INVALID_ENTRY);
+  }
+  const { file, symbolName } = parsedTarget;
 
   const anchor =
     store.graph.findNodeIdByNodeKey(entry.target) ??
@@ -763,7 +768,6 @@ async function processContractSymbolEntry(
   if (content === undefined)
     return failOutcome(TierCFailReasons.FILE_UNREADABLE);
 
-  const symbolName = entry.target.slice(entry.target.indexOf("#") + 1);
   const userMessage = TIER_C_CONTRACT_SYMBOL_USER_MESSAGE(
     symbolName,
     file,

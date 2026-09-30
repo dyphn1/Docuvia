@@ -1,5 +1,7 @@
 import { GitConstants } from "@workspace/contracts";
 import type { IGraphStore } from "@workspace/contracts";
+import path from "node:path";
+import { toNodeKey } from "./anchor-resolution.js";
 
 /** Tier C candidate kinds (phase1-decision-integration.md §9c/E2) -- the two extraction sources
  *  PLAT-007 names for Tier C: commit messages and `CONTRACT_CHANGED` symbols. */
@@ -24,6 +26,87 @@ export interface TierCQueueEntry {
    *  the poison-pill counter `recordTierCQueueFailure` increments, absent/0 until the first
    *  failure. */
   failCount?: number;
+}
+
+export const TierCQueueValidationReasons = {
+  INVALID_ENTRY: "invalid-entry",
+} as const;
+
+export type ContractSymbolTargetParseResult =
+  | { ok: true; file: string; symbolName: string }
+  | {
+      ok: false;
+      reason: (typeof TierCQueueValidationReasons)["INVALID_ENTRY"];
+    };
+
+const REPO_PATH_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+const REPO_PATH_BACKSLASH = /\\/;
+const CONTRACT_SYMBOL_FILE_HEADER_UNSAFE_CHARACTERS = /\x60/;
+const CONTRACT_SYMBOL_NAME_UNSAFE_CHARACTERS = /[\u0000-\u001f\u007f`]/;
+
+/** Parses the persisted contract-symbol target without repairing non-canonical queue values.
+ *  Git tree paths use forward-slash repository semantics: a drive-like first segment remains
+ *  repo-relative, while leading slashes, backslashes, traversal, and non-canonical segments are
+ *  rejected. The canonical file followed by `#` defines the prefix; the remaining non-empty text
+ *  is the symbol name, which may itself contain `#` characters. The file and symbol are
+ *  interpolated into a backtick-delimited prompt header, so reject backticks there and control
+ *  characters in the symbol. */
+export function parseContractSymbolTarget(
+  entry: TierCQueueEntry,
+): ContractSymbolTargetParseResult {
+  if (
+    entry.kind !== TierCCandidateKinds.CONTRACT_SYMBOL ||
+    typeof entry.target !== "string" ||
+    typeof entry.file !== "string" ||
+    !isCanonicalRepoRelativeFile(entry.file) ||
+    CONTRACT_SYMBOL_FILE_HEADER_UNSAFE_CHARACTERS.test(entry.file)
+  ) {
+    return invalidContractSymbolTarget();
+  }
+
+  const targetPrefix = `${entry.file}#`;
+  if (!entry.target.startsWith(targetPrefix)) {
+    return invalidContractSymbolTarget();
+  }
+
+  const symbolName = entry.target.slice(targetPrefix.length);
+  if (!symbolName || CONTRACT_SYMBOL_NAME_UNSAFE_CHARACTERS.test(symbolName)) {
+    return invalidContractSymbolTarget();
+  }
+
+  return { ok: true, file: entry.file, symbolName };
+}
+
+function invalidContractSymbolTarget(): ContractSymbolTargetParseResult {
+  return {
+    ok: false,
+    reason: TierCQueueValidationReasons.INVALID_ENTRY,
+  };
+}
+
+function isCanonicalRepoRelativeFile(file: string): boolean {
+  return isPosixRepoRelativeFile(file) && hasCanonicalRepoSegments(file);
+}
+
+function isPosixRepoRelativeFile(file: string): boolean {
+  return (
+    file.length > 0 &&
+    !path.posix.isAbsolute(file) &&
+    !REPO_PATH_BACKSLASH.test(file) &&
+    !REPO_PATH_CONTROL_CHARACTERS.test(file) &&
+    toNodeKey(file) === file
+  );
+}
+
+function hasCanonicalRepoSegments(file: string): boolean {
+  const normalizedFile = path.posix.normalize(file);
+  return (
+    normalizedFile === file &&
+    normalizedFile !== "." &&
+    normalizedFile !== ".." &&
+    !normalizedFile.split("/").includes("..") &&
+    !normalizedFile.endsWith("/")
+  );
 }
 
 /** Parses the `tierCQueue` docuvia_meta key (JSON array of `TierCQueueEntry`, §9c). Tolerates a

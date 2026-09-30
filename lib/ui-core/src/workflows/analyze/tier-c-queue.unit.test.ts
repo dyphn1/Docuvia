@@ -4,10 +4,13 @@ import { GitConstants } from "@workspace/contracts";
 import { makeMockStore } from "@workspace/contracts/testing";
 import {
   appendTierCQueueEntries,
+  parseContractSymbolTarget,
   readTierCQueue,
   recordTierCQueueFailure,
   removeTierCQueueEntries,
   TierCCandidateKinds,
+  TierCQueueValidationReasons,
+  type TierCQueueEntry,
 } from "./tier-c-queue.js";
 
 function makeTierCStore(initialMeta: Record<string, string> = {}): IGraphStore {
@@ -21,6 +24,217 @@ function makeTierCStore(initialMeta: Record<string, string> = {}): IGraphStore {
     },
   });
 }
+
+describe("parseContractSymbolTarget()", () => {
+  it("accepts canonical nested paths and returns the file and symbol", () => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target: "src/x/y.ts#Foo",
+        commitSha: "sha1",
+        file: "src/x/y.ts",
+      }),
+    ).toEqual({ ok: true, file: "src/x/y.ts", symbolName: "Foo" });
+  });
+
+  it("[happy] accepts a drive-letter-looking Git repo path", () => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target: "C:/src/a.ts#Foo",
+        commitSha: "sha1",
+        file: "C:/src/a.ts",
+      }),
+    ).toEqual({ ok: true, file: "C:/src/a.ts", symbolName: "Foo" });
+  });
+
+  it.each([
+    {
+      target: "src/a.ts##secret",
+      file: "src/a.ts",
+      symbolName: "#secret",
+    },
+    {
+      target: "src/C#/x.cs#Foo",
+      file: "src/C#/x.cs",
+      symbolName: "Foo",
+    },
+    {
+      target: "src/a.ts#Foo#Bar",
+      file: "src/a.ts",
+      symbolName: "Foo#Bar",
+    },
+  ])("accepts target $target", ({ target, file, symbolName }) => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target,
+        commitSha: "sha1",
+        file,
+      }),
+    ).toEqual({ ok: true, file, symbolName });
+  });
+
+  it.each([
+    {
+      name: "a missing separator",
+      entry: {
+        target: "src/a.ts",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "an empty symbol",
+      entry: {
+        target: "src/a.ts#",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "a missing file",
+      entry: {
+        target: "src/a.ts#Foo",
+      },
+    },
+    {
+      name: "an empty file",
+      entry: {
+        target: "#Foo",
+        file: "",
+      },
+    },
+    {
+      name: "an absolute POSIX path",
+      entry: {
+        target: "/etc/passwd#Foo",
+        file: "/etc/passwd",
+      },
+    },
+    {
+      name: "an absolute Windows drive path",
+      entry: {
+        target: "C:\\repo\\src\\a.ts#Foo",
+        file: "C:\\repo\\src\\a.ts",
+      },
+    },
+    {
+      name: "an absolute Windows UNC path",
+      entry: {
+        target: "\\\\server\\share\\a.ts#Foo",
+        file: "\\\\server\\share\\a.ts",
+      },
+    },
+    {
+      name: "a parent traversal",
+      entry: {
+        target: "../secret.ts#Foo",
+        file: "../secret.ts",
+      },
+    },
+    {
+      name: "a traversal that normalizes above the repository",
+      entry: {
+        target: "a/../../secret.ts#Foo",
+        file: "a/../../secret.ts",
+      },
+    },
+    {
+      name: "a target/file mismatch",
+      entry: {
+        target: "src/b.ts#Foo",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "a target whose file prefix does not end at the separator",
+      entry: {
+        target: "src/a.tsx#Foo",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "a newline in the symbol",
+      entry: {
+        target: "src/a.ts#Foo\nBar",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "a backtick in the symbol",
+      entry: {
+        target: "src/a.ts#Foo`Bar",
+        file: "src/a.ts",
+      },
+    },
+    {
+      name: "a backslash separator",
+      entry: {
+        target: "src\\a.ts#Foo",
+        file: "src\\a.ts",
+      },
+    },
+    {
+      name: "a non-canonical repeated separator",
+      entry: {
+        target: "src//a.ts#Foo",
+        file: "src//a.ts",
+      },
+    },
+    {
+      name: "a non-canonical dot segment",
+      entry: {
+        target: "src/./a.ts#Foo",
+        file: "src/./a.ts",
+      },
+    },
+    {
+      name: "a control character in the file path",
+      entry: {
+        target: "src/\u0000a.ts#Foo",
+        file: "src/\u0000a.ts",
+      },
+    },
+    {
+      name: "a backtick in the file path",
+      entry: {
+        target: "src/a`b.ts#Foo",
+        file: "src/a`b.ts",
+      },
+    },
+    {
+      name: "a DEL control character in the symbol",
+      entry: {
+        target: "src/a.ts#Foo\u007fBar",
+        file: "src/a.ts",
+      },
+    },
+  ])("rejects $name with the invalid-entry reason", ({ entry }) => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        commitSha: "sha1",
+        ...entry,
+      } as TierCQueueEntry),
+    ).toEqual({
+      ok: false,
+      reason: TierCQueueValidationReasons.INVALID_ENTRY,
+    });
+  });
+
+  it("rejects an entry whose kind is not contractSymbol", () => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "src/a.ts#Foo",
+        commitSha: "sha1",
+        file: "src/a.ts",
+      }),
+    ).toEqual({
+      ok: false,
+      reason: TierCQueueValidationReasons.INVALID_ENTRY,
+    });
+  });
+});
 
 describe("readTierCQueue()", () => {
   it("returns [] when the meta key is absent", () => {

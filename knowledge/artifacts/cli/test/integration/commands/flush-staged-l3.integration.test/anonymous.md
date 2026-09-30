@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/commands/flush-staged-l3.integration.te
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/flush-staged-l3.integration.test.ts`
+

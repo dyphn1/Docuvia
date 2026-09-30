@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus-command.e2e.test.ts#anonymous@L59
+id: test/semantic-corpus-command.e2e.test.ts#anonymous@L62
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus-command.e2e.test.ts

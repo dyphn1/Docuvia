@@ -397,7 +397,7 @@ committed as `it.fails` → implementation → flip).
   the last entry is removed. The Phase 2 D6 row carries a pointer to this
   section. This call-resolution gap was found in the PR #526 owner review and
   is covered by the new R6 invariant.
-- **D10 — registered, not fixed:** [#522](https://github.com/dyphn1/Docuvia/issues/522).
+- **D10 — fixed by [#522](https://github.com/dyphn1/Docuvia/issues/522)** (delta analyze now retires an oversized changed path exactly like a deleted one; T10 is a passing gate and no longer registered). Original finding, kept for the record:
   After the fixes above, T10 still keeps `grow.ts`'s `l2_nodes`,
   `ast_call_sites` and `project_files` rows and its `calls` edge (S5, S6, S7,
   S8, S10).

@@ -160,6 +160,26 @@ export function removeTierCQueueEntries(
   store.meta.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(remaining));
 }
 
+/** Removes queued contract-symbol candidates for retired paths while preserving commit-message
+ *  candidates and contract symbols belonging to other files. */
+export function removeTierCQueueEntriesForFiles(
+  store: IGraphStore,
+  files: Iterable<string>,
+): void {
+  const retiredFiles = new Set(files);
+  if (retiredFiles.size === 0) return;
+
+  const queue = readTierCQueue(store);
+  const remaining = queue.filter(
+    (entry) =>
+      entry.kind !== TierCCandidateKinds.CONTRACT_SYMBOL ||
+      !retiredFiles.has(entry.file),
+  );
+  if (remaining.length === queue.length) return;
+
+  store.meta.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(remaining));
+}
+
 /**
  * Read-modify-write bump of `target`'s `failCount` in the `tierCQueue` docuvia_meta key -- the
  * poison-pill mechanism that stops a deterministically-failing entry from blocking every item

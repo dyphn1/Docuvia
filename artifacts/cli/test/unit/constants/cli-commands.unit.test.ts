@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   CLI_COMMANDS,
   CLI_COMMAND_DESCRIPTIONS,
@@ -8,6 +10,37 @@ import {
 } from "../../../src/constants/cli-commands.js";
 import { CLI_FLAGS } from "../../../src/constants/cli-flags.js";
 import { ArgParser } from "../../../src/utils/arg-parser.js";
+
+function documentedCleanInvocations(): string[][] {
+  const markdown = readFileSync(
+    resolve(__dirname, "../../../../../docs/gitbook/user-guide/cli/clean.md"),
+    "utf8",
+  );
+  const cleanCommand = `docuvia ${CLI_COMMANDS.CLEAN}`;
+  const codeBlocks = [...markdown.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(
+    ([, code]) => code,
+  );
+
+  return codeBlocks.flatMap((code) =>
+    code.split(/\r?\n/).flatMap((line) => {
+      const invocation = line.trim();
+      if (
+        invocation !== cleanCommand &&
+        !invocation.startsWith(`${cleanCommand} `)
+      ) {
+        return [];
+      }
+
+      return [
+        invocation
+          .slice(cleanCommand.length)
+          .trim()
+          .split(/\s+/)
+          .filter((argument) => argument.startsWith("-")),
+      ];
+    }),
+  );
+}
 
 describe("cli-commands", () => {
   it("exports commands object", () => {
@@ -24,6 +57,17 @@ describe("cli-commands", () => {
     Object.values(CLI_COMMANDS).forEach((cmd) => {
       expect(CLI_COMMAND_FLAGS[cmd]).toBeDefined();
     });
+  });
+
+  it("[invalid-input] documents only flags registered for clean", () => {
+    const invocations = documentedCleanInvocations();
+    expect(invocations).not.toHaveLength(0);
+
+    for (const flags of invocations) {
+      for (const flag of flags) {
+        expect(CLI_COMMAND_FLAGS[CLI_COMMANDS.CLEAN]).toContain(flag);
+      }
+    }
   });
 
   it("getUsageText includes all commands, descriptions, and the --help/--version/--interactive options", () => {

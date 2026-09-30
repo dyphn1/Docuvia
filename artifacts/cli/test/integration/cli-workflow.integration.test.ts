@@ -123,6 +123,19 @@ describe("CLI workflow integration", () => {
   );
 
   it(
+    "[invalid-input] rejects clean --force as an unknown option",
+    async () => {
+      const result = await sandbox.runCli(["clean", "--force"], {
+        reject: false,
+      });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("Unknown options provided: --force");
+    },
+    REAL_SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
     "keeps repeated init idempotent at the persisted graph boundary",
     async () => {
       const first = await sandbox.runCli(["init"]);

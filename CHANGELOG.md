@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.5](https://github.com/dyphn1/Docuvia/compare/v1.15.4...v1.15.5) (2026-09-30)
+
+### Bug Fixes
+
+- **analyze:** apply only current-batch Tier B edges after a re-queue ([#522](https://github.com/dyphn1/Docuvia/issues/522)) ([2a4a320](https://github.com/dyphn1/Docuvia/commit/2a4a3202e1af086da90cab8a1d0c4f1b915826a8))
+- **analyze:** retire a delta path that grows past the size limit ([#522](https://github.com/dyphn1/Docuvia/issues/522)) ([85cebba](https://github.com/dyphn1/Docuvia/commit/85cebba95ef0de8e1c5b4c307278aa51af423137)), closes [#508](https://github.com/dyphn1/Docuvia/issues/508) [#393](https://github.com/dyphn1/Docuvia/issues/393)
+
 ## [1.15.4](https://github.com/dyphn1/Docuvia/compare/v1.15.3...v1.15.4) (2026-09-30)
 
 ### Bug Fixes

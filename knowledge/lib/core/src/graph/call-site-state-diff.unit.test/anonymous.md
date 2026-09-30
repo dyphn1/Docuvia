@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/call-site-state-diff.unit.test.ts#anonymous@L135
+id: lib/core/src/graph/call-site-state-diff.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/graph/call-site-state-diff.unit.test.ts

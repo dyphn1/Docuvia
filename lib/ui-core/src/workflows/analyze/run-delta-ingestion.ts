@@ -29,6 +29,7 @@ import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { mergeDeltaCallResolution } from "./call-resolution-stats.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
+import { retirePath } from "./path-retirement.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import {
   appendTierBQueueEntries,
@@ -336,18 +337,10 @@ async function classifyChangedFile(
   };
 }
 
-/** #508 Phase 3 (D11) / #522: retires every persisted per-path record whose semantic state is no
- *  longer usable -- its L2 nodes and links, Tier A call sites, and `project_files` row. */
-function retirePath(store: IGraphStore, projectId: number, file: string): void {
-  store.graph.deleteNodesForPath(file);
-  store.callSites.deleteForFile(projectId, file);
-  store.files.deleteFile(projectId, file);
-}
-
-/** The lock-held persist step: retire deleted, renamed-old, and oversized paths (`retirePath`),
- *  re-parse + persist the changed files via the shared `runParseAndPersist` phase helper, append
- *  the Tier B/C queues, advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1),
- *  and stamp the last-ingested source sha. Returns the parse failures. */
+/** Retires deleted, renamed-old, oversized, and parse-failed paths (`retirePath`), re-parses +
+ *  persists the changed files via the shared `runParseAndPersist` phase helper, appends the Tier
+ *  B/C queues, advances the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1), and
+ *  stamps the last-ingested source sha. Returns the parse failures. */
 async function persistDelta(
   deps: DeltaDeps,
   work: {
@@ -417,6 +410,7 @@ async function persistDelta(
     failures = result.failures;
     callResolutionByFile = result.callResolutionByFile;
   }
+  const failedPaths = new Set(failures.map(({ file }) => file));
 
   // Issue #221 / #526 / #522: reconcile every path touched by this delta. A file with zero call
   // sites has no entry in callResolutionByFile, so the re-parse and retirement sets are
@@ -438,12 +432,15 @@ async function persistDelta(
   }
 
   await store.withWriteLock(() => {
+    for (const file of failedPaths) retirePath(store, projectId, file);
     if (tierBEntries.length > 0) {
       appendTierBQueueEntries(store, tierBEntries);
     }
     if (tierCEntries.length > 0) {
       appendTierCQueueEntries(store, tierCEntries, logger);
     }
+    removeTierBQueueEntriesForFiles(store, failedPaths);
+    removeTierCQueueEntriesForFiles(store, failedPaths);
     if (changedBytes > 0) {
       const priorBytes = Number(
         store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES) ?? 0,

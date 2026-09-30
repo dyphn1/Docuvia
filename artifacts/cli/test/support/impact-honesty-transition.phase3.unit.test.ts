@@ -898,9 +898,7 @@ describe("Phase 3 stale-record invariants and registry (contract §3, §8)", () 
       "T9@after: unknown checkpoint",
       "T9@after: DX has no child issue number",
     ]);
-    expect(PHASE3_KNOWN_PRODUCT_DEFECTS).toEqual({
-      "T12@after": { defect: "D12", issue: 521 },
-    });
+    expect(PHASE3_KNOWN_PRODUCT_DEFECTS).toEqual({});
   });
 
   it("[state-diff] partitioning keeps registered checkpoints out of the gated set but visible to lookups", () => {

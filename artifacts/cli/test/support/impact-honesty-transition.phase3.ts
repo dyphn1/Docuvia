@@ -1716,9 +1716,7 @@ export interface Phase3KnownDefect {
  */
 export const PHASE3_KNOWN_PRODUCT_DEFECTS: Readonly<
   Record<string, Phase3KnownDefect>
-> = {
-  "T12@after": { defect: "D12", issue: 521 },
-};
+> = {};
 
 /** Same semantics as Phase 2's `knownDefectRegistryProblems`, keyed by checkpoint id. */
 export function phase3KnownDefectRegistryProblems(

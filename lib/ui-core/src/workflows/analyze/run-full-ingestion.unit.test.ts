@@ -17,7 +17,7 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import { GitConstants, TierCCandidateKinds } from "@workspace/contracts";
 import {
   makeMockStore,
   makeMockGitProvider,
@@ -25,6 +25,7 @@ import {
 } from "@workspace/contracts/testing";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { readTierBQueue } from "./tier-b-queue.js";
+import { readTierCQueue } from "./tier-c-queue.js";
 
 // Mirrors init-workflow.unit.test.ts's mocking pattern (Factory Lock, pure orchestration unit
 // test) -- runFullIngestion reuses init's own seedProjectRow/runDiscoveryPipeline/
@@ -71,6 +72,83 @@ function makeFullIngestionStore(): IGraphStore {
       }),
     },
   });
+}
+
+interface SemanticGraphState {
+  files: Map<string, string>;
+  nodeKeys: Set<string>;
+  links: Set<string>;
+  callSites: Set<string>;
+}
+
+function makeSemanticGraphStore(): {
+  store: IGraphStore;
+  state: SemanticGraphState;
+  events: string[];
+  metadata: Map<string, string>;
+} {
+  const store = makeFullIngestionStore();
+  const state: SemanticGraphState = {
+    files: new Map(),
+    nodeKeys: new Set(),
+    links: new Set(),
+    callSites: new Set(),
+  };
+  const events: string[] = [];
+  const metadata = new Map<string, string>();
+
+  store.files.getAllHashes = vi.fn(() =>
+    Array.from(state.files, ([filePath, contentHash]) => ({
+      filePath,
+      contentHash,
+    })),
+  );
+  store.files.deleteFile = vi.fn((_projectId, filePath) => {
+    events.push(`deleteFile:${filePath}`);
+    state.files.delete(filePath);
+  });
+  store.files.upsertFile = vi.fn(({ filePath, contentHash }) => {
+    state.files.set(filePath, contentHash ?? "");
+  });
+  store.graph.deleteNodesForPath = vi.fn((filePath) => {
+    events.push(`deleteNodes:${filePath}`);
+    const prefix = `${filePath}#`;
+    for (const nodeKey of state.nodeKeys) {
+      if (nodeKey.startsWith(prefix)) state.nodeKeys.delete(nodeKey);
+    }
+    for (const link of state.links) {
+      if (link.includes(prefix)) state.links.delete(link);
+    }
+    return [];
+  });
+  store.callSites.deleteForFile = vi.fn((_projectId, filePath) => {
+    events.push(`deleteCallSites:${filePath}`);
+    const prefix = `${filePath}:`;
+    for (const callSite of state.callSites) {
+      if (callSite.startsWith(prefix)) state.callSites.delete(callSite);
+    }
+  });
+  store.meta.get = vi.fn((key) => metadata.get(key));
+  store.meta.set = vi.fn((key, value) => {
+    if (key === GitConstants.META_KEY_CALL_RESOLUTION_STATS) {
+      events.push("callResolution");
+    }
+    if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA) {
+      events.push("sourceSha");
+    }
+    metadata.set(key, value);
+  });
+
+  return { store, state, events, metadata };
+}
+
+function semanticGraphSnapshot(state: SemanticGraphState) {
+  return {
+    files: Array.from(state.files.keys()).sort(),
+    nodeKeys: Array.from(state.nodeKeys).sort(),
+    links: Array.from(state.links).sort(),
+    callSites: Array.from(state.callSites).sort(),
+  };
 }
 
 describe("runFullIngestion()", () => {
@@ -382,5 +460,442 @@ describe("runFullIngestion()", () => {
     const summary = lines.find((l) => l.event === "analyze.full.summary");
     expect(summary?.projectType).toBe("typescript");
     expect(summary?.filesParsed).toBe(1);
+  });
+
+  it("[state-diff] rebuilds a rewound graph to the fresh current-tree state and is idempotent", async () => {
+    const currentFiles = [
+      {
+        file: "src/target.ts",
+        hash: "hash-target",
+        code: "export function evalP3Target() {}",
+      },
+      {
+        file: "src/user-a.ts",
+        hash: "hash-user-a",
+        code: "evalP3Target();",
+      },
+    ];
+    const parsedProjection = {
+      "src/target.ts": {
+        nodeKeys: ["src/target.ts#evalP3Target"],
+        links: [],
+        callSites: [],
+      },
+      "src/user-a.ts": {
+        nodeKeys: ["src/user-a.ts#evalP3UserA"],
+        links: ["src/user-a.ts#evalP3UserA->src/target.ts#evalP3Target"],
+        callSites: ["src/user-a.ts:1:0:evalP3Target"],
+      },
+    };
+    const oldCallStats = {
+      total: 1,
+      resolved: 0,
+      selfDiscarded: 0,
+      unresolved: 1,
+    };
+    const currentCallStats = {
+      total: 1,
+      resolved: 1,
+      selfDiscarded: 0,
+      unresolved: 0,
+    };
+    const rewound = makeSemanticGraphStore();
+    const fresh = makeSemanticGraphStore();
+    const contexts = new WeakMap<
+      IGraphStore,
+      ReturnType<typeof makeSemanticGraphStore>
+    >();
+    contexts.set(rewound.store, rewound);
+    contexts.set(fresh.store, fresh);
+
+    rewound.state.files.set("src/target.ts", "hash-target");
+    rewound.state.files.set("src/user-a.ts", "hash-user-a");
+    rewound.state.files.set("src/user-b.ts", "hash-user-b");
+    rewound.state.files.set("src/target-moved.ts", "hash-moved");
+    rewound.state.nodeKeys.add("src/target.ts#evalP3Target");
+    rewound.state.nodeKeys.add("src/user-a.ts#evalP3UserA");
+    rewound.state.nodeKeys.add("src/user-b.ts#evalP3UserB");
+    rewound.state.nodeKeys.add("src/target-moved.ts#evalP3Target");
+    rewound.state.links.add(
+      "src/user-a.ts#evalP3UserA->src/target-moved.ts#evalP3Target",
+    );
+    rewound.state.links.add(
+      "src/user-b.ts#evalP3UserB->src/target.ts#evalP3Target",
+    );
+    rewound.state.callSites.add("src/user-a.ts:1:0:evalP3Target");
+    rewound.state.callSites.add("src/user-b.ts:1:0:evalP3Target");
+    rewound.metadata.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({ byFile: { "src/user-b.ts": oldCallStats } }),
+    );
+
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(fileDiscovery.discoverFiles).mockImplementation(
+      async (_root, filesRepo) => {
+        const existingHashes = new Map(
+          filesRepo
+            .getAllHashes()
+            .flatMap(({ filePath, contentHash }) =>
+              contentHash === null ? [] : [[filePath, contentHash] as const],
+            ),
+        );
+        const filesToParse = currentFiles.filter(
+          ({ file, hash }) => existingHashes.get(file) !== hash,
+        );
+        return {
+          filesToParse,
+          existingHashes,
+          skippedCount: currentFiles.length - filesToParse.length,
+          skippedOversized: [],
+        };
+      },
+    );
+
+    let activeContext = rewound;
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(astProcessor.processFiles).mockImplementation(
+      async (_root, files) => {
+        activeContext.events.push("processFiles");
+        return {
+          parsed: files.map(({ file, hash }) => ({
+            file,
+            hash,
+            data: {
+              imports: [],
+              exports: [],
+              functions: [],
+              classes: [],
+              calls: [],
+            },
+            language: "typescript",
+          })),
+          failures: [],
+        };
+      },
+    );
+
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+    vi.mocked(graphPersister.persist).mockImplementation(
+      async ({ store: persistedStore, parsedResults }) => {
+        const context = contexts.get(persistedStore)!;
+        context.events.push("persist");
+        for (const result of parsedResults) {
+          persistedStore.graph.deleteNodesForPath(result.file);
+          persistedStore.callSites.deleteForFile(1, result.file);
+          persistedStore.files.upsertFile({
+            projectId: 1,
+            filePath: result.file,
+            contentHash: result.hash,
+          });
+          const projection =
+            parsedProjection[result.file as keyof typeof parsedProjection];
+          for (const nodeKey of projection.nodeKeys) {
+            context.state.nodeKeys.add(nodeKey);
+          }
+          for (const link of projection.links) context.state.links.add(link);
+          for (const callSite of projection.callSites) {
+            context.state.callSites.add(callSite);
+          }
+        }
+        const callResolutionByFile = parsedResults.some(
+          (result) => result.file === "src/user-a.ts",
+        )
+          ? { "src/user-a.ts": currentCallStats }
+          : undefined;
+        return {
+          updatedCount: parsedResults.length,
+          callResolutionByFile,
+        };
+      },
+    );
+
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store: rewound.store,
+      git: makeMockGitProvider(),
+    });
+    const firstRebuild = semanticGraphSnapshot(rewound.state);
+
+    activeContext = fresh;
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store: fresh.store,
+      git: makeMockGitProvider(),
+    });
+    expect(firstRebuild).toEqual(semanticGraphSnapshot(fresh.state));
+
+    activeContext = rewound;
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store: rewound.store,
+      git: makeMockGitProvider(),
+    });
+    expect(semanticGraphSnapshot(rewound.state)).toEqual(firstRebuild);
+    expect(firstRebuild).toEqual({
+      files: ["src/target.ts", "src/user-a.ts"],
+      nodeKeys: ["src/target.ts#evalP3Target", "src/user-a.ts#evalP3UserA"],
+      links: ["src/user-a.ts#evalP3UserA->src/target.ts#evalP3Target"],
+      callSites: ["src/user-a.ts:1:0:evalP3Target"],
+    });
+    for (const vanishedPath of ["src/user-b.ts", "src/target-moved.ts"]) {
+      expect(firstRebuild.files).not.toContain(vanishedPath);
+      expect(
+        firstRebuild.nodeKeys.some((key) => key.startsWith(`${vanishedPath}#`)),
+      ).toBe(false);
+      expect(
+        firstRebuild.links.some((link) => link.includes(`${vanishedPath}#`)),
+      ).toBe(false);
+      expect(
+        firstRebuild.callSites.some((callSite) =>
+          callSite.startsWith(`${vanishedPath}:`),
+        ),
+      ).toBe(false);
+    }
+    expect(firstRebuild.links).toContain(
+      "src/user-a.ts#evalP3UserA->src/target.ts#evalP3Target",
+    );
+    expect(
+      vi
+        .mocked(fileDiscovery.discoverFiles)
+        .mock.calls.every(
+          ([, filesRepo]) => filesRepo.getAllHashes().length === 0,
+        ),
+    ).toBe(true);
+    expect(rewound.events.indexOf("deleteFile:src/user-b.ts")).toBeLessThan(
+      rewound.events.indexOf("processFiles"),
+    );
+    expect(rewound.events.indexOf("persist")).toBeLessThan(
+      rewound.events.indexOf("sourceSha"),
+    );
+    expect(
+      JSON.parse(
+        rewound.metadata.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!,
+      ),
+    ).toEqual({ byFile: { "src/user-a.ts": currentCallStats } });
+  });
+
+  it("[state-diff] clears stale call-resolution state and refreshes evidence on an empty full pass", async () => {
+    const { store, state, events, metadata } = makeSemanticGraphStore();
+    const vanishedPath = "src/vanished.ts";
+    state.files.set(vanishedPath, "old-hash");
+    state.nodeKeys.add(`${vanishedPath}#oldSymbol`);
+    state.callSites.add(`${vanishedPath}:1:0:oldCall`);
+    metadata.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          [vanishedPath]: {
+            total: 1,
+            resolved: 0,
+            selfDiscarded: 0,
+            unresolved: 1,
+          },
+        },
+      }),
+    );
+
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue({
+      filesToParse: [],
+      existingHashes: new Map(),
+      skippedCount: 0,
+      skippedOversized: [],
+    });
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(astProcessor.processFiles).mockResolvedValue({
+      parsed: [],
+      failures: [],
+    });
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+    vi.mocked(graphPersister.persist).mockImplementation(async () => {
+      events.push("persist");
+      return { updatedCount: 0 };
+    });
+
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: makeMockGitProvider(),
+    });
+
+    expect(semanticGraphSnapshot(state)).toEqual({
+      files: [],
+      nodeKeys: [],
+      links: [],
+      callSites: [],
+    });
+    expect(
+      JSON.parse(metadata.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!),
+    ).toEqual({ byFile: {} });
+    expect(graphPersister.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ parsedResults: [] }),
+    );
+    expect(events.indexOf("deleteFile:src/vanished.ts")).toBeLessThan(
+      events.indexOf("persist"),
+    );
+    expect(events.indexOf("persist")).toBeLessThan(events.indexOf("sourceSha"));
+  });
+
+  it("[state-diff] retires current paths that fail parsing and preserves successful files", async () => {
+    const failedFile = "src/broken.ts";
+    const successfulFile = "src/healthy.ts";
+    const headSha = "full-head-sha";
+    const oldCallStats = {
+      total: 1,
+      resolved: 0,
+      selfDiscarded: 0,
+      unresolved: 1,
+    };
+    const currentCallStats = {
+      total: 1,
+      resolved: 1,
+      selfDiscarded: 0,
+      unresolved: 0,
+    };
+    const { store, state, events, metadata } = makeSemanticGraphStore();
+    state.files.set(failedFile, "old-broken-hash");
+    state.files.set(successfulFile, "old-healthy-hash");
+    state.nodeKeys.add(`${failedFile}#oldBroken`);
+    state.nodeKeys.add(`${successfulFile}#oldHealthy`);
+    state.links.add(`${failedFile}#oldBroken->${successfulFile}#oldHealthy`);
+    state.callSites.add(`${failedFile}:1:0:oldBrokenCall`);
+    state.callSites.add(`${successfulFile}:1:0:oldHealthyCall`);
+    metadata.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({ byFile: { [failedFile]: oldCallStats } }),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_B_QUEUE,
+      JSON.stringify([{ file: failedFile, commitSha: "old-sha" }]),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      JSON.stringify({
+        headSha: "old-sha",
+        remainingQueue: [{ file: failedFile, commitSha: "old-sha" }],
+      }),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_C_QUEUE,
+      JSON.stringify([
+        {
+          kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+          target: `${failedFile}#oldBroken`,
+          commitSha: "old-sha",
+          file: failedFile,
+        },
+      ]),
+    );
+
+    const currentFiles = [
+      { file: failedFile, hash: "new-broken-hash", code: "invalid source" },
+      {
+        file: successfulFile,
+        hash: "new-healthy-hash",
+        code: "export const healthy = true;",
+      },
+    ];
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue({
+      filesToParse: currentFiles,
+      existingHashes: new Map(),
+      skippedCount: 0,
+      skippedOversized: [],
+    });
+
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(astProcessor.processFiles).mockResolvedValue({
+      parsed: [
+        {
+          file: successfulFile,
+          hash: "new-healthy-hash",
+          data: {
+            imports: [],
+            exports: [],
+            functions: [],
+            classes: [],
+            calls: [],
+          },
+          language: "typescript",
+        },
+      ],
+      failures: [
+        {
+          file: failedFile,
+          hash: "new-broken-hash",
+          error: "parse failed",
+        },
+      ],
+    });
+
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+    vi.mocked(graphPersister.persist).mockImplementation(
+      async ({ parsedResults }) => {
+        for (const result of parsedResults) {
+          store.graph.deleteNodesForPath(result.file);
+          store.callSites.deleteForFile(1, result.file);
+          store.files.upsertFile({
+            projectId: 1,
+            filePath: result.file,
+            contentHash: result.hash,
+          });
+          state.nodeKeys.add(`${successfulFile}#currentHealthy`);
+          state.callSites.add(`${successfulFile}:1:0:healthyCall`);
+        }
+        return {
+          updatedCount: parsedResults.length,
+          callResolutionByFile: { [successfulFile]: currentCallStats },
+        };
+      },
+    );
+
+    const result = await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue(headSha),
+      }),
+    });
+
+    expect(result.kind).toBe("autoFullIngestion");
+    if (result.kind === "autoFullIngestion") {
+      expect(result.filesFailed).toBe(1);
+    }
+    expect(semanticGraphSnapshot(state)).toEqual({
+      files: [successfulFile],
+      nodeKeys: [`${successfulFile}#currentHealthy`],
+      links: [],
+      callSites: [`${successfulFile}:1:0:healthyCall`],
+    });
+    expect(
+      JSON.parse(metadata.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!),
+    ).toEqual({ byFile: { [successfulFile]: currentCallStats } });
+    expect(readTierBQueue(store)).toEqual([
+      { file: successfulFile, commitSha: headSha },
+    ]);
+    expect(
+      JSON.parse(metadata.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!),
+    ).toEqual({ headSha: "old-sha", remainingQueue: [] });
+    expect(readTierCQueue(store)).toEqual([]);
+    expect(events.indexOf(`deleteFile:${failedFile}`)).toBeLessThan(
+      events.indexOf("sourceSha"),
+    );
   });
 });

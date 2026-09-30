@@ -318,7 +318,7 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     ).toThrow(/errored/);
   });
 
-  it("[error-handling] every registered defect names its child issue and still fails its gates (D12 #521)", () => {
+  it("[error-handling] every registered defect names its child issue and still fails its gates (registry empty after #522, #521)", () => {
     expect(
       phase3KnownDefectRegistryProblems(
         PHASE3_KNOWN_PRODUCT_DEFECTS,
@@ -348,7 +348,7 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     expect(gatesFor(merged, ["T10@after"])).toEqual([]);
   });
 
-  it("[state-diff] T12: a HEAD rewind takes the full-ingestion fallback and leaves phantom state (registered D12, #521)", () => {
+  it("[state-diff] T12: a HEAD rewind takes the full-ingestion fallback and converges to the current tree (#521)", () => {
     const rewind = first.observations.find(
       (o) => o.checkpointId === "T12@after",
     );
@@ -356,9 +356,7 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
       PHASE3_ANALYZE_EVENTS.HEAD_NOT_DESCENDANT,
     );
     expect(violationsOf(subset(merged, ["T12@after"]), "S9")).toEqual([]);
-    expect(gatesFor(merged, ["T12@after"]).map((v) => v.gate)).toEqual(
-      expect.arrayContaining(["S6", "S8"]),
-    );
+    expect(gatesFor(merged, ["T12@after"])).toEqual([]);
   });
 
   it("[invalid-input] T11: a removed symbol is not-found (exit 0) and cannot pass as UNKNOWN or fresh", () => {

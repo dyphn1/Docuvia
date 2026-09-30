@@ -51,14 +51,15 @@ function writeCallResolution(
 }
 
 /** Full-ingestion/init variant: the run reparsed every tracked file, so the previous map is
- *  replaced wholesale (no merge -- stale entries cannot survive a full pass). No-op when the
- *  run produced no call-site data at all (e.g. a repo with zero extractable calls), leaving any
- *  prior map untouched rather than wiping it with an empty one. */
+ *  replaced wholesale (no merge -- stale entries cannot survive a full pass). `clearWhenEmpty`
+ *  lets a rebuilding analyze pass record an authoritative zero-call result while retaining init's
+ *  existing behavior for an empty result. */
 export function stampFullCallResolution(
   store: IGraphStore,
   byFile: Record<string, CallResolutionStats>,
+  options: { clearWhenEmpty?: boolean } = {},
 ): void {
-  if (Object.keys(byFile).length === 0) return;
+  if (Object.keys(byFile).length === 0 && !options.clearWhenEmpty) return;
   writeCallResolution(store, byFile);
 }
 

@@ -401,11 +401,11 @@ committed as `it.fails` → implementation → flip).
   After the fixes above, T10 still keeps `grow.ts`'s `l2_nodes`,
   `ast_call_sites` and `project_files` rows and its `calls` edge (S5, S6, S7,
   S8, S10).
-- **D12 — registered, not fixed:** [#521](https://github.com/dyphn1/Docuvia/issues/521).
-  After the fixes above, T12 still keeps phantom nodes and rows for
-  `core/target-moved.ts` and `caller-d/e/f.ts`, which the full-ingestion
-  fallback never prunes; `evalP3Target` resolves to the phantom and reads exact
-  while missing `grow.ts` (S4, S5, S6, S7, S8, S10).
+- **D12 — fixed by [#521](https://github.com/dyphn1/Docuvia/issues/521)** (the full-ingestion fallback now rebuilds per-path state from the current tree; T12 is a passing gate and no longer registered). Original finding, kept for the record:
+  T12 kept phantom nodes and rows for `core/target-moved.ts` and
+  `caller-d/e/f.ts`, which the full-ingestion fallback did not prune;
+  `evalP3Target` resolved to the phantom and read exact while missing `grow.ts`
+  (S4, S5, S6, S7, S8, S10).
 
 Observations, not gated: **O1** dirty working tree (#523); **H2** Docuvia's own
 generated hook scripts are ingested by the full-ingestion fallback when not
@@ -415,9 +415,10 @@ knowledge-branch round trip stays with
 
 ### Results after the fixes
 
-Real CLI, one complete run (the two-run determinism check S12 compares a second,
-identical run). 223 Phase 0 records over 48 checkpoints; the gated corpus
-excludes the two registered checkpoints (`T10@after`, `T12@after`).
+Historical real CLI run before #521, with one complete run (the two-run
+determinism check S12 compared a second, identical run). It recorded 223 Phase 0
+records over 48 checkpoints; at that time the gated corpus excluded the two
+registered checkpoints (`T10@after`, `T12@after`).
 
 | slice (gated corpus)      | cases | metric               | value |
 | ------------------------- | ----: | -------------------- | ----: |
@@ -457,13 +458,12 @@ the registry entry's removal.
 | Checkpoint  | Defect | Child issue                                          |
 | ----------- | ------ | ---------------------------------------------------- |
 | `T10@after` | D10    | [#522](https://github.com/dyphn1/Docuvia/issues/522) |
-| `T12@after` | D12    | [#521](https://github.com/dyphn1/Docuvia/issues/521) |
 
 ## 9. Exit gate
 
-Status: every item below holds for the non-registered checkpoints. D10 and D12
-are registered with child issues #522 and #521 and their checkpoints are
-asserted to keep failing.
+Status: every item below holds for the non-registered checkpoints. D10 remains
+registered with child issue #522; T12 is unregistered after the #521 fix and is
+asserted to pass.
 
 Phase 3 is complete when S0–S13 pass on real CLI output in two clean runs for
 every non-registered checkpoint, Q1–Q10 each fail their named gate while the

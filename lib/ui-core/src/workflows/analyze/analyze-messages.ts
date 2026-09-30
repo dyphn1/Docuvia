@@ -103,6 +103,11 @@ export const ANALYZE_MESSAGES = {
    *  it forever -- must be visible, not just JSONL, mirroring `TIER_B_CAP_NUDGE`. */
   TIER_C_ITEM_EVICTED: (kind: string, target: string, failCount: number) =>
     `Tier C candidate permanently failed after ${failCount} attempt(s), evicted from queue (${kind}: ${target})`,
+  /** Rows are ignored on read and dropped from `docuvia_meta` by the next queue write (#530). */
+  TIER_C_QUEUE_INVALID_ENTRIES: (invalidCount: number, corrupt: boolean) =>
+    corrupt
+      ? "Ignoring unreadable Tier C queue data (corrupt JSON or not an array); it will be replaced on the next queue write"
+      : `Ignoring ${invalidCount} invalid Tier C queue entr${invalidCount === 1 ? "y" : "ies"}; dropped on the next queue write`,
   TIER_C_SUMMARY: (processed: number, persisted: number) =>
     `Tier C drain complete: ${processed} candidate(s) processed, ${persisted} decision(s) persisted`,
 
@@ -209,6 +214,7 @@ export const ANALYZE_EVENTS = {
    *  run whose failure crosses `DEFAULT_TIER_C_MAX_ITEM_FAILURES`, once the entry has actually
    *  been removed from the queue. */
   TIER_C_ITEM_EVICTED: "analyze.tierC.item_evicted",
+  TIER_C_QUEUE_INVALID_ENTRIES: "analyze.tierC.queue_invalid_entries",
   TIER_C_SUMMARY: "analyze.tierC.summary",
 
   /** `analyze --flush-staged-l3` (issue #42 §8.2). */

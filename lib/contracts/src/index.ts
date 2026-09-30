@@ -260,6 +260,15 @@ export {
   HookNames,
   DEFAULT_HOOKS_CONFIG,
 } from "./interfaces/hooks.interfaces.js";
+export type {
+  TierCCommitMessageEntry,
+  TierCContractSymbolEntry,
+  TierCQueueEntry,
+} from "./interfaces/tier-c-queue.interfaces.js";
+export { TierCCandidateKinds } from "./constants/tier-c-queue.js";
+export type { TierCCandidateKind } from "./constants/tier-c-queue.js";
+export { decodeTierCQueue } from "./utils/tier-c-queue.js";
+export type { TierCQueueDecodeResult } from "./utils/tier-c-queue.js";
 
 export { createMockLogger, resetFactoryForTests } from "./testing/mocks.js";
 export type { MockLogger } from "./testing/mocks.js";

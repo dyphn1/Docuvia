@@ -12,13 +12,13 @@ import {
   ANALYZE_LOG_FILE_NAME,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
+  TierCCandidateKinds,
 } from "@workspace/contracts";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { probeDocuviaResolvable } from "../../src/workflows/doctor/git-hook-resolvability.js";
 import { DOCTOR_MESSAGES } from "../../src/workflows/doctor/doctor-messages.js";
 import { appendTierBQueueEntries } from "../../src/workflows/analyze/tier-b-queue.js";
-import { TierCCandidateKinds } from "../../src/workflows/analyze/tier-c-queue.js";
 import { ANALYZE_EVENTS } from "../../src/workflows/analyze/analyze-messages.js";
 
 vi.mock("fs/promises");
@@ -2174,6 +2174,7 @@ describe("DoctorWorkflow", () => {
           kind: TierCCandidateKinds.COMMIT_MESSAGE,
           target: "sha1",
           commitSha: "sha1",
+          message: "feat: add x",
         },
       ]);
       vi.mocked(fs.readFile).mockRejectedValue(new Error("ENOENT"));
@@ -2197,6 +2198,7 @@ describe("DoctorWorkflow", () => {
           kind: TierCCandidateKinds.COMMIT_MESSAGE,
           target: "sha1",
           commitSha: "sha1",
+          message: "feat: add x",
         },
       ]);
       vi.mocked(fs.readFile).mockResolvedValue(
@@ -2233,6 +2235,7 @@ describe("DoctorWorkflow", () => {
           kind: TierCCandidateKinds.COMMIT_MESSAGE,
           target: "sha1",
           commitSha: "sha1",
+          message: "feat: add x",
         },
       ]);
       vi.mocked(fs.readFile).mockResolvedValue(

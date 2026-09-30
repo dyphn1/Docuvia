@@ -17,14 +17,11 @@ import {
   type IGitProvider,
   type IGraphStore,
   type ILlmClient,
+  type TierCQueueEntry,
+  TierCCandidateKinds,
 } from "@workspace/contracts";
 import { runTierCDrain, type TierCDrainDeps } from "./run-tier-c-drain.js";
-import {
-  appendTierCQueueEntries,
-  readTierCQueue,
-  TierCCandidateKinds,
-  type TierCQueueEntry,
-} from "./tier-c-queue.js";
+import { appendTierCQueueEntries, readTierCQueue } from "./tier-c-queue.js";
 import {
   ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
@@ -88,11 +85,12 @@ const INVALID_CONTRACT_SYMBOL_ENTRIES: Array<{
     },
   },
   {
-    name: "a missing file",
+    name: "a target that does not match its file",
     entry: {
       kind: TierCCandidateKinds.CONTRACT_SYMBOL,
-      target: "src/a.ts#Foo",
+      target: "src/other.ts#Foo",
       commitSha: HEAD_SHA,
+      file: "src/a.ts",
     },
   },
   {

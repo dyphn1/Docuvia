@@ -12,6 +12,7 @@ import {
   type GraphStoreOpenOptions,
   type IGraphStore,
   type IHydrationService,
+  TierCCandidateKinds,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { StatusWorkflow } from "./status-workflow.js";
@@ -151,9 +152,14 @@ describe("StatusWorkflow.execute()", () => {
         get: vi.fn((key: string) =>
           key === GitConstants.META_KEY_TIER_C_QUEUE
             ? JSON.stringify([
-                { kind: "commitMessage", target: "abc", commitSha: "abc" },
                 {
-                  kind: "contractSymbol",
+                  kind: TierCCandidateKinds.COMMIT_MESSAGE,
+                  target: "abc",
+                  commitSha: "abc",
+                  message: "feat: add x",
+                },
+                {
+                  kind: TierCCandidateKinds.CONTRACT_SYMBOL,
                   target: "src/a.ts#foo",
                   commitSha: "abc",
                   file: "src/a.ts",

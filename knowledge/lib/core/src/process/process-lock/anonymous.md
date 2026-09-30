@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/process/process-lock.ts#anonymous@L111
+id: lib/core/src/process/process-lock.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/process/process-lock.ts
@@ -7,3 +7,5 @@ filePath: lib/core/src/process/process-lock.ts
 # Symbol: anonymous
 
 File: `lib/core/src/process/process-lock.ts`
+ts`
+

@@ -10,3 +10,6 @@
  *  `analyze` ingestion guard (`node-key-format-guard.ts`) to detect a pre-qualified-key graph
  *  before an incremental delta re-parse would otherwise silently mix the two formats. */
 export const CURRENT_NODE_KEY_FORMAT_VERSION = "2";
+
+/** Separates a source file path from the symbol name in a symbol node key (`<file>#<symbol>`). */
+export const NODE_KEY_SYMBOL_SEPARATOR = "#";

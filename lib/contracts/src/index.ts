@@ -338,7 +338,10 @@ export {
   getSupportedGlobExtensions,
   isDiscoverableSourceFile,
 } from "./constants/source-files.js";
-export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
+export {
+  CURRENT_NODE_KEY_FORMAT_VERSION,
+  NODE_KEY_SYMBOL_SEPARATOR,
+} from "./constants/node-keys.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,

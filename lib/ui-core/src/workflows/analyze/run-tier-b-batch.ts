@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   LinkTypes,
+  NODE_KEY_SYMBOL_SEPARATOR,
   type IGitProvider,
   type IGraphStore,
   type IKnowledgeGitService,
@@ -539,6 +540,10 @@ async function applyResolvedEdges(
       );
 
       for (const edge of outcome.edges) {
+        if (!isNodeKeyInFiles(edge.sourceNodeKey, currentBatchFiles)) {
+          continue;
+        }
+
         const sourceId = store.graph.findNodeIdByNodeKey(edge.sourceNodeKey);
         const targetId = store.graph.findNodeIdByNodeKey(edge.targetNodeKey);
         if (sourceId === undefined || targetId === undefined) continue;
@@ -576,6 +581,24 @@ async function applyResolvedEdges(
     currentBatchEntries,
     processedFiles,
   };
+}
+
+/** Symbol node keys use `<file>#<symbol>`; file-level keys are the file path alone. Git paths may
+ *  themselves contain `#` (e.g. `src/C#/x.cs`), so try every separator position rather than
+ *  splitting at the first one. */
+function isNodeKeyInFiles(
+  nodeKey: string,
+  files: ReadonlySet<string>,
+): boolean {
+  if (files.has(nodeKey)) return true;
+  for (
+    let index = nodeKey.indexOf(NODE_KEY_SYMBOL_SEPARATOR);
+    index !== -1;
+    index = nodeKey.indexOf(NODE_KEY_SYMBOL_SEPARATOR, index + 1)
+  ) {
+    if (files.has(nodeKey.slice(0, index))) return true;
+  }
+  return false;
 }
 
 /** A batch may resolve outside the locks while delta analysis retires one of its files. Recheck

@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.6](https://github.com/dyphn1/Docuvia/compare/v1.15.5...v1.15.6) (2026-09-30)
+
+### Bug Fixes
+
+- **analyze:** make the full-ingestion fallback converge to the current tree ([#521](https://github.com/dyphn1/Docuvia/issues/521)) ([e15212e](https://github.com/dyphn1/Docuvia/commit/e15212e4df60962bc4e7786637a0e713a60cf13f)), closes [#508](https://github.com/dyphn1/Docuvia/issues/508)
+- **analyze:** retire current paths that fail parsing during ingestion ([#521](https://github.com/dyphn1/Docuvia/issues/521)) ([52daaec](https://github.com/dyphn1/Docuvia/commit/52daaecbeaf2e5b87d84929ee2127ae80d0465ba))
+
 ## [1.15.5](https://github.com/dyphn1/Docuvia/compare/v1.15.4...v1.15.5) (2026-09-30)
 
 ### Bug Fixes

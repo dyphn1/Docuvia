@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.7](https://github.com/dyphn1/Docuvia/compare/v1.15.6...v1.15.7) (2026-09-30)
+
+### Bug Fixes
+
+- **discovery:** never ingest Docuvia-generated hook scripts ([#524](https://github.com/dyphn1/Docuvia/issues/524)) ([b25944d](https://github.com/dyphn1/Docuvia/commit/b25944da52eef57142bd1bc7d3404cb1e9414c39)), closes [#508](https://github.com/dyphn1/Docuvia/issues/508)
+
 ## [1.15.6](https://github.com/dyphn1/Docuvia/compare/v1.15.5...v1.15.6) (2026-09-30)
 
 ### Bug Fixes

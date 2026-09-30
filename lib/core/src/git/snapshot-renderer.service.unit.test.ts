@@ -332,7 +332,104 @@ describe("SnapshotRendererService.render()", () => {
         },
       ],
       lastIngestedSourceSha: "source-head",
+      snapshotVersion: 1,
     });
+  });
+
+  it("[happy] writes portable call sites and versioned capabilities deterministically", async () => {
+    const evidenceJson = JSON.stringify([
+      {
+        sourceFile: "src/loader.ts",
+        kind: "dynamic-import",
+        expression: "`./plugins/${name}.js`",
+        startLine: 4,
+        startColumn: 7,
+        literalPrefix: "./plugins/",
+        literalSuffix: ".js",
+        status: "bounded",
+        candidatePaths: ["src/plugins/alpha.ts"],
+        reason: "template-literal",
+      },
+    ]);
+    const metadata = {
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [],
+      snapshotVersion: 1,
+      capabilities: {
+        dynamicDependencyEvidence: { version: 1, payload: evidenceJson },
+        callSites: { version: 1 },
+      },
+    };
+    const callSites = [
+      {
+        filePath: "src/z.ts",
+        targetFunction: "loadPlugin",
+        startLine: 10,
+        startColumn: 2,
+        calleeName: "loadPlugin",
+        receiverText: null,
+        calleeKind: "bare",
+      },
+      {
+        filePath: "src/a.ts",
+        targetFunction: "service.run",
+        startLine: 4,
+        startColumn: 8,
+        calleeName: "run",
+        receiverText: "service",
+        calleeKind: "member",
+      },
+    ];
+
+    await renderer.render({
+      outDir,
+      l2Rows: [],
+      linkRows: [],
+      callSites,
+      metadata,
+    });
+
+    const callSitesPath = path.join(outDir, "graph", "call-sites.jsonl");
+    const callSitesBytes = fs.readFileSync(callSitesPath, "utf8");
+    expect(readJsonl(callSitesPath)).toEqual([callSites[1], callSites[0]]);
+    expect(callSitesBytes).not.toContain("projectId");
+    expect(callSitesBytes).not.toContain('"id"');
+    expect(
+      JSON.parse(
+        fs.readFileSync(path.join(outDir, "graph", "metadata.json"), "utf8"),
+      ),
+    ).toEqual({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [],
+      snapshotVersion: 1,
+      capabilities: metadata.capabilities,
+    });
+
+    const secondDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-snapshot-renderer-repeat-"),
+    );
+    try {
+      await renderer.render({
+        outDir: secondDir,
+        l2Rows: [],
+        linkRows: [],
+        callSites: [...callSites].reverse(),
+        metadata,
+      });
+      expect(
+        fs.readFileSync(
+          path.join(secondDir, "graph", "call-sites.jsonl"),
+          "utf8",
+        ),
+      ).toBe(callSitesBytes);
+      expect(
+        fs.readFileSync(path.join(secondDir, "graph", "metadata.json"), "utf8"),
+      ).toBe(
+        fs.readFileSync(path.join(outDir, "graph", "metadata.json"), "utf8"),
+      );
+    } finally {
+      fs.rmSync(secondDir, { recursive: true, force: true });
+    }
   });
 
   it("skips graph files and reports zero counts for an empty graph", async () => {

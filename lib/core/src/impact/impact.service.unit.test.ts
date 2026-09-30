@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { RiskLevels } from "@workspace/contracts";
+import {
+  RiskLevels,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
+} from "@workspace/contracts";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -489,6 +493,58 @@ describe("ImpactService", () => {
           { name: "src/host.ts", type: "module" },
         ]);
         expect(spy).not.toHaveBeenCalled();
+      });
+
+      it("[error-handling] reports an unavailable snapshot fallback only for symbols without static callers", () => {
+        const availabilityKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`;
+        store.meta.set(
+          availabilityKey,
+          SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+        );
+        const targetId = store.graph.insertNode({
+          projectId,
+          name: "loadPlugin",
+          pathPatterns: ["src/plugin.ts"],
+        });
+
+        expect(
+          impactService.getCallSiteFallbackUnavailableReason(
+            store,
+            "loadPlugin",
+          ),
+        ).toBe("snapshot-call-sites-unavailable");
+
+        store.meta.set(
+          availabilityKey,
+          SnapshotCallSiteAvailabilityStates.AVAILABLE,
+        );
+        expect(
+          impactService.getCallSiteFallbackUnavailableReason(
+            store,
+            "loadPlugin",
+          ),
+        ).toBeUndefined();
+        store.meta.set(
+          availabilityKey,
+          SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+        );
+
+        const callerId = store.graph.insertNode({
+          projectId,
+          name: "src/host.ts",
+          pathPatterns: ["src/host.ts"],
+        });
+        store.graph.insertLink({
+          sourceNodeId: callerId,
+          targetNodeId: targetId,
+          linkType: "calls",
+        });
+        expect(
+          impactService.getCallSiteFallbackUnavailableReason(
+            store,
+            "loadPlugin",
+          ),
+        ).toBeUndefined();
       });
 
       it("skips the target's own file and files absent from the graph, and never trusts a LIKE match as the dependent node", () => {

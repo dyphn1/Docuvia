@@ -166,4 +166,10 @@ export interface IImpactService {
   getDynamicEvidenceAvailability?(
     store: IGraphStore,
   ): DynamicEvidenceAvailability;
+  /** Returns a reason only when the #217 call-site fallback would apply but hydrated call-site
+   *  data is unavailable. Missing implementations preserve legacy behavior. */
+  getCallSiteFallbackUnavailableReason?(
+    store: IGraphStore,
+    target: string,
+  ): string | undefined;
 }

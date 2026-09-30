@@ -6,11 +6,23 @@ import type {
   IHydrationService,
   ILogger,
   SnapshotMetadata,
+  SnapshotCallSiteRow,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
+import {
+  DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
+  GitConstants,
+  KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+  parseSourceTrailer,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+  SNAPSHOT_CALL_SITES_VERSION,
+  SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
+  SnapshotCallSiteAvailabilityStates,
+} from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
 import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
+import { readDynamicDependencyEvidenceState } from "../impact/dynamic-dependency-evidence.js";
 
 /** Bounds the source-HEAD ancestry walk during nearest-ancestor resolution. */
 const SOURCE_ANCESTRY_WALK_LIMIT = 2000;
@@ -35,6 +47,14 @@ interface RenderedEdge {
   source: string;
   target: string;
   type: string;
+}
+
+interface ParsedSnapshotMetadata {
+  project?: SnapshotMetadata["project"];
+  files: SnapshotMetadata["files"];
+  lastIngestedSourceSha?: string;
+  snapshotVersion?: unknown;
+  capabilities?: unknown;
 }
 
 function parseNodesJsonl(
@@ -70,9 +90,55 @@ function nullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isSnapshotCallSiteRow(value: unknown): value is SnapshotCallSiteRow {
+  if (!isRecord(value)) return false;
+  return (
+    isNonEmptyString(value.filePath) &&
+    isNonEmptyString(value.targetFunction) &&
+    isNonNegativeSafeInteger(value.startLine) &&
+    isNonNegativeSafeInteger(value.startColumn) &&
+    isNullableString(value.calleeName) &&
+    isNullableString(value.receiverText) &&
+    isNullableString(value.calleeKind)
+  );
+}
+
+function parseCallSitesJsonl(
+  raw: string | undefined,
+): SnapshotCallSiteRow[] | undefined {
+  if (raw === undefined) return undefined;
+  if (raw.trim() === "") return [];
+
+  const rows: unknown[] = [];
+  try {
+    for (const line of raw
+      .split("\n")
+      .filter((item) => item.trim().length > 0)) {
+      rows.push(JSON.parse(line) as unknown);
+    }
+  } catch {
+    return undefined;
+  }
+  return rows.every(isSnapshotCallSiteRow)
+    ? (rows as SnapshotCallSiteRow[])
+    : undefined;
+}
+
 function parseSnapshotMetadata(
   raw: string | undefined,
-): SnapshotMetadata | undefined {
+): ParsedSnapshotMetadata | undefined {
   if (!raw) return undefined;
 
   let parsed: unknown;
@@ -112,7 +178,45 @@ function parseSnapshotMetadata(
       typeof parsed.lastIngestedSourceSha === "string"
         ? parsed.lastIngestedSourceSha
         : undefined,
+    snapshotVersion: parsed.snapshotVersion,
+    capabilities: parsed.capabilities,
   };
+}
+
+function getSnapshotDynamicEvidence(
+  metadata: ParsedSnapshotMetadata | undefined,
+): unknown | undefined {
+  if (metadata?.snapshotVersion !== KNOWLEDGE_SNAPSHOT_FORMAT_VERSION) {
+    return undefined;
+  }
+  if (!isRecord(metadata.capabilities)) return undefined;
+  return metadata.capabilities.dynamicDependencyEvidence;
+}
+
+function isVersionedDynamicEvidence(
+  value: unknown,
+): value is { version: number; payload: string } {
+  return (
+    isRecord(value) &&
+    value.version === SNAPSHOT_DYNAMIC_EVIDENCE_VERSION &&
+    typeof value.payload === "string"
+  );
+}
+
+function isSnapshotCallSitesPayloadAvailable(
+  metadata: ParsedSnapshotMetadata | undefined,
+  callSites: SnapshotCallSiteRow[] | undefined,
+): boolean {
+  if (metadata?.snapshotVersion !== KNOWLEDGE_SNAPSHOT_FORMAT_VERSION) {
+    return false;
+  }
+  if (!isRecord(metadata.capabilities)) return false;
+  const callSitesCapability = metadata.capabilities.callSites;
+  return (
+    isRecord(callSitesCapability) &&
+    callSitesCapability.version === SNAPSHOT_CALL_SITES_VERSION &&
+    callSites !== undefined
+  );
 }
 
 /**
@@ -167,10 +271,10 @@ export class HydrationService implements IHydrationService {
   }
 
   /**
-   * Resolves the hydration commit, reads `graph/{nodes,edges}.jsonl` off it, and bulk-loads them
-   * into `store` via `bulkLoadGraph` (rebuild-not-upsert, per STOR-002). Records the hydrated
-   * commit sha in `store.meta` so callers can cheaply detect staleness later. A no-op when there's
-   * nothing to hydrate from yet (knowledge branch doesn't exist).
+   * Resolves the hydration commit, reads graph payloads off it, and bulk-loads them into `store`
+   * via `bulkLoadGraph` (rebuild-not-upsert, per STOR-002). Records the hydrated commit sha in
+   * `store.meta` so callers can cheaply detect staleness later. A no-op when there's nothing to
+   * hydrate from yet (knowledge branch doesn't exist).
    */
   public async hydrate(
     cwd: string,
@@ -191,36 +295,46 @@ export class HydrationService implements IHydrationService {
       };
     }
 
-    const [nodesJsonl, edgesJsonl, metadataJson] = await Promise.all([
-      this.git.readFileAtRef(
-        cwd,
-        knowledgeSha,
-        path.posix.join(
-          GitConstants.GRAPH_DIR_NAME,
-          GitConstants.NODES_JSONL_NAME,
+    const [nodesJsonl, edgesJsonl, metadataJson, callSitesJsonl] =
+      await Promise.all([
+        this.git.readFileAtRef(
+          cwd,
+          knowledgeSha,
+          path.posix.join(
+            GitConstants.GRAPH_DIR_NAME,
+            GitConstants.NODES_JSONL_NAME,
+          ),
         ),
-      ),
-      this.git.readFileAtRef(
-        cwd,
-        knowledgeSha,
-        path.posix.join(
-          GitConstants.GRAPH_DIR_NAME,
-          GitConstants.EDGES_JSONL_NAME,
+        this.git.readFileAtRef(
+          cwd,
+          knowledgeSha,
+          path.posix.join(
+            GitConstants.GRAPH_DIR_NAME,
+            GitConstants.EDGES_JSONL_NAME,
+          ),
         ),
-      ),
-      this.git.readFileAtRef(
-        cwd,
-        knowledgeSha,
-        path.posix.join(
-          GitConstants.GRAPH_DIR_NAME,
-          GitConstants.METADATA_JSON_NAME,
+        this.git.readFileAtRef(
+          cwd,
+          knowledgeSha,
+          path.posix.join(
+            GitConstants.GRAPH_DIR_NAME,
+            GitConstants.METADATA_JSON_NAME,
+          ),
         ),
-      ),
-    ]);
+        this.git.readFileAtRef(
+          cwd,
+          knowledgeSha,
+          path.posix.join(
+            GitConstants.GRAPH_DIR_NAME,
+            SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+          ),
+        ),
+      ]);
 
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
     const metadata = parseSnapshotMetadata(metadataJson);
+    const callSites = parseCallSitesJsonl(callSitesJsonl);
 
     const force = options?.force ?? false;
     if (!force) {
@@ -243,6 +357,7 @@ export class HydrationService implements IHydrationService {
 
     const bulkResult = await store.withWriteLock(async () => {
       const projectId = this.restoreSnapshotMetadata(store, metadata);
+      this.restoreSnapshotCallSites(store, projectId, metadata, callSites);
 
       const loaded = store.graph.bulkLoadGraph({
         projectId,
@@ -271,7 +386,7 @@ export class HydrationService implements IHydrationService {
 
   private restoreSnapshotMetadata(
     store: IGraphStore,
-    metadata: SnapshotMetadata | undefined,
+    metadata: ParsedSnapshotMetadata | undefined,
   ): number {
     const projectId = this.resolveHydratedProjectId(store, metadata?.project);
     for (const file of metadata?.files ?? []) {
@@ -283,7 +398,76 @@ export class HydrationService implements IHydrationService {
         metadata.lastIngestedSourceSha,
       );
     }
+    this.restoreDynamicEvidence(store, projectId, metadata);
     return projectId;
+  }
+
+  private restoreDynamicEvidence(
+    store: IGraphStore,
+    projectId: number,
+    metadata: ParsedSnapshotMetadata | undefined,
+  ): void {
+    const key = `${DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX}${projectId}`;
+    const evidencePayload = getSnapshotDynamicEvidence(metadata);
+
+    if (evidencePayload === undefined) {
+      this.clearDynamicEvidence(store, key, metadata);
+      return;
+    }
+
+    if (!isVersionedDynamicEvidence(evidencePayload)) {
+      store.meta.set(key, JSON.stringify(evidencePayload) ?? "null");
+      readDynamicDependencyEvidenceState(store, projectId);
+      return;
+    }
+
+    store.meta.set(key, evidencePayload.payload);
+    // The strict #508 decoder is the authority for malformed, wrong-shaped, and unavailable rows.
+    readDynamicDependencyEvidenceState(store, projectId);
+  }
+
+  private clearDynamicEvidence(
+    store: IGraphStore,
+    key: string,
+    metadata: ParsedSnapshotMetadata | undefined,
+  ): void {
+    if (store.meta.delete) {
+      store.meta.delete(key);
+      return;
+    }
+    store.meta.set(
+      key,
+      JSON.stringify({ snapshotVersion: metadata?.snapshotVersion ?? null }),
+    );
+  }
+
+  private restoreSnapshotCallSites(
+    store: IGraphStore,
+    projectId: number,
+    metadata: ParsedSnapshotMetadata | undefined,
+    callSites: SnapshotCallSiteRow[] | undefined,
+  ): void {
+    const payloadAvailable = isSnapshotCallSitesPayloadAvailable(
+      metadata,
+      callSites,
+    );
+    const replaceForProject = store.callSites.replaceForProject;
+    const canReplace = typeof replaceForProject === "function";
+
+    if (canReplace) {
+      replaceForProject.call(
+        store.callSites,
+        projectId,
+        payloadAvailable ? (callSites ?? []) : [],
+      );
+    }
+
+    store.meta.set(
+      `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+      payloadAvailable && canReplace
+        ? SnapshotCallSiteAvailabilityStates.AVAILABLE
+        : SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+    );
   }
 
   private resolveHydratedProjectId(

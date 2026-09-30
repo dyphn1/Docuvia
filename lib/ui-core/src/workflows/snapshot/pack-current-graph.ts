@@ -3,13 +3,40 @@ import os from "node:os";
 import path from "node:path";
 import {
   docuviaFactory,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   TOKENS,
+  SnapshotCallSiteAvailabilityStates,
   type IGraphStore,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
+import {
+  DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
+  KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+  SNAPSHOT_CALL_SITES_VERSION,
+  SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
+} from "@workspace/contracts";
 import { SNAPSHOT_TEMP_DIR_PREFIX } from "./snapshot-messages.js";
 import type { SnapshotResult } from "./snapshot-result.js";
+
+function getCallSitesForSnapshot(
+  store: IGraphStore,
+  project: ReturnType<IGraphStore["projects"]["getFirst"]>,
+) {
+  if (!project || !store.callSites.getAllForProject) return undefined;
+
+  const availability = store.meta.get(
+    `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${project.id}`,
+  );
+  if (
+    availability !== undefined &&
+    availability !== SnapshotCallSiteAvailabilityStates.AVAILABLE
+  ) {
+    return undefined;
+  }
+
+  return store.callSites.getAllForProject(project.id);
+}
 
 /**
  * The shared "render the current graph -> temp dir -> pack onto the knowledge branch" core, used
@@ -35,6 +62,27 @@ export async function packCurrentGraphOntoKnowledgeBranch(
   const linkRows = store.graph.getAllLinks();
   const project = store.projects.getFirst();
   const fileMetadata = store.files.getAllSnapshotMetadata();
+  // A missing marker is a locally ingested database. Preserve an explicit unavailable marker
+  // so re-snapshotting cannot turn an incomplete hydrated set into a complete empty set.
+  const callSites = getCallSitesForSnapshot(store, project);
+  const dynamicEvidence = project
+    ? store.meta.get(
+        `${DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX}${project.id}`,
+      )
+    : undefined;
+  const capabilities = {
+    ...(dynamicEvidence !== undefined
+      ? {
+          dynamicDependencyEvidence: {
+            version: SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
+            payload: dynamicEvidence,
+          },
+        }
+      : {}),
+    ...(callSites !== undefined
+      ? { callSites: { version: SNAPSHOT_CALL_SITES_VERSION } }
+      : {}),
+  };
 
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),
@@ -44,6 +92,7 @@ export async function packCurrentGraphOntoKnowledgeBranch(
       outDir: tempDir,
       l2Rows,
       linkRows,
+      ...(callSites !== undefined ? { callSites } : {}),
       l3Rows: store.l3.getAllExportable(),
       metadata: {
         project: project
@@ -53,6 +102,8 @@ export async function packCurrentGraphOntoKnowledgeBranch(
         lastIngestedSourceSha: store.meta.get(
           GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
         ),
+        snapshotVersion: KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+        ...(Object.keys(capabilities).length > 0 ? { capabilities } : {}),
       },
     });
 

@@ -5,6 +5,7 @@ import { SchemaTables } from "../constants.js";
 const META_REPO_ERROR_MESSAGES = {
   READ_FAILED: (key: string) => `Failed to read meta key "${key}"`,
   WRITE_FAILED: (key: string) => `Failed to write meta key "${key}"`,
+  DELETE_FAILED: (key: string) => `Failed to delete meta key "${key}"`,
 } as const;
 
 /** `docuvia_meta` repo — a small key/value store (STOR-002), currently used for the hydrated knowledge-branch tip sha. */
@@ -37,6 +38,20 @@ export class MetaRepo implements IMetaRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         META_REPO_ERROR_MESSAGES.WRITE_FAILED(key),
+        err,
+      );
+    }
+  }
+
+  delete(key: string): void {
+    try {
+      this.db
+        .prepare(`DELETE FROM ${SchemaTables.DOCUVIA_META} WHERE key = ?`)
+        .run(key);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        META_REPO_ERROR_MESSAGES.DELETE_FAILED(key),
         err,
       );
     }

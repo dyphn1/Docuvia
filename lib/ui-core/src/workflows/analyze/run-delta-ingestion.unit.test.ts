@@ -20,6 +20,8 @@ import {
   CURRENT_NODE_KEY_FORMAT_VERSION,
   GitConstants,
   TierCCandidateKinds,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
 } from "@workspace/contracts";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
@@ -1032,6 +1034,32 @@ describe("runDeltaIngestion()", () => {
     expect(store.meta.set).toHaveBeenCalledWith(
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
       HEAD_SHA,
+    );
+  });
+
+  it("[state-diff] keeps hydrated call-site evidence unavailable during a changed-file delta", async () => {
+    const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/a.ts", status: "modified" }]),
+      readFileAtRef: vi.fn().mockResolvedValue("export const a = 2;"),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.meta.get(markerKey)).toBe(
+      SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
     );
   });
 

@@ -4,6 +4,7 @@ import {
   DynamicDependencyStatuses,
   DynamicEvidenceAvailabilityStates,
   DynamicEvidenceUnavailableReasons,
+  DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
   type DynamicDependencyEvidence,
   type DynamicEvidenceAvailability,
   type DynamicEvidenceUnavailableReason,
@@ -15,7 +16,6 @@ import {
   ReadFileWithinRootStatuses,
 } from "../utils/safe-fs.js";
 
-const META_KEY_PREFIX = "impact.dynamic-dependencies.v1";
 const MAX_BOUNDED_CANDIDATES = 64;
 const PROJECT_SOURCE_EXTENSIONS = new Set([
   ".ts",
@@ -60,7 +60,7 @@ interface DynamicImportScanMatch {
 }
 
 function metaKey(projectId: number): string {
-  return `${META_KEY_PREFIX}:${projectId}`;
+  return `${DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX}${projectId}`;
 }
 
 function isIdentifierChar(value: string | undefined): boolean {

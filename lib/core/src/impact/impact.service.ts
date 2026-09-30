@@ -10,6 +10,9 @@ import {
   createNoopLogger,
   LinkTypes,
   RiskLevels,
+  SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
 } from "@workspace/contracts";
 
 const ImpactMessages = {
@@ -149,6 +152,35 @@ export class ImpactService implements IImpactService {
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  getCallSiteFallbackUnavailableReason(
+    store: IGraphStore,
+    target: string,
+  ): string | undefined {
+    const projectId = store.projects.getFirst()?.id;
+    if (!projectId) return undefined;
+
+    const availability = store.meta.get(
+      `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+    );
+    if (
+      availability === undefined ||
+      availability === SnapshotCallSiteAvailabilityStates.AVAILABLE
+    ) {
+      return undefined;
+    }
+
+    const node = store.graph.findNodeByName(target);
+    if (
+      !node ||
+      this.isFileNode(node) ||
+      this.hasStaticCallerEdge(store, node.id)
+    ) {
+      return undefined;
+    }
+
+    return SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON;
   }
 
   private isFileNode(node: { name: string; filePath?: string }): boolean {

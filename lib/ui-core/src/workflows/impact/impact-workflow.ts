@@ -45,6 +45,14 @@ function resolveEvidenceUnavailable(
     : undefined;
 }
 
+function resolveCallSiteFallbackUnavailableReason(
+  impactService: IImpactService,
+  store: IGraphStore,
+  target: string,
+): string | undefined {
+  return impactService.getCallSiteFallbackUnavailableReason?.(store, target);
+}
+
 /** Issue #508 Phase 3 (D8): the additive `graphFreshness` field, ready to spread -- only a stale
  *  graph is reported; `fresh` and fail-open `unknown` are omitted, matching #193's `status`. */
 async function resolveStaleGraph(
@@ -159,6 +167,8 @@ export class ImpactWorkflow {
         impactService,
         store,
       );
+      const callSiteFallbackUnavailableReason =
+        resolveCallSiteFallbackUnavailableReason(impactService, store, target);
       // #508 D8: resolved once -- it feeds both the epistemic ladder and the result field.
       const freshnessField = await resolveStaleGraph(workspaceRoot, store);
       // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
@@ -195,6 +205,7 @@ export class ImpactWorkflow {
           riskLevel,
           dynamicEvidence,
           dynamicEvidenceUnavailable?.reason,
+          callSiteFallbackUnavailableReason,
           freshnessField.graphFreshness,
         )),
       };
@@ -214,6 +225,7 @@ export class ImpactWorkflow {
     computedRiskLevel: RiskLevel,
     dynamicEvidence: DynamicDependencyEvidence[],
     dynamicEvidenceUnavailableReason: string | undefined,
+    callSiteFallbackUnavailableReason: string | undefined,
     graphFreshness: ImpactGraphFreshness | undefined,
   ): Promise<
     Omit<
@@ -240,6 +252,7 @@ export class ImpactWorkflow {
       targetFileResolution,
       dynamicEvidence,
       dynamicEvidenceUnavailableReason,
+      callSiteFallbackUnavailableReason,
       graphStale: graphFreshness,
     });
 

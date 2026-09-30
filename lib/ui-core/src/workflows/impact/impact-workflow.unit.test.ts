@@ -238,6 +238,38 @@ describe("ImpactWorkflow.execute()", () => {
     });
   });
 
+  it("[error-handling] reports lower-bound when a hydrated symbol's call-site fallback is unavailable", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const impactService: IImpactService = {
+      getBlastRadius: vi.fn().mockReturnValue([]),
+      computeRiskLevel: vi.fn().mockReturnValue("LOW"),
+      getCallSiteFallbackUnavailableReason: vi
+        .fn()
+        .mockReturnValue("snapshot-call-sites-unavailable"),
+    };
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("loadPlugin");
+
+    expect(result).toEqual({
+      blastRadius: [],
+      riskLevel: "UNKNOWN",
+      epistemic: "lower-bound",
+      riskNote:
+        'Call-site fallback evidence is unavailable (snapshot-call-sites-unavailable) -- the fallback could not check unresolved callers, so this result is a lower bound. Run "docuvia clean" to reset the local graph, then "docuvia init" to rebuild Tier A call-site evidence.',
+    });
+  });
+
   describe("issue #508 Phase 2 D7: the target's own containing-file entry is context, not a dependent", () => {
     function registerSymbolTarget(
       blastRadius: Array<{ name: string; type: string }>,

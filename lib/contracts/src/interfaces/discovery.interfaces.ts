@@ -7,6 +7,8 @@ export interface DiscoveredFile {
 
 export interface DiscoveryResult {
   filesToParse: DiscoveredFile[];
+  /** Number of discoverable candidates before hash, size, and read checks; absent for older providers. */
+  candidateFileCount?: number;
   existingHashes: Map<string, string>;
   skippedCount: number;
   skippedOversized: { file: string; sizeBytes: number }[];

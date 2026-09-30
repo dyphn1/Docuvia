@@ -3,6 +3,7 @@ import { aggregateImpactHonesty } from "./impact-eval-honesty.js";
 import {
   KNOWN_PRODUCT_DEFECTS,
   PHASE2_GOLDEN,
+  PHASE2_GOLDEN_C,
   PHASE2_O65_FIRST_64_PATHS,
 } from "./impact-honesty-corpus.phase2.js";
 import {
@@ -617,6 +618,15 @@ describe("Phase 2 deferred-defect registry (#508)", () => {
 });
 
 describe("Phase 2 determinism (#508)", () => {
+  it("[state-diff] C3 golden preserves the dynamic evidence present before snapshot", () => {
+    const [beforeSnapshot] = PHASE2_GOLDEN_C.C1a;
+    const [afterHydration] = PHASE2_GOLDEN_C.C3;
+
+    expect(afterHydration.expectedEvidence).toEqual(
+      beforeSnapshot.expectedEvidence,
+    );
+  });
+
   it("[stress] 50 rebuilds of the full evaluation are identical", () => {
     const baseline = buildPhase2Evaluation(PHASE2_GOLDEN, IDEAL);
     for (let index = 0; index < 50; index++) {

@@ -383,6 +383,14 @@ const DEG_BOUNDED_C0 = {
   candidatePaths: [`${P}/deg/plugins/alpha.ts`, `${P}/deg/plugins/beta.ts`],
 } as const;
 
+const DEG_BOUNDED_C1A = {
+  ...DEG_BOUNDED_C0,
+  candidatePaths: [
+    ...DEG_BOUNDED_C0.candidatePaths,
+    `${P}/deg/plugins/gamma.ts`,
+  ],
+} as const;
+
 /** Sandbox A + B fixtures (E1a-E9). */
 export const PHASE2_GOLDEN_AB: readonly Phase2FixtureGolden[] = [
   {
@@ -653,15 +661,7 @@ export const PHASE2_GOLDEN_C = {
       intents: ["confirmed-positive", "epistemic-unknown"],
       expectedConfirmedFiles: [`${P}/deg/gamma-user.ts`],
       expectedCandidateFiles: [`${P}/deg/loader.ts`],
-      expectedEvidence: [
-        {
-          ...DEG_BOUNDED_C0,
-          candidatePaths: [
-            ...DEG_BOUNDED_C0.candidatePaths,
-            `${P}/deg/plugins/gamma.ts`,
-          ],
-        },
-      ],
+      expectedEvidence: [DEG_BOUNDED_C1A],
       degradation: true,
     },
   ],
@@ -684,7 +684,15 @@ export const PHASE2_GOLDEN_C = {
       overflowExpectation: "overflow",
     },
   ],
-  C3: [unavailableGolden("C3", PHASE2_UNAVAILABLE_REASONS.MISSING, true)],
+  C3: [
+    {
+      ...DEG_ALPHA_BASE,
+      id: "C3",
+      expectedCandidateFiles: [`${P}/deg/loader.ts`],
+      expectedEvidence: [DEG_BOUNDED_C1A],
+      humanParity: true,
+    },
+  ],
 } as const satisfies Record<string, readonly Phase2FixtureGolden[]>;
 
 /** Byte payloads for the C2 corrupted-artifact variants (contract §3.4). */

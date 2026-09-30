@@ -455,11 +455,21 @@ describe("Phase 2: impact epistemic honesty and dynamic-boundary corpus (#508)",
     expect(after?.evidence.truncatedOrOverflow).toBe(true);
   });
 
-  it("[state-diff] snapshot -> clean -> auto-hydrate reports missing evidence, not exact (C3)", () => {
+  it("[state-diff] snapshot -> clean -> auto-hydrate preserves current evidence (C3)", () => {
     expect(gatesFor(c.C3.evaluation, ["C3"])).toEqual([]);
     const [fixture] = c.C3.evaluation.fixtures;
+    const beforeSnapshot = c.C1a.evaluation.fixtures.find(
+      (candidate) => candidate.golden.id === "C1a",
+    );
     expect(fixture.observation?.run.json).not.toHaveProperty("partialCoverage");
-    expect(fixture.epistemicStatus).toBe("unknown");
+    expect(fixture.observation?.run.json).not.toHaveProperty(
+      "dynamicEvidenceUnavailable",
+    );
+    expect(fixture.observation?.run.json?.dynamicEvidence).toEqual(
+      beforeSnapshot?.observation?.run.json?.dynamicEvidence,
+    );
+    expect(fixture.evidence).toEqual(beforeSnapshot?.evidence);
+    expect(fixture.epistemicStatus).toBe(beforeSnapshot?.epistemicStatus);
   });
 
   it("[negative-control] P1: a promoted dynamic candidate fails provenance (and positive) gates", () => {

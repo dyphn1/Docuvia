@@ -2242,6 +2242,78 @@ describe("callSites repo: callee evidence columns (issue #192, migration 0012)",
       store.callSites.getByTargetFunctions(project.id, ["no-such-symbol"]),
     ).toEqual(new Map());
   });
+
+  it("[state-diff] exports call sites without local ids in deterministic order and replaces a project's rows", async () => {
+    const project = store.projects.insert({
+      name: "snapshot-source",
+      repoUrl: "file:///snapshot-source",
+    });
+    const hydratedProject = store.projects.insert({
+      name: "snapshot-target",
+      repoUrl: "file:///snapshot-target",
+    });
+
+    store.callSites.insertMany(project.id, "src/z.ts", [
+      {
+        targetFunction: "loadPlugin",
+        startLine: 10,
+        startColumn: 2,
+        calleeName: "loadPlugin",
+        calleeKind: "bare",
+      },
+    ]);
+    store.callSites.insertMany(project.id, "src/a.ts", [
+      {
+        targetFunction: "service.run",
+        startLine: 4,
+        startColumn: 8,
+        calleeName: "run",
+        receiverText: "service",
+        calleeKind: "member",
+      },
+    ]);
+    store.callSites.insertMany(hydratedProject.id, "src/stale.ts", [
+      { targetFunction: "oldTarget", startLine: 1, startColumn: 0 },
+    ]);
+
+    const portableRows = store.callSites.getAllForProject(project.id);
+
+    expect(portableRows).toEqual([
+      {
+        filePath: "src/a.ts",
+        targetFunction: "service.run",
+        startLine: 4,
+        startColumn: 8,
+        calleeName: "run",
+        receiverText: "service",
+        calleeKind: "member",
+      },
+      {
+        filePath: "src/z.ts",
+        targetFunction: "loadPlugin",
+        startLine: 10,
+        startColumn: 2,
+        calleeName: "loadPlugin",
+        receiverText: null,
+        calleeKind: "bare",
+      },
+    ]);
+
+    store.callSites.replaceForProject(hydratedProject.id, portableRows);
+
+    expect(store.callSites.getAllForProject(hydratedProject.id)).toEqual(
+      portableRows,
+    );
+    expect(store.callSites.getAllForProject(project.id)).toEqual(portableRows);
+  });
+
+  it("[state-diff] deletes a stale metadata key when restoring an older snapshot", async () => {
+    store.meta.set("impact.dynamic-dependencies.v1:42", "[]");
+
+    store.meta.delete("impact.dynamic-dependencies.v1:42");
+
+    expect(store.meta.get("impact.dynamic-dependencies.v1:42")).toBeUndefined();
+  });
 });
 
 // ── Self-analysis: verify the real knowledge graph has correct structure ─────────────

@@ -90,7 +90,13 @@ export class FileDiscoveryService implements IFileDiscovery {
       skippedOversized: skippedOversized.length,
     });
 
-    return { filesToParse, existingHashes, skippedCount, skippedOversized };
+    return {
+      filesToParse,
+      candidateFileCount: allFiles.length,
+      existingHashes,
+      skippedCount,
+      skippedOversized,
+    };
   }
 
   /** Determines the candidate file list: git-tracked/untracked scan when a git repo is present (falling back to a glob scan on failure), or a plain glob scan otherwise. Filters to supported source files either way. */

@@ -1,7 +1,31 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
-import type { IGitProvider, IGraphStore } from "@workspace/contracts";
+import {
+  DynamicEvidenceUnavailableReasons,
+  type IGitProvider,
+  type IGraphStore,
+} from "@workspace/contracts";
 import { HydrationService } from "./hydration.service.js";
 import { GitConstants } from "@workspace/contracts";
+import { SnapshotRendererService } from "./snapshot-renderer.service.js";
+import { readDynamicDependencyEvidenceState } from "../impact/dynamic-dependency-evidence.js";
+
+function makeMemoryMeta(initial: Map<string, string> = new Map()) {
+  return {
+    values: initial,
+    repo: {
+      get: vi.fn((key: string) => initial.get(key)),
+      set: vi.fn((key: string, value: string) => {
+        initial.set(key, value);
+      }),
+      delete: vi.fn((key: string) => {
+        initial.delete(key);
+      }),
+    },
+  };
+}
 
 function makeMockGitProvider(
   overrides: Partial<IGitProvider> = {},
@@ -285,6 +309,312 @@ describe("HydrationService.hydrate()", () => {
       edgesDropped: 0,
     });
   });
+
+  it("[happy] snapshot -> clean -> hydrate restores evidence and project-portable call sites", async () => {
+    const outDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-hydration-roundtrip-"),
+    );
+    try {
+      const evidenceJson = JSON.stringify([
+        {
+          sourceFile: "src/loader.ts",
+          kind: "dynamic-import",
+          expression: "`./plugins/${name}.js`",
+          startLine: 4,
+          startColumn: 7,
+          literalPrefix: "./plugins/",
+          literalSuffix: ".js",
+          status: "bounded",
+          candidatePaths: ["src/plugins/alpha.ts"],
+          reason: "template-literal",
+        },
+      ]);
+      const portableCallSites = [
+        {
+          filePath: "src/host.ts",
+          targetFunction: "loadPlugin",
+          startLine: 10,
+          startColumn: 2,
+          calleeName: "loadPlugin",
+          receiverText: null,
+          calleeKind: "bare",
+        },
+      ];
+      await new SnapshotRendererService().render({
+        outDir,
+        l2Rows: [],
+        linkRows: [],
+        callSites: portableCallSites,
+        metadata: {
+          project: { name: "demo", repoUrl: "file:///demo" },
+          files: [
+            {
+              filePath: "src/loader.ts",
+              contentHash: "loader-hash",
+              lastTierBProcessedAt: null,
+              lastTierBCommitSha: null,
+            },
+          ],
+          snapshotVersion: 1,
+          capabilities: {
+            dynamicDependencyEvidence: { version: 1, payload: evidenceJson },
+            callSites: { version: 1 },
+          },
+        },
+      });
+
+      const git = makeMockGitProvider({
+        getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+        getCommitLog: vi.fn().mockResolvedValue([]),
+        readFileAtRef: vi
+          .fn()
+          .mockImplementation(
+            (_cwd: string, _ref: string, filePath: string) => {
+              const localPath = path.join(outDir, filePath);
+              return Promise.resolve(
+                fs.existsSync(localPath)
+                  ? fs.readFileSync(localPath, "utf8")
+                  : undefined,
+              );
+            },
+          ),
+      });
+      const meta = makeMemoryMeta(
+        new Map([["impact.dynamic-dependencies.v1:7", "stale-source-value"]]),
+      );
+      const replaceForProject = vi.fn();
+      const getOrInsert = vi.fn().mockReturnValue({ id: 42 });
+      const store = makeMockGraphStore({
+        projects: {
+          getFirst: vi.fn().mockReturnValue({ id: 42 }),
+          insert: vi.fn(),
+          getOrInsert,
+          count: vi.fn(),
+        },
+        meta: meta.repo,
+        callSites: {
+          deleteForFile: vi.fn(),
+          insertMany: vi.fn(),
+          getForFiles: vi.fn().mockReturnValue(new Map()),
+          getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+          replaceForProject,
+        },
+      });
+
+      await new HydrationService(git).hydrate("/workspace", store);
+
+      expect(getOrInsert).toHaveBeenCalledWith({
+        name: "demo",
+        repoUrl: "file:///demo",
+      });
+      expect(meta.values.get("impact.dynamic-dependencies.v1:42")).toBe(
+        evidenceJson,
+      );
+      expect(readDynamicDependencyEvidenceState(store, 42)).toEqual({
+        state: "available",
+        items: JSON.parse(evidenceJson),
+      });
+      expect(replaceForProject).toHaveBeenCalledWith(42, portableCallSites);
+      expect(meta.values.get("snapshot.call-sites.availability.v1:42")).toBe(
+        "available",
+      );
+      expect(meta.values.has("impact.dynamic-dependencies.v1:7")).toBe(true);
+    } finally {
+      fs.rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it("[error-handling] old snapshots keep dynamic evidence missing and call-site fallback unavailable", async () => {
+    const metadataJson = JSON.stringify({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [
+        {
+          filePath: "src/loader.ts",
+          contentHash: "loader-hash",
+          lastTierBProcessedAt: null,
+          lastTierBCommitSha: null,
+        },
+      ],
+    });
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(
+            filePath === "graph/metadata.json" ? metadataJson : undefined,
+          ),
+        ),
+    });
+    const meta = makeMemoryMeta(
+      new Map([["impact.dynamic-dependencies.v1:42", "[]"]]),
+    );
+    const replaceForProject = vi.fn();
+    const store = makeMockGraphStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 42 }),
+        insert: vi.fn(),
+        getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
+        count: vi.fn(),
+      },
+      files: {
+        getAllHashes: vi
+          .fn()
+          .mockReturnValue([
+            { filePath: "src/loader.ts", contentHash: "loader-hash" },
+          ]),
+        getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
+        upsertFile: vi.fn(),
+        deleteFile: vi.fn(),
+        markTierBProcessed: vi.fn(),
+        getTierBFileStatus: vi.fn(),
+        getTierBCoverage: vi.fn(),
+      },
+      meta: meta.repo,
+      callSites: {
+        deleteForFile: vi.fn(),
+        insertMany: vi.fn(),
+        getForFiles: vi.fn().mockReturnValue(new Map()),
+        getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+        replaceForProject,
+      },
+    });
+
+    await new HydrationService(git).hydrate("/workspace", store);
+
+    expect(readDynamicDependencyEvidenceState(store, 42)).toEqual({
+      state: "unavailable",
+      reason: DynamicEvidenceUnavailableReasons.MISSING,
+    });
+    expect(replaceForProject).toHaveBeenCalledWith(42, []);
+    expect(meta.values.get("snapshot.call-sites.availability.v1:42")).toBe(
+      "unavailable",
+    );
+    expect(meta.repo.delete).toHaveBeenCalledWith(
+      "impact.dynamic-dependencies.v1:42",
+    );
+  });
+
+  it.each([
+    {
+      version: 1,
+      payload: JSON.stringify([{ sourceFile: "src/loader.ts" }]),
+      reason: DynamicEvidenceUnavailableReasons.INVALID_RECORD,
+      label: "malformed records",
+      callSitesVersion: 1,
+      callSitesJsonl: "{}\n",
+      dynamicState: "unavailable",
+    },
+    {
+      version: 2,
+      payload: JSON.stringify([]),
+      reason: DynamicEvidenceUnavailableReasons.NOT_ARRAY,
+      label: "unsupported versions",
+      callSitesVersion: 1,
+      callSitesJsonl: "{}\n",
+      dynamicState: "unavailable",
+    },
+    {
+      version: 1,
+      payload: JSON.stringify([]),
+      reason: undefined,
+      label: "unsupported call-site versions",
+      callSitesVersion: 2,
+      callSitesJsonl: "",
+      dynamicState: "available",
+    },
+  ])(
+    "[invalid-input] quarantines $label independently",
+    async ({
+      version,
+      payload,
+      reason,
+      callSitesVersion,
+      callSitesJsonl,
+      dynamicState,
+    }) => {
+      const metadataJson = JSON.stringify({
+        project: { name: "demo", repoUrl: "file:///demo" },
+        files: [
+          {
+            filePath: "src/loader.ts",
+            contentHash: "loader-hash",
+            lastTierBProcessedAt: null,
+            lastTierBCommitSha: null,
+          },
+        ],
+        snapshotVersion: 1,
+        capabilities: {
+          dynamicDependencyEvidence: {
+            version,
+            payload,
+          },
+          callSites: { version: callSitesVersion },
+        },
+      });
+      const git = makeMockGitProvider({
+        getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+        getCommitLog: vi.fn().mockResolvedValue([]),
+        readFileAtRef: vi
+          .fn()
+          .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+            Promise.resolve(
+              filePath === "graph/metadata.json"
+                ? metadataJson
+                : filePath === "graph/call-sites.jsonl"
+                  ? callSitesJsonl
+                  : undefined,
+            ),
+          ),
+      });
+      const meta = makeMemoryMeta();
+      const replaceForProject = vi.fn();
+      const store = makeMockGraphStore({
+        projects: {
+          getFirst: vi.fn().mockReturnValue({ id: 42 }),
+          insert: vi.fn(),
+          getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
+          count: vi.fn(),
+        },
+        files: {
+          getAllHashes: vi
+            .fn()
+            .mockReturnValue([
+              { filePath: "src/loader.ts", contentHash: "loader-hash" },
+            ]),
+          getAllSnapshotMetadata: vi.fn().mockReturnValue([]),
+          upsertFile: vi.fn(),
+          deleteFile: vi.fn(),
+          markTierBProcessed: vi.fn(),
+          getTierBFileStatus: vi.fn(),
+          getTierBCoverage: vi.fn(),
+        },
+        meta: meta.repo,
+        callSites: {
+          deleteForFile: vi.fn(),
+          insertMany: vi.fn(),
+          getForFiles: vi.fn().mockReturnValue(new Map()),
+          getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+          replaceForProject,
+        },
+      });
+
+      await new HydrationService(git).hydrate("/workspace", store);
+
+      const dynamicEvidence = readDynamicDependencyEvidenceState(store, 42);
+      expect(dynamicEvidence.state).toBe(dynamicState);
+      if (dynamicState === "unavailable") {
+        expect(dynamicEvidence).toEqual({ state: "unavailable", reason });
+      } else {
+        expect(dynamicEvidence).toEqual({ state: "available", items: [] });
+      }
+      expect(replaceForProject).toHaveBeenCalledWith(42, []);
+      expect(meta.values.get("snapshot.call-sites.availability.v1:42")).toBe(
+        "unavailable",
+      );
+    },
+  );
 
   it("restores project and Tier-B file metadata from graph/metadata.json before graph load", async () => {
     const metadataJson = JSON.stringify({

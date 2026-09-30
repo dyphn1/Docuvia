@@ -36,6 +36,23 @@ describe("resolveImpactEpistemic()", () => {
       );
     });
 
+    it("[error-handling] explains when hydrated call-site fallback evidence is unavailable", () => {
+      const result = resolveImpactEpistemic({
+        blastRadiusCount: 0,
+        computedRiskLevel: RiskLevels.LOW,
+        ...FULL_COVERAGE,
+        registryMediated: false,
+        callSiteFallbackUnavailableReason: "snapshot-call-sites-unavailable",
+      });
+
+      expect(result).toEqual({
+        riskLevel: RiskLevels.UNKNOWN,
+        epistemic: EpistemicLevels.LOWER_BOUND,
+        riskNote:
+          'Call-site fallback evidence is unavailable (snapshot-call-sites-unavailable) -- the fallback could not check unresolved callers, so this result is a lower bound. Run "docuvia clean" to reset the local graph, then "docuvia init" to rebuild Tier A call-site evidence.',
+      });
+    });
+
     it("prioritizes the partial-coverage wording when Tier B ingestion is incomplete -- unknown, not zero", () => {
       const result = resolveImpactEpistemic({
         blastRadiusCount: 0,

@@ -12,7 +12,7 @@ function makeMockFilesRepo(): FileHashLookup {
 }
 
 describe("runDiscoveryPipeline", () => {
-  it("runs configScanner/vcsScanner/fileDiscovery in parallel and merges config + hotspot tags", async () => {
+  it("[happy] runs scanners in parallel and carries all discoverable candidates", async () => {
     const callOrder: string[] = [];
     const configScanner: IConfigScanner = {
       scanConfigs: vi.fn().mockImplementation(async () => {
@@ -32,12 +32,15 @@ describe("runDiscoveryPipeline", () => {
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("discoverFiles");
-        return {
-          filesToParse,
-          existingHashes: new Map(),
-          skippedCount: 0,
-          skippedOversized: [],
-        };
+        return Object.assign(
+          {
+            filesToParse,
+            existingHashes: new Map(),
+            skippedCount: 0,
+            skippedOversized: [],
+          },
+          { candidateFileCount: 3 },
+        );
       }),
     };
 
@@ -56,6 +59,7 @@ describe("runDiscoveryPipeline", () => {
       "scanConfigs",
     ]);
     expect(result.filesToParse).toEqual(filesToParse);
+    expect(result.candidateFileCount).toBe(3);
     expect(Array.from(result.tags).sort()).toEqual([
       "backend",
       "domain:core",

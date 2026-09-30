@@ -131,6 +131,24 @@ describe("FileDiscoveryService", () => {
     ]);
   });
 
+  it("[happy] reports discoverable candidates that are skipped as unchanged", async () => {
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(true),
+      listTrackedFilesWithBlobHash: vi
+        .fn()
+        .mockResolvedValue(new Map([["a.ts", "same-hash"]])),
+    });
+
+    const result = await new FileDiscoveryService(mockGit).discoverFiles(
+      tmpDir,
+      makeMockFilesRepo([{ filePath: "a.ts", contentHash: "same-hash" }]),
+    );
+
+    expect(result.filesToParse).toEqual([]);
+    expect(result.skippedCount).toBe(1);
+    expect(result).toHaveProperty("candidateFileCount", 1);
+  });
+
   it("falls back to fast-glob + registry extensions when not a git repository", async () => {
     fs.writeFileSync(path.join(tmpDir, "x.py"), "a = 1\n");
     fs.writeFileSync(path.join(tmpDir, "y.exe"), "binary-not-source");

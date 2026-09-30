@@ -21,7 +21,11 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import {
+  GitConstants,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
+} from "@workspace/contracts";
 import { InitWorkflow, resolveDbPath } from "./init-workflow.js";
 import { readTierBQueue } from "../analyze/tier-b-queue.js";
 
@@ -236,12 +240,15 @@ describe("InitWorkflow.execute()", () => {
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("discoverFiles");
-        return {
-          filesToParse,
-          existingHashes: new Map(),
-          skippedCount: 0,
-          skippedOversized: [],
-        };
+        return Object.assign(
+          {
+            filesToParse,
+            existingHashes: new Map(),
+            skippedCount: 0,
+            skippedOversized: [],
+          },
+          { candidateFileCount: filesToParse.length },
+        );
       }),
     };
     const astProcessor: IAstProcessor = {
@@ -389,6 +396,17 @@ describe("InitWorkflow.execute()", () => {
       "packSnapshotToKnowledgeBranch",
       "markSynced",
     ]);
+  });
+
+  it("[state-diff] restores call-site availability after init parses every discoverable file", async () => {
+    const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(store.meta.get(markerKey)).toBe(
+      SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
   });
 
   it("still reports success when packing the knowledge-graph snapshot fails (non-fatal)", async () => {

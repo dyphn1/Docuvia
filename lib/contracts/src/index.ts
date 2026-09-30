@@ -138,6 +138,7 @@ export type {
   L3NodeType,
   ValidityStatus,
   AstCallSiteRow,
+  SnapshotCallSiteRow,
   ICallSitesRepo,
   L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
@@ -253,6 +254,8 @@ export type {
   SnapshotRenderInput,
   SnapshotRenderResult,
   SnapshotMetadata,
+  SnapshotVersionedPayload,
+  SnapshotCapabilities,
   ISnapshotRenderer,
 } from "./interfaces/snapshot.interfaces.js";
 export type { HookName, HooksConfig } from "./interfaces/hooks.interfaces.js";
@@ -342,6 +345,16 @@ export {
   CURRENT_NODE_KEY_FORMAT_VERSION,
   NODE_KEY_SYMBOL_SEPARATOR,
 } from "./constants/node-keys.js";
+export {
+  KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+  SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
+  SNAPSHOT_CALL_SITES_VERSION,
+  SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+  DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
+  SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
+} from "./constants/knowledge-snapshot.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,

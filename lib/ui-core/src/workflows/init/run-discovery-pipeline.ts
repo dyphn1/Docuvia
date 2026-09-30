@@ -8,6 +8,8 @@ import type {
 
 export interface DiscoveryPipelineResult {
   filesToParse: DiscoveredFile[];
+  /** Discoverable candidates before hash, size, and read checks. */
+  candidateFileCount?: number;
   skippedOversized: { file: string; sizeBytes: number }[];
   /** Merged config-scan + VCS-hotspot tags (per-file language tags are added later, once parsing has actually run — see `run-parse-and-persist.ts`). */
   tags: Set<string>;
@@ -32,6 +34,7 @@ export async function runDiscoveryPipeline(deps: {
 
   return {
     filesToParse: discovery.filesToParse,
+    candidateFileCount: discovery.candidateFileCount,
     skippedOversized: discovery.skippedOversized,
     tags,
     projectType: configResult.projectType,

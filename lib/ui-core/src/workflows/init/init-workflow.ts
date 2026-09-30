@@ -11,7 +11,10 @@ import { appendInitLogLine, writeInitSummary } from "./init-log-writer.js";
 import { ensureGitBranchAndHooks } from "./ensure-git-branch-and-hooks.js";
 import { seedProjectRow } from "./seed-project-row.js";
 import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
-import { runParseAndPersist } from "./run-parse-and-persist.js";
+import {
+  markCallSitesAvailableAfterCompleteIngestion,
+  runParseAndPersist,
+} from "./run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { stampFullCallResolution } from "../analyze/call-resolution-stats.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
@@ -171,6 +174,14 @@ export class InitWorkflow {
             fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
           },
         });
+      markCallSitesAvailableAfterCompleteIngestion({
+        store,
+        projectId: project.id,
+        candidateFileCount: discoveryResult.candidateFileCount,
+        parsedFileCount: parsedResults.length,
+        failedFileCount: failures.length,
+        skippedOversizedCount: discoveryResult.skippedOversized.length,
+      });
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
 
       // Issue #221: init's parse+persist pass covers the whole workspace, so its per-file

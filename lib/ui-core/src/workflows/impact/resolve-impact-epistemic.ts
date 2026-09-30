@@ -38,6 +38,8 @@ export interface ImpactEpistemicInput {
   /** Issue #508 Phase 2 (D1/D5): set when the persisted evidence could not be trusted at all;
    *  a lower-bound cause at the same rung as `dynamicEvidence`. */
   dynamicEvidenceUnavailableReason?: string;
+  /** Issue #516: set only when the #217 fallback applies but the snapshot lacked call-site rows. */
+  callSiteFallbackUnavailableReason?: string;
   /** Issue #508 Phase 3 (D8): set when the graph was last ingested at a commit other than HEAD --
    *  the first rung of the ladder, for empty and non-empty results alike. */
   graphStale?: { graphSourceSha: string; headSha: string };
@@ -81,6 +83,14 @@ function dynamicRiskNote(
   );
 }
 
+function callSiteFallbackRiskNote(
+  reason: string | undefined,
+): string | undefined {
+  return reason === undefined
+    ? undefined
+    : IMPACT_MESSAGES.RISK_NOTE_CALL_SITE_FALLBACK_UNAVAILABLE(reason);
+}
+
 function lowResolutionRiskNote(
   targetFileResolution: TargetFileResolution | undefined,
 ): string | undefined {
@@ -112,6 +122,7 @@ function pickEmptyRiskNote(
   targetFileResolution: TargetFileResolution | undefined,
   dynamicEvidence: DynamicDependencyEvidence[] | undefined,
   unavailableReason: string | undefined,
+  callSiteFallbackUnavailableReason: string | undefined,
 ): string {
   if (isCoverageIncomplete(workspaceFilesProcessed, workspaceFilesTotal)) {
     return IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(
@@ -122,6 +133,10 @@ function pickEmptyRiskNote(
   if (registryMediated) {
     return IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE;
   }
+  const callSiteNote = callSiteFallbackRiskNote(
+    callSiteFallbackUnavailableReason,
+  );
+  if (callSiteNote) return callSiteNote;
   const dynamicNote = dynamicRiskNote(dynamicEvidence, unavailableReason);
   if (dynamicNote) return dynamicNote;
   const resolutionNote = lowResolutionRiskNote(targetFileResolution);
@@ -139,6 +154,7 @@ function pickEmptyRiskNote(
  *   note; empty results stay UNKNOWN, non-empty ones keep the earned risk band.
  * - Zero confirmed dependents -> risk UNKNOWN, always lower-bound.
  * - Non-empty but partial workspace Tier B coverage -> keep earned risk band, lower-bound.
+ * - Empty with unavailable call-site fallback data -> UNKNOWN, lower-bound with the snapshot gap.
  * - Non-empty with target-relevant dynamic evidence, or with evidence that is unavailable
  *   (#508 D1/D5: corrupt/wrong-shaped/missing) -> keep earned risk band, lower-bound.
  * - Otherwise exact: all epistemic fields omitted.
@@ -177,6 +193,7 @@ export function resolveImpactEpistemic(
         input.targetFileResolution,
         input.dynamicEvidence,
         input.dynamicEvidenceUnavailableReason,
+        input.callSiteFallbackUnavailableReason,
       ),
     };
   }

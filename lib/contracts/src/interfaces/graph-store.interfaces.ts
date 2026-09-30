@@ -211,6 +211,9 @@ export interface L3AnchorRange {
 export interface IMetaRepo {
   get(key: string): string | undefined;
   set(key: string, value: string): void;
+  /** Deletes one key when restoring a snapshot that predates a capability. Optional for
+   *  compatibility with alternate providers; callers must fail closed when it is absent. */
+  delete?(key: string): void;
 }
 
 export interface IProjectsRepo {
@@ -574,6 +577,18 @@ export interface AstCallSiteRow {
   callee_kind: string | null;
 }
 
+/** Project-portable call-site data exported in a knowledge snapshot. It deliberately excludes
+ *  SQLite row ids and project ids, which are local to each clone. */
+export interface SnapshotCallSiteRow {
+  filePath: string;
+  targetFunction: string;
+  startLine: number;
+  startColumn: number;
+  calleeName: string | null;
+  receiverText: string | null;
+  calleeKind: string | null;
+}
+
 export interface ICallSitesRepo {
   /** Deletes all call-site rows for one file (mirrors IGraphNodesRepo.deleteNodesForPath's
    *  delete-then-reinsert-on-reparse pattern) -- called by GraphPersisterService before
@@ -620,6 +635,12 @@ export interface ICallSitesRepo {
     projectId: number,
     targetFunctions: string[],
   ): Map<string, Array<{ startLine: number; startColumn: number }>>;
+  /** Stable, project-portable snapshot read, ordered by every exported field. Optional so older
+   *  alternate providers can still run; snapshot packing omits the capability when absent. */
+  getAllForProject?(projectId: number): SnapshotCallSiteRow[];
+  /** Replaces the project's complete call-site set during hydration. Optional for older
+   *  providers; hydration marks the capability unavailable when it is not implemented. */
+  replaceForProject?(projectId: number, callSites: SnapshotCallSiteRow[]): void;
 }
 
 /**

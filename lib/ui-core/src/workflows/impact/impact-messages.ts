@@ -32,6 +32,10 @@ export const IMPACT_MESSAGES = {
    *  bound. A forced full re-ingestion rebuilds the evidence from source. */
   RISK_NOTE_DYNAMIC_EVIDENCE_UNAVAILABLE: (reason: string) =>
     `Runtime dependency evidence is unavailable (${reason}) -- dynamic import() boundaries could not be checked, so this result is a lower bound. Run "docuvia analyze --force" to rebuild it.`,
+  /** Issue #516: the snapshot did not preserve the #217 rows needed to recover unresolved
+   *  callers. This only applies when the call-site fallback would otherwise run. */
+  RISK_NOTE_CALL_SITE_FALLBACK_UNAVAILABLE: (reason: string) =>
+    `Call-site fallback evidence is unavailable (${reason}) -- the fallback could not check unresolved callers, so this result is a lower bound. Run "docuvia clean" to reset the local graph, then "docuvia init" to rebuild Tier A call-site evidence.`,
   /** Issue #192: attached to an empty blast radius even at full Tier B coverage -- the static
    *  edge graph only models calls/implements/extends, so dynamic-loading patterns produce no
    *  edge no matter how complete ingestion was (AGENTS.md's documented impact blind spots). */

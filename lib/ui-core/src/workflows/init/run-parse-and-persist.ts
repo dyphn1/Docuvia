@@ -7,6 +7,42 @@ import type {
   IGraphStore,
   ParsedAstFileResult,
 } from "@workspace/contracts";
+import {
+  SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallSiteAvailabilityStates,
+} from "@workspace/contracts";
+
+/** Marks the project capability available only when the full pass parsed every discoverable file. */
+export function markCallSitesAvailableAfterCompleteIngestion(input: {
+  store: IGraphStore;
+  projectId: number;
+  candidateFileCount: number | undefined;
+  parsedFileCount: number;
+  failedFileCount: number;
+  skippedOversizedCount: number;
+}): void {
+  const {
+    store,
+    projectId,
+    candidateFileCount,
+    parsedFileCount,
+    failedFileCount,
+    skippedOversizedCount,
+  } = input;
+  if (
+    candidateFileCount === undefined ||
+    candidateFileCount !== parsedFileCount ||
+    failedFileCount > 0 ||
+    skippedOversizedCount > 0
+  ) {
+    return;
+  }
+
+  store.meta.set(
+    `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+    SnapshotCallSiteAvailabilityStates.AVAILABLE,
+  );
+}
 
 export interface RunParseAndPersistResult {
   parsedResults: ParsedAstFileResult[];

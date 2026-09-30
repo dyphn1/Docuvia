@@ -8,7 +8,10 @@ import {
 } from "@workspace/contracts";
 import { seedProjectRow } from "../init/seed-project-row.js";
 import { runDiscoveryPipeline } from "../init/run-discovery-pipeline.js";
-import { runParseAndPersist } from "../init/run-parse-and-persist.js";
+import {
+  markCallSitesAvailableAfterCompleteIngestion,
+  runParseAndPersist,
+} from "../init/run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "../init/stamp-full-ingestion-for-tier-b.js";
 import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
@@ -102,6 +105,14 @@ export async function runFullIngestion(deps: {
         fileSkippedOversized: ANALYZE_EVENTS.FULL_FILE_SKIPPED_OVERSIZED,
       },
     });
+  markCallSitesAvailableAfterCompleteIngestion({
+    store,
+    projectId: project.id,
+    candidateFileCount: discoveryResult.candidateFileCount,
+    parsedFileCount: parsedResults.length,
+    failedFileCount: failures.length,
+    skippedOversizedCount: discoveryResult.skippedOversized.length,
+  });
 
   const failedPaths = new Set(failures.map(({ file }) => file));
   if (failedPaths.size > 0) {

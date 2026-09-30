@@ -175,6 +175,7 @@ describe("SnapshotWorkflow.execute()", () => {
           project: undefined,
           files: [],
           lastIngestedSourceSha: undefined,
+          snapshotVersion: 1,
         },
       }),
     );
@@ -407,6 +408,104 @@ describe("SnapshotWorkflow.execute()", () => {
     // snapshot-renderer.service.unit.test.ts / l3-card-renderer.unit.test.ts in lib/core.
     expect(renderMock).toHaveBeenCalledWith(
       expect.objectContaining({ l3Rows: [l3Row] }),
+    );
+  });
+
+  it("[happy] passes project-portable call sites and dynamic evidence into the snapshot payload", async () => {
+    const evidenceJson = JSON.stringify([
+      {
+        sourceFile: "src/loader.ts",
+        kind: "dynamic-import",
+        expression: "`./plugins/${name}.js`",
+        startLine: 4,
+        startColumn: 7,
+        literalPrefix: "./plugins/",
+        literalSuffix: ".js",
+        status: "bounded",
+        candidatePaths: ["src/plugins/alpha.ts"],
+        reason: "template-literal",
+      },
+    ]);
+    const callSites = [
+      {
+        filePath: "src/host.ts",
+        targetFunction: "loadPlugin",
+        startLine: 10,
+        startColumn: 2,
+        calleeName: "loadPlugin",
+        receiverText: null,
+        calleeKind: "bare",
+      },
+    ];
+    const getAllForProject = vi.fn().mockReturnValue(callSites);
+    const getOrInsert = vi.fn();
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({
+          id: 42,
+          name: "demo",
+          repo_url: "file:///demo",
+        }),
+        insert: vi.fn(),
+        getOrInsert,
+        count: vi.fn(),
+      },
+      meta: {
+        get: vi.fn((key: string) =>
+          key === "impact.dynamic-dependencies.v1:42"
+            ? evidenceJson
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+      callSites: {
+        deleteForFile: vi.fn(),
+        insertMany: vi.fn(),
+        getForFiles: vi.fn().mockReturnValue(new Map()),
+        getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+        getAllForProject,
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const renderMock = vi.fn().mockResolvedValue({
+      nodesWritten: 1,
+      edgesWritten: 0,
+      markdownFilesWritten: 1,
+    });
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: renderMock,
+    }));
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn(),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    }));
+    docuviaFactory.lock();
+
+    await new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute();
+
+    expect(getAllForProject).toHaveBeenCalledWith(42);
+    expect(renderMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        callSites,
+        metadata: expect.objectContaining({
+          snapshotVersion: 1,
+          capabilities: {
+            dynamicDependencyEvidence: { version: 1, payload: evidenceJson },
+            callSites: { version: 1 },
+          },
+        }),
+      }),
     );
   });
 

@@ -3,13 +3,29 @@ import type {
   L3NodeRow,
   NodeLinkRow,
   ProjectFileSnapshotMetadata,
+  SnapshotCallSiteRow,
 } from "./graph-store.interfaces.js";
+
+export interface SnapshotVersionedPayload<T> {
+  version: number;
+  payload: T;
+}
+
+export interface SnapshotCapabilities {
+  /** Raw persisted JSON is retained so hydration can use the strict impact evidence decoder. */
+  dynamicDependencyEvidence?: SnapshotVersionedPayload<string>;
+  /** Call-site rows live in their own JSONL file; this section versions that file's shape. */
+  callSites?: { version: number };
+}
 
 export interface SnapshotMetadata {
   project?: { name: string; repoUrl: string };
   files: ProjectFileSnapshotMetadata[];
   /** Source HEAD represented by this graph; restores status graph freshness after hydrate. */
   lastIngestedSourceSha?: string;
+  /** Explicit version of the knowledge snapshot metadata and capability sections. */
+  snapshotVersion?: number;
+  capabilities?: SnapshotCapabilities;
 }
 
 /**
@@ -24,6 +40,8 @@ export interface SnapshotRenderInput {
   outDir: string;
   l2Rows: L2NodeRow[];
   linkRows: NodeLinkRow[];
+  /** Project-portable Tier A call sites. When present, an empty list is a complete empty set. */
+  callSites?: SnapshotCallSiteRow[];
   /**
    * Exportable L3 decision rows (`IGraphStore.l3.getAllExportable()`'s output). When present, the
    * renderer additionally writes one `knowledge/_l3/<content_hash>.md` card per resolvable row —

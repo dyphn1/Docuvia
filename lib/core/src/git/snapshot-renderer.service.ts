@@ -6,7 +6,10 @@ import {
   type ISnapshotRenderer,
   type SnapshotRenderInput,
   type SnapshotRenderResult,
+  type SnapshotCallSiteRow,
   type TopologyNodeKind,
+  KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+  SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
   LinkTypes,
   UTF8_ENCODING,
   DocuviaError,
@@ -32,6 +35,36 @@ interface RenderNode {
   filePath?: string;
 }
 
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function compareNullableText(
+  left: string | null,
+  right: string | null,
+): number {
+  if (left === null) return right === null ? 0 : -1;
+  if (right === null) return 1;
+  return compareText(left, right);
+}
+
+function compareCallSites(
+  left: SnapshotCallSiteRow,
+  right: SnapshotCallSiteRow,
+): number {
+  return (
+    compareText(left.filePath, right.filePath) ||
+    compareText(left.targetFunction, right.targetFunction) ||
+    left.startLine - right.startLine ||
+    left.startColumn - right.startColumn ||
+    compareNullableText(left.calleeName, right.calleeName) ||
+    compareNullableText(left.receiverText, right.receiverText) ||
+    compareNullableText(left.calleeKind, right.calleeKind)
+  );
+}
+
 /**
  * Renders the current knowledge-graph state (already persisted to `IGraphStore`) into the
  * git-diffable directory shape `snapshot` packs onto the hidden knowledge branch — `graph/
@@ -49,7 +82,7 @@ export class SnapshotRendererService implements ISnapshotRenderer {
   public async render(
     input: SnapshotRenderInput,
   ): Promise<SnapshotRenderResult> {
-    const { outDir, l2Rows, linkRows, l3Rows, metadata } = input;
+    const { outDir, l2Rows, linkRows, l3Rows, metadata, callSites } = input;
 
     const graphDir = path.join(outDir, GitConstants.GRAPH_DIR_NAME);
     const knowledgeDir = path.join(outDir, GitConstants.KNOWLEDGE_DIR_NAME);
@@ -142,6 +175,8 @@ export class SnapshotRendererService implements ISnapshotRenderer {
       );
     }
 
+    await this.writeCallSites(graphDir, callSites);
+
     await this.writeSnapshotMetadata(graphDir, metadata);
 
     const limit = pLimit(MARKDOWN_WRITE_CONCURRENCY);
@@ -191,17 +226,17 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     graphDir: string,
     metadata: SnapshotRenderInput["metadata"],
   ): Promise<void> {
-    if (!metadata) return;
+    const snapshotMetadata = metadata ?? { files: [] };
     const metadataData = {
-      ...(metadata.project
+      ...(snapshotMetadata.project
         ? {
             project: {
-              name: metadata.project.name,
-              repoUrl: metadata.project.repoUrl,
+              name: snapshotMetadata.project.name,
+              repoUrl: snapshotMetadata.project.repoUrl,
             },
           }
         : {}),
-      files: [...metadata.files]
+      files: [...snapshotMetadata.files]
         .sort((a, b) => a.filePath.localeCompare(b.filePath))
         .map((file) => ({
           filePath: file.filePath,
@@ -209,13 +244,42 @@ export class SnapshotRendererService implements ISnapshotRenderer {
           lastTierBProcessedAt: file.lastTierBProcessedAt,
           lastTierBCommitSha: file.lastTierBCommitSha,
         })),
-      ...(metadata.lastIngestedSourceSha
-        ? { lastIngestedSourceSha: metadata.lastIngestedSourceSha }
+      ...(snapshotMetadata.lastIngestedSourceSha
+        ? { lastIngestedSourceSha: snapshotMetadata.lastIngestedSourceSha }
+        : {}),
+      snapshotVersion: KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
+      ...(snapshotMetadata.capabilities &&
+      Object.keys(snapshotMetadata.capabilities).length > 0
+        ? { capabilities: snapshotMetadata.capabilities }
         : {}),
     };
     await fs.writeFile(
       path.join(graphDir, GitConstants.METADATA_JSON_NAME),
       JSON.stringify(metadataData, null, 2) + "\n",
+      UTF8_ENCODING,
+    );
+  }
+
+  private async writeCallSites(
+    graphDir: string,
+    callSites: SnapshotRenderInput["callSites"],
+  ): Promise<void> {
+    if (callSites === undefined) return;
+    const callSitesData = callSites
+      .map((row) => ({
+        filePath: row.filePath,
+        targetFunction: row.targetFunction,
+        startLine: row.startLine,
+        startColumn: row.startColumn,
+        calleeName: row.calleeName,
+        receiverText: row.receiverText,
+        calleeKind: row.calleeKind,
+      }))
+      .sort(compareCallSites)
+      .map((row) => JSON.stringify(row));
+    await fs.writeFile(
+      path.join(graphDir, SNAPSHOT_CALL_SITES_JSONL_FILE_NAME),
+      callSitesData.length > 0 ? `${callSitesData.join("\n")}\n` : "",
       UTF8_ENCODING,
     );
   }

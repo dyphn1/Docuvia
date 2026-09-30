@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#anonymous@L241
+id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts
@@ -7,4 +7,4 @@ filePath: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts`
-test.ts`
+unit.test.ts`

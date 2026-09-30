@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/hooks/hooks-workflow.unit.test.ts#anonymous@L22
+id: lib/ui-core/src/workflows/hooks/hooks-workflow.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/hooks/hooks-workflow.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/hooks/hooks-workflow.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/hooks/hooks-workflow.unit.test.ts`
+ts`

@@ -1181,6 +1181,178 @@ describe("runDeltaIngestion()", () => {
     expect(fs.existsSync(initLogPath)).toBe(false);
   });
 
+  it("[state-diff] retires modified paths that fail parsing and removes their queued work", async () => {
+    const failedFile = "src/broken.ts";
+    const keptFile = "src/kept.ts";
+    const files = new Map([
+      [failedFile, "old-broken-hash"],
+      [keptFile, "kept-hash"],
+    ]);
+    const nodeKeys = new Set([
+      `${failedFile}#oldBroken`,
+      `${keptFile}#keptSymbol`,
+    ]);
+    const links = new Set([`${failedFile}#oldBroken->${keptFile}#keptSymbol`]);
+    const callSites = new Set([
+      `${failedFile}:1:0:oldBrokenCall`,
+      `${keptFile}:1:0:keptCall`,
+    ]);
+    const events: string[] = [];
+    const oldCallStats = {
+      total: 1,
+      resolved: 0,
+      selfDiscarded: 0,
+      unresolved: 1,
+    };
+    const keptCallStats = {
+      total: 1,
+      resolved: 1,
+      selfDiscarded: 0,
+      unresolved: 0,
+    };
+
+    store.files.getAllHashes = vi.fn(() =>
+      Array.from(files, ([filePath, contentHash]) => ({
+        filePath,
+        contentHash,
+      })),
+    );
+    store.files.deleteFile = vi.fn((_projectId, filePath) => {
+      events.push(`deleteFile:${filePath}`);
+      files.delete(filePath);
+    });
+    store.graph.deleteNodesForPath = vi.fn((filePath) => {
+      events.push(`deleteNodes:${filePath}`);
+      const prefix = `${filePath}#`;
+      for (const nodeKey of nodeKeys) {
+        if (nodeKey.startsWith(prefix)) nodeKeys.delete(nodeKey);
+      }
+      for (const link of links) {
+        if (link.includes(prefix)) links.delete(link);
+      }
+      return [];
+    });
+    store.callSites.deleteForFile = vi.fn((_projectId, filePath) => {
+      events.push(`deleteCallSites:${filePath}`);
+      const prefix = `${filePath}:`;
+      for (const callSite of callSites) {
+        if (callSite.startsWith(prefix)) callSites.delete(callSite);
+      }
+    });
+    const setMetadata = store.meta.set;
+    store.meta.set = vi.fn((key, value) => {
+      if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA) {
+        events.push("sourceSha");
+      }
+      setMetadata(key, value);
+    });
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: { [failedFile]: oldCallStats, [keptFile]: keptCallStats },
+      }),
+    );
+    store.meta.set(
+      GitConstants.META_KEY_TIER_B_QUEUE,
+      JSON.stringify([
+        { file: failedFile, commitSha: FROM_SHA },
+        { file: keptFile, commitSha: FROM_SHA },
+      ]),
+    );
+    store.meta.set(
+      GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      JSON.stringify({
+        headSha: FROM_SHA,
+        remainingQueue: [
+          { file: failedFile, commitSha: FROM_SHA },
+          { file: keptFile, commitSha: FROM_SHA },
+        ],
+      }),
+    );
+    const failedTierCEntry = {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: `${failedFile}#oldBroken`,
+      commitSha: FROM_SHA,
+      file: failedFile,
+    };
+    const keptTierCEntry = {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: `${keptFile}#keptSymbol`,
+      commitSha: FROM_SHA,
+      file: keptFile,
+    };
+    store.meta.set(
+      GitConstants.META_KEY_TIER_C_QUEUE,
+      JSON.stringify([failedTierCEntry, keptTierCEntry]),
+    );
+
+    astProcessor.processFiles = vi.fn().mockResolvedValue({
+      parsed: [],
+      failures: [
+        {
+          file: failedFile,
+          hash: "new-broken-hash",
+          error: "parse failed",
+        },
+      ],
+    });
+    semanticDiffAnalyzer.analyzeFile = vi.fn().mockResolvedValue([
+      {
+        nodeId: "newBroken",
+        nodeType: "function_declaration",
+        pruningLevel: 1,
+        newRange: { startRow: 0, endRow: 1 },
+      },
+    ]);
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: failedFile, status: "modified" }]),
+      readFileAtRef: vi.fn().mockResolvedValue("new source"),
+      getChangedLineRanges: vi
+        .fn()
+        .mockResolvedValue([{ startRow: 0, endRow: 1 }]),
+    });
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.graph.deleteNodesForPath).toHaveBeenCalledWith(failedFile);
+    expect(store.callSites.deleteForFile).toHaveBeenCalledWith(1, failedFile);
+    expect(store.files.deleteFile).toHaveBeenCalledWith(1, failedFile);
+    expect(Array.from(files.keys())).toEqual([keptFile]);
+    expect(Array.from(nodeKeys)).toEqual([`${keptFile}#keptSymbol`]);
+    expect(Array.from(links)).toEqual([]);
+    expect(Array.from(callSites)).toEqual([`${keptFile}:1:0:keptCall`]);
+    expect(readCallResolution(store)).toEqual({ [keptFile]: keptCallStats });
+    expect(readTierBQueue(store)).toEqual([
+      { file: keptFile, commitSha: FROM_SHA },
+    ]);
+    expect(
+      JSON.parse(store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!),
+    ).toEqual({
+      headSha: FROM_SHA,
+      remainingQueue: [{ file: keptFile, commitSha: FROM_SHA }],
+    });
+    expect(readTierCQueue(store)).toEqual([keptTierCEntry]);
+    expect(store.meta.get(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)).toBe(
+      HEAD_SHA,
+    );
+    expect(events.indexOf(`deleteFile:${failedFile}`)).toBeLessThan(
+      events.indexOf("sourceSha"),
+    );
+    expect(result.kind).toBe("autoDelta");
+    if (result.kind === "autoDelta") expect(result.filesFailed).toBe(1);
+  });
+
   it("enqueues a CONTRACT_CHANGED symbol into the Tier C queue, keyed by node_key", async () => {
     const entries: ChangedFileEntry[] = [
       { file: "src/a.ts", status: "modified" },

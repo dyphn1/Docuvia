@@ -103,6 +103,15 @@ export async function runFullIngestion(deps: {
       },
     });
 
+  const failedPaths = new Set(failures.map(({ file }) => file));
+  if (failedPaths.size > 0) {
+    await store.withWriteLock(() => {
+      for (const file of failedPaths) retirePath(store, project.id, file);
+      removeTierBQueueEntriesForFiles(store, failedPaths);
+      removeTierCQueueEntriesForFiles(store, failedPaths);
+    });
+  }
+
   // Issue #221: a full run reparses every discoverable file, so its per-file call-resolution
   // counters replace the stored map wholesale, including an authoritative empty result.
   const fullCallResolutionByFile = callResolutionByFile ?? {};

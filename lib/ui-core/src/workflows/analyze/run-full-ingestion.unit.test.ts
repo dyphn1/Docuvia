@@ -17,7 +17,7 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import { GitConstants, TierCCandidateKinds } from "@workspace/contracts";
 import {
   makeMockStore,
   makeMockGitProvider,
@@ -25,6 +25,7 @@ import {
 } from "@workspace/contracts/testing";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { readTierBQueue } from "./tier-b-queue.js";
+import { readTierCQueue } from "./tier-c-queue.js";
 
 // Mirrors init-workflow.unit.test.ts's mocking pattern (Factory Lock, pure orchestration unit
 // test) -- runFullIngestion reuses init's own seedProjectRow/runDiscoveryPipeline/
@@ -745,5 +746,156 @@ describe("runFullIngestion()", () => {
       events.indexOf("persist"),
     );
     expect(events.indexOf("persist")).toBeLessThan(events.indexOf("sourceSha"));
+  });
+
+  it("[state-diff] retires current paths that fail parsing and preserves successful files", async () => {
+    const failedFile = "src/broken.ts";
+    const successfulFile = "src/healthy.ts";
+    const headSha = "full-head-sha";
+    const oldCallStats = {
+      total: 1,
+      resolved: 0,
+      selfDiscarded: 0,
+      unresolved: 1,
+    };
+    const currentCallStats = {
+      total: 1,
+      resolved: 1,
+      selfDiscarded: 0,
+      unresolved: 0,
+    };
+    const { store, state, events, metadata } = makeSemanticGraphStore();
+    state.files.set(failedFile, "old-broken-hash");
+    state.files.set(successfulFile, "old-healthy-hash");
+    state.nodeKeys.add(`${failedFile}#oldBroken`);
+    state.nodeKeys.add(`${successfulFile}#oldHealthy`);
+    state.links.add(`${failedFile}#oldBroken->${successfulFile}#oldHealthy`);
+    state.callSites.add(`${failedFile}:1:0:oldBrokenCall`);
+    state.callSites.add(`${successfulFile}:1:0:oldHealthyCall`);
+    metadata.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({ byFile: { [failedFile]: oldCallStats } }),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_B_QUEUE,
+      JSON.stringify([{ file: failedFile, commitSha: "old-sha" }]),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      JSON.stringify({
+        headSha: "old-sha",
+        remainingQueue: [{ file: failedFile, commitSha: "old-sha" }],
+      }),
+    );
+    metadata.set(
+      GitConstants.META_KEY_TIER_C_QUEUE,
+      JSON.stringify([
+        {
+          kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+          target: `${failedFile}#oldBroken`,
+          commitSha: "old-sha",
+          file: failedFile,
+        },
+      ]),
+    );
+
+    const currentFiles = [
+      { file: failedFile, hash: "new-broken-hash", code: "invalid source" },
+      {
+        file: successfulFile,
+        hash: "new-healthy-hash",
+        code: "export const healthy = true;",
+      },
+    ];
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue({
+      filesToParse: currentFiles,
+      existingHashes: new Map(),
+      skippedCount: 0,
+      skippedOversized: [],
+    });
+
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger: createMockLogger(),
+    });
+    vi.mocked(astProcessor.processFiles).mockResolvedValue({
+      parsed: [
+        {
+          file: successfulFile,
+          hash: "new-healthy-hash",
+          data: {
+            imports: [],
+            exports: [],
+            functions: [],
+            classes: [],
+            calls: [],
+          },
+          language: "typescript",
+        },
+      ],
+      failures: [
+        {
+          file: failedFile,
+          hash: "new-broken-hash",
+          error: "parse failed",
+        },
+      ],
+    });
+
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+    vi.mocked(graphPersister.persist).mockImplementation(
+      async ({ parsedResults }) => {
+        for (const result of parsedResults) {
+          store.graph.deleteNodesForPath(result.file);
+          store.callSites.deleteForFile(1, result.file);
+          store.files.upsertFile({
+            projectId: 1,
+            filePath: result.file,
+            contentHash: result.hash,
+          });
+          state.nodeKeys.add(`${successfulFile}#currentHealthy`);
+          state.callSites.add(`${successfulFile}:1:0:healthyCall`);
+        }
+        return {
+          updatedCount: parsedResults.length,
+          callResolutionByFile: { [successfulFile]: currentCallStats },
+        };
+      },
+    );
+
+    const result = await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue(headSha),
+      }),
+    });
+
+    expect(result.kind).toBe("autoFullIngestion");
+    if (result.kind === "autoFullIngestion") {
+      expect(result.filesFailed).toBe(1);
+    }
+    expect(semanticGraphSnapshot(state)).toEqual({
+      files: [successfulFile],
+      nodeKeys: [`${successfulFile}#currentHealthy`],
+      links: [],
+      callSites: [`${successfulFile}:1:0:healthyCall`],
+    });
+    expect(
+      JSON.parse(metadata.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!),
+    ).toEqual({ byFile: { [successfulFile]: currentCallStats } });
+    expect(readTierBQueue(store)).toEqual([
+      { file: successfulFile, commitSha: headSha },
+    ]);
+    expect(
+      JSON.parse(metadata.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!),
+    ).toEqual({ headSha: "old-sha", remainingQueue: [] });
+    expect(readTierCQueue(store)).toEqual([]);
+    expect(events.indexOf(`deleteFile:${failedFile}`)).toBeLessThan(
+      events.indexOf("sourceSha"),
+    );
   });
 });

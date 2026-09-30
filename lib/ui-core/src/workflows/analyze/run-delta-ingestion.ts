@@ -337,10 +337,10 @@ async function classifyChangedFile(
   };
 }
 
-/** The lock-held persist step: retire deleted, renamed-old, and oversized paths (`retirePath`),
- *  re-parse + persist the changed files via the shared `runParseAndPersist` phase helper, append
- *  the Tier B/C queues, advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1),
- *  and stamp the last-ingested source sha. Returns the parse failures. */
+/** Retires deleted, renamed-old, oversized, and parse-failed paths (`retirePath`), re-parses +
+ *  persists the changed files via the shared `runParseAndPersist` phase helper, appends the Tier
+ *  B/C queues, advances the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1), and
+ *  stamps the last-ingested source sha. Returns the parse failures. */
 async function persistDelta(
   deps: DeltaDeps,
   work: {
@@ -410,6 +410,7 @@ async function persistDelta(
     failures = result.failures;
     callResolutionByFile = result.callResolutionByFile;
   }
+  const failedPaths = new Set(failures.map(({ file }) => file));
 
   // Issue #221 / #526 / #522: reconcile every path touched by this delta. A file with zero call
   // sites has no entry in callResolutionByFile, so the re-parse and retirement sets are
@@ -431,12 +432,15 @@ async function persistDelta(
   }
 
   await store.withWriteLock(() => {
+    for (const file of failedPaths) retirePath(store, projectId, file);
     if (tierBEntries.length > 0) {
       appendTierBQueueEntries(store, tierBEntries);
     }
     if (tierCEntries.length > 0) {
       appendTierCQueueEntries(store, tierCEntries, logger);
     }
+    removeTierBQueueEntriesForFiles(store, failedPaths);
+    removeTierCQueueEntriesForFiles(store, failedPaths);
     if (changedBytes > 0) {
       const priorBytes = Number(
         store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES) ?? 0,

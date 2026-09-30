@@ -17,6 +17,10 @@ import {
   TIER_C_COMMIT_MESSAGE_MAX_LENGTH,
   TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT,
   TIER_C_COMMIT_MESSAGE_USER_MESSAGE,
+  TIER_C_CONTRACT_SYMBOL_SOURCE_CLOSE_TAG,
+  TIER_C_CONTRACT_SYMBOL_SOURCE_CLOSE_TAG_ESCAPE,
+  TIER_C_CONTRACT_SYMBOL_SOURCE_MAX_BYTES,
+  TIER_C_CONTRACT_SYMBOL_SOURCE_TRUNCATION_MARKER,
   TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT,
   TIER_C_CONTRACT_SYMBOL_USER_MESSAGE,
 } from "./analyze-messages.js";
@@ -519,6 +523,10 @@ function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** C0 controls + DEL, minus `\t`/`\n`/`\r` -- shared by both Tier C prompt sanitizers. */
+const UNSAFE_CONTROL_CHARACTERS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
 /** Basic sanitization of an attacker-controllable commit message before it reaches the Tier C
  *  LLM (issue #111): strips control characters (ANSI/terminal escape sequences and friends, but
  *  keeping `\n`/`\t`/`\r` for body formatting) and truncates to
@@ -526,11 +534,73 @@ function errMessage(err: unknown): string {
  *  window / Tier C budget. The prompt-side defense (system prompt + untrusted-data delimiter)
  *  lives in `analyze-messages.ts`. */
 function sanitizeCommitMessage(message: string): string {
-  const stripped = message.replace(
-    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,
-    "",
-  );
+  const stripped = message.replace(UNSAFE_CONTROL_CHARACTERS, "");
   return stripped.slice(0, TIER_C_COMMIT_MESSAGE_MAX_LENGTH);
+}
+
+function utf8ByteLengthForCodePoint(codePoint: number): number {
+  if (codePoint <= 0x7f) return 1;
+  if (codePoint <= 0x7ff) return 2;
+  if (codePoint <= 0xffff) return 3;
+  return 4;
+}
+
+/** Sanitizes and bounds contract-symbol source before it enters a Tier C prompt. */
+function sanitizeContractSymbolSource(rawSource: string): string {
+  // Strip controls before scanning for the closing tag so `</\u0000source_file>` can't
+  // collapse into a live terminator after sanitization.
+  const source = rawSource.replace(UNSAFE_CONTROL_CHARACTERS, "");
+  const encoder = new TextEncoder();
+  const closingTag = TIER_C_CONTRACT_SYMBOL_SOURCE_CLOSE_TAG;
+  const closingTagName = closingTag.slice(2, -1);
+  const closingTagPattern = new RegExp(
+    `${closingTag.slice(0, 1)}\\${closingTag.slice(1, 2)}\\s*${closingTagName}\\s*${closingTag.slice(-1)}`,
+    "iy",
+  );
+  const segments: Array<{ text: string; byteLength: number }> = [];
+  let byteLength = 0;
+  let truncated = false;
+
+  for (let index = 0; index < source.length;) {
+    let text: string;
+    let segmentBytes: number;
+    closingTagPattern.lastIndex = index;
+    const closingTagMatch = closingTagPattern.exec(source);
+    if (closingTagMatch) {
+      text = TIER_C_CONTRACT_SYMBOL_SOURCE_CLOSE_TAG_ESCAPE;
+      segmentBytes = encoder.encode(text).byteLength;
+      index += closingTagMatch[0].length;
+    } else {
+      const codePoint = source.codePointAt(index)!;
+      text = String.fromCodePoint(codePoint);
+      segmentBytes = utf8ByteLengthForCodePoint(codePoint);
+      index += text.length;
+    }
+
+    if (byteLength + segmentBytes > TIER_C_CONTRACT_SYMBOL_SOURCE_MAX_BYTES) {
+      truncated = true;
+      break;
+    }
+    segments.push({ text, byteLength: segmentBytes });
+    byteLength += segmentBytes;
+  }
+
+  if (!truncated) return segments.map(({ text }) => text).join("");
+
+  const markerBytes = encoder.encode(
+    TIER_C_CONTRACT_SYMBOL_SOURCE_TRUNCATION_MARKER,
+  ).byteLength;
+  const sourceBytesBeforeMarker =
+    TIER_C_CONTRACT_SYMBOL_SOURCE_MAX_BYTES - markerBytes;
+  while (byteLength > sourceBytesBeforeMarker) {
+    const removed = segments.pop();
+    if (removed) byteLength -= removed.byteLength;
+  }
+
+  return (
+    segments.map(({ text }) => text).join("") +
+    TIER_C_CONTRACT_SYMBOL_SOURCE_TRUNCATION_MARKER
+  );
 }
 
 async function callTierCLlm(
@@ -697,7 +767,7 @@ async function processContractSymbolEntry(
   const userMessage = TIER_C_CONTRACT_SYMBOL_USER_MESSAGE(
     symbolName,
     file,
-    content,
+    sanitizeContractSymbolSource(content),
   );
 
   let callResult: Awaited<ReturnType<typeof callTierCLlm>>;

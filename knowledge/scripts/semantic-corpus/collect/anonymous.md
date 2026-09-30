@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/collect.mts#anonymous@L357
+id: scripts/semantic-corpus/collect.mts#anonymous@L474
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/collect.mts

@@ -1253,12 +1253,6 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
-      "filePath": "lib/contracts/src/constants/tier-c-queue.ts",
-      "contentHash": "5733f395eec4a599f7193b4eb9c84e18364328ae",
-      "lastTierBProcessedAt": "2026-09-30 03:47:12",
-      "lastTierBCommitSha": "902b96986e78415a57a09c7095c45a2e1eb20224"
-    },
-    {
       "filePath": "lib/contracts/src/errors/docuvia-error.ts",
       "contentHash": "2838153204110a965240ec0f1b297915b5263d62",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -1445,12 +1439,6 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
-      "filePath": "lib/contracts/src/interfaces/tier-c-queue.interfaces.ts",
-      "contentHash": "b835a8ce2b37b801e4ac7f99f37bdb40aa339776",
-      "lastTierBProcessedAt": "2026-09-30 03:47:12",
-      "lastTierBCommitSha": "902b96986e78415a57a09c7095c45a2e1eb20224"
-    },
-    {
       "filePath": "lib/contracts/src/interfaces/topology.interfaces.ts",
       "contentHash": "0e51e43631b17759fcfdbd0b9b3247e29c86d826",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -1581,18 +1569,6 @@
       "contentHash": "0e17733d61994a68208a07a971c8dcca6c4c2ba4",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
-    },
-    {
-      "filePath": "lib/contracts/src/utils/tier-c-queue.ts",
-      "contentHash": "920e85a2686779b1fc1335b70f4a9135ac29a2ae",
-      "lastTierBProcessedAt": "2026-09-30 03:47:12",
-      "lastTierBCommitSha": "902b96986e78415a57a09c7095c45a2e1eb20224"
-    },
-    {
-      "filePath": "lib/contracts/src/utils/tier-c-queue.unit.test.ts",
-      "contentHash": "8d2a0b8e714dad75e584f1ede471049b1561685f",
-      "lastTierBProcessedAt": "2026-09-30 03:47:12",
-      "lastTierBCommitSha": "902b96986e78415a57a09c7095c45a2e1eb20224"
     },
     {
       "filePath": "lib/core/src/ast/ast-constants.ts",
@@ -3462,13 +3438,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts",
-      "contentHash": "df5868361062ba2f6d14bf9f0e8dbebefd8d5336",
+      "contentHash": "1d5029eb822670603c8dd47a8094a98db6698259",
       "lastTierBProcessedAt": "2026-09-30 02:04:52",
       "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts",
-      "contentHash": "a7e0b64da31234ee6bc27f50c6e6a670ecfa4681",
+      "contentHash": "47a0ca6dcc7e0f904a6ec8eabd2bd8f888104548",
       "lastTierBProcessedAt": "2026-09-30 02:04:52",
       "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
@@ -3564,13 +3540,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.ts",
-      "contentHash": "7f47c9bbeb274ca8c2b72ce08531149d93fa2cc8",
+      "contentHash": "855479a72117d0dbefb2d7faa485a048e215201f",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.unit.test.ts",
-      "contentHash": "329e4126e6e6789055001e84e3dc17cd6b6afbdc",
+      "contentHash": "b1bd9223bc430ed601b3014e33f90c5934357d80",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -4331,5 +4307,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
+  "lastIngestedSourceSha": "4edaed2710657cae0044cc1a52f7e6b945f47ae4"
 }

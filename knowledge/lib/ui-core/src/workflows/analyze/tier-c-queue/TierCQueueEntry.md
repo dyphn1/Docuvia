@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-c-queue.ts#anonymous@L196
+id: lib/ui-core/src/workflows/analyze/tier-c-queue.ts#TierCQueueEntry
 type: symbol
-name: anonymous
+name: TierCQueueEntry
 filePath: lib/ui-core/src/workflows/analyze/tier-c-queue.ts
 ---
-# Symbol: anonymous
+# Symbol: TierCQueueEntry
 
 File: `lib/ui-core/src/workflows/analyze/tier-c-queue.ts`

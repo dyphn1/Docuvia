@@ -34,14 +34,8 @@ Interactive clean (requires confirmation):
 docuvia clean --interactive
 ```
 
-Force clean (non-interactive, deletes immediately):
+Non-interactive clean (destructive, deletes immediately, and suitable for CI or headless scripts):
 
 ```bash
 docuvia clean
-```
-
-Force clean in a CI pipeline or headless script:
-
-```bash
-docuvia clean --force
 ```

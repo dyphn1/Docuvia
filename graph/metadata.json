@@ -522,7 +522,7 @@
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty-report.phase4.integration.test.ts",
-      "contentHash": "20fe2eecd4c4be7e40492c442a64055429acfb07",
+      "contentHash": "7fa03887ce7c46f4543b43efcc12c1d2e806f361",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
@@ -540,7 +540,7 @@
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty.phase3.integration.test.ts",
-      "contentHash": "5c2ebffb86971d48485459214339080546e91c0f",
+      "contentHash": "93bdbcc1fd6d75bddcb0f56c67e724a13933defd",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
@@ -702,13 +702,13 @@
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-transition.phase3.ts",
-      "contentHash": "196fe921db04c3e0c0b309f23d2c2d8ccfb2a949",
+      "contentHash": "a44d65771db6fdb495b42ef8af19f20c64faa73a",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-transition.phase3.unit.test.ts",
-      "contentHash": "a083ee496b08f29d3f2e873bbb413f2d225eb261",
+      "contentHash": "3887892f054fa76247b71c5c9b97d3fd111ea2cf",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
@@ -1253,6 +1253,12 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
+      "filePath": "lib/contracts/src/constants/tier-c-queue.ts",
+      "contentHash": "5733f395eec4a599f7193b4eb9c84e18364328ae",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "lib/contracts/src/errors/docuvia-error.ts",
       "contentHash": "2838153204110a965240ec0f1b297915b5263d62",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -1290,7 +1296,7 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "a492e8ea480ec6b13505ad3f555886099e9343c0",
+      "contentHash": "be492312df1332bd0224c3b5336fd0384b7705da",
       "lastTierBProcessedAt": "2026-09-29 13:31:38",
       "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
     },
@@ -1439,6 +1445,12 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
+      "filePath": "lib/contracts/src/interfaces/tier-c-queue.interfaces.ts",
+      "contentHash": "b835a8ce2b37b801e4ac7f99f37bdb40aa339776",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "lib/contracts/src/interfaces/topology.interfaces.ts",
       "contentHash": "0e51e43631b17759fcfdbd0b9b3247e29c86d826",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -1569,6 +1581,18 @@
       "contentHash": "0e17733d61994a68208a07a971c8dcca6c4c2ba4",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+    },
+    {
+      "filePath": "lib/contracts/src/utils/tier-c-queue.ts",
+      "contentHash": "920e85a2686779b1fc1335b70f4a9135ac29a2ae",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "lib/contracts/src/utils/tier-c-queue.unit.test.ts",
+      "contentHash": "8d2a0b8e714dad75e584f1ede471049b1561685f",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "lib/core/src/ast/ast-constants.ts",
@@ -3240,7 +3264,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-messages.ts",
-      "contentHash": "4ab2a4a85a518b4334b64fbda8acb98a045c0400",
+      "contentHash": "1c31ce21b5bf39b7b869cb30add8f89ba252be5b",
       "lastTierBProcessedAt": "2026-09-30 02:04:52",
       "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
@@ -3276,7 +3300,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/call-resolution-stats.ts",
-      "contentHash": "a8918988547b54cb546256abed35f56220e8cf7a",
+      "contentHash": "7d52fe179138655c6ee48f543d9903ef2a156071",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
@@ -3341,6 +3365,12 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
+      "filePath": "lib/ui-core/src/workflows/analyze/path-retirement.ts",
+      "contentHash": "fb800bed95cdc734eed323fd29be08652f14ecef",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "lib/ui-core/src/workflows/analyze/pending-l3-decisions-store.ts",
       "contentHash": "64379b7483a3fb0ff9109ecee3526eea43c69408",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
@@ -3390,13 +3420,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
-      "contentHash": "6c60b380ded25bb60de096fb9ef52e3ea2b349a3",
+      "contentHash": "f4200d0a3892250dbcafe8707cce3d46ff946f6d",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts",
-      "contentHash": "f2ac6ffc5c9437c247ca3b864e2efa4d60a00c29",
+      "contentHash": "e56d87840d5e762e9ebf2c09d93bbd054f012243",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
@@ -3414,13 +3444,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-full-ingestion.ts",
-      "contentHash": "f3815383a42890cabf8819657de9c8695346545b",
+      "contentHash": "36d4d464161e91faaf3011179ead066c9b3f302c",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts",
-      "contentHash": "f250ad2ecc99e63d86a265bbf6a6ae9cb67ef6e7",
+      "contentHash": "c94999548d3d1ede0e4d221be3071186d98bdba3",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3438,13 +3468,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts",
-      "contentHash": "1d5029eb822670603c8dd47a8094a98db6698259",
+      "contentHash": "ac36bf89fcdef15e80d485314279ff6b0f7bcb40",
       "lastTierBProcessedAt": "2026-09-30 02:04:52",
       "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts",
-      "contentHash": "47a0ca6dcc7e0f904a6ec8eabd2bd8f888104548",
+      "contentHash": "fa64c92a6e3d44b88b261d0eca565788304b1ba9",
       "lastTierBProcessedAt": "2026-09-30 02:04:52",
       "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
@@ -3522,7 +3552,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-candidates.ts",
-      "contentHash": "0559bf5de4dc463c4974ba4c9eca0aa6d986d561",
+      "contentHash": "fe64ee43f0541d9ee7929a949feafb48552661e4",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3540,13 +3570,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.ts",
-      "contentHash": "855479a72117d0dbefb2d7faa485a048e215201f",
+      "contentHash": "d13b606c71b8cfbb8255b23c644b3f83de0d9179",
       "lastTierBProcessedAt": "2026-09-30 04:54:35",
       "lastTierBCommitSha": "5f349ff72a8d20c623935ab56f0df4b65ddc547a"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.unit.test.ts",
-      "contentHash": "b1bd9223bc430ed601b3014e33f90c5934357d80",
+      "contentHash": "21f2262eb70230f89831adea0fb0cba18bcd1259",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3606,7 +3636,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/doctor/doctor-workflow.ts",
-      "contentHash": "08c10b49e4fde59e11553ace4dbc2c1a67b81ca6",
+      "contentHash": "cf567bde5d88948fbf9a98b78512d82a1ae69a25",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -3984,13 +4014,13 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/status/status-workflow.ts",
-      "contentHash": "456d3f1498069a1dc966a3378c606984cd43fe40",
+      "contentHash": "ceee484f28af18ce005e7611f9ce54f54a20f4a9",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
     {
       "filePath": "lib/ui-core/src/workflows/status/status-workflow.unit.test.ts",
-      "contentHash": "bb5474918bd39c8099e4f8fcf9851f045ad2abcc",
+      "contentHash": "dec474d7cd3072abadf735113a45d5256456a724",
       "lastTierBProcessedAt": "2026-09-28 13:05:39",
       "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
     },
@@ -4104,7 +4134,7 @@
     },
     {
       "filePath": "lib/ui-core/test/workflows/doctor-workflow.unit.test.ts",
-      "contentHash": "82b76742957c8e2992dd6b1574c5ead36580ce95",
+      "contentHash": "25d273f90ca55e32f4914cd3cea87e026114b1ee",
       "lastTierBProcessedAt": "2026-09-28 05:42:28",
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     },
@@ -4307,5 +4337,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "4edaed2710657cae0044cc1a52f7e6b945f47ae4"
+  "lastIngestedSourceSha": "7da8f7601b5eb183ade67f3e176906049be951a8"
 }

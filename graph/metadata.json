@@ -534,9 +534,9 @@
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty.phase2.integration.test.ts",
-      "contentHash": "4cd905d47a21ca62b33ec738adf553450e076f5b",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "73e79dc7273b27e1de4d9efcd121bae0ec4e21ed",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/impact-honesty.phase3.integration.test.ts",
@@ -654,9 +654,9 @@
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-corpus.phase2.ts",
-      "contentHash": "265024d076a525637c82bb186811cbbce0c66b76",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "ced1ca92c0430c337d42f4c846303cb8ab9d1287",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-corpus.phase3.ts",
@@ -672,9 +672,9 @@
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-epistemic.phase2.unit.test.ts",
-      "contentHash": "c09034ff45f7615755e92bbb771690b55277956e",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "563d635fda17ada44d335a9d45f37e04d4259ab0",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "artifacts/cli/test/support/impact-honesty-gates.phase4.ts",
@@ -1224,9 +1224,15 @@
     },
     {
       "filePath": "lib/contracts/src/constants/hooks.ts",
-      "contentHash": "1ac1bd4f971fb8301276525b18172ff25d18085f",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "58891e619534c3283575b2adddaa54b7d1a3e68e",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
+    },
+    {
+      "filePath": "lib/contracts/src/constants/knowledge-snapshot.ts",
+      "contentHash": "4975daf8a5fee08d4131ea83b82a2da362f067aa",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/contracts/src/constants/languages.ts",
@@ -1248,9 +1254,15 @@
     },
     {
       "filePath": "lib/contracts/src/constants/source-files.ts",
-      "contentHash": "d64180bbedce3dda177a3fa43e81e1f34d49d003",
+      "contentHash": "7e71499cd6dfcdbc9500548baefc5b45d4ab1b14",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+    },
+    {
+      "filePath": "lib/contracts/src/constants/source-files.unit.test.ts",
+      "contentHash": "d6cb2c3d41b400e6f3fc148b6162691313ded4e9",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/contracts/src/constants/tier-c-queue.ts",
@@ -1296,9 +1308,9 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "65fba3caf93b63ed2d3d5bc0df464b9d9fc11a1b",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "d07311e3a7d9fef56f122adebe1a6be874c08b76",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -1326,7 +1338,7 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/discovery.interfaces.ts",
-      "contentHash": "cfcfc74f4daa75bb98b97c8430377ff4a7614ce5",
+      "contentHash": "0d0d6c002c8a3e5fcf94d173da89b748533148e3",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
@@ -1350,9 +1362,9 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/graph-store.interfaces.ts",
-      "contentHash": "0c859bcef84ab888ecc06eff8d69d4c686187bb4",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "a87d9c2b3ffe0f0f13b8e3d8ecd22731e3f71381",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/contracts/src/interfaces/hooks.interfaces.ts",
@@ -1368,7 +1380,7 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/impact.interfaces.ts",
-      "contentHash": "4f663fcf3c4878b602e8d3206cffbfd6fe181e24",
+      "contentHash": "7e833c753245f8a970c0b4e7e670aa7ce4e3b8d3",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
@@ -1434,9 +1446,9 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/snapshot.interfaces.ts",
-      "contentHash": "9502812cb0d46ba08b521dab1cc28c70e27eebf5",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "f9fa09e052c3f7fe0f42346029f759731e659071",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/contracts/src/interfaces/temp-file-manager.interfaces.ts",
@@ -1758,15 +1770,15 @@
     },
     {
       "filePath": "lib/core/src/discovery/file-discovery.service.ts",
-      "contentHash": "a5a6ea1fed056e23fa0d2dad379eae1a9d031432",
+      "contentHash": "05903a6bab604b168344e100267275a782c842a2",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
       "filePath": "lib/core/src/discovery/file-discovery.service.unit.test.ts",
-      "contentHash": "9e7148ecc8f1d6ec2ae96c8435dd8f7ab3fbd9ad",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "08c9f4061922947446c81022ca9de8d75862eec2",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/discovery/phase2-discovery-hardening.unit.test.ts",
@@ -1800,15 +1812,15 @@
     },
     {
       "filePath": "lib/core/src/git/hydration.service.ts",
-      "contentHash": "6e6c6ecfb687229612ce5c2f52f82a3d0f504a19",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "07dfde697fffa5ed1058ecdb1aac7181a6a8233e",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/git/hydration.service.unit.test.ts",
-      "contentHash": "11c8c200d2f246f359c5a96bb646f7535d451e85",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "25509e855e3238304635188d830df44a8c734141",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/git/knowledge-branch-lock.ts",
@@ -1860,15 +1872,15 @@
     },
     {
       "filePath": "lib/core/src/git/snapshot-renderer.service.ts",
-      "contentHash": "67b4e3e838e650864e66fbec52acf6744f130791",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "235510a6f014b92f860ffe7639026388c331e0bc",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/git/snapshot-renderer.service.unit.test.ts",
-      "contentHash": "00d4eb21d0ea7916b9c46991651c4effb6334e2f",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "092509467d1139d00733d73a598f5a247c6a0c5f",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/graph/call-site-state-diff.unit.test.ts",
@@ -1950,7 +1962,7 @@
     },
     {
       "filePath": "lib/core/src/impact/dynamic-dependency-evidence.ts",
-      "contentHash": "032efab3b455148ef66c12408e47ebab5813db9b",
+      "contentHash": "13f3f71b3495d4f707b3893056d9dc76eca6657a",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
@@ -1968,15 +1980,15 @@
     },
     {
       "filePath": "lib/core/src/impact/impact.service.ts",
-      "contentHash": "b9b39e8bf2ca6762728d318f71803da9ceb56528",
+      "contentHash": "37c160b2e2243153fc1cecebadafe9048d8efa04",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
       "filePath": "lib/core/src/impact/impact.service.unit.test.ts",
-      "contentHash": "83e1b25850b53612f182aab5e06496a8b7a85e31",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "8ccf1a1270f1da2ec18a5de445f119ba80763e48",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/core/src/impact/phase393-dynamic-impact.integration.test.ts",
@@ -3024,9 +3036,9 @@
     },
     {
       "filePath": "lib/schema/src/sqlite/graph-store.integration.test.ts",
-      "contentHash": "de627b1f232917a5f19a69dffa14940793c56a46",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "0de496fa851b004d881b23654dbe77875b064245",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/schema/src/sqlite/graph-store.ts",
@@ -3084,9 +3096,9 @@
     },
     {
       "filePath": "lib/schema/src/sqlite/repos/call-sites-repo.ts",
-      "contentHash": "abd0b682c877985f3cb0d89b8595bb24a41d9f40",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "ae22f8980f85ffd88ece055403c0a8868cb6cf61",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/schema/src/sqlite/repos/files-repo.ts",
@@ -3120,9 +3132,9 @@
     },
     {
       "filePath": "lib/schema/src/sqlite/repos/meta-repo.ts",
-      "contentHash": "89301e50b073beca5867d92ad2ee91220d533e07",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "0187b128d752e46cbbcb88ba1d894a09e2d5e521",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/schema/src/sqlite/repos/projects-repo.ts",
@@ -3426,9 +3438,9 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts",
-      "contentHash": "0231c506aff29e6971263b47294e2ec9c293e61c",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "84e527626397de2fd27ca67ddfe5b8cf1f2b79c9",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts",
@@ -3444,15 +3456,15 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-full-ingestion.ts",
-      "contentHash": "f591ac20d715e3baf4437737958d1115b79039c5",
+      "contentHash": "eb42342cd116837be2fcc6e5f2c6248257cdfac5",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts",
-      "contentHash": "d575b1da323f246f91d60c33be76bd4945620f50",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "206414d785cda96df8d6678e8a1f8a01ffa5ec22",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-b-batch.ts",
@@ -3738,9 +3750,9 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-messages.ts",
-      "contentHash": "a12902a39a5f9c638b6340b07ac99a9cd54a9464",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "e636a9a6f0c43c431e28014688b13bbe8f1665c1",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-result.ts",
@@ -3750,27 +3762,27 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-workflow.ts",
-      "contentHash": "c04bd48d18095cf8e3634831bb748ac1a6197c17",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "a53e9cc961d2f3f2e2716c7fabe9077d1d2fb9dd",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts",
-      "contentHash": "3c1c50095b4e06b2749aede8cb720543e3013a18",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "c9ded5b933350b2e6891feb3a8baa046aee2092a",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/resolve-impact-epistemic.ts",
-      "contentHash": "bbb08bcc1b895efa2a8b7a94265d43338f1a7a65",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "12a56fa205a9d1299e1bea04c013ce1009f26cfe",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/impact/resolve-impact-epistemic.unit.test.ts",
-      "contentHash": "4af195d3294b44efc53d364cb29179af4c03759e",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "212ff3cc7a03fc86d3dada3a8bbdb00280d6973d",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/ensure-git-branch-and-hooks.ts",
@@ -3828,33 +3840,33 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/init-workflow.ts",
-      "contentHash": "5f0463d1170cf0c9082cad6da02117207d294c36",
+      "contentHash": "8cea6f740a99cca151351cdacf81fb7a52573b9a",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/init-workflow.unit.test.ts",
-      "contentHash": "476a88cfe7d237b1f121f6ca43b618cfc9239543",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "7b5192b7edd269b3a6b5409edb68bc8e3333a50b",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/run-discovery-pipeline.ts",
-      "contentHash": "ee0dd5c1a8f3918bfe8cf928f61348c5d3bbcd3c",
+      "contentHash": "23a1f6e1818dbe302561325473fed484dfbdf046",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/run-discovery-pipeline.unit.test.ts",
-      "contentHash": "9c6e757f59373fe44bca60b0d73d061af089cc68",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "27efd9f0584efeab32c5ee45253207247379d03f",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/run-parse-and-persist.ts",
-      "contentHash": "b9c4e0840146cc0baa53a3c9703413158114d157",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "ca02a9e993785ed0a3a70493a868502740ea9148",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/init/run-parse-and-persist.unit.test.ts",
@@ -3960,9 +3972,9 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
-      "contentHash": "6f6d6227ecd3fa87bdc53dc939506e7fb38e0a05",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "0a8b7e084a91f1327505e3eb026d5d041c952c6d",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/snapshot/snapshot-log-writer.ts",
@@ -3990,9 +4002,9 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/snapshot/snapshot-workflow.unit.test.ts",
-      "contentHash": "f4dc0462a99020f3e1302adf05d7f67ac9ef9aba",
-      "lastTierBProcessedAt": "2026-09-30 08:01:50",
-      "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+      "contentHash": "86f7198e33c9cb80945979f20b833a084f84b6d7",
+      "lastTierBProcessedAt": "2026-09-30 09:08:01",
+      "lastTierBCommitSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74"
     },
     {
       "filePath": "lib/ui-core/src/workflows/status/status-log-writer.ts",
@@ -4337,5 +4349,12 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     }
   ],
-  "lastIngestedSourceSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
+  "lastIngestedSourceSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74",
+  "snapshotVersion": 1,
+  "capabilities": {
+    "dynamicDependencyEvidence": {
+      "version": 1,
+      "payload": "[{\"sourceFile\":\"artifacts/cli/src/platforms/cursor.platform.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"../utils/fs-utils.js\\\"\",\"startLine\":89,\"startColumn\":41,\"literalPrefix\":\"../utils/fs-utils.js\",\"status\":\"bounded\",\"candidatePaths\":[\"artifacts/cli/src/utils/fs-utils.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"artifacts/cli/src/platforms/cursor.platform.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"../constants/init-templates.js\\\"\",\"startLine\":94,\"startColumn\":21,\"literalPrefix\":\"../constants/init-templates.js\",\"status\":\"bounded\",\"candidatePaths\":[\"artifacts/cli/src/constants/init-templates.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"artifacts/cli/src/utils/fs-utils.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"fs/promises\\\"\",\"startLine\":8,\"startColumn\":52,\"literalPrefix\":\"fs/promises\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"artifacts/cli/test/support/impact-honesty-corpus.phase3.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"execa\\\"\",\"startLine\":660,\"startColumn\":33,\"literalPrefix\":\"execa\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"artifacts/cli/test/unit/commands/doctor.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"fs/promises\\\"\",\"startLine\":9,\"startColumn\":52,\"literalPrefix\":\"fs/promises\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/ast-core.test.js\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"web-tree-sitter\\\"\",\"startLine\":14,\"startColumn\":36,\"literalPrefix\":\"web-tree-sitter\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/bridge-provider.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"js-yaml\\\"\",\"startLine\":94,\"startColumn\":32,\"literalPrefix\":\"js-yaml\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/language-registry.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs/promises\\\"\",\"startLine\":12,\"startColumn\":38,\"literalPrefix\":\"node:fs/promises\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/language-registry.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":13,\"startColumn\":32,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/language-registry.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs/promises\\\"\",\"startLine\":173,\"startColumn\":32,\"literalPrefix\":\"node:fs/promises\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ast-core/src/language-registry.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":174,\"startColumn\":34,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker-pool.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"esbuild\\\"\",\"startLine\":66,\"startColumn\":31,\"literalPrefix\":\"esbuild\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"fs\\\"\",\"startLine\":95,\"startColumn\":28,\"literalPrefix\":\"fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"path\\\"\",\"startLine\":96,\"startColumn\":30,\"literalPrefix\":\"path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"fs\\\"\",\"startLine\":119,\"startColumn\":28,\"literalPrefix\":\"fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"path\\\"\",\"startLine\":120,\"startColumn\":30,\"literalPrefix\":\"path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"fs\\\"\",\"startLine\":253,\"startColumn\":28,\"literalPrefix\":\"fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.honest.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"path\\\"\",\"startLine\":254,\"startColumn\":30,\"literalPrefix\":\"path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/core/src/ast/ast-worker.query-compile-failures.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./ast-worker.js\\\"\",\"startLine\":18,\"startColumn\":52,\"literalPrefix\":\"./ast-worker.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/core/src/ast/ast-worker.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/core/src/lsp/csharp-lsp-preflight.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./lsp-binary-resolver-strategies.js\\\"\",\"startLine\":10,\"startColumn\":20,\"literalPrefix\":\"./lsp-binary-resolver-strategies.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/core/src/lsp/lsp-binary-resolver-strategies.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/core/src/lsp/go-lsp-preflight.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./lsp-binary-resolver-strategies.js\\\"\",\"startLine\":10,\"startColumn\":20,\"literalPrefix\":\"./lsp-binary-resolver-strategies.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/core/src/lsp/lsp-binary-resolver-strategies.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/core/src/lsp/java-lsp-preflight.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./lsp-binary-resolver-strategies.js\\\"\",\"startLine\":10,\"startColumn\":20,\"literalPrefix\":\"./lsp-binary-resolver-strategies.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/core/src/lsp/lsp-binary-resolver-strategies.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/core/src/lsp/rust-lsp-preflight.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./lsp-binary-resolver-strategies.js\\\"\",\"startLine\":13,\"startColumn\":20,\"literalPrefix\":\"./lsp-binary-resolver-strategies.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/core/src/lsp/lsp-binary-resolver-strategies.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/core/src/lsp/typescript-lsp-preflight.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:child_process\\\"\",\"startLine\":28,\"startColumn\":52,\"literalPrefix\":\"node:child_process\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":49,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":71,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":81,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":95,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":124,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":149,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":176,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/docuvia-api.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./docuvia-api.js\\\"\",\"startLine\":197,\"startColumn\":40,\"literalPrefix\":\"./docuvia-api.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/docuvia-api.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./tier-c-queue.js\\\"\",\"startLine\":1163,\"startColumn\":44,\"literalPrefix\":\"./tier-c-queue.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/workflows/analyze/tier-c-queue.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./tier-c-queue.js\\\"\",\"startLine\":1464,\"startColumn\":44,\"literalPrefix\":\"./tier-c-queue.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/workflows/analyze/tier-c-queue.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":163,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":164,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":165,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":189,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":190,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":191,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":231,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":232,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":233,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"./tier-b-queue.js\\\"\",\"startLine\":284,\"startColumn\":44,\"literalPrefix\":\"./tier-b-queue.js\",\"status\":\"bounded\",\"candidatePaths\":[\"lib/ui-core/src/workflows/analyze/tier-b-queue.ts\"],\"reason\":\"literal-dynamic-import\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":287,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":324,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":360,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":411,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":465,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":518,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":578,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":616,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":622,\"startColumn\":54,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":623,\"startColumn\":34,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":662,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":705,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":752,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":753,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":815,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":869,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":920,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":959,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":993,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1036,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1082,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1088,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1089,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1148,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1149,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1265,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1266,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1301,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1302,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1390,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1397,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":1398,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1399,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1448,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1485,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1520,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":1527,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1528,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1529,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1551,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":1552,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1553,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:fs\\\"\",\"startLine\":1620,\"startColumn\":28,\"literalPrefix\":\"node:fs\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:os\\\"\",\"startLine\":1621,\"startColumn\":28,\"literalPrefix\":\"node:os\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"node:path\\\"\",\"startLine\":1622,\"startColumn\":30,\"literalPrefix\":\"node:path\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"scripts/semantic-corpus/tier-a.mts\",\"kind\":\"dynamic-import\",\"expression\":\"\\\"better-sqlite3\\\"\",\"startLine\":18,\"startColumn\":19,\"literalPrefix\":\"better-sqlite3\",\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"non-local-dynamic-specifier\"},{\"sourceFile\":\"test/release-format.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"pluginUrl\",\"startLine\":80,\"startColumn\":33,\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"unbounded-runtime-expression\"},{\"sourceFile\":\"test/release-format.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"pluginUrl\",\"startLine\":122,\"startColumn\":33,\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"unbounded-runtime-expression\"},{\"sourceFile\":\"test/release-format.test.ts\",\"kind\":\"dynamic-import\",\"expression\":\"pluginUrl\",\"startLine\":141,\"startColumn\":33,\"status\":\"unresolved\",\"candidatePaths\":[],\"reason\":\"unbounded-runtime-expression\"}]"
+    }
+  }
 }

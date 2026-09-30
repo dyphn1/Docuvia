@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-c-candidates.ts#anonymous@L68
+id: lib/ui-core/src/workflows/analyze/tier-c-candidates.ts#anonymous@L69
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/tier-c-candidates.ts

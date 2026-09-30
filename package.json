@@ -22,6 +22,7 @@
     "prepare": "husky",
     "eval:semantic": "tsx scripts/semantic-corpus-audit.mts",
     "eval:semantic:collect": "tsx scripts/semantic-corpus/collect.mts",
+    "eval:semantic:system1-export": "node --import tsx scripts/semantic-corpus/system1-export.mts",
     "eval:semantic:replay": "tsx scripts/semantic-corpus/replay.mts",
     "eval:semantic:baseline": "tsx scripts/semantic-corpus/baseline.mts"
   },

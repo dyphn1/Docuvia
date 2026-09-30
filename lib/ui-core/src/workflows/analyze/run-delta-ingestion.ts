@@ -14,6 +14,7 @@ import {
   type ILogger,
   type ISemanticDiffAnalyzer,
   type SemanticDiffModifiedNode,
+  type TierCQueueEntry,
   isDiscoverableSourceFile,
 } from "@workspace/contracts";
 import {
@@ -33,10 +34,7 @@ import {
   appendTierBQueueEntries,
   type TierBQueueEntry,
 } from "./tier-b-queue.js";
-import {
-  appendTierCQueueEntries,
-  type TierCQueueEntry,
-} from "./tier-c-queue.js";
+import { appendTierCQueueEntries } from "./tier-c-queue.js";
 import {
   collectCommitMessageCandidates,
   collectContractSymbolCandidates,
@@ -430,7 +428,7 @@ async function persistDelta(
       appendTierBQueueEntries(store, tierBEntries);
     }
     if (tierCEntries.length > 0) {
-      appendTierCQueueEntries(store, tierCEntries);
+      appendTierCQueueEntries(store, tierCEntries, logger);
     }
     if (changedBytes > 0) {
       const priorBytes = Number(

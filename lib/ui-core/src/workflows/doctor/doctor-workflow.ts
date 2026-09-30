@@ -1000,7 +1000,7 @@ export class DoctorWorkflow {
       const lastIngestedSha = store.meta.get(
         GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
       );
-      const tierCQueued = readTierCQueue(store).length;
+      const tierCQueued = readTierCQueue(store, this.logger).length;
 
       if (lastIngestedSha === headSha) {
         diagnostics[DOCTOR_DIAGNOSTIC_KEYS.POST_COMMIT_INGESTION] = {
@@ -1092,7 +1092,7 @@ export class DoctorWorkflow {
         readonly: true,
       });
 
-      const queued = readTierCQueue(store).length;
+      const queued = readTierCQueue(store, this.logger).length;
       if (queued === 0) {
         diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_C_QUEUE] = {
           status: DiagnosticStatus.PASS,

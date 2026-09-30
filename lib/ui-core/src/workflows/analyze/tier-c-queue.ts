@@ -1,32 +1,16 @@
-import { GitConstants } from "@workspace/contracts";
-import type { IGraphStore } from "@workspace/contracts";
+import {
+  decodeTierCQueue,
+  GitConstants,
+  TierCCandidateKinds,
+} from "@workspace/contracts";
+import type {
+  IGraphStore,
+  ILogger,
+  TierCQueueEntry,
+} from "@workspace/contracts";
 import path from "node:path";
+import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { toNodeKey } from "./anchor-resolution.js";
-
-/** Tier C candidate kinds (phase1-decision-integration.md §9c/E2) -- the two extraction sources
- *  PLAT-007 names for Tier C: commit messages and `CONTRACT_CHANGED` symbols. */
-export const TierCCandidateKinds = {
-  COMMIT_MESSAGE: "commitMessage",
-  CONTRACT_SYMBOL: "contractSymbol",
-} as const;
-export type TierCCandidateKind =
-  (typeof TierCCandidateKinds)[keyof typeof TierCCandidateKinds];
-
-export interface TierCQueueEntry {
-  kind: TierCCandidateKind;
-  /** Dedup key (§9c): a commit sha for `commitMessage`, a `node_key` for `contractSymbol`. */
-  target: string;
-  /** Commit sha this candidate is associated with -- equals `target` for `commitMessage`. */
-  commitSha: string;
-  /** Repo-relative file path -- `contractSymbol` candidates only. */
-  file?: string;
-  /** Full commit message text, captured at enqueue time -- `commitMessage` candidates only. */
-  message?: string;
-  /** Count of consecutive per-item extraction failures for this entry across `analyze` runs --
-   *  the poison-pill counter `recordTierCQueueFailure` increments, absent/0 until the first
-   *  failure. */
-  failCount?: number;
-}
 
 export const TierCQueueValidationReasons = {
   INVALID_ENTRY: "invalid-entry",
@@ -52,7 +36,7 @@ const CONTRACT_SYMBOL_NAME_UNSAFE_CHARACTERS = /[\u0000-\u001f\u007f`]/;
  *  interpolated into a backtick-delimited prompt header, so reject backticks there and control
  *  characters in the symbol. */
 export function parseContractSymbolTarget(
-  entry: TierCQueueEntry,
+  entry: TierCQueueEntry | Record<string, unknown>,
 ): ContractSymbolTargetParseResult {
   if (
     entry.kind !== TierCCandidateKinds.CONTRACT_SYMBOL ||
@@ -112,27 +96,27 @@ function hasCanonicalRepoSegments(file: string): boolean {
 /** Parses the `tierCQueue` docuvia_meta key (JSON array of `TierCQueueEntry`, §9c). Tolerates a
  *  missing/corrupt value by returning `[]` rather than throwing -- `local.db` is disposable, so a
  *  malformed queue is not worth failing an `analyze` run over (mirrors `readTierBQueue`). */
-export function readTierCQueue(store: IGraphStore): TierCQueueEntry[] {
-  const raw = store.meta.get(GitConstants.META_KEY_TIER_C_QUEUE);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidEntry);
-  } catch {
-    return [];
-  }
-}
-
-function isValidEntry(e: unknown): e is TierCQueueEntry {
-  if (!e || typeof e !== "object") return false;
-  const entry = e as Partial<TierCQueueEntry>;
-  return (
-    (entry.kind === TierCCandidateKinds.COMMIT_MESSAGE ||
-      entry.kind === TierCCandidateKinds.CONTRACT_SYMBOL) &&
-    typeof entry.target === "string" &&
-    typeof entry.commitSha === "string"
+export function readTierCQueue(
+  store: IGraphStore,
+  logger?: ILogger,
+): TierCQueueEntry[] {
+  const result = decodeTierCQueue(
+    store.meta.get(GitConstants.META_KEY_TIER_C_QUEUE),
   );
+  if (logger && (result.invalidCount > 0 || result.corrupt)) {
+    logger.warn(
+      ANALYZE_MESSAGES.TIER_C_QUEUE_INVALID_ENTRIES(
+        result.invalidCount,
+        result.corrupt,
+      ),
+      {
+        event: ANALYZE_EVENTS.TIER_C_QUEUE_INVALID_ENTRIES,
+        invalidCount: result.invalidCount,
+        corrupt: result.corrupt,
+      },
+    );
+  }
+  return result.entries;
 }
 
 /**
@@ -144,10 +128,11 @@ function isValidEntry(e: unknown): e is TierCQueueEntry {
 export function appendTierCQueueEntries(
   store: IGraphStore,
   entries: TierCQueueEntry[],
+  logger?: ILogger,
 ): void {
   if (entries.length === 0) return;
 
-  const existing = readTierCQueue(store);
+  const existing = readTierCQueue(store, logger);
   const byTarget = new Map(existing.map((e) => [e.target, e]));
   for (const entry of entries) byTarget.set(entry.target, entry);
 
@@ -164,11 +149,12 @@ export function appendTierCQueueEntries(
 export function removeTierCQueueEntries(
   store: IGraphStore,
   targets: string[],
+  logger?: ILogger,
 ): void {
   if (targets.length === 0) return;
 
   const toRemove = new Set(targets);
-  const remaining = readTierCQueue(store).filter(
+  const remaining = readTierCQueue(store, logger).filter(
     (e) => !toRemove.has(e.target),
   );
   store.meta.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(remaining));
@@ -187,8 +173,9 @@ export function recordTierCQueueFailure(
   store: IGraphStore,
   target: string,
   maxFailures: number,
+  logger?: ILogger,
 ): { evicted: boolean; failCount: number } {
-  const existing = readTierCQueue(store);
+  const existing = readTierCQueue(store, logger);
   const index = existing.findIndex((e) => e.target === target);
   if (index === -1) return { evicted: false, failCount: 0 };
 

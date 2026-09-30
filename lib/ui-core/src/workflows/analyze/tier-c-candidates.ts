@@ -1,9 +1,10 @@
 import type {
   IGitProvider,
   SemanticDiffModifiedNode,
+  TierCQueueEntry,
 } from "@workspace/contracts";
+import { TierCCandidateKinds } from "@workspace/contracts";
 import { toNodeKey } from "./anchor-resolution.js";
-import { TierCCandidateKinds, type TierCQueueEntry } from "./tier-c-queue.js";
 import {
   shouldEnqueueCommitMessage,
   type TierCCommitFilterOptions,

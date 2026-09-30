@@ -1,16 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
-import type { IGraphStore } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import type { IGraphStore, TierCQueueEntry } from "@workspace/contracts";
+import {
+  createMockLogger,
+  GitConstants,
+  TierCCandidateKinds,
+} from "@workspace/contracts";
 import { makeMockStore } from "@workspace/contracts/testing";
+import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import {
   appendTierCQueueEntries,
   parseContractSymbolTarget,
   readTierCQueue,
   recordTierCQueueFailure,
   removeTierCQueueEntries,
-  TierCCandidateKinds,
   TierCQueueValidationReasons,
-  type TierCQueueEntry,
 } from "./tier-c-queue.js";
 
 function makeTierCStore(initialMeta: Record<string, string> = {}): IGraphStore {
@@ -259,16 +262,89 @@ describe("readTierCQueue()", () => {
   it("filters out malformed entries (missing target/commitSha or unknown kind)", () => {
     const store = makeTierCStore({
       [GitConstants.META_KEY_TIER_C_QUEUE]: JSON.stringify([
-        { kind: "commitMessage", target: "sha1", commitSha: "sha1" },
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha1",
+          commitSha: "sha1",
+          message: "feat: add x",
+        },
         { kind: "bogusKind", target: "sha2", commitSha: "sha2" },
         { kind: "commitMessage", target: 42, commitSha: "sha3" },
         { kind: "commitMessage" },
       ]),
     });
     expect(readTierCQueue(store)).toEqual([
-      { kind: "commitMessage", target: "sha1", commitSha: "sha1" },
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+        message: "feat: add x",
+      },
     ]);
   });
+
+  it("emits one structured warning with the invalid row count", () => {
+    const store = makeTierCStore({
+      [GitConstants.META_KEY_TIER_C_QUEUE]: JSON.stringify([
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha1",
+          commitSha: "sha1",
+          message: "feat: add x",
+        },
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha2",
+          commitSha: "sha2",
+        },
+        { kind: "unknown", target: "sha3", commitSha: "sha3" },
+      ]),
+    });
+    const logger = createMockLogger();
+
+    expect(readTierCQueue(store, logger)).toEqual([
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+        message: "feat: add x",
+      },
+    ]);
+    expect(logger.events).toEqual([
+      {
+        level: "warn",
+        message: ANALYZE_MESSAGES.TIER_C_QUEUE_INVALID_ENTRIES(2, false),
+        context: {
+          event: ANALYZE_EVENTS.TIER_C_QUEUE_INVALID_ENTRIES,
+          invalidCount: 2,
+          corrupt: false,
+        },
+      },
+    ]);
+  });
+
+  it.each(["not json", JSON.stringify({ target: "sha1" })])(
+    "emits one structured warning for corrupt queue data: %s",
+    (raw) => {
+      const store = makeTierCStore({
+        [GitConstants.META_KEY_TIER_C_QUEUE]: raw,
+      });
+      const logger = createMockLogger();
+
+      expect(readTierCQueue(store, logger)).toEqual([]);
+      expect(logger.events).toEqual([
+        {
+          level: "warn",
+          message: ANALYZE_MESSAGES.TIER_C_QUEUE_INVALID_ENTRIES(0, true),
+          context: {
+            event: ANALYZE_EVENTS.TIER_C_QUEUE_INVALID_ENTRIES,
+            invalidCount: 0,
+            corrupt: true,
+          },
+        },
+      ]);
+    },
+  );
 });
 
 describe("appendTierCQueueEntries()", () => {
@@ -333,6 +409,7 @@ describe("appendTierCQueueEntries()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
     ]);
     appendTierCQueueEntries(store, [
@@ -361,11 +438,13 @@ describe("removeTierCQueueEntries()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha2",
         commitSha: "sha2",
+        message: "feat: add y",
       },
     ]);
     removeTierCQueueEntries(store, ["sha1"]);
@@ -374,6 +453,7 @@ describe("removeTierCQueueEntries()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha2",
         commitSha: "sha2",
+        message: "feat: add y",
       },
     ]);
   });
@@ -387,6 +467,7 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
     ]);
 
@@ -398,6 +479,7 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
         failCount: 1,
       },
     ]);
@@ -410,11 +492,13 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha2",
         commitSha: "sha2",
+        message: "feat: add y",
       },
     ]);
 
@@ -428,6 +512,7 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha2",
         commitSha: "sha2",
+        message: "feat: add y",
       },
     ]);
   });
@@ -439,6 +524,7 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
     ]);
 
@@ -450,6 +536,7 @@ describe("recordTierCQueueFailure()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha1",
         commitSha: "sha1",
+        message: "feat: add x",
       },
     ]);
   });

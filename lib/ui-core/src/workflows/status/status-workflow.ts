@@ -72,7 +72,7 @@ export class StatusWorkflow {
         tierBFilesTotal: totalFiles,
         // Issue #58: a permanently-empty Tier C queue is the exact "Tier C never backfills"
         // symptom -- surface its size alongside the other graph metrics.
-        tierCQueued: readTierCQueue(store).length,
+        tierCQueued: readTierCQueue(store, logger).length,
         // Issue #193: see `resolveGraphFreshness` (shared with `impact` since #508 D8).
         graphFreshness: (await resolveGraphFreshness(workspaceRoot, store))
           .state,

@@ -8,6 +8,9 @@ import {
   type IGraphStore,
   type ILogger,
   type ILlmClient,
+  type TierCCommitMessageEntry,
+  type TierCQueueEntry,
+  TierCCandidateKinds,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
@@ -28,13 +31,11 @@ import { parseDecisionsFromLlmContent } from "./decision-parsing.js";
 import { toNodeKey } from "./anchor-resolution.js";
 import type { ExtractedDecision } from "./analyze-result.js";
 import {
-  TierCCandidateKinds,
   readTierCQueue,
   parseContractSymbolTarget,
   recordTierCQueueFailure,
   removeTierCQueueEntries,
   TierCQueueValidationReasons,
-  type TierCQueueEntry,
 } from "./tier-c-queue.js";
 import {
   estimateTokenCount,
@@ -197,7 +198,7 @@ export async function runTierCDrain(
   deps: TierCDrainDeps,
 ): Promise<TierCDrainSummary> {
   const { workspaceRoot, store } = deps;
-  const queue = readTierCQueue(store);
+  const queue = readTierCQueue(store, deps.logger);
 
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.TIER_C_START,
@@ -434,7 +435,7 @@ async function handleTierCItemOutcome(
     counters.persisted += outcome.persistedCount;
     counters.deduped += outcome.dedupedCount;
     await store.withWriteLock(() =>
-      removeTierCQueueEntries(store, [entry.target]),
+      removeTierCQueueEntries(store, [entry.target], deps.logger),
     );
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.TIER_C_ITEM_SUCCESS,
@@ -457,7 +458,7 @@ async function handleTierCItemOutcome(
   const itemFailureCap =
     deps.itemFailureCap ?? GitConstants.DEFAULT_TIER_C_MAX_ITEM_FAILURES;
   const { evicted, failCount } = await store.withWriteLock(() =>
-    recordTierCQueueFailure(store, entry.target, itemFailureCap),
+    recordTierCQueueFailure(store, entry.target, itemFailureCap, deps.logger),
   );
   if (evicted) {
     deps.logger.warn(
@@ -691,7 +692,7 @@ async function processTierCEntry(
 async function processCommitMessageEntry(
   deps: TierCDrainDeps,
   llmClient: ILlmClient,
-  entry: TierCQueueEntry,
+  entry: TierCCommitMessageEntry,
 ): Promise<TierCItemOutcome> {
   const { git, workspaceRoot, store, llmModel } = deps;
 

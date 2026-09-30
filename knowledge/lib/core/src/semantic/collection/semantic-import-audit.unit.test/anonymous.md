@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts#anonymous@L90
+id: lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts
@@ -7,4 +7,5 @@ filePath: lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/collection/semantic-import-audit.unit.test.ts`
+ts`
 

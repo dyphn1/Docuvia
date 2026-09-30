@@ -16,7 +16,10 @@ import {
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { runTierBBatch } from "./run-tier-b-batch.js";
-import { appendTierBQueueEntries } from "./tier-b-queue.js";
+import {
+  appendTierBQueueEntries,
+  removeTierBQueueEntriesForFiles,
+} from "./tier-b-queue.js";
 
 const HEAD_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
 
@@ -353,6 +356,164 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     expect(pending.remainingQueue).toEqual([
       { file: "a.ts", commitSha: HEAD_SHA },
     ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[state-diff] does not mark a file processed when it is retired during edge resolution", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore(["a.ts#foo"]);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    let continueResolution!: () => void;
+    const resolutionPaused = new Promise<void>((resolve) => {
+      continueResolution = resolve;
+    });
+    let signalResolutionStarted!: () => void;
+    const resolutionStarted = new Promise<void>((resolve) => {
+      signalResolutionStarted = resolve;
+    });
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => {
+          signalResolutionStarted();
+          await resolutionPaused;
+          return {
+            edges: [],
+            filesProcessed: ["a.ts"],
+            filesFailed: [],
+          };
+        },
+      ),
+    );
+
+    const knowledgeGit = makeKnowledgeGit();
+    const batch = runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit,
+    });
+    await resolutionStarted;
+    await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, () =>
+      store.withWriteLock(() =>
+        removeTierBQueueEntriesForFiles(store, ["a.ts"]),
+      ),
+    );
+    continueResolution();
+    await batch;
+
+    expect(fake.tierBProcessed).toEqual([]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[state-diff] does not restage a failed file when it is retired during edge resolution", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore([]);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    let continueResolution!: () => void;
+    const resolutionPaused = new Promise<void>((resolve) => {
+      continueResolution = resolve;
+    });
+    let signalResolutionStarted!: () => void;
+    const resolutionStarted = new Promise<void>((resolve) => {
+      signalResolutionStarted = resolve;
+    });
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => {
+          signalResolutionStarted();
+          await resolutionPaused;
+          return {
+            edges: [],
+            filesProcessed: [],
+            filesFailed: [{ file: "a.ts", reason: "server choked" }],
+          };
+        },
+      ),
+    );
+
+    const knowledgeGit = makeKnowledgeGit();
+    const batch = runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit,
+    });
+    await resolutionStarted;
+    await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, () =>
+      store.withWriteLock(() =>
+        removeTierBQueueEntriesForFiles(store, ["a.ts"]),
+      ),
+    );
+    continueResolution();
+    await batch;
+
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[state-diff] does not stamp a permanently failed file when it is retired during edge resolution", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore([]);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    let continueResolution!: () => void;
+    const resolutionPaused = new Promise<void>((resolve) => {
+      continueResolution = resolve;
+    });
+    let signalResolutionStarted!: () => void;
+    const resolutionStarted = new Promise<void>((resolve) => {
+      signalResolutionStarted = resolve;
+    });
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => {
+          signalResolutionStarted();
+          await resolutionPaused;
+          return {
+            edges: [],
+            filesProcessed: [],
+            filesFailed: [
+              { file: "a.ts", reason: "not supported", retryable: false },
+            ],
+          };
+        },
+      ),
+    );
+
+    const knowledgeGit = makeKnowledgeGit();
+    const batch = runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit,
+    });
+    await resolutionStarted;
+    await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, () =>
+      store.withWriteLock(() =>
+        removeTierBQueueEntriesForFiles(store, ["a.ts"]),
+      ),
+    );
+    continueResolution();
+    await batch;
+
+    expect(fake.tierBProcessed).toEqual([]);
 
     const fs = await import("node:fs");
     fs.rmSync(workspaceRoot, { recursive: true, force: true });

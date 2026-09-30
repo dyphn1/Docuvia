@@ -168,6 +168,8 @@ async function runTierBBatchCore(
         fullyDegraded: false,
         strayLanguageDegraded: false,
       },
+      batchEntries: [],
+      processedFiles: [],
       failedEntries: [],
       permanentFailed: [],
       skippedNotApplicable: [],
@@ -197,14 +199,19 @@ async function runTierBBatchCore(
   // same as before), but a partial timeout no longer discards edges that were already correctly
   // resolved just because the run also ended up `degraded` overall (2026-07 CLI benchmark
   // finding -- see run-tier-b-batch.unit.test.ts's timeout-preserves-partial-progress case).
-  const { edgesApplied, edgesPruned } = await applyResolvedEdges(
-    deps,
-    outcome,
-    headSha,
-  );
-  const processedFiles = new Set(outcome.filesProcessed);
+  const {
+    edgesApplied,
+    edgesPruned,
+    currentBatchEntries,
+    processedFiles: currentProcessedFiles,
+  } = await applyResolvedEdges(deps, outcome, headSha, toProcess);
+  const processedFiles = new Set(currentProcessedFiles);
   const { failedEntries, permanentFailed, skippedNotApplicable } =
-    classifyTierBFileOutcomes(toProcess, processedFiles, outcome.filesFailed);
+    classifyTierBFileOutcomes(
+      currentBatchEntries,
+      processedFiles,
+      outcome.filesFailed,
+    );
 
   const madeProgress =
     processedFiles.size > 0 ||
@@ -212,7 +219,7 @@ async function runTierBBatchCore(
     skippedNotApplicable.length > 0;
   const zeroProgressWatchdogTripped = applyZeroProgressWatchdog(
     store,
-    toProcess,
+    currentBatchEntries,
     outcome,
     madeProgress,
     failedEntries,
@@ -231,6 +238,8 @@ async function runTierBBatchCore(
     droppedDeleted: droppedDeleted.length,
     skippedLanguage: skippedLanguage.length,
     outcome,
+    batchEntries: toProcess,
+    processedFiles: currentProcessedFiles,
     failedEntries,
     permanentFailed,
     skippedNotApplicable,
@@ -498,13 +507,29 @@ async function applyResolvedEdges(
   deps: TierBBatchDeps,
   outcome: MergedEdgeResolutionOutcome,
   headSha: string | null,
-): Promise<{ edgesApplied: number; edgesPruned: number }> {
+  batchEntries: TierBQueueEntry[],
+): Promise<{
+  edgesApplied: number;
+  edgesPruned: number;
+  currentBatchEntries: TierBQueueEntry[];
+  processedFiles: string[];
+}> {
   const { store, knowledgeGit, workspaceRoot } = deps;
   let edgesApplied = 0;
   let edgesPruned = 0;
+  let currentBatchEntries: TierBQueueEntry[] = [];
+  let processedFiles: string[] = [];
 
   await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
     await store.withWriteLock(() => {
+      currentBatchEntries = retainEntriesStillInTierBQueue(batchEntries, store);
+      const currentBatchFiles = new Set(
+        currentBatchEntries.map((entry) => entry.file),
+      );
+      processedFiles = outcome.filesProcessed.filter((file) =>
+        currentBatchFiles.has(file),
+      );
+
       const existingLinks = new Set(
         store.graph
           .getAllLinks()
@@ -534,7 +559,7 @@ async function applyResolvedEdges(
 
       const project = store.projects.getFirst();
       if (project) {
-        for (const file of outcome.filesProcessed) {
+        for (const file of processedFiles) {
           store.files.markTierBProcessed({
             projectId: project.id,
             filePath: file,
@@ -545,7 +570,27 @@ async function applyResolvedEdges(
     });
   });
 
-  return { edgesApplied, edgesPruned };
+  return {
+    edgesApplied,
+    edgesPruned,
+    currentBatchEntries,
+    processedFiles,
+  };
+}
+
+/** A batch may resolve outside the locks while delta analysis retires one of its files. Recheck
+ *  both the path and queued commit before applying file-scoped state, so stale results cannot
+ *  recreate project_files or re-stage obsolete work. Caller holds both queue locks. */
+function retainEntriesStillInTierBQueue(
+  batchEntries: TierBQueueEntry[],
+  store: IGraphStore,
+): TierBQueueEntry[] {
+  const activeByFile = new Map(
+    readTierBQueue(store).map((entry) => [entry.file, entry]),
+  );
+  return batchEntries.filter(
+    (entry) => activeByFile.get(entry.file)?.commitSha === entry.commitSha,
+  );
 }
 
 interface FinalizeArgs {
@@ -555,6 +600,8 @@ interface FinalizeArgs {
   droppedDeleted: number;
   skippedLanguage: number;
   outcome: MergedEdgeResolutionOutcome;
+  batchEntries: TierBQueueEntry[];
+  processedFiles: string[];
   failedEntries: TierBQueueEntry[];
   permanentFailed: TierBQueueEntry[];
   skippedNotApplicable: TierBQueueEntry[];
@@ -574,32 +621,58 @@ async function finalizeBatch(
   const {
     headSha,
     outcome,
-    failedEntries,
-    permanentFailed,
-    skippedNotApplicable,
+    batchEntries,
+    processedFiles: resolvedFiles,
+    failedEntries: initialFailedEntries,
+    permanentFailed: initialPermanentFailed,
+    skippedNotApplicable: initialSkippedNotApplicable,
   } = args;
-  const terminalEntries = [...permanentFailed, ...skippedNotApplicable];
-
-  if (headSha && terminalEntries.length > 0) {
-    const project = store.projects.getFirst();
-    if (project) {
-      for (const entry of terminalEntries) {
-        store.files.markTierBProcessed({
-          projectId: project.id,
-          filePath: entry.file,
-          commitSha: headSha,
-        });
-      }
-    }
-  }
+  let failedEntries = initialFailedEntries;
+  let permanentFailed = initialPermanentFailed;
+  let skippedNotApplicable = initialSkippedNotApplicable;
+  let filesProcessed = resolvedFiles.length;
 
   if (headSha) {
-    const pending: PendingTierBBatch = {
-      headSha,
-      remainingQueue: failedEntries,
-    };
     await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
       await store.withWriteLock(() => {
+        const currentBatchEntries = retainEntriesStillInTierBQueue(
+          batchEntries,
+          store,
+        );
+        const currentBatchFiles = new Set(
+          currentBatchEntries.map((entry) => entry.file),
+        );
+        const currentEntriesByFile = new Map(
+          currentBatchEntries.map((entry) => [entry.file, entry]),
+        );
+        const isCurrentEntry = (entry: TierBQueueEntry): boolean =>
+          currentEntriesByFile.get(entry.file)?.commitSha === entry.commitSha;
+        failedEntries = initialFailedEntries.filter(isCurrentEntry);
+        permanentFailed = initialPermanentFailed.filter(isCurrentEntry);
+        skippedNotApplicable =
+          initialSkippedNotApplicable.filter(isCurrentEntry);
+        const currentTerminalEntries = [
+          ...permanentFailed,
+          ...skippedNotApplicable,
+        ];
+        const project = store.projects.getFirst();
+        if (project) {
+          for (const entry of currentTerminalEntries) {
+            store.files.markTierBProcessed({
+              projectId: project.id,
+              filePath: entry.file,
+              commitSha: headSha,
+            });
+          }
+        }
+
+        filesProcessed = resolvedFiles.filter((file) =>
+          currentBatchFiles.has(file),
+        ).length;
+        const pending: PendingTierBBatch = {
+          headSha,
+          remainingQueue: failedEntries,
+        };
         store.meta.set(
           GitConstants.META_KEY_TIER_B_BATCH_PENDING,
           JSON.stringify(pending),
@@ -611,8 +684,6 @@ async function finalizeBatch(
   // Not gated on `outcome.unavailableReason` -- a partial timeout can still have genuinely
   // processed files before it tripped (`processAllFiles`'s deadline handling), and those files'
   // edges were just applied above by `applyResolvedEdges`, so the reported count must match.
-  const filesProcessed = outcome.filesProcessed.length;
-
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.TIER_B_SUMMARY,
     ...(outcome.unavailableReason ? { level: JSONL_LOG_LEVEL_ERROR } : {}),

@@ -318,7 +318,7 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     ).toThrow(/errored/);
   });
 
-  it("[error-handling] every registered defect names its child issue and still fails its gates (D10 #522, D12 #521)", () => {
+  it("[error-handling] every registered defect names its child issue and still fails its gates (D12 #521)", () => {
     expect(
       phase3KnownDefectRegistryProblems(
         PHASE3_KNOWN_PRODUCT_DEFECTS,
@@ -337,14 +337,15 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     }
   });
 
-  it("[stress] T10: a dependent that grows past MAX_FILE_SIZE_BYTES keeps its stale rows (registered D10, #522)", () => {
+  it("[stress] T10: a dependent that grows past MAX_FILE_SIZE_BYTES is retired, never stale-exact (#522)", () => {
     const t10 = first.observations.find((o) => o.checkpointId === "T10@after");
-    // grow.ts is tracked but oversized, so it is outside the HEAD tree the graph may describe.
+    // grow.ts is tracked but oversized, so it is outside the HEAD tree the graph may describe --
+    // and after #522 nothing about it survives in the graph either.
     expect(t10?.facts.headTree).not.toContain(F.GROW);
-    expect(t10?.facts.nodePaths).toContain(F.GROW);
-    expect(t10?.facts.callSitePaths).toContain(F.GROW);
+    expect(t10?.facts.nodePaths).not.toContain(F.GROW);
+    expect(t10?.facts.callSitePaths).not.toContain(F.GROW);
     expect(t10?.operation?.exitCode).toBe(0);
-    expect(violationsOf(subset(merged, ["T10@after"]), "S6")).not.toEqual([]);
+    expect(gatesFor(merged, ["T10@after"])).toEqual([]);
   });
 
   it("[state-diff] T12: a HEAD rewind takes the full-ingestion fallback and leaves phantom state (registered D12, #521)", () => {

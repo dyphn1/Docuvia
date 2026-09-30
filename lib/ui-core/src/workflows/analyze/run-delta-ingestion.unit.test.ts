@@ -19,11 +19,13 @@ import {
 import {
   CURRENT_NODE_KEY_FORMAT_VERSION,
   GitConstants,
+  TierCCandidateKinds,
 } from "@workspace/contracts";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { readCallResolution } from "./call-resolution-stats.js";
 import { readTierBQueue } from "./tier-b-queue.js";
+import { readTierCQueue } from "./tier-c-queue.js";
 
 // Mirrors run-full-ingestion.unit.test.ts / init-workflow.unit.test.ts's mocking pattern
 // (Factory Lock, pure orchestration unit test). runDeltaIngestion's own
@@ -206,6 +208,7 @@ function makeMockStore(): IGraphStore {
 
 const FROM_SHA = "1111111111111111111111111111111111111a";
 const HEAD_SHA = "2222222222222222222222222222222222222b";
+const NEXT_HEAD_SHA = "3333333333333333333333333333333333333c";
 
 describe("runDeltaIngestion()", () => {
   let tmpDir: string;
@@ -351,6 +354,166 @@ describe("runDeltaIngestion()", () => {
     expect(graphPersister.persist).toHaveBeenCalledWith(
       expect.objectContaining({ parsedResults: [], projectId: 1 }),
     );
+  });
+
+  it("[state-diff] retires oversized changed files and removes their stale evidence and queue entries (#522)", async () => {
+    const file = "src/oversized.ts";
+    const keptFile = "src/kept.ts";
+    const keptStats = {
+      total: 2,
+      resolved: 2,
+      selfDiscarded: 0,
+      unresolved: 0,
+    };
+    const keptTierBEntry = { file: keptFile, commitSha: FROM_SHA };
+    const keptTierCEntry = {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: `${keptFile}#keptSymbol`,
+      commitSha: FROM_SHA,
+      file: keptFile,
+    };
+    const commitMessageEntry = {
+      kind: TierCCandidateKinds.COMMIT_MESSAGE,
+      target: HEAD_SHA,
+      commitSha: HEAD_SHA,
+      message: "feat: keep unrelated commit evidence",
+    };
+
+    store.meta.set(
+      GitConstants.META_KEY_CALL_RESOLUTION_STATS,
+      JSON.stringify({
+        byFile: {
+          [file]: {
+            total: 1,
+            resolved: 1,
+            selfDiscarded: 0,
+            unresolved: 0,
+          },
+          [keptFile]: keptStats,
+        },
+      }),
+    );
+    store.meta.set(
+      GitConstants.META_KEY_TIER_B_QUEUE,
+      JSON.stringify([{ file, commitSha: FROM_SHA }, keptTierBEntry]),
+    );
+    store.meta.set(
+      GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      JSON.stringify({
+        headSha: FROM_SHA,
+        remainingQueue: [{ file, commitSha: FROM_SHA }, keptTierBEntry],
+      }),
+    );
+    store.meta.set(
+      GitConstants.META_KEY_TIER_C_QUEUE,
+      JSON.stringify([
+        {
+          kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+          target: `${file}#removedSymbol`,
+          commitSha: FROM_SHA,
+          file,
+        },
+        keptTierCEntry,
+        commitMessageEntry,
+      ]),
+    );
+
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file, status: "modified" }]),
+      readFileAtRef: vi.fn().mockResolvedValue("x".repeat(600_000)),
+    });
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.graph.deleteNodesForPath).toHaveBeenCalledWith(file);
+    expect(store.callSites.deleteForFile).toHaveBeenCalledWith(1, file);
+    expect(store.files.deleteFile).toHaveBeenCalledWith(1, file);
+    expect(astProcessor.processFiles).not.toHaveBeenCalled();
+    expect(graphPersister.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ parsedResults: [], projectId: 1 }),
+    );
+    expect(readCallResolution(store)).toEqual({ [keptFile]: keptStats });
+    expect(readTierBQueue(store)).toEqual([keptTierBEntry]);
+    expect(
+      JSON.parse(store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!),
+    ).toEqual({ headSha: FROM_SHA, remainingQueue: [keptTierBEntry] });
+    expect(readTierCQueue(store)).toEqual([keptTierCEntry, commitMessageEntry]);
+    expect(result.kind).toBe("autoDelta");
+    if (result.kind === "autoDelta") {
+      expect(result.filesSkippedOversized).toBe(1);
+      expect(result.filesDeleted).toBe(0);
+    }
+  });
+
+  it("[state-diff] re-ingests a file after it shrinks below the oversized limit (#522)", async () => {
+    const file = "src/oversized.ts";
+    let content = "x".repeat(600_000);
+    let currentHeadSha = HEAD_SHA;
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file, status: "modified" }]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation(async (_root, ref) =>
+          ref === currentHeadSha ? content : "previous content",
+        ),
+      getChangedLineRanges: vi
+        .fn()
+        .mockResolvedValue([{ startLine: 1, endLine: 1 }]),
+    });
+
+    const oversizedResult = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    content = "export function restoredCaller() { return restoredTarget(); }";
+    currentHeadSha = NEXT_HEAD_SHA;
+    const restoredResult = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: HEAD_SHA,
+      headSha: NEXT_HEAD_SHA,
+    });
+
+    expect(oversizedResult.kind).toBe("autoDelta");
+    if (oversizedResult.kind === "autoDelta") {
+      expect(oversizedResult.filesSkippedOversized).toBe(1);
+    }
+    expect(restoredResult.kind).toBe("autoDelta");
+    if (restoredResult.kind === "autoDelta") {
+      expect(restoredResult.filesReparsed).toBe(1);
+      expect(restoredResult.filesSkippedOversized).toBe(0);
+      expect(restoredResult.filesDeleted).toBe(0);
+    }
+    expect(astProcessor.processFiles).toHaveBeenCalledTimes(1);
+    expect(astProcessor.processFiles).toHaveBeenCalledWith(
+      tmpDir,
+      expect.arrayContaining([expect.objectContaining({ file })]),
+    );
+    expect(graphPersister.persist).toHaveBeenCalledTimes(2);
   });
 
   it("[state-diff] removes call-resolution metadata during a delete-only delta (#526)", async () => {

@@ -1717,7 +1717,6 @@ export interface Phase3KnownDefect {
 export const PHASE3_KNOWN_PRODUCT_DEFECTS: Readonly<
   Record<string, Phase3KnownDefect>
 > = {
-  "T10@after": { defect: "D10", issue: 522 },
   "T12@after": { defect: "D12", issue: 521 },
 };
 

@@ -32,9 +32,13 @@ import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import {
   appendTierBQueueEntries,
+  removeTierBQueueEntriesForFiles,
   type TierBQueueEntry,
 } from "./tier-b-queue.js";
-import { appendTierCQueueEntries } from "./tier-c-queue.js";
+import {
+  appendTierCQueueEntries,
+  removeTierCQueueEntriesForFiles,
+} from "./tier-c-queue.js";
 import {
   collectCommitMessageCandidates,
   collectContractSymbolCandidates,
@@ -123,6 +127,8 @@ export async function runDeltaIngestion(deps: {
     tierCSymbolEntries,
     changedBytes,
   } = await collectFilesToParse(deps, toReparse);
+  const pathsToRetire = new Set(toDelete);
+  for (const { file } of skippedOversized) pathsToRetire.add(file);
   // Tier C's commit-message candidate source (phase1-decision-integration.md §9b/§9e) — collected
   // once per delta run (not per file), independent of which files changed.
   const tierCCommitEntries = await collectCommitMessageCandidates(
@@ -143,7 +149,7 @@ export async function runDeltaIngestion(deps: {
   let failures: AstParseFailure[] = [];
   await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
     failures = await persistDelta(deps, {
-      toDelete,
+      pathsToRetire,
       filesToParse,
       tierBEntries,
       tierCEntries,
@@ -330,23 +336,22 @@ async function classifyChangedFile(
   };
 }
 
-/** #508 Phase 3 (D11): retires every per-path record of a path that left the tree (deleted, or
- *  the old side of a rename) -- its L2 nodes and their links, its Tier A call sites, and its
- *  `project_files` row -- so nothing about it outlives the file. */
+/** #508 Phase 3 (D11) / #522: retires every persisted per-path record whose semantic state is no
+ *  longer usable -- its L2 nodes and links, Tier A call sites, and `project_files` row. */
 function retirePath(store: IGraphStore, projectId: number, file: string): void {
   store.graph.deleteNodesForPath(file);
   store.callSites.deleteForFile(projectId, file);
   store.files.deleteFile(projectId, file);
 }
 
-/** The lock-held persist step: retire deleted/renamed-old paths (`retirePath`), re-parse + persist the
- *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B/C queues,
- *  advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1), and stamp the
- *  last-ingested source sha. Returns the parse failures. */
+/** The lock-held persist step: retire deleted, renamed-old, and oversized paths (`retirePath`),
+ *  re-parse + persist the changed files via the shared `runParseAndPersist` phase helper, append
+ *  the Tier B/C queues, advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1),
+ *  and stamp the last-ingested source sha. Returns the parse failures. */
 async function persistDelta(
   deps: DeltaDeps,
   work: {
-    toDelete: Set<string>;
+    pathsToRetire: Set<string>;
     filesToParse: DiscoveredFile[];
     tierBEntries: TierBQueueEntry[];
     tierCEntries: TierCQueueEntry[];
@@ -354,21 +359,30 @@ async function persistDelta(
   },
 ): Promise<AstParseFailure[]> {
   const { workspaceRoot, logger, store, projectId, headSha } = deps;
-  const { toDelete, filesToParse, tierBEntries, tierCEntries, changedBytes } =
-    work;
+  const {
+    pathsToRetire,
+    filesToParse,
+    tierBEntries,
+    tierCEntries,
+    changedBytes,
+  } = work;
 
-  if (toDelete.size > 0) {
+  if (pathsToRetire.size > 0) {
     await store.withWriteLock(() => {
-      for (const file of toDelete) retirePath(store, projectId, file);
+      for (const file of pathsToRetire) retirePath(store, projectId, file);
+      // Tier B drains can upsert `project_files`, while Tier C contract-symbol entries need an L2
+      // anchor. Drop both kinds of path-scoped work before a later drain can outlive this retirement.
+      removeTierBQueueEntriesForFiles(store, pathsToRetire);
+      removeTierCQueueEntriesForFiles(store, pathsToRetire);
     });
   }
 
   let failures: AstParseFailure[] = [];
   let callResolutionByFile: Record<string, CallResolutionStats> | undefined;
-  if (filesToParse.length === 0 && toDelete.size > 0) {
-    // #508 D6: a delete-only delta parses nothing, but the #393 evidence still names the retired
-    // paths as loaders or candidates. An empty persist batch is exactly that refresh: it
-    // re-resolves every retained record against the remaining tracked files.
+  if (filesToParse.length === 0 && pathsToRetire.size > 0) {
+    // #508 D6 / #522: a retirement-only delta parses nothing, but the #393 evidence may still name
+    // the retired paths as loaders or candidates. An empty persist batch refreshes every retained
+    // record against the remaining tracked files.
     await docuviaFactory.resolve(TOKENS.GraphPersister).persist({
       store,
       workspaceRoot,
@@ -404,16 +418,16 @@ async function persistDelta(
     callResolutionByFile = result.callResolutionByFile;
   }
 
-  // Issue #221 / #526: reconcile every path touched by this delta. A file with zero call sites
-  // has no entry in callResolutionByFile, so the attempted re-parse set is authoritative for
-  // removing its previous record. Delete-only deltas must still write the resulting empty map.
-  if (filesToParse.length > 0 || toDelete.size > 0) {
+  // Issue #221 / #526 / #522: reconcile every path touched by this delta. A file with zero call
+  // sites has no entry in callResolutionByFile, so the re-parse and retirement sets are
+  // authoritative for removing its previous record. Retirement-only deltas still write the map.
+  if (filesToParse.length > 0 || pathsToRetire.size > 0) {
     const deltaCallResolution = callResolutionByFile ?? {};
     mergeDeltaCallResolution(
       store,
       deltaCallResolution,
       filesToParse.map(({ file }) => file),
-      toDelete,
+      pathsToRetire,
     );
     const totals = aggregateCallResolution(deltaCallResolution);
     await appendAnalyzeLogLine(workspaceRoot, {

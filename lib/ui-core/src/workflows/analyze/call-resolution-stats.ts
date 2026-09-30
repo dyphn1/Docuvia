@@ -62,20 +62,20 @@ export function stampFullCallResolution(
   writeCallResolution(store, byFile);
 }
 
-/** Delta-ingestion variant: replaces every re-parsed file's slice, removes deleted files' entries,
+/** Delta-ingestion variant: replaces every re-parsed file's slice, removes retired files' entries,
  *  then writes the merged map back. `reparsedFiles` is separate because a file with zero call
  *  sites has no entry in `reparsedByFile`. */
 export function mergeDeltaCallResolution(
   store: IGraphStore,
   reparsedByFile: Record<string, CallResolutionStats>,
   reparsedFiles: Iterable<string>,
-  deletedFiles: Iterable<string>,
+  retiredFiles: Iterable<string>,
 ): void {
   const merged = readCallResolution(store);
   for (const file of reparsedFiles) {
     delete merged[file];
   }
-  for (const file of deletedFiles) {
+  for (const file of retiredFiles) {
     delete merged[file];
   }
   for (const [file, stats] of Object.entries(reparsedByFile)) {

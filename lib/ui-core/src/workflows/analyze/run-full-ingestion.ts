@@ -15,10 +15,13 @@ import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { stampFullCallResolution } from "./call-resolution-stats.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
+import { retirePath } from "./path-retirement.js";
+import { removeTierBQueueEntriesForFiles } from "./tier-b-queue.js";
+import { removeTierCQueueEntriesForFiles } from "./tier-c-queue.js";
 
 /**
- * `analyze` auto mode's full-ingestion branch (§6a) — the graph has no project row or no L2
- * nodes. Reuses `init`'s own Phase 2-4 helpers verbatim (`seedProjectRow`,
+ * `analyze` auto mode's full-ingestion branch (§6a) — the graph has no project row, no L2 nodes,
+ * or must be rebuilt after a history replacement. Reuses `init`'s own Phase 2-4 helpers (`seedProjectRow`,
  * `runDiscoveryPipeline`, `runParseAndPersist`) rather than re-implementing them; the old
  * config-scan-only output (`projectType`/`suggestedTags`) is folded in as part of this, per §6a.
  * Deliberately does NOT call `ensureGitBranchAndHooks` (branch/hook setup stays `init`'s job —
@@ -62,8 +65,25 @@ export async function runFullIngestion(deps: {
     configScanner,
     vcsScanner,
     fileDiscovery,
-    filesRepo: store.files,
+    // A full analyze fallback is authoritative for the current tree: matching persisted hashes
+    // cannot stand in for rebuilding graph edges and call-resolution state.
+    filesRepo: { getAllHashes: () => [] },
     workspaceRoot,
+  });
+
+  const currentFiles = new Set(
+    discoveryResult.filesToParse.map(({ file }) => file),
+  );
+  await store.withWriteLock(() => {
+    const pathsToRetire = new Set(
+      store.files
+        .getAllHashes()
+        .filter(({ filePath }) => !currentFiles.has(filePath))
+        .map(({ filePath }) => filePath),
+    );
+    for (const file of pathsToRetire) retirePath(store, project.id, file);
+    removeTierBQueueEntriesForFiles(store, pathsToRetire);
+    removeTierCQueueEntriesForFiles(store, pathsToRetire);
   });
 
   const { parsedResults, failures, callResolutionByFile } =
@@ -83,15 +103,18 @@ export async function runFullIngestion(deps: {
       },
     });
 
-  // Issue #221: a full run reparses everything, so its per-file call-resolution counters
-  // replace the stored map wholesale (no merge -- stale entries cannot survive a full pass).
-  if (Object.keys(callResolutionByFile ?? {}).length > 0) {
-    stampFullCallResolution(store, callResolutionByFile ?? {});
-    const totals = aggregateCallResolution(callResolutionByFile ?? {});
+  // Issue #221: a full run reparses every discoverable file, so its per-file call-resolution
+  // counters replace the stored map wholesale, including an authoritative empty result.
+  const fullCallResolutionByFile = callResolutionByFile ?? {};
+  stampFullCallResolution(store, fullCallResolutionByFile, {
+    clearWhenEmpty: true,
+  });
+  if (Object.keys(fullCallResolutionByFile).length > 0) {
+    const totals = aggregateCallResolution(fullCallResolutionByFile);
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.FULL_CALL_RESOLUTION,
       ...totals,
-      files: Object.keys(callResolutionByFile ?? {}).length,
+      files: Object.keys(fullCallResolutionByFile).length,
     });
   }
 

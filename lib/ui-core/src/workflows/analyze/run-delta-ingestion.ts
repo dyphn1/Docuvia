@@ -29,6 +29,7 @@ import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { mergeDeltaCallResolution } from "./call-resolution-stats.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
+import { retirePath } from "./path-retirement.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import {
   appendTierBQueueEntries,
@@ -334,14 +335,6 @@ async function classifyChangedFile(
     contractChanged: findings.some((f) => f.pruningLevel === 1),
     findings,
   };
-}
-
-/** #508 Phase 3 (D11) / #522: retires every persisted per-path record whose semantic state is no
- *  longer usable -- its L2 nodes and links, Tier A call sites, and `project_files` row. */
-function retirePath(store: IGraphStore, projectId: number, file: string): void {
-  store.graph.deleteNodesForPath(file);
-  store.callSites.deleteForFile(projectId, file);
-  store.files.deleteFile(projectId, file);
 }
 
 /** The lock-held persist step: retire deleted, renamed-old, and oversized paths (`retirePath`),

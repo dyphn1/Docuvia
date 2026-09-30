@@ -504,8 +504,8 @@ describe.skipIf(!PHASE4_EVAL_ENABLED)(
     it("[error-handling] errors, exclusions and known defects stay visible", () => {
       expect(reportMarkdown).toContain("## Errors, N/A and exclusions");
       expect(reportMarkdown).toContain("## Known product defects");
-      expect(reportMarkdown).toContain("D12");
-      expect(reportMarkdown).toContain("#521");
+      expect(reportMarkdown).not.toContain("D12");
+      expect(reportMarkdown).not.toContain("#521");
     });
 
     it("[stress] renders deterministic JSON and Markdown for identical input", () => {

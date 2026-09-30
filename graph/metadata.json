@@ -3240,9 +3240,9 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-messages.ts",
-      "contentHash": "ebf46be9449f930ae5fe734f999ec79ea1cf2287",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "4ab2a4a85a518b4334b64fbda8acb98a045c0400",
+      "lastTierBProcessedAt": "2026-09-30 02:04:52",
+      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-result.ts",
@@ -3438,15 +3438,15 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts",
-      "contentHash": "4831bc60e279246993a6d461dacf5fcec0a81617",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "df5868361062ba2f6d14bf9f0e8dbebefd8d5336",
+      "lastTierBProcessedAt": "2026-09-30 02:04:52",
+      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts",
-      "contentHash": "09a3a12abed9598285d46f461bc610de76a66de9",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "a7e0b64da31234ee6bc27f50c6e6a670ecfa4681",
+      "lastTierBProcessedAt": "2026-09-30 02:04:52",
+      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-b-commit-cap.ts",
@@ -4307,5 +4307,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "e52bb11ccda801b75722041141cc4980f7c4bdae"
+  "lastIngestedSourceSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
 }

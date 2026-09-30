@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/unit/commands/review.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/commands/review.unit.test.ts`
-

@@ -7,4 +7,3 @@ filePath: lib/ast-core/test/ast-traverser.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/test/ast-traverser.unit.test.ts`
-ts`

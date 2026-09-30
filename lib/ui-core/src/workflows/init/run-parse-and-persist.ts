@@ -12,7 +12,12 @@ import {
   SnapshotCallSiteAvailabilityStates,
 } from "@workspace/contracts";
 
-/** Marks the project capability available only when the full pass parsed every discoverable file. */
+/** Restores the call-site capability after a full pass that attempted every discoverable file
+ *  (#516). Such a pass leaves `ast_call_sites` exactly as a fresh `init` would: files that are
+ *  oversized or fail to parse have no call sites there either (#522 / #544 retire them), and those
+ *  per-file gaps are reported through coverage, not this marker. The marker only tracks call sites
+ *  lost to a snapshot that did not carry them, so ingestion never downgrades it -- a pass that did
+ *  not attempt every candidate leaves it unchanged. */
 export function markCallSitesAvailableAfterCompleteIngestion(input: {
   store: IGraphStore;
   projectId: number;
@@ -29,14 +34,11 @@ export function markCallSitesAvailableAfterCompleteIngestion(input: {
     failedFileCount,
     skippedOversizedCount,
   } = input;
-  if (
-    candidateFileCount === undefined ||
-    candidateFileCount !== parsedFileCount ||
-    failedFileCount > 0 ||
-    skippedOversizedCount > 0
-  ) {
-    return;
-  }
+  const attemptedEveryCandidate =
+    candidateFileCount !== undefined &&
+    parsedFileCount + failedFileCount + skippedOversizedCount ===
+      candidateFileCount;
+  if (!attemptedEveryCandidate) return;
 
   store.meta.set(
     `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,

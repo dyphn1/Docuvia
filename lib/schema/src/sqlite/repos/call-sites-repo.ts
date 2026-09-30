@@ -1,10 +1,18 @@
 import type Database from "better-sqlite3";
+import { DocuviaError, ErrorCodes } from "@workspace/contracts";
 import type {
   AstCallSiteRow,
   ICallSitesRepo,
   SnapshotCallSiteRow,
 } from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
+
+const CALL_SITES_REPO_ERROR_MESSAGES = {
+  READ_ALL_FAILED: (projectId: number) =>
+    `Failed to read snapshot call sites for project ${projectId}`,
+  REPLACE_PROJECT_FAILED: (projectId: number) =>
+    `Failed to replace call sites for project ${projectId}`,
+} as const;
 
 /**
  * `callSites` repo — `ast_call_sites` reads/writes (issue #11 plan A, Slice 3). Tier A's
@@ -155,65 +163,81 @@ export class CallSitesRepo implements ICallSitesRepo {
   /** Snapshot read without SQLite-local ids. The order covers every exported field so repeated
    *  snapshots are byte-identical even if rows were inserted in a different order. */
   getAllForProject(projectId: number): SnapshotCallSiteRow[] {
-    const rows = this.db
-      .prepare(
-        `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME}, ${SchemaColumns.RECEIVER_TEXT}, ${SchemaColumns.CALLEE_KIND}
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME}, ${SchemaColumns.RECEIVER_TEXT}, ${SchemaColumns.CALLEE_KIND}
          FROM ${SchemaTables.AST_CALL_SITES}
          WHERE ${SchemaColumns.PROJECT_ID} = ?
          ORDER BY ${SchemaColumns.FILE_PATH} COLLATE BINARY, ${SchemaColumns.TARGET_FUNCTION} COLLATE BINARY, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME} COLLATE BINARY, ${SchemaColumns.RECEIVER_TEXT} COLLATE BINARY, ${SchemaColumns.CALLEE_KIND} COLLATE BINARY`,
-      )
-      .all(projectId) as Array<
-      Pick<
-        AstCallSiteRow,
-        | "file_path"
-        | "target_function"
-        | "start_line"
-        | "start_column"
-        | "callee_name"
-        | "receiver_text"
-        | "callee_kind"
-      >
-    >;
+        )
+        .all(projectId) as Array<
+        Pick<
+          AstCallSiteRow,
+          | "file_path"
+          | "target_function"
+          | "start_line"
+          | "start_column"
+          | "callee_name"
+          | "receiver_text"
+          | "callee_kind"
+        >
+      >;
 
-    return rows.map((row) => ({
-      filePath: row.file_path,
-      targetFunction: row.target_function,
-      startLine: row.start_line,
-      startColumn: row.start_column,
-      calleeName: row.callee_name,
-      receiverText: row.receiver_text,
-      calleeKind: row.callee_kind,
-    }));
+      return rows.map((row) => ({
+        filePath: row.file_path,
+        targetFunction: row.target_function,
+        startLine: row.start_line,
+        startColumn: row.start_column,
+        calleeName: row.callee_name,
+        receiverText: row.receiver_text,
+        calleeKind: row.callee_kind,
+      }));
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITES_REPO_ERROR_MESSAGES.READ_ALL_FAILED(projectId),
+        err,
+      );
+    }
   }
 
   /** Replaces all call sites for one project as one SQLite transaction. An empty array records a
    *  confirmed empty set, which differs from a snapshot where call-site data is unavailable. */
   replaceForProject(projectId: number, callSites: SnapshotCallSiteRow[]): void {
-    const replace = this.db.transaction(() => {
-      this.db
-        .prepare(
-          `DELETE FROM ${SchemaTables.AST_CALL_SITES} WHERE ${SchemaColumns.PROJECT_ID} = ?`,
-        )
-        .run(projectId);
-      if (callSites.length === 0) return;
+    try {
+      const replace = this.db.transaction(() => {
+        this.db
+          .prepare(
+            `DELETE FROM ${SchemaTables.AST_CALL_SITES} WHERE ${SchemaColumns.PROJECT_ID} = ?`,
+          )
+          .run(projectId);
+        if (callSites.length === 0) return;
 
-      const insert = this.db.prepare(
-        `INSERT INTO ${SchemaTables.AST_CALL_SITES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME}, ${SchemaColumns.RECEIVER_TEXT}, ${SchemaColumns.CALLEE_KIND})
+        const insert = this.db.prepare(
+          `INSERT INTO ${SchemaTables.AST_CALL_SITES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.TARGET_FUNCTION}, ${SchemaColumns.START_LINE}, ${SchemaColumns.START_COLUMN}, ${SchemaColumns.CALLEE_NAME}, ${SchemaColumns.RECEIVER_TEXT}, ${SchemaColumns.CALLEE_KIND})
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      );
-      for (const callSite of callSites) {
-        insert.run(
-          projectId,
-          callSite.filePath,
-          callSite.targetFunction,
-          callSite.startLine,
-          callSite.startColumn,
-          callSite.calleeName,
-          callSite.receiverText,
-          callSite.calleeKind,
         );
-      }
-    });
-    replace();
+        for (const callSite of callSites) {
+          insert.run(
+            projectId,
+            callSite.filePath,
+            callSite.targetFunction,
+            callSite.startLine,
+            callSite.startColumn,
+            callSite.calleeName,
+            callSite.receiverText,
+            callSite.calleeKind,
+          );
+        }
+      });
+      replace();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITES_REPO_ERROR_MESSAGES.REPLACE_PROJECT_FAILED(projectId),
+        err,
+      );
+    }
   }
 }

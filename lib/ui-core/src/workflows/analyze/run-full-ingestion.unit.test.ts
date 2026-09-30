@@ -285,6 +285,34 @@ describe("runFullIngestion()", () => {
     );
   });
 
+  it("[state-diff] restores call-site evidence when every candidate was attempted, even with an oversized file", async () => {
+    const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue(
+      Object.assign(
+        {
+          filesToParse,
+          existingHashes: new Map(),
+          skippedCount: 0,
+          skippedOversized: [{ file: "src/huge.ts", sizeBytes: 600_000 }],
+        },
+        { candidateFileCount: filesToParse.length + 1 },
+      ),
+    );
+
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git: makeMockGitProvider(),
+    });
+
+    // Same call-site table a fresh init would build: the oversized file is a coverage gap.
+    expect(store.meta.get(markerKey)).toBe(
+      SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
+  });
+
   it("[state-diff] keeps call-site evidence unavailable when full discovery skips an unchanged file", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
@@ -824,6 +852,11 @@ describe("runFullIngestion()", () => {
       GitConstants.META_KEY_CALL_RESOLUTION_STATS,
       JSON.stringify({ byFile: { [failedFile]: oldCallStats } }),
     );
+    const callSitesAvailabilityKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    metadata.set(
+      callSitesAvailabilityKey,
+      SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
     metadata.set(
       GitConstants.META_KEY_TIER_B_QUEUE,
       JSON.stringify([{ file: failedFile, commitSha: "old-sha" }]),
@@ -863,6 +896,7 @@ describe("runFullIngestion()", () => {
       existingHashes: new Map(),
       skippedCount: 0,
       skippedOversized: [],
+      candidateFileCount: currentFiles.length,
     });
 
     const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
@@ -935,6 +969,11 @@ describe("runFullIngestion()", () => {
     expect(
       JSON.parse(metadata.get(GitConstants.META_KEY_CALL_RESOLUTION_STATS)!),
     ).toEqual({ byFile: { [successfulFile]: currentCallStats } });
+    // Every candidate was attempted, so the call-site table equals a fresh init's: the failed
+    // file's gap is a per-file coverage gap, not snapshot-lost evidence (#516).
+    expect(metadata.get(callSitesAvailabilityKey)).toBe(
+      SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
     expect(readTierBQueue(store)).toEqual([
       { file: successfulFile, commitSha: headSha },
     ]);

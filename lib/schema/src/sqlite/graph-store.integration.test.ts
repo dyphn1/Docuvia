@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { L3DecisionSources } from "@workspace/contracts";
+import {
+  DocuviaError,
+  ErrorCodes,
+  L3DecisionSources,
+} from "@workspace/contracts";
 import { GraphStore } from "./graph-store.js";
 
 /** Test-only fixture helper: `l3_nodes` has no repo/insert method yet (deliberately out of scope
@@ -2305,6 +2309,39 @@ describe("callSites repo: callee evidence columns (issue #192, migration 0012)",
       portableRows,
     );
     expect(store.callSites.getAllForProject(project.id)).toEqual(portableRows);
+  });
+
+  it("[error-handling] wraps call-site and metadata repository failures as DB_QUERY_FAILED", async () => {
+    const project = store.projects.insert({
+      name: "closed-database",
+      repoUrl: "file:///closed-database",
+    });
+    const closedStore = store;
+    await closedStore.close();
+    store = await GraphStore.open({ dbPath });
+
+    const captureError = (operation: () => unknown): unknown => {
+      try {
+        operation();
+      } catch (error) {
+        return error;
+      }
+      return undefined;
+    };
+    const replaceError = captureError(() =>
+      closedStore.callSites.replaceForProject(project.id, []),
+    );
+    const readError = captureError(() =>
+      closedStore.callSites.getAllForProject(project.id),
+    );
+    const deleteError = captureError(() =>
+      closedStore.meta.delete("snapshot.test"),
+    );
+
+    for (const error of [replaceError, readError, deleteError]) {
+      expect(error).toBeInstanceOf(DocuviaError);
+      expect(error).toMatchObject({ code: ErrorCodes.DB_QUERY_FAILED });
+    }
   });
 
   it("[state-diff] deletes a stale metadata key when restoring an older snapshot", async () => {

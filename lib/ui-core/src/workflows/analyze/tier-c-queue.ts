@@ -40,14 +40,17 @@ export type ContractSymbolTargetParseResult =
     };
 
 const REPO_PATH_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+const REPO_PATH_BACKSLASH = /\\/;
 const CONTRACT_SYMBOL_FILE_HEADER_UNSAFE_CHARACTERS = /\x60/;
 const CONTRACT_SYMBOL_NAME_UNSAFE_CHARACTERS = /[\u0000-\u001f\u007f`]/;
 
 /** Parses the persisted contract-symbol target without repairing non-canonical queue values.
- *  The canonical file followed by `#` defines the prefix; the remaining non-empty text is the
- *  symbol name, which may itself contain `#` characters. The file and symbol are interpolated
- *  into a backtick-delimited prompt header, so reject backticks there and control characters in
- *  the symbol. */
+ *  Git tree paths use forward-slash repository semantics: a drive-like first segment remains
+ *  repo-relative, while leading slashes, backslashes, traversal, and non-canonical segments are
+ *  rejected. The canonical file followed by `#` defines the prefix; the remaining non-empty text
+ *  is the symbol name, which may itself contain `#` characters. The file and symbol are
+ *  interpolated into a backtick-delimited prompt header, so reject backticks there and control
+ *  characters in the symbol. */
 export function parseContractSymbolTarget(
   entry: TierCQueueEntry,
 ): ContractSymbolTargetParseResult {
@@ -89,7 +92,7 @@ function isPosixRepoRelativeFile(file: string): boolean {
   return (
     file.length > 0 &&
     !path.posix.isAbsolute(file) &&
-    !path.win32.isAbsolute(file) &&
+    !REPO_PATH_BACKSLASH.test(file) &&
     !REPO_PATH_CONTROL_CHARACTERS.test(file) &&
     toNodeKey(file) === file
   );

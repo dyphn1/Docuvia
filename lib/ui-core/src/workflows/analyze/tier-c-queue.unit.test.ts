@@ -37,6 +37,17 @@ describe("parseContractSymbolTarget()", () => {
     ).toEqual({ ok: true, file: "src/x/y.ts", symbolName: "Foo" });
   });
 
+  it("[happy] accepts a drive-letter-looking Git repo path", () => {
+    expect(
+      parseContractSymbolTarget({
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target: "C:/src/a.ts#Foo",
+        commitSha: "sha1",
+        file: "C:/src/a.ts",
+      }),
+    ).toEqual({ ok: true, file: "C:/src/a.ts", symbolName: "Foo" });
+  });
+
   it.each([
     {
       target: "src/a.ts##secret",

@@ -618,6 +618,39 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
     expect(readTierCQueue(store)).toEqual([]);
   });
 
+  it("[state-diff] reads and prompts with a drive-letter-looking Git repo path", async () => {
+    const target = "C:/src/a.ts#Foo";
+    const file = "C:/src/a.ts";
+    const { store } = makeStore([target]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target,
+        commitSha: HEAD_SHA,
+        file,
+      },
+    ]);
+    const git = makeGit({
+      readFileAtRef: vi.fn().mockResolvedValue("export interface Foo {}"),
+    });
+    const llmClient = makeLlmClient("[]");
+    registerLlmClient(llmClient);
+
+    const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
+
+    expect(result.tierCProcessed).toBe(1);
+    expect(result.tierCFailed).toBe(0);
+    expect(git.readFileAtRef).toHaveBeenCalledWith(
+      workspaceRoot,
+      GitConstants.HEAD_REF,
+      file,
+    );
+    expect(llmClient.chatCompletion).toHaveBeenCalledTimes(1);
+    expect(
+      llmClient.chatCompletion.mock.calls[0][0].messages[1].content,
+    ).toContain("Foo");
+  });
+
   it.each([
     { target: "src/a.ts##secret", file: "src/a.ts", symbolName: "#secret" },
     {

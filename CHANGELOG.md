@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.3](https://github.com/dyphn1/Docuvia/compare/v1.15.2...v1.15.3) (2026-09-30)
+
+### Bug Fixes
+
+- **analyze:** bound and delimit Tier C contract-symbol source ([#538](https://github.com/dyphn1/Docuvia/issues/538)) ([4209498](https://github.com/dyphn1/Docuvia/commit/4209498a6e77ae3a433cb2ddf282df630e13b4e1)), closes [#111](https://github.com/dyphn1/Docuvia/issues/111)
+
 ## [1.15.2](https://github.com/dyphn1/Docuvia/compare/v1.15.1...v1.15.2) (2026-09-29)
 
 ### Bug Fixes

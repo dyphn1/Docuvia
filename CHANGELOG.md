@@ -2,6 +2,16 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.16.0](https://github.com/dyphn1/Docuvia/compare/v1.15.7...v1.16.0) (2026-09-30)
+
+### Bug Fixes
+
+- **snapshot:** never re-export unavailable call sites as a complete set ([#516](https://github.com/dyphn1/Docuvia/issues/516)) ([9f6efd1](https://github.com/dyphn1/Docuvia/commit/9f6efd104aa51538c845e3638f6d8fb2d212ec74))
+
+### Features
+
+- **snapshot:** carry dynamic-dependency evidence and call sites through hydrate ([#516](https://github.com/dyphn1/Docuvia/issues/516)) ([a1934d0](https://github.com/dyphn1/Docuvia/commit/a1934d02a5d5f7938962c9eae50a0b061e82189a)), closes [#393](https://github.com/dyphn1/Docuvia/issues/393) [#217](https://github.com/dyphn1/Docuvia/issues/217) [#508](https://github.com/dyphn1/Docuvia/issues/508)
+
 ## [1.15.7](https://github.com/dyphn1/Docuvia/compare/v1.15.6...v1.15.7) (2026-09-30)
 
 ### Bug Fixes

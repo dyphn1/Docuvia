@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts#typescript
+id: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts#typescript@L194
 type: symbol
 name: typescript
 filePath: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts
@@ -7,5 +7,3 @@ filePath: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts
 # Symbol: typescript
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts`
-ts`
-

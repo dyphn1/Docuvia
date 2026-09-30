@@ -1255,8 +1255,8 @@
     {
       "filePath": "lib/contracts/src/constants/tier-c-queue.ts",
       "contentHash": "5733f395eec4a599f7193b4eb9c84e18364328ae",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/contracts/src/errors/docuvia-error.ts",
@@ -1297,8 +1297,8 @@
     {
       "filePath": "lib/contracts/src/index.ts",
       "contentHash": "be492312df1332bd0224c3b5336fd0384b7705da",
-      "lastTierBProcessedAt": "2026-09-29 13:31:38",
-      "lastTierBCommitSha": "b454e3f56163d5b028bef8a115907268d4ba13ea"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -1447,8 +1447,8 @@
     {
       "filePath": "lib/contracts/src/interfaces/tier-c-queue.interfaces.ts",
       "contentHash": "b835a8ce2b37b801e4ac7f99f37bdb40aa339776",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/contracts/src/interfaces/topology.interfaces.ts",
@@ -1585,14 +1585,14 @@
     {
       "filePath": "lib/contracts/src/utils/tier-c-queue.ts",
       "contentHash": "920e85a2686779b1fc1335b70f4a9135ac29a2ae",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/contracts/src/utils/tier-c-queue.unit.test.ts",
       "contentHash": "8d2a0b8e714dad75e584f1ede471049b1561685f",
-      "lastTierBProcessedAt": null,
-      "lastTierBCommitSha": null
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/core/src/ast/ast-constants.ts",
@@ -3265,8 +3265,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-messages.ts",
       "contentHash": "1c31ce21b5bf39b7b869cb30add8f89ba252be5b",
-      "lastTierBProcessedAt": "2026-09-30 02:04:52",
-      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-result.ts",
@@ -3415,8 +3415,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       "contentHash": "2af5ac71c35cd0796dbd8a074c8e2472aa5cfd44",
-      "lastTierBProcessedAt": "2026-09-29 02:27:26",
-      "lastTierBCommitSha": "684a721c15dfc9a1d8ca9b2604f3d42d4b56bd9c"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts",
@@ -3463,14 +3463,14 @@
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts",
       "contentHash": "ac36bf89fcdef15e80d485314279ff6b0f7bcb40",
-      "lastTierBProcessedAt": "2026-09-30 02:44:36",
-      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts",
       "contentHash": "d0c9ee42b267aa22d3a3c135f5759502411ed1b6",
-      "lastTierBProcessedAt": "2026-09-30 02:44:36",
-      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-b-commit-cap.ts",
@@ -3565,14 +3565,14 @@
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.ts",
       "contentHash": "f2146ae737c5e845fed6f7ac40d18759981ff87b",
-      "lastTierBProcessedAt": "2026-09-30 02:44:36",
-      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.unit.test.ts",
       "contentHash": "cde1d1734761662eb3da9619f918615a8984f44e",
-      "lastTierBProcessedAt": "2026-09-30 02:44:36",
-      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-throttle.ts",
@@ -3631,8 +3631,8 @@
     {
       "filePath": "lib/ui-core/src/workflows/doctor/doctor-workflow.ts",
       "contentHash": "cf567bde5d88948fbf9a98b78512d82a1ae69a25",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/doctor/git-hook-resolvability.ts",
@@ -4009,14 +4009,14 @@
     {
       "filePath": "lib/ui-core/src/workflows/status/status-workflow.ts",
       "contentHash": "ceee484f28af18ce005e7611f9ce54f54a20f4a9",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/status/status-workflow.unit.test.ts",
       "contentHash": "dec474d7cd3072abadf735113a45d5256456a724",
-      "lastTierBProcessedAt": "2026-09-28 13:05:39",
-      "lastTierBCommitSha": "ba1048a053d583aa2645bf00d226a9bfd89b6ffd"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "lib/ui-core/src/workflows/sync-knowledge/judge-l3-validity.ts",
@@ -4129,8 +4129,8 @@
     {
       "filePath": "lib/ui-core/test/workflows/doctor-workflow.unit.test.ts",
       "contentHash": "25d273f90ca55e32f4914cd3cea87e026114b1ee",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "lastTierBProcessedAt": "2026-09-30 03:31:35",
+      "lastTierBCommitSha": "fdb64f7ff1435ab97dc8ac1413615000ceb7ac2c"
     },
     {
       "filePath": "scripts/release-format-plugin.mjs",

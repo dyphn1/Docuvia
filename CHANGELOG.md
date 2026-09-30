@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.15.4](https://github.com/dyphn1/Docuvia/compare/v1.15.3...v1.15.4) (2026-09-30)
+
+### Bug Fixes
+
+- **analyze:** validate Tier C contract-symbol queue entries before use ([#529](https://github.com/dyphn1/Docuvia/issues/529)) ([dc065fd](https://github.com/dyphn1/Docuvia/commit/dc065fd638fd126d7aa4ddb63bccb222943395d4))
+- **analyze:** validate Tier C file paths with Git tree semantics ([#529](https://github.com/dyphn1/Docuvia/issues/529)) ([9bec03b](https://github.com/dyphn1/Docuvia/commit/9bec03bd285fa82ea8c5ee27fde717214950fb46))
+
 ## [1.15.3](https://github.com/dyphn1/Docuvia/compare/v1.15.2...v1.15.3) (2026-09-30)
 
 ### Bug Fixes

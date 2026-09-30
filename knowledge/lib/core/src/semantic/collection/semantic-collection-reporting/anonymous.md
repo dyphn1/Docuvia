@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/collection/semantic-collection-reporting.ts#anonymous@L100
+id: lib/core/src/semantic/collection/semantic-collection-reporting.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/collection/semantic-collection-reporting.ts

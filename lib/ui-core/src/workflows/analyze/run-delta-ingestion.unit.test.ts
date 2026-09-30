@@ -646,6 +646,52 @@ describe("runDeltaIngestion()", () => {
     expect(astProcessor.processFiles).not.toHaveBeenCalled();
   });
 
+  it("[happy] skips modified generated hooks while re-parsing user-owned hook-like files (#524)", async () => {
+    const entries: ChangedFileEntry[] = [
+      { file: ".claude/hooks/docuvia-hook.js", status: "modified" },
+      { file: ".cursor/hooks/docuvia-hook.cjs", status: "modified" },
+      { file: "src/hooks/docuvia-hook.js", status: "modified" },
+      { file: ".claude/hooks/my-hook.js", status: "modified" },
+    ];
+    const readFileAtRef = vi
+      .fn()
+      .mockResolvedValue("export const hook = true;");
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef,
+    });
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(astProcessor.processFiles).toHaveBeenCalledOnce();
+    const processedFiles = vi
+      .mocked(astProcessor.processFiles)
+      .mock.calls[0][1].map((file) => file.file);
+    expect(processedFiles).toEqual([
+      "src/hooks/docuvia-hook.js",
+      ".claude/hooks/my-hook.js",
+    ]);
+    const readFiles = readFileAtRef.mock.calls.map(([, , file]) => file);
+    expect(readFiles).toEqual(
+      expect.arrayContaining([
+        "src/hooks/docuvia-hook.js",
+        ".claude/hooks/my-hook.js",
+      ]),
+    );
+    expect(readFiles).not.toContain(".claude/hooks/docuvia-hook.js");
+    expect(readFiles).not.toContain(".cursor/hooks/docuvia-hook.cjs");
+    expect(result).toMatchObject({ kind: "autoDelta", filesReparsed: 2 });
+  });
+
   it("enqueues a CONTRACT_CHANGED-classified modified file into the Tier B queue", async () => {
     const entries: ChangedFileEntry[] = [
       { file: "src/a.ts", status: "modified" },

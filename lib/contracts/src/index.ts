@@ -368,6 +368,7 @@ export {
   CURSOR_HOOKS_DIR,
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
+  isDocuviaGeneratedPath,
 } from "./constants/hooks.js";
 
 export type {

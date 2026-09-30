@@ -2,6 +2,7 @@ import path from "path";
 import { SUPPORTED_LANGUAGES } from "./languages.js";
 import type { SupportedLanguage } from "./languages.js";
 import { NODE_MODULES_DIR_NAME, DOCUVIA_DIR_NAME } from "./paths.js";
+import { isDocuviaGeneratedPath } from "./hooks.js";
 
 // ---------------------------------------------------------------------------
 // Per-language extension arrays — the canonical definitions.  These were
@@ -118,6 +119,7 @@ export function getSupportedGlobExtensions(): string[] {
  */
 export function isDiscoverableSourceFile(filePath: string): boolean {
   return (
+    !isDocuviaGeneratedPath(filePath) &&
     isSupportedSourceFile(filePath) &&
     !filePath.includes(`${NODE_MODULES_DIR_NAME}/`) &&
     !filePath.includes(`${DOCUVIA_DIR_NAME}/`)

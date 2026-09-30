@@ -99,6 +99,38 @@ describe("FileDiscoveryService", () => {
     expect(discoveredFiles).not.toContain("b.exe");
   });
 
+  it("[happy] excludes untracked Docuvia hooks while preserving user hooks and the .docuvia exclusion (#524)", async () => {
+    const candidateFiles = [
+      ".claude/hooks/docuvia-hook.js",
+      ".cursor/hooks/docuvia-hook.cjs",
+      "src/hooks/docuvia-hook.js",
+      ".claude/hooks/my-hook.js",
+      ".docuvia/state.ts",
+    ];
+    for (const file of candidateFiles) {
+      const absolutePath = path.join(tmpDir, file);
+      fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+      fs.writeFileSync(absolutePath, "export const hook = true;\n");
+    }
+
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(true),
+      listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map()),
+      listUntrackedFiles: vi.fn().mockResolvedValue(candidateFiles),
+    });
+
+    const service = new FileDiscoveryService(mockGit);
+    const { filesToParse } = await service.discoverFiles(
+      tmpDir,
+      makeMockFilesRepo(),
+    );
+
+    expect(filesToParse.map((file) => file.file)).toEqual([
+      "src/hooks/docuvia-hook.js",
+      ".claude/hooks/my-hook.js",
+    ]);
+  });
+
   it("falls back to fast-glob + registry extensions when not a git repository", async () => {
     fs.writeFileSync(path.join(tmpDir, "x.py"), "a = 1\n");
     fs.writeFileSync(path.join(tmpDir, "y.exe"), "binary-not-source");

@@ -9,6 +9,7 @@ import {
   createMockLogger,
   DocuviaError,
   ErrorCodes,
+  GitConstants,
   ANALYZE_LOG_FILE_NAME,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
@@ -22,8 +23,10 @@ import {
   appendTierCQueueEntries,
   readTierCQueue,
   TierCCandidateKinds,
+  type TierCQueueEntry,
 } from "./tier-c-queue.js";
 import {
+  ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
   TIER_C_COMMIT_MESSAGE_MAX_LENGTH,
   TIER_C_COMMIT_MESSAGE_USER_MESSAGE,
@@ -61,6 +64,182 @@ function resetFactoryWithProcessLock(): void {
 }
 
 const HEAD_SHA = "cafebabecafebabecafebabecafebabecafebabe";
+
+const INVALID_CONTRACT_SYMBOL_ENTRIES: Array<{
+  name: string;
+  entry: TierCQueueEntry;
+}> = [
+  {
+    name: "a target without a separator",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "an empty symbol",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts#",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "a missing file",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts#Foo",
+      commitSha: HEAD_SHA,
+    },
+  },
+  {
+    name: "an empty file",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "#Foo",
+      commitSha: HEAD_SHA,
+      file: "",
+    },
+  },
+  {
+    name: "an absolute POSIX path",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "/etc/passwd#Foo",
+      commitSha: HEAD_SHA,
+      file: "/etc/passwd",
+    },
+  },
+  {
+    name: "an absolute Windows drive path",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "C:\\repo\\src\\a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "C:\\repo\\src\\a.ts",
+    },
+  },
+  {
+    name: "an absolute Windows UNC path",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "\\\\server\\share\\a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "\\\\server\\share\\a.ts",
+    },
+  },
+  {
+    name: "a parent traversal",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "../secret.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "../secret.ts",
+    },
+  },
+  {
+    name: "a traversal that normalizes above the repository",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "a/../../secret.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "a/../../secret.ts",
+    },
+  },
+  {
+    name: "a target/file mismatch",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/b.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "a target whose file prefix does not end at the separator",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.tsx#Foo",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "a newline in the symbol",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts#Foo\nBar",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "a backtick in the symbol",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts#Foo`Bar",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+  {
+    name: "a backslash separator",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src\\a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src\\a.ts",
+    },
+  },
+  {
+    name: "a non-canonical repeated separator",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src//a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src//a.ts",
+    },
+  },
+  {
+    name: "a non-canonical dot segment",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/./a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src/./a.ts",
+    },
+  },
+  {
+    name: "a control character in the file path",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/\u0000a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src/\u0000a.ts",
+    },
+  },
+  {
+    name: "a backtick in the file path",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a`b.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "src/a`b.ts",
+    },
+  },
+  {
+    name: "a DEL control character in the symbol",
+    entry: {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "src/a.ts#Foo\u007fBar",
+      commitSha: HEAD_SHA,
+      file: "src/a.ts",
+    },
+  },
+];
 
 function makeGit(overrides: Partial<IGitProvider> = {}): IGitProvider {
   return {
@@ -376,6 +555,180 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
       llmClient.chatCompletion.mock.calls[0][0].messages[1].content;
     expect(userMessage).toContain("foo");
     expect(userMessage).toContain("export function foo() {}");
+  });
+
+  it.each(INVALID_CONTRACT_SYMBOL_ENTRIES)(
+    "fails closed for $name before anchor lookup, file read, and LLM call",
+    async ({ entry }) => {
+      const { store } = makeStore([entry.target]);
+      appendTierCQueueEntries(store, [entry]);
+      const findNodeIdByNodeKey = vi.spyOn(store.graph, "findNodeIdByNodeKey");
+      const git = makeGit({
+        readFileAtRef: vi.fn().mockResolvedValue("source"),
+      });
+      const llmClient = makeLlmClient("[]");
+      registerLlmClient(llmClient);
+
+      const result = await runTierCDrain(
+        baseDeps({ workspaceRoot, store, git }),
+      );
+
+      const failure = readAnalyzeLogLines(workspaceRoot).find(
+        (line) => line.event === ANALYZE_EVENTS.TIER_C_ITEM_FAILED,
+      );
+      expect(result.tierCFailed).toBe(1);
+      expect(failure?.reason).toBe("invalid-entry");
+      expect(findNodeIdByNodeKey).not.toHaveBeenCalled();
+      expect(git.readFileAtRef).not.toHaveBeenCalled();
+      expect(llmClient.chatCompletion).not.toHaveBeenCalled();
+      expect(readTierCQueue(store)[0]?.failCount).toBe(1);
+    },
+  );
+
+  it("reads and prompts with a valid nested repo-relative path", async () => {
+    const target = "src/x/y.ts#Foo";
+    const file = "src/x/y.ts";
+    const { store } = makeStore([target]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target,
+        commitSha: HEAD_SHA,
+        file,
+      },
+    ]);
+    const git = makeGit({
+      readFileAtRef: vi.fn().mockResolvedValue("export interface Foo {}"),
+    });
+    const llmClient = makeLlmClient("[]");
+    registerLlmClient(llmClient);
+
+    const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
+
+    expect(result.tierCProcessed).toBe(1);
+    expect(git.readFileAtRef).toHaveBeenCalledWith(
+      workspaceRoot,
+      GitConstants.HEAD_REF,
+      file,
+    );
+    expect(llmClient.chatCompletion).toHaveBeenCalledTimes(1);
+    expect(
+      llmClient.chatCompletion.mock.calls[0][0].messages[1].content,
+    ).toContain("Foo");
+    expect(readTierCQueue(store)).toEqual([]);
+  });
+
+  it.each([
+    { target: "src/a.ts##secret", file: "src/a.ts", symbolName: "#secret" },
+    {
+      target: "src/C#/x.cs#Foo",
+      file: "src/C#/x.cs",
+      symbolName: "Foo",
+    },
+    {
+      target: "src/a.ts#Foo#Bar",
+      file: "src/a.ts",
+      symbolName: "Foo#Bar",
+    },
+  ])("drains valid target $target", async ({ target, file, symbolName }) => {
+    const { store } = makeStore([target]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target,
+        commitSha: HEAD_SHA,
+        file,
+      },
+    ]);
+    const git = makeGit({
+      readFileAtRef: vi.fn().mockResolvedValue("source"),
+    });
+    const llmClient = makeLlmClient("[]");
+    registerLlmClient(llmClient);
+
+    const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
+
+    expect(result.tierCProcessed).toBe(1);
+    expect(result.tierCFailed).toBe(0);
+    expect(git.readFileAtRef).toHaveBeenCalledWith(
+      workspaceRoot,
+      GitConstants.HEAD_REF,
+      file,
+    );
+    expect(llmClient.chatCompletion).toHaveBeenCalledTimes(1);
+    expect(
+      llmClient.chatCompletion.mock.calls[0][0].messages[1].content,
+    ).toContain(symbolName);
+  });
+
+  it("reports file-unreadable for a valid target whose source cannot be read", async () => {
+    const target = "src/a.ts#Foo";
+    const file = "src/a.ts";
+    const { store } = makeStore([target]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+        target,
+        commitSha: HEAD_SHA,
+        file,
+      },
+    ]);
+    const git = makeGit({
+      readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    });
+    const llmClient = makeLlmClient("[]");
+    registerLlmClient(llmClient);
+
+    const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
+
+    const failure = readAnalyzeLogLines(workspaceRoot).find(
+      (line) => line.event === ANALYZE_EVENTS.TIER_C_ITEM_FAILED,
+    );
+    expect(result.tierCFailed).toBe(1);
+    expect(failure?.reason).toBe("file-unreadable");
+    expect(git.readFileAtRef).toHaveBeenCalledWith(
+      workspaceRoot,
+      GitConstants.HEAD_REF,
+      file,
+    );
+    expect(llmClient.chatCompletion).not.toHaveBeenCalled();
+  });
+
+  it("evicts an invalid target after the configured poison-pill threshold", async () => {
+    const entry: TierCQueueEntry = {
+      kind: TierCCandidateKinds.CONTRACT_SYMBOL,
+      target: "../src/a.ts#Foo",
+      commitSha: HEAD_SHA,
+      file: "../src/a.ts",
+    };
+    const { store } = makeStore([entry.target]);
+    appendTierCQueueEntries(store, [entry]);
+    const git = makeGit({
+      readFileAtRef: vi.fn().mockResolvedValue("source"),
+    });
+    const llmClient = makeLlmClient("[]");
+    registerLlmClient(llmClient);
+
+    await runTierCDrain(
+      baseDeps({ workspaceRoot, store, git, itemFailureCap: 2 }),
+    );
+    expect(readTierCQueue(store)[0]?.failCount).toBe(1);
+
+    await runTierCDrain(
+      baseDeps({ workspaceRoot, store, git, itemFailureCap: 2 }),
+    );
+
+    const failures = readAnalyzeLogLines(workspaceRoot).filter(
+      (line) => line.event === ANALYZE_EVENTS.TIER_C_ITEM_FAILED,
+    );
+    expect(failures).toHaveLength(2);
+    expect(failures.map((line) => line.reason)).toEqual([
+      "invalid-entry",
+      "invalid-entry",
+    ]);
+    expect(readTierCQueue(store)).toEqual([]);
+    expect(git.readFileAtRef).not.toHaveBeenCalled();
+    expect(llmClient.chatCompletion).not.toHaveBeenCalled();
   });
 
   it("keeps a candidate queued when no L2 anchor resolves, without calling the LLM", async () => {

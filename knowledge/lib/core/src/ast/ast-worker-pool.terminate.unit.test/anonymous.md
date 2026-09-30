@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.terminate.unit.test.ts#anonymous@L16
+id: lib/core/src/ast/ast-worker-pool.terminate.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker-pool.terminate.unit.test.ts

@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/lsp-count-proxy.mjs#anonymous@L55
+id: scripts/semantic-corpus/lsp-count-proxy.mjs#anonymous@L54
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/lsp-count-proxy.mjs

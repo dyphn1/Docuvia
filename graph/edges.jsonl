@@ -17351,6 +17351,7 @@
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/contracts/src/index.ts","type":"imports"}
+{"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-stats.ts#readCallResolution","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-stats.ts#readCallResolution","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-stats.ts#readCallResolution","type":"calls"}
@@ -17500,6 +17501,7 @@
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/tier-b-queue.ts#readTierBQueue","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/tier-b-queue.ts#readTierBQueue","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/tier-b-queue.ts#readTierBQueue","type":"calls"}
+{"source":"lib/ui-core/src/workflows/analyze/run-delta-ingestion.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/tier-c-queue.ts#readTierCQueue","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#docuviaFactory","type":"imports"}
 {"source":"lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.resolve","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts","target":"lib/contracts/src/factory/tokens.ts#TOKENS","type":"imports"}

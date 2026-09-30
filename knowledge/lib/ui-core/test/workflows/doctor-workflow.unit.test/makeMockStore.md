@@ -7,4 +7,3 @@ filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 # Symbol: makeMockStore
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`
-

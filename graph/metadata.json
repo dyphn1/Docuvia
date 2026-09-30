@@ -3438,15 +3438,15 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts",
-      "contentHash": "df5868361062ba2f6d14bf9f0e8dbebefd8d5336",
-      "lastTierBProcessedAt": "2026-09-30 02:04:52",
-      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
+      "contentHash": "1d5029eb822670603c8dd47a8094a98db6698259",
+      "lastTierBProcessedAt": "2026-09-30 02:44:36",
+      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/run-tier-c-drain.unit.test.ts",
-      "contentHash": "a7e0b64da31234ee6bc27f50c6e6a670ecfa4681",
-      "lastTierBProcessedAt": "2026-09-30 02:04:52",
-      "lastTierBCommitSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
+      "contentHash": "6c7287cdebe4397350feacad2786377f525c7781",
+      "lastTierBProcessedAt": "2026-09-30 02:44:36",
+      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-b-commit-cap.ts",
@@ -3540,15 +3540,15 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.ts",
-      "contentHash": "4913e1f1a74f8ac4ad14897959db04da3715a508",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "1dac98edbfe34f0c13e7fc85fb8a656491a2bff4",
+      "lastTierBProcessedAt": "2026-09-30 02:44:36",
+      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-queue.unit.test.ts",
-      "contentHash": "329e4126e6e6789055001e84e3dc17cd6b6afbdc",
-      "lastTierBProcessedAt": "2026-09-28 05:42:28",
-      "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
+      "contentHash": "98f6efdfc78992e8157f2e2a75f06651ad2b82e2",
+      "lastTierBProcessedAt": "2026-09-30 02:44:36",
+      "lastTierBCommitSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/tier-c-throttle.ts",
@@ -4307,5 +4307,5 @@
       "lastTierBCommitSha": "143ff12e9ac7dbf2f26bc89d609172a219488e1f"
     }
   ],
-  "lastIngestedSourceSha": "4209498a6e77ae3a433cb2ddf282df630e13b4e1"
+  "lastIngestedSourceSha": "dc065fd638fd126d7aa4ddb63bccb222943395d4"
 }

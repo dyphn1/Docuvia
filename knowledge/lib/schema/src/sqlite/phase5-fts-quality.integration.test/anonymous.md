@@ -7,4 +7,3 @@ filePath: lib/schema/src/sqlite/phase5-fts-quality.integration.test.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/phase5-fts-quality.integration.test.ts`
-

@@ -367,3 +367,27 @@ Two consequences for the next iteration:
 
 1. A useful "is LSP needed?" target must be defined on what the commit would get wrong, for example whether the candidate head's committed set is exact, learned out-of-fold so the label reflects held-out behaviour. Under that target the 1,830 wrong top-1 requests become routing negatives.
 2. The scorer should defer to Tier A's deterministic rule on single-candidate requests and be certified only on the multi-candidate stratum (#555), so a learned model can only add avoidance on top of Tier A, never remove it.
+
+### B-5 pre-flight: commit-is-exact router feasibility
+
+The B-5 plan replaced the coverage routing target with "the committed set is exact" and certified only the multi-candidate stratum (#555). A properly nested version needs pair-held-out candidate models: 21 extra fits, or several hours of CPU on this machine. Before paying for that, a cheap gate bounded the result from above. `router_feasibility.py` reads the B-4 OOF component diagnostics and the pool state; no held-out split is read.
+
+- **Population.** 6,041 trusted multi-candidate pool rows. The CUA-S1 top-1 is exact on 4,203 of them, and Tier A rank 0 is exact on 4,728.
+- **Router.** An L2 logistic regression over 342 features: top-1 and top-2 OOF candidate probabilities, their margin, candidate count, Tier A evidence counts, whether CUA-S1 agrees with rank 0, call kind, rank-0 evidence and import kind, plus all pairwise products. Labels never enter the features.
+- **Modes.** "In-sample" fits and ranks on all rows, so it is an overfit upper bound. "LOFO" fits on six families and ranks the seventh, the same family isolation the P2 policy uses. Its features still come from fold models that trained on the other held-out family, so the LOFO result is optimistic too.
+- **Gate.** The largest score-ranked prefix whose one-sided Clopper-Pearson lower bound (α = 0.05) reaches .990, counted per row. Rows are at least as many as duplicate groups, so this is the optimistic count.
+
+| Commit choice | Regularization | In-sample prefix at ≥ .990 | LOFO prefix at ≥ .990 | LOFO top 50 / 100 / 200 exact |
+| ------------- | -------------: | -------------------------: | --------------------: | ----------------------------- |
+| CUA-S1 top-1  |           1e-4 |                      3,631 |                     0 | 42 / 77 / 176                 |
+| CUA-S1 top-1  |           1e-3 |                      3,556 |                     0 | 42 / 77 / 177                 |
+| CUA-S1 top-1  |           1e-2 |                      3,098 |                     0 | 31 / 80 / 178                 |
+| Tier A rank 0 |           1e-4 |                          0 |                     0 | 43 / 93 / 193                 |
+| Tier A rank 0 |           1e-3 |                      4,170 |                     0 | 43 / 93 / 193                 |
+| Tier A rank 0 |           1e-2 |                      3,384 |                     0 | 43 / 92 / 115                 |
+
+The in-sample router finds a ≥ .990 subset of 3,000–4,000 rows, but none of it transfers across families: the LOFO router's 50 most confident rows are only 62–86% exact. The errors are family-specific. For example, at 1e-3 the LOFO top-200 for CUA-S1 contains 0/14 exact rows from dyphn1/Docuvia and 18/27 from 403errors/repomind, while nestjs/nest is 117/117. The raw B-4 candidate confidence alone is no better: the 50 highest-probability multi-candidate top-1s are 44/50 exact.
+
+**Decision: the full B-5 training was not run.** A nested commit-is-exact router trained on these features cannot exceed this optimistic bound, so it would certify no multi-candidate avoidance at .990 or above. Under the current LOFO rule, a learned System-1 scorer on this corpus therefore adds no certified LSP avoidance beyond Tier A's single-candidate rule. That would change only with new evidence that separates families: richer request state, more families, or a different certification unit. The stratified single-candidate mode in #555 is still a valid evaluator improvement, but by itself it would not change the model comparison.
+
+The gate wrote `evaluate/results/semantic-corpus/v1/system1-models/cua-s1/b5-router-feasibility/router-feasibility.json` and finished within one 10-second resource sample. CPU use stayed at two threads, and system free memory was 69%.

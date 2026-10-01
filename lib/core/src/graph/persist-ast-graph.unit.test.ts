@@ -3,10 +3,14 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import DatabaseCtor from "better-sqlite3";
+import { DefaultProvider, typescriptConfig } from "@workspace/ast-core";
+import { Language, Parser } from "web-tree-sitter";
 import { GraphStore } from "@workspace/schema";
 import type { ParsedAstFileResult } from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
+import { resolveWasmPath } from "../ast/resolve-wasm-path.js";
+import { extractTierAIndexedDeclarations } from "../ast/tier-a-declaration-index.js";
 
 /**
  * Uses a real temp `GraphStore` (from `@workspace/schema`, a test-only dependency — production
@@ -66,6 +70,69 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("matches the extracted declaration index to Tier A's persisted node_key insertion order", async () => {
+    const filePath = "src/index-parity.ts";
+    const source = [
+      "interface Identity { installId: string }",
+      "export function installId() {}",
+      "const settings = { yellow: true };",
+      'export const yellow = "gold";',
+      "class Service { transform(value: unknown) { return value; } }",
+      "export function parse(value: string): string;",
+      "export function parse(value: number): number;",
+      "export function parse(value: string | number) { return value; }",
+    ].join("\n");
+    const response = await buildParseResponse({
+      taskId: "tier-a-index-parity",
+      filePath,
+      code: source,
+      language: "typescript",
+    });
+    const parsedResults: ParsedAstFileResult[] = [
+      { file: filePath, hash: "parity-hash", data: response.data! },
+    ];
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
+
+    await Parser.init();
+    const { wasmPath } = resolveWasmPath(typescriptConfig.wasm_file);
+    const language = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(language);
+    const provider = new DefaultProvider(typescriptConfig);
+    provider.initQueries?.(language);
+    const tree = parser.parse(source);
+    expect(tree).not.toBeNull();
+    if (!tree) return;
+    const indexedKeys = extractTierAIndexedDeclarations(
+      filePath,
+      tree,
+      provider,
+    ).map((declaration) => declaration.nodeKey);
+    tree.delete();
+    provider.deleteQueries?.();
+    parser.delete();
+
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const raw = new DatabaseCtor(dbPath, { readonly: true });
+    try {
+      const persisted = raw
+        .prepare(
+          "SELECT node_key FROM l2_nodes WHERE node_key LIKE ? AND node_key <> ? ORDER BY id",
+        )
+        .all(`${filePath}#%`, filePath) as { node_key: string }[];
+      expect(indexedKeys).toEqual(persisted.map(({ node_key }) => node_key));
+    } finally {
+      raw.close();
+    }
   });
 
   it("upserts and links every given tag to each persisted file node", async () => {

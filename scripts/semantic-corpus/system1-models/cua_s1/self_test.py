@@ -33,6 +33,7 @@ from constants import (
 from routed_model import RoutedModel
 from score import success_response
 from diagnostics import binary_auc
+from router_feasibility import clopper_pearson_lower_bound, prefix_report
 from train import (
     fold_training_plan,
     independent_event_losses,
@@ -334,6 +335,18 @@ class AdapterContractTest(unittest.TestCase):
         self.assertAlmostEqual(first_candidate_loss.item(), 0.693147, places=5)
         self.assertAlmostEqual(second_candidate_loss.item(), first_candidate_loss.item(), places=7)
         self.assertAlmostEqual(routing_loss.item(), 0.693147, places=5)
+
+    def test_feasibility_bound_matches_p2_zero_error_rule(self) -> None:
+        self.assertGreaterEqual(clopper_pearson_lower_bound(299, 299), 0.99)
+        self.assertLess(clopper_pearson_lower_bound(298, 298), 0.99)
+        self.assertAlmostEqual(clopper_pearson_lower_bound(95, 100), 0.8977, places=3)
+
+    def test_feasibility_prefix_counts_rows_in_router_score_order(self) -> None:
+        exact = [False] + [True] * 299
+        scores = torch.tensor([0.0] + [1.0 - index / 1000 for index in range(299)], dtype=torch.float64)
+        report = prefix_report(scores, exact, ["a"] * len(exact))
+        self.assertEqual(report["largestCertifiablePrefixRows"]["0.99"], 299)
+        self.assertEqual(report["prefixes"][0], {"rows": 50, "exactRows": 50, "lowerBound": round(0.05 ** (1 / 50), 6), "byFamily": {"a": "50/50"}})
 
     def test_scorer_state_rejects_label_fields(self) -> None:
         with self.assertRaisesRegex(ValueError, "label-only field"):

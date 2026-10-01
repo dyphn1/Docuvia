@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
-import resource
 import sys
 from pathlib import Path
 from typing import Any
@@ -17,12 +17,12 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 import torch
 from cua_s1.model import ChoiceExample, load_checkpoint
 
-from adapter import encode_example, state_repository_family
+from adapter import EncodedExample, encode_example, state_repository_family
+from constants import MODEL_CONFIG, ROUTING_HEAD_FILENAME
 from constants import (
     CHECKPOINT_PATH_KEY,
     FOLD_FAMILY_KEY,
     INFERENCE_BATCH_SIZE,
-    MAX_PROCESS_RSS_BYTES,
     MAX_STATE_LINE_BYTES,
     POOL_FAMILIES_KEY,
     REQUEST_ID_KEY,
@@ -33,22 +33,14 @@ from constants import (
     STATUS_ERROR,
     STATUS_KEY,
     STATUS_OK,
+    UNKNOWN_OPTION_ID,
+    VERIFY_OPTION_ID,
 )
-
-torch.set_num_threads(4)
-torch.set_num_interop_threads(1)
-torch.use_deterministic_algorithms(True)
-
-
-def rss_bytes() -> int:
-    value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    return int(value if sys.platform == "darwin" else value * 1024)
-
+from resource_budget import check_process_rss_budget, check_resource_budget
+from routed_model import RoutedModel, load_routing_head
 
 def assert_process_budget() -> None:
-    process_rss = rss_bytes()
-    if process_rss > MAX_PROCESS_RSS_BYTES:
-        raise MemoryError(f"scorer process RSS exceeded 3 GiB: {process_rss} bytes")
+    check_resource_budget("scorer")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -65,7 +57,12 @@ def domain_paths(weights_directory: Path) -> tuple[dict[str, str], set[str], Pat
     configuration = json.loads(config_path.read_text(encoding="utf-8"))
     fold_families = configuration.get("foldTrainingFamilies")
     checkpoint_paths = configuration.get("foldModelPaths")
-    if not isinstance(fold_families, dict) or not isinstance(checkpoint_paths, dict):
+    if (
+        configuration.get("schema") != "cua-s1-system1-scorer-config/v2"
+        or configuration.get("routingHeadFile") != ROUTING_HEAD_FILENAME
+        or not isinstance(fold_families, dict)
+        or not isinstance(checkpoint_paths, dict)
+    ):
         raise ValueError("domain scorer config is missing LOFO fold families")
     model_paths = {
         family: str(root / checkpoint_paths[family])
@@ -115,11 +112,61 @@ def request_id_of(state: Any) -> str:
     return "invalid-request"
 
 
+def format_score_map(
+    option_ids: tuple[str, ...],
+    option_probabilities: tuple[float, ...] | list[float],
+    routing_probability: float | None,
+) -> dict[str, float]:
+    """Map independent head probabilities onto the unchanged P2 option keys."""
+    if len(option_ids) != len(option_probabilities):
+        raise ValueError("option ids and probabilities must have equal lengths")
+    if routing_probability is not None and not 0.0 <= routing_probability <= 1.0:
+        raise ValueError("routing probability must be in [0, 1]")
+    scores: dict[str, float] = {}
+    for option_id, probability in zip(option_ids, option_probabilities, strict=True):
+        if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
+            raise ValueError("option probabilities must be finite values in [0, 1]")
+        if routing_probability is None:
+            score = probability
+        elif option_id == VERIFY_OPTION_ID:
+            score = 1.0 - routing_probability
+        elif option_id == UNKNOWN_OPTION_ID:
+            score = probability
+        else:
+            score = probability * routing_probability
+        scores[option_id] = round(float(score), 6)
+    return scores
+
+
+def success_response(
+    request_id: str,
+    encoded: EncodedExample,
+    option_probabilities: tuple[float, ...] | list[float],
+    routing_probability: float | None,
+    fold_family: str | None,
+) -> dict[str, Any]:
+    """Create the unchanged P2 response envelope from the model components."""
+    response: dict[str, Any] = {
+        REQUEST_ID_KEY: request_id,
+        STATUS_KEY: STATUS_OK,
+        SCORE_KIND_KEY: SCORE_KIND_RAW,
+        SCORES_KEY: format_score_map(
+            encoded.option_ids,
+            option_probabilities,
+            routing_probability,
+        ),
+    }
+    if fold_family is not None:
+        response[FOLD_FAMILY_KEY] = fold_family
+    return response
+
+
 def score_chunk(
     states: list[dict[str, Any]],
     arguments: argparse.Namespace,
     domain_model_paths: tuple[dict[str, str], set[str], Path] | None,
     model_cache: dict[str, tuple[Any, Any]],
+    diagnostic_rows: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     responses: list[dict[str, Any] | None] = [None] * len(states)
     groups: dict[str, list[tuple[int, Any, str | None]]] = {}
@@ -136,10 +183,22 @@ def score_chunk(
     for checkpoint, rows in groups.items():
         try:
             if checkpoint not in model_cache:
-                model, collator, _ = load_checkpoint(checkpoint, "cpu")
+                option_model, collator, _ = load_checkpoint(checkpoint, "cpu")
+                if arguments.weights_dir is None:
+                    model = option_model
+                else:
+                    model = RoutedModel(option_model, MODEL_CONFIG["width"])
+                    model.routing_head = load_routing_head(
+                        Path(checkpoint).with_name(ROUTING_HEAD_FILENAME),
+                        MODEL_CONFIG["width"],
+                        "cpu",
+                    )
                 model.eval()
                 model_cache[checkpoint] = (model, collator)
+            assert_process_budget()
             model, collator = model_cache[checkpoint]
+        except MemoryError:
+            raise
         except Exception:
             for index, encoded, _fold in rows:
                 responses[index] = error_response(request_id_of(states[index]))
@@ -151,26 +210,48 @@ def score_chunk(
             try:
                 batch = collator(examples)
                 with torch.inference_mode():
-                    probabilities = torch.sigmoid(model(batch)).cpu()
+                    if arguments.weights_dir is None:
+                        option_probabilities = torch.sigmoid(model(batch)).cpu()
+                        routing_probabilities = None
+                    else:
+                        option_logits, routing_logits = model(batch)
+                        option_probabilities = torch.sigmoid(option_logits).cpu()
+                        routing_probabilities = torch.sigmoid(routing_logits).cpu()
                 for local_index, (state_index, encoded, fold_family) in enumerate(batch_rows):
-                    score_map = {
-                        option_id: round(float(probability), 6)
-                        for option_id, probability in zip(
-                            encoded.option_ids,
-                            probabilities[local_index, : len(encoded.option_ids)],
-                            strict=True,
-                        )
-                    }
+                    row_probabilities = [
+                        float(value)
+                        for value in option_probabilities[local_index, : len(encoded.option_ids)]
+                    ]
+                    routing_probability = (
+                        float(routing_probabilities[local_index])
+                        if routing_probabilities is not None
+                        else None
+                    )
                     request_id = request_id_of(states[state_index])
-                    response: dict[str, Any] = {
-                        REQUEST_ID_KEY: request_id,
-                        STATUS_KEY: STATUS_OK,
-                        SCORE_KIND_KEY: SCORE_KIND_RAW,
-                        SCORES_KEY: score_map,
-                    }
-                    if fold_family is not None:
-                        response[FOLD_FAMILY_KEY] = fold_family
+                    response = success_response(
+                        request_id,
+                        encoded,
+                        row_probabilities,
+                        routing_probability,
+                        fold_family,
+                    )
                     responses[state_index] = response
+                    if diagnostic_rows is not None:
+                        if routing_probability is None:
+                            raise ValueError("component diagnostics require a trained routing head")
+                        diagnostic_rows.append(
+                            {
+                                REQUEST_ID_KEY: request_id,
+                                FOLD_FAMILY_KEY: fold_family,
+                                "routingProbability": routing_probability,
+                                "optionProbabilities": dict(
+                                    zip(encoded.option_ids, row_probabilities, strict=True)
+                                ),
+                            }
+                        )
+                check_process_rss_budget("scorer")
+            except MemoryError:
+                raise
             except Exception:
                 for state_index, _encoded, _fold_family in batch_rows:
                     responses[state_index] = error_response(request_id_of(states[state_index]))
@@ -178,6 +259,9 @@ def score_chunk(
 
 
 def main() -> int:
+    torch.set_num_threads(4)
+    torch.set_num_interop_threads(1)
+    torch.use_deterministic_algorithms(True)
     arguments = parse_arguments()
     domain_model_paths = None
     if arguments.weights_dir is not None:
@@ -211,8 +295,7 @@ def main() -> int:
         for response in score_chunk(batch, arguments, domain_model_paths, model_cache):
             sys.stdout.write(json.dumps(response, ensure_ascii=False, separators=(",", ":")) + "\n")
     sys.stdout.flush()
-    if rss_bytes() > MAX_PROCESS_RSS_BYTES:
-        return 1
+    assert_process_budget()
     return 0
 
 

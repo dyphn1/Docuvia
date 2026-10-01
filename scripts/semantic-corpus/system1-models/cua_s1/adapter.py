@@ -91,6 +91,16 @@ class EncodedExample:
     option_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class TrainingTargets:
+    """Candidate BCE labels/weights plus the request-level routing label."""
+
+    option_targets: tuple[float, ...]
+    option_weights: tuple[float, ...]
+    candidate_mask: tuple[bool, ...]
+    routing_target: float
+
+
 def _reject_label_fields(value: Any, path: str = "state") -> None:
     if isinstance(value, Mapping):
         for key, item in value.items():
@@ -360,43 +370,71 @@ def is_trusted_label(labels: Mapping[str, Any]) -> bool:
         return False
     if labels.get(LABEL_ORACLE_STATUS_KEY) != RESOLVED_ORACLE_STATUS:
         return False
-    if not isinstance(positive, list) or not positive:
+    if not isinstance(positive, list):
         return False
     if not isinstance(negative, list):
         return False
     return not set(positive).intersection(negative)
 
 
-def training_targets(request: Mapping[str, Any], labels: Mapping[str, Any]) -> list[float]:
-    """Create independent BCE targets without creating options outside P1."""
+def training_targets(request: Mapping[str, Any], labels: Mapping[str, Any]) -> TrainingTargets:
+    """Build masked candidate labels and the independent request routing target."""
     options = request.get(OPTIONS_KEY)
     positive = labels.get(LABEL_POSITIVE_TARGET_IDS_KEY)
-    if not isinstance(options, list) or not isinstance(positive, list):
-        raise ValueError("request options and positive target ids must be arrays")
-    positive_targets = {target for target in positive if isinstance(target, str)}
-    candidate_gold_found = False
+    negative = labels.get(LABEL_NEGATIVE_TARGET_IDS_KEY)
+    candidate_miss = labels.get(LABEL_CANDIDATE_MISS_KEY)
+    if (
+        not isinstance(options, list)
+        or not isinstance(positive, list)
+        or not isinstance(negative, list)
+    ):
+        raise ValueError("request options and target id labels must be arrays")
+    if any(not isinstance(target, str) for target in (*positive, *negative)):
+        raise ValueError("positive and negative target ids must be strings")
+    if not isinstance(candidate_miss, bool):
+        raise ValueError("candidateMiss must be boolean")
+
+    positive_targets = set(positive)
+    negative_targets = set(negative)
+    trusted = is_trusted_label(labels)
+    candidate_targets: set[str] = set()
     targets: list[float] = []
-    for index, option in enumerate(options):
+    weights: list[float] = []
+    candidate_mask: list[bool] = []
+    for option in options:
         if not isinstance(option, Mapping):
             raise ValueError("P1 option must be an object")
         if option.get(OPTION_KIND_KEY) == CANDIDATE_OPTION_KIND:
             attributes = option.get(OPTION_ATTRIBUTES_KEY)
             target_id = attributes.get(TARGET_ID_KEY) if isinstance(attributes, Mapping) else None
-            is_positive = isinstance(target_id, str) and target_id in positive_targets
-            targets.append(1.0 if is_positive else 0.0)
-            candidate_gold_found = candidate_gold_found or is_positive
+            candidate_mask.append(True)
+            if isinstance(target_id, str):
+                candidate_targets.add(target_id)
+            if isinstance(target_id, str) and target_id in positive_targets:
+                targets.append(1.0)
+                weights.append(1.0 if trusted else 0.0)
+            elif isinstance(target_id, str) and target_id in negative_targets:
+                targets.append(0.0)
+                weights.append(1.0 if trusted else 0.0)
+            else:
+                targets.append(0.0)
+                weights.append(0.0)
         else:
+            candidate_mask.append(False)
             targets.append(0.0)
-    no_candidate_gold = not candidate_gold_found
-    candidate_miss = labels.get(LABEL_CANDIDATE_MISS_KEY)
-    if not isinstance(candidate_miss, bool):
-        raise ValueError("candidateMiss must be boolean")
-    for index, option in enumerate(options):
-        if option.get(OPTION_ID_KEY) == UNKNOWN_OPTION_ID:
-            targets[index] = 1.0 if no_candidate_gold else 0.0
-        elif option.get(OPTION_ID_KEY) == VERIFY_OPTION_ID:
-            targets[index] = 1.0 if (candidate_miss or no_candidate_gold) else 0.0
-    return targets
+            weights.append(0.0)
+
+    routing_target = (
+        1.0
+        if trusted and positive_targets and positive_targets.issubset(candidate_targets)
+        else 0.0
+    )
+    return TrainingTargets(
+        option_targets=tuple(targets),
+        option_weights=tuple(weights),
+        candidate_mask=tuple(candidate_mask),
+        routing_target=routing_target,
+    )
 
 
 def repository_family(repo_id: str) -> str:

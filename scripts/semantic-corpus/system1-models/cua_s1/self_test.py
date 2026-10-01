@@ -7,7 +7,7 @@ import unittest
 import torch
 from cua_s1.model import ChoiceExample, make_system
 
-from adapter import encode_example, training_targets
+from adapter import EncodedExample, encode_example, is_trusted_label, training_targets
 from audit_encoding import validate_audit_gate
 from constants import (
     AUDIT_FILES_READ_FIELD,
@@ -30,7 +30,15 @@ from constants import (
     VERIFY_OPTION_ID,
     UNKNOWN_OPTION_ID,
 )
-from train import masked_top_option_indices
+from routed_model import RoutedModel
+from score import success_response
+from diagnostics import binary_auc
+from train import (
+    fold_training_plan,
+    independent_event_losses,
+    masked_top_option_indices,
+    optional_mean,
+)
 
 torch.set_num_threads(TORCH_THREADS)
 torch.set_num_interop_threads(1)
@@ -170,7 +178,31 @@ class AdapterContractTest(unittest.TestCase):
         self.assertIn("export function namedCall", candidate)
         self.assertLessEqual(len(candidate.encode("utf-8")), MAX_OPTION_BYTES)
 
-    def test_binary_targets_respect_candidate_misses(self) -> None:
+    def test_training_targets_mask_unconfirmed_negatives(self) -> None:
+        request = {
+            "options": [
+                {"id": "tierA:1", "kind": "candidate", "attributes": {"targetId": "a#f"}},
+                {"id": "tierA:2", "kind": "candidate", "attributes": {"targetId": "b#f"}},
+                {"id": "tierA:3", "kind": "candidate", "attributes": {"targetId": "c#f"}},
+                {"id": UNKNOWN_OPTION_ID, "kind": "unknown"},
+                {"id": VERIFY_OPTION_ID, "kind": "verify"},
+            ]
+        }
+        labels = {
+            "positiveTargetIds": ["a#f"],
+            "negativeTargetIds": ["c#f"],
+            "reviewStatus": "confirmed",
+            "oracleStatus": "resolved",
+            "candidateMiss": False,
+        }
+
+        targets = training_targets(request, labels)
+        self.assertEqual(targets.option_targets, (1.0, 0.0, 0.0, 0.0, 0.0))
+        self.assertEqual(targets.option_weights, (1.0, 0.0, 1.0, 0.0, 0.0))
+        self.assertEqual(targets.candidate_mask, (True, True, True, False, False))
+        self.assertEqual(targets.routing_target, 1.0)
+
+    def test_routing_target_requires_confirmed_nonempty_gold_fully_in_candidates(self) -> None:
         request = {
             "options": [
                 {"id": "tierA:1", "kind": "candidate", "attributes": {"targetId": "a#f"}},
@@ -179,30 +211,37 @@ class AdapterContractTest(unittest.TestCase):
             ]
         }
         labels = {
-            "positiveTargetIds": ["a#f", "b#g"],
+            "positiveTargetIds": ["a#f", "missing#target"],
             "negativeTargetIds": [],
+            "reviewStatus": "confirmed",
+            "oracleStatus": "resolved",
             "candidateMiss": True,
         }
 
-        self.assertEqual(training_targets(request, labels), [1.0, 0.0, 1.0])
+        self.assertEqual(training_targets(request, labels).routing_target, 0.0)
 
-    def test_unknown_and_verify_are_positive_when_no_candidate_is_gold(self) -> None:
-        request = {
-            "options": [
-                {"id": UNKNOWN_OPTION_ID, "kind": "unknown"},
-                {"id": VERIFY_OPTION_ID, "kind": "verify"},
-            ]
+        complete_labels = {
+            **labels,
+            "positiveTargetIds": ["a#f"],
+            "candidateMiss": False,
         }
-        labels = {
-            "positiveTargetIds": ["missing#target"],
+        self.assertEqual(training_targets(request, complete_labels).routing_target, 1.0)
+
+        unconfirmed_labels = {**complete_labels, "reviewStatus": "unreviewed"}
+        self.assertEqual(training_targets(request, unconfirmed_labels).routing_target, 0.0)
+
+        empty_gold_labels = {
+            **complete_labels,
+            "positiveTargetIds": [],
             "negativeTargetIds": [],
-            "candidateMiss": True,
         }
+        empty_gold_targets = training_targets(request, empty_gold_labels)
+        self.assertEqual(empty_gold_targets.routing_target, 0.0)
+        self.assertTrue(is_trusted_label(empty_gold_labels))
 
-        self.assertEqual(training_targets(request, labels), [1.0, 1.0])
-
-    def test_cua_model_scores_variable_options_as_independent_logits(self) -> None:
-        model, collator = make_system(MODEL_CONFIG, "cpu")
+    def test_routed_cua_heads_score_options_and_request_context(self) -> None:
+        option_model, collator = make_system(MODEL_CONFIG, "cpu")
+        model = RoutedModel(option_model, MODEL_CONFIG["width"])
         model.eval()
         examples = [
             ChoiceExample("call context", ("candidate evidence", "unknown", "verify"), 0),
@@ -210,11 +249,57 @@ class AdapterContractTest(unittest.TestCase):
         ]
 
         with torch.inference_mode():
-            scores = model(collator(examples))
+            option_logits, routing_logits = model(collator(examples))
 
-        self.assertEqual(tuple(scores.shape), (2, 3))
-        self.assertTrue(torch.isfinite(scores[0, :3]).all())
-        self.assertTrue(torch.isfinite(scores[1, :2]).all())
+        self.assertEqual(tuple(option_logits.shape), (2, 3))
+        self.assertEqual(tuple(routing_logits.shape), (2,))
+        self.assertTrue(torch.isfinite(option_logits[0, :3]).all())
+        self.assertTrue(torch.isfinite(option_logits[1, :2]).all())
+        self.assertTrue(torch.isfinite(routing_logits).all())
+
+    def test_protocol_response_shape_composes_candidate_and_routing_probabilities(self) -> None:
+        response = success_response(
+            "system1:score-shape",
+            EncodedExample(
+                "context",
+                ("candidate", "unknown", "verify"),
+                ("tierA:1", UNKNOWN_OPTION_ID, VERIFY_OPTION_ID),
+            ),
+            (0.8, 0.3, 0.2),
+            routing_probability=0.75,
+            fold_family="acme/widget",
+        )
+
+        self.assertEqual(
+            set(response),
+            {"requestId", "status", "scoreKind", "scores", "foldFamily"},
+        )
+        self.assertEqual(response["requestId"], "system1:score-shape")
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["scoreKind"], "raw")
+        self.assertEqual(response["foldFamily"], "acme/widget")
+        self.assertEqual(set(response["scores"]), {"tierA:1", UNKNOWN_OPTION_ID, VERIFY_OPTION_ID})
+        self.assertEqual(response["scores"]["tierA:1"], 0.6)
+        self.assertEqual(response["scores"][UNKNOWN_OPTION_ID], 0.3)
+        self.assertEqual(response["scores"][VERIFY_OPTION_ID], 0.25)
+
+    def test_fold_training_plan_excludes_each_held_out_family(self) -> None:
+        families = ["acme/a", "acme/b", "acme/c"]
+        plan = fold_training_plan(families)
+
+        self.assertEqual(set(plan), set(families))
+        for held_out, training_families in plan.items():
+            self.assertNotIn(held_out, training_families)
+            self.assertEqual(set(training_families), set(families) - {held_out})
+
+    def test_routing_auc_handles_perfect_ranking_and_ties(self) -> None:
+        self.assertEqual(binary_auc([(0.1, 0), (0.9, 1)]), 1.0)
+        self.assertEqual(binary_auc([(0.5, 0), (0.5, 1)]), 0.5)
+        self.assertIsNone(binary_auc([(0.1, 0), (0.2, 0)]))
+
+    def test_empty_training_split_diagnostics_have_no_mean(self) -> None:
+        self.assertIsNone(optional_mean(0.0, 0))
+        self.assertEqual(optional_mean(1.5, 2), 0.75)
 
     def test_training_top1_diagnostic_ignores_batch_padding(self) -> None:
         logits = torch.tensor([[-2.0, -3.0, 0.0], [-1.0, 100.0, 100.0]])
@@ -223,6 +308,32 @@ class AdapterContractTest(unittest.TestCase):
         selected = masked_top_option_indices(logits, option_mask)
 
         self.assertEqual(selected.tolist(), [0, 0])
+
+    def test_candidate_loss_ignores_masked_options_while_routing_has_own_bce(self) -> None:
+        targets = torch.tensor([[1.0, 0.0, 0.0]])
+        weights = torch.tensor([[1.0, 0.0, 1.0]])
+        option_mask = torch.tensor([[True, True, True]])
+        routing_targets = torch.tensor([1.0])
+        first_candidate_loss, routing_loss, *_ = independent_event_losses(
+            torch.tensor([[0.0, 100.0, 0.0]]),
+            torch.tensor([0.0]),
+            targets,
+            weights,
+            option_mask,
+            routing_targets,
+        )
+        second_candidate_loss, _, *_ = independent_event_losses(
+            torch.tensor([[0.0, -100.0, 0.0]]),
+            torch.tensor([0.0]),
+            targets,
+            weights,
+            option_mask,
+            routing_targets,
+        )
+
+        self.assertAlmostEqual(first_candidate_loss.item(), 0.693147, places=5)
+        self.assertAlmostEqual(second_candidate_loss.item(), first_candidate_loss.item(), places=7)
+        self.assertAlmostEqual(routing_loss.item(), 0.693147, places=5)
 
     def test_scorer_state_rejects_label_fields(self) -> None:
         with self.assertRaisesRegex(ValueError, "label-only field"):

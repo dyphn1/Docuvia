@@ -73,6 +73,8 @@ SCORES_KEY = "scores"
 FOLD_FAMILY_KEY = "foldFamily"
 CHECKPOINT_PATH_KEY = "checkpointPath"
 POOL_FAMILIES_KEY = "poolFamilies"
+ROUTING_HEAD_FILENAME = "routing-head.safetensors"
+SCORER_VERSION = "0.0.0+system1-b4-independent-event-v2"
 
 MAX_CONTEXT_BYTES = 1024
 MAX_OPTION_BYTES = 96
@@ -129,6 +131,7 @@ MAX_GRADIENT_NORM = 1.0
 BASE_SEED = 553
 TORCH_THREADS = 4
 MAX_PROCESS_RSS_BYTES = 3 * 1024 * 1024 * 1024
+MIN_SYSTEM_FREE_MEMORY_PERCENT = 25
 
 MODEL_CONFIG = {
     "encoder": "tinyx",
@@ -151,7 +154,9 @@ TRAINING_CONFIG = {
     "baseSeed": BASE_SEED,
     "torchThreads": TORCH_THREADS,
     "device": "cpu",
-    "loss": "independent-option-bce-with-logits-v1",
+    "candidateLoss": "masked-independent-candidate-bce-with-logits-v1",
+    "routingLoss": "request-routing-bce-with-logits-v1",
+    "scoreComposition": "sigmoid(candidate_logit)*sigmoid(routing_logit)",
     "optimizer": "AdamW",
     "earlyStopping": False,
 }

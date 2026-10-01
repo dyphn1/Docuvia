@@ -2,6 +2,8 @@
 
 P3 evaluates a small local CUA-S1 model as an offline scorer for the P1 state records through the P2 evaluator. It does not add model inference to Docuvia production behavior, route requests, start a daemon, or write to the graph. Python adapter and training code live in `scripts/semantic-corpus/system1-models/cua_s1/`; weights and replay outputs stay under the gitignored `evaluate/results/semantic-corpus/v1/` tree.
 
+The results in this page used the original `system1-option-selection/v1` dataset. B-2/#554 corrects Tier A declaration selection and changes the dataset feature/export schema to v2; evaluator and CUA training defaults now point at `system1-dataset-v2/`. These historical P3 weights and metrics have not been retrained or evaluated against the corrected dataset, so they must not be read as v2 results.
+
 ## State and option encoding
 
 The scorer receives batches of P1 state JSONL records. It rejects state inputs containing label-only, oracle, review, checker, candidate-miss, or gold fields. It never opens a labels file. The training entry point separately joins request-keyed state and label rows from `train` and `calibration` only.

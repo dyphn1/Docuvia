@@ -5,6 +5,11 @@ This page specifies the deterministic, offline encoding produced by
 selection requests for later experiments. It implements no model, scorer, calibration, metric,
 resource measurement, or production routing behavior.
 
+The B-2 declaration-selection repair is exported as dataset state v2:
+`system1-option-selection/v2` with export schema version `2`. The v1 dataset remains immutable at
+`system1-dataset/`; the exporter, offline evaluator, and CUA-S1 training defaults now point to the
+new `system1-dataset-v2/` directory. The C-02 Tier A candidate-set schema remains unchanged.
+
 The encoding reuses the Phase 0 `SemanticDecisionRequest` contract. It keeps deterministic Tier A
 facts as the candidate set and places all review/oracle labels in separate files. The snapshot
 source and Tier A graph are the only inputs to model state. The collector's checker, oracle, review
@@ -43,24 +48,43 @@ Candidate IDs remain the C-02 `tierA:` plus the first 16 hex characters of SHA-2
 target node key. Candidate options preserve their existing C-02 order. No option can name a target
 outside that set.
 
-If a Tier A candidate's source file is absent from the pinned snapshot or its declaration cannot
-be matched syntactically, the candidate remains in its original position. It has
-`evidenceStatus: "missing"`, `declarationKind: "unknown"`, an empty signature, and `null` for
-overload count, generated marker, and forwarding-wrapper status. A declaration that was found but
-whose kind is unmapped has `evidenceStatus: "present"`, its bounded signature, and any syntax facts
-that could be counted. Detectors treat missing candidate facts as unavailable rather than positive
-evidence. Missing candidate evidence never removes the Tier A target or establishes that it is
-invalid. Only an unreadable caller file or missing call expression excludes a sample; every
-exclusion is recorded in `excluded.jsonl` with sample ID, deterministic request ID, assigned split,
-and reason. `export-report.json` reports candidate-level missing-evidence rates and the rate of
-samples with any missing candidate evidence, without using label fields.
+### Declaration identity in v2
 
-Missing evidence is itself a potential shortcut feature: the round-2 diagnostic observed missing
-evidence in 0–3.4% of gold candidates versus 10–27% of non-gold candidates, with a substantially
-higher gold-missing rate in training than evaluation. The source remains Tier A and pinned snapshot
-syntax, so this is not label leakage; however, a later model could learn source/split-specific
-missingness. The labels-only `labels-report.json` records gold versus non-gold missingness by split
-for auditing. It must never be joined into fitting features.
+The exporter no longer recreates declaration selection rules. It calls the shared Tier A declaration index in lib/core/src/ast/tier-a-declaration-index.ts, which uses the same TypeScript provider queries, collectFunctionNodes, collectClassNodes, collectVariableNodes, callable-name resolution, C-03 nearest-named-class container, and node-key.ts builders as the AST worker and graph persister. It preserves Tier A insertion order: functions, classes, then variables. A parity test persists a fixture through GraphPersisterService and compares the stored node_key sequence with the extracted sequence.
+
+For JavaScript-family files, the System-1 exporter runs the TypeScript provider while production Tier A runs the JavaScript provider. Their node keys were independently verified identical across all 10 JavaScript-family pool files. The only observed difference was source ranges in the Nest `sample/09-babel-example` `cats.controller.js`; declaration identity and exported keys were unchanged.
+
+For each candidate, the exporter looks up the complete targetId as an exact nodeKey in that index. It does not search by name, line, or container after a miss. The index entry supplies the Tier A node kind, source range, and name-token offset. The TypeScript syntax layer maps that exact name-token offset to its declaration binder to render the signature and declaration kind. This means an anonymous arrow indexed under a variable or object-property name uses that binding declaration as its evidence. If the Tier A key has no matching TypeScript declaration binder, the candidate stays in place with missing evidence; an assignment-bound closure cannot borrow a same-named declaration elsewhere. Constructors without a declaration-name token use their exact Tier A range. @L identities and same-name distinctions are already part of Tier A's generated nodeKey; the exporter does not apply a second preference rule. All of this uses only pinned snapshot source and Tier A syntax, never labels, checker output, review, or oracle fields.
+
+The independent C-03 oracle checked every changed train/calibration candidate occurrence plus a deterministically hash-ranked sample of 2,000 unchanged pool candidates. Among the 9,076 changed pool candidates, it classified 8,131 as v2-correct, 677 as correct in both versions, and 268 train rows as borrowed-name ambiguous; all 268 ambiguous rows matched the oracle's inferred declaration kind and signature prefix. It found zero v1-correct-to-v2-wrong rows and zero newly-wrong present evidence. In the unchanged sample, 1,993 were both-correct and 7 were oracle-ambiguous. The six known corrections remain correct: ParseArrayPipe.transform and the five decorated Nest Logger methods whose @L line names the member. The oracle input contains train/calibration state only; no held-out rows informed the rule.
+
+The v1-to-v2 impact audit joins state rows by request ID and candidates by stable ID, checks target identity and candidate order, and compares declaration kind, signature, and evidence status. It reads no labels. The same candidate can change more than one field. Text-only means the signature changed while kind and evidence status stayed the same. Train and calibration are the decision pool; temporal/test numbers are reporting-only.
+
+| Split       | Rows / candidates | Changed rows / candidates | Present → missing | Missing → present | Kind change | Signature change | Text-only change |
+| ----------- | ----------------: | ------------------------: | ----------------: | ----------------: | ----------: | ---------------: | ---------------: |
+| train       |   13,489 / 56,281 |             3,283 / 8,722 |                 0 |             5,772 |       6,462 |            8,722 |            2,260 |
+| calibration |    2,966 / 10,274 |                 227 / 354 |                 0 |               354 |         354 |              354 |                0 |
+| temporal    |     2,694 / 5,007 |                 245 / 754 |                 0 |               731 |         746 |              754 |                8 |
+| test        |   12,422 / 29,182 |             1,693 / 5,640 |                 0 |             5,248 |       5,273 |            5,640 |              367 |
+
+Per-family entries use the P2 owner/repository normalization. Each cell shows changed rows / candidates, missing-to-present, and kind / text-only changes:
+
+| Split       | Repository family                                     | Changed rows / candidates | Missing → present | Kind / text-only |
+| ----------- | ----------------------------------------------------- | ------------------------: | ----------------: | ---------------: |
+| train       | dyphn1/Docuvia                                        |               844 / 1,317 |             1,105 |        1,308 / 9 |
+| train       | nestjs/nest                                           |             2,337 / 7,288 |             4,550 |    5,037 / 2,251 |
+| train       | tirth8205/code-review-graph                           |                     0 / 0 |                 0 |            0 / 0 |
+| train       | trailhq/Graft                                         |                   10 / 16 |                16 |           16 / 0 |
+| train       | typescript-language-server/typescript-language-server |                  92 / 101 |               101 |          101 / 0 |
+| calibration | 403errors/repomind                                    |                     3 / 3 |                 3 |            3 / 0 |
+| calibration | Egonex-AI/Understand-Anything                         |                 224 / 351 |               351 |          351 / 0 |
+| temporal    | abhigyanpatwari/GitNexus                              |                 245 / 754 |               731 |          746 / 8 |
+| test        | abhigyanpatwari/GitNexus                              |             1,019 / 3,259 |             3,192 |       3,217 / 42 |
+| test        | onyx-dot-app/onyx                                     |               674 / 2,381 |             2,056 |      2,056 / 325 |
+
+If a Tier A candidate's source file is absent from the pinned snapshot, its exact node key is not in the Tier A index, or its indexed name has no TypeScript declaration binder, the candidate remains in its original position. It has evidenceStatus "missing", declarationKind "unknown", an empty signature, and null for overload count, generated marker, and forwarding-wrapper status. A declaration that was found but whose kind is unmapped has evidenceStatus "present", its bounded signature, and any syntax facts that could be counted. Detectors treat missing candidate facts as unavailable rather than positive evidence. Missing candidate evidence never removes the Tier A target or establishes that it is invalid. Only an unreadable caller file or missing call expression excludes a sample; every exclusion is recorded in excluded.jsonl with sample ID, deterministic request ID, assigned split, and reason. export-report.json reports candidate-level missing-evidence rates and the rate of samples with any missing candidate evidence, without using label fields.
+
+Missing evidence remains a potential shortcut feature. In v2 train/calibration, none of 16,438 gold candidate rows are missing; 13 of 50,117 non-gold candidates are missing. The held-out diagnostic reports 96 of 2,320 non-gold temporal candidates and 923 of 16,825 non-gold test candidates missing, with no missing gold candidates. Held-out values are descriptive only. This source-derived feature can still encode repository or split differences, so keep the labels-only labels-report.json out of fitting and monitor missingness by split in later phases.
 
 The request always appends exactly one `UNKNOWN` option and one `VERIFY_WITH_LSP` option after the
 candidate options. `UNKNOWN` means there is not enough supported evidence to select a target; it
@@ -159,8 +183,8 @@ exclusions. The export report summarizes exclusions by reason and records the ex
 count and SHA-256. The dataset payload hash covers this file alongside the state, labels,
 labels-only diagnostic, and seal files, so exclusions participate in the two-run determinism check.
 
-All artifacts are under the gitignored
-`evaluate/results/semantic-corpus/v1/system1-dataset/` directory. `export-report.json` is the
+All v2 artifacts are under the gitignored
+`evaluate/results/semantic-corpus/v1/system1-dataset-v2/` directory. `export-report.json` is the
 label-free state report: it includes split and ambiguity-class counts, per-split class counts,
 candidate-set size distribution, candidate-level and per-sample missing-evidence rates by split,
 truncation counts, exclusions by reason and excluded-file digest, both seal manifests, the
@@ -168,3 +192,14 @@ evaluation-only fitting-leakage check, the labels-report digest, and a stable `p
 `labels-report.json` separately holds candidate-miss counts and gold/non-gold missing-evidence
 rates by split. The payload hash covers the sorted names and contents of all state, labels,
 label-diagnostic, seal, and excluded files; it does not hash the report that contains it.
+
+The separate `declaration-impact.json` is produced by
+`node --import tsx scripts/semantic-corpus/system1-dataset-impact.mts`. It records input state-file
+hashes and per-split/per-family row and candidate deltas, including status-transition direction,
+kind changes, and signature-only changes. It does not use labels, and is not part of the exporter
+payload hash. The independent C-03 gate report is kept outside the dataset export and includes only
+train/calibration targets plus a sample of unchanged pool targets. `replay-hashes.json` records the
+two export directory file-hash maps; it is also written after export and outside the payload hash.
+The current v2 replay has payload SHA-256
+`d7b4953fc38433fc8ec3f5af1ba6fde88fbdd70f7b91f9c5cfc630794a49c280` and was byte-identical across
+all 13 exporter files.

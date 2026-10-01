@@ -51,6 +51,13 @@ Run all deterministic baselines through the same final-evaluation path:
 pnpm run eval:semantic:system1-eval
 ```
 
+The evaluator defaults to `evaluate/results/semantic-corpus/v1/system1-dataset-v2/`. Pass
+`--dataset-dir evaluate/results/semantic-corpus/v1/system1-dataset/` to evaluate the preserved v1
+dataset explicitly. The output root follows the selected dataset directory: the versioned v2
+dataset writes beside it under `system1-eval-v2/`, while the unversioned v1 dataset writes under
+`system1-eval/`. Held-out seal validation accepts export schema versions 1 and 2; it still checks
+the partition names, raw file hashes, and row counts before parsing temporal or test inputs.
+
 To evaluate an external JSONL scorer:
 
 ```bash
@@ -106,7 +113,7 @@ The request policy is:
 
 `pnpm run eval:semantic:system1-eval` invokes the script with explicit `--final-evaluation` mode. It reads and scores train and calibration first, constructs both policies, freezes their hashes, then evaluates temporal and test. Temporal and test each have a separate accessor: after checking both persisted policy hashes, it reads the corresponding P1 seal manifest, hashes the raw state and labels bytes, checks both SHA-256 values and row counts against the seal, and only then parses those files. A seal mismatch aborts evaluation. No held-out rows enter calibration or threshold selection.
 
-For each scorer and selected certification mode the output is under `evaluate/results/semantic-corpus/v1/system1-eval/<scorerId>/<mode>/` (gitignored):
+For each scorer and selected certification mode the default v2 dataset evaluation is under `evaluate/results/semantic-corpus/v1/system1-eval-v2/<scorerId>/<mode>/` (gitignored):
 
 - `scorer-manifest.json` and `scorer-manifest.sha256`;
 - frozen `policy.json` and `policy.sha256`;

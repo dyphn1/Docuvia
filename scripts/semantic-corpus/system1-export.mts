@@ -22,6 +22,7 @@ import {
 } from "../../lib/contracts/src/index.js";
 import {
   SYSTEM1_AMBIGUITY_CLASS_ORDER,
+  SYSTEM1_DATASET_V2_DIRECTORY,
   SYSTEM1_EXCLUSION_REASONS,
   SYSTEM1_EVIDENCE_STATUSES,
   SYSTEM1_EXPORT_SCHEMA_VERSION,
@@ -83,7 +84,7 @@ const DEFAULT_CORPUS_MANIFEST = path.join(
 );
 const DEFAULT_OUTPUT_DIRECTORY = path.join(
   REPOSITORY_ROOT,
-  "evaluate/results/semantic-corpus/v1/system1-dataset",
+  SYSTEM1_DATASET_V2_DIRECTORY,
 );
 const DEFAULT_REPOSITORIES_DIRECTORY = path.join(
   os.homedir(),
@@ -377,7 +378,7 @@ async function processGroup(
   const graph = readTierAGraph(snapshotDirectory);
   const tierAIndex = createTierAIndex(graph.nodes, graph.edges);
   const nodesByKey = new Map(graph.nodes.map((node) => [node.nodeKey, node]));
-  const syntaxReader = new System1SnapshotSyntax(
+  const syntaxReader = await System1SnapshotSyntax.create(
     snapshotDirectory,
     new Set(snapshot.files.keys()),
   );

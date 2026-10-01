@@ -1,6 +1,8 @@
 import path from "node:path";
 import ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DefaultProvider, typescriptConfig } from "@workspace/ast-core";
+import { Language, Parser } from "web-tree-sitter";
 import type {
   SemanticCollectionCallSite,
   SemanticCollectionGraphNode,
@@ -12,6 +14,35 @@ import {
   type System1SyntaxEnvironment,
 } from "./system1-syntax.js";
 import { parseSystem1ProjectOptions } from "./system1-tsconfig.js";
+import { resolveWasmPath } from "../../ast/resolve-wasm-path.js";
+import {
+  extractTierAIndexedDeclarations,
+  type TierAIndexedDeclaration,
+} from "../../ast/tier-a-declaration-index.js";
+
+let system1TestParser: Parser;
+let system1TestProvider: DefaultProvider;
+
+beforeAll(async () => {
+  await Parser.init();
+  const { wasmPath, attemptedPaths } = resolveWasmPath(
+    typescriptConfig.wasm_file,
+  );
+  if (!wasmPath)
+    throw new Error(
+      `TypeScript grammar not found: ${attemptedPaths.join(", ")}`,
+    );
+  const language = await Language.load(wasmPath);
+  system1TestParser = new Parser();
+  system1TestParser.setLanguage(language);
+  system1TestProvider = new DefaultProvider(typescriptConfig);
+  system1TestProvider.initQueries?.(language);
+});
+
+afterAll(() => {
+  system1TestProvider.deleteQueries?.();
+  system1TestParser.delete();
+});
 
 describe("System-1 syntax projection", () => {
   it("keeps unreadable Tier A candidates in order with explicit missing evidence", () => {
@@ -202,7 +233,7 @@ describe("System-1 syntax projection", () => {
     ).toContain(SYSTEM1_AMBIGUITY_CLASSES.UNRESOLVED_RECEIVER_SMALL_SET);
   });
 
-  it("maps interface, method signature, type alias, enum, and module declarations", () => {
+  it("describes only declarations emitted by Tier A's TypeScript extractor", () => {
     const files = {
       "src/interface.ts": "export interface Runner { run(): void; }",
       "src/model.ts": "export type Model = string;",
@@ -222,7 +253,7 @@ describe("System-1 syntax projection", () => {
         ),
         candidate(
           "tierA:signature",
-          "src/interface.ts#Runner.run",
+          "src/interface.ts#run",
           "src/interface.ts",
           "run",
         ),
@@ -247,10 +278,10 @@ describe("System-1 syntax projection", () => {
       ]),
     ).toEqual([
       ["interface", "present"],
-      ["method-signature", "present"],
+      ["unknown", "missing"],
       ["type-alias", "present"],
       ["enum", "present"],
-      ["module", "present"],
+      ["unknown", "missing"],
     ]);
   });
 
@@ -282,6 +313,376 @@ describe("System-1 syntax projection", () => {
     expect(
       classifySystem1Ambiguities(result.syntax.ambiguityEvidence).tags,
     ).not.toContain(SYSTEM1_AMBIGUITY_CLASSES.OVERLOADS);
+  });
+
+  it("does not let a constructor object-literal property shadow a class method", () => {
+    const result = buildSyntax({
+      caller: "function caller() { transform(); }",
+      calleeName: "transform",
+      candidates: [
+        candidate(
+          "tierA:transform",
+          "src/decls.ts#ParseArrayPipe.transform",
+          "src/decls.ts",
+          "transform",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          "class ParseArrayPipe {",
+          "  constructor() { consume({ transform: true }); }",
+          "  transform(value: unknown) { return value; }",
+          "}",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "method",
+      signatureSnippet: expect.stringContaining("transform(value: unknown)"),
+    });
+  });
+
+  it("uses the binding declaration for a callback-bound Tier A arrow function", () => {
+    const result = buildSyntax({
+      caller: "function caller() { flush(); }",
+      calleeName: "flush",
+      candidates: [
+        candidate("tierA:flush", "src/decls.ts#flush", "src/decls.ts", "flush"),
+      ],
+      files: {
+        "src/decls.ts": `describe("queue", () => {\n  const flush = () => {};\n});`,
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "variable",
+      signatureSnippet: "flush = () => {}",
+    });
+  });
+
+  it("resolves a class member when the class is declared inside a callback", () => {
+    const result = buildSyntax({
+      caller: "function caller() { run(); }",
+      calleeName: "run",
+      candidates: [
+        candidate(
+          "tierA:run",
+          "src/decls.ts#Service.run",
+          "src/decls.ts",
+          "run",
+        ),
+      ],
+      files: {
+        "src/decls.ts": `describe("service", () => {\n  class Service {\n    run(value: string) { return value; }\n  }\n});`,
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "method",
+      signatureSnippet: expect.stringContaining("run(value: string)"),
+    });
+  });
+
+  it("uses an @L suffix to resolve an object-literal method in a callback", () => {
+    const result = buildSyntax({
+      caller: "function caller() { run(); }",
+      calleeName: "run",
+      candidates: [
+        candidate("tierA:run", "src/decls.ts#run@L5", "src/decls.ts", "run"),
+      ],
+      files: {
+        "src/decls.ts": `describe("adapter", () => {\n  const first = {\n    run() {},\n  };\n  const adapter = {\n    run(value: string) { return value; },\n  };\n});`,
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "method",
+      signatureSnippet: expect.stringContaining("run(value: string)"),
+    });
+  });
+
+  it("matches a decorated class method by its name line inside a callback", () => {
+    const result = buildSyntax({
+      caller: "function caller() { warn(); }",
+      calleeName: "warn",
+      candidates: [
+        candidate(
+          "tierA:warn",
+          "src/decls.ts#Logger.warn@L4",
+          "src/decls.ts",
+          "warn",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          'describe("logger", () => {',
+          "  class Logger {",
+          "    warn() {}",
+          "    @Trace()",
+          "    warn(message: string) {}",
+          "  }",
+          "});",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "method",
+      signatureSnippet: expect.stringContaining("warn(message: string)"),
+    });
+  });
+
+  it("does not let a same-named property inside a method shadow a class member", () => {
+    const result = buildSyntax({
+      caller: "function caller() { transform(); }",
+      calleeName: "transform",
+      candidates: [
+        candidate(
+          "tierA:transform",
+          "src/decls.ts#ParseArrayPipe.transform",
+          "src/decls.ts",
+          "transform",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          "class ParseArrayPipe {",
+          "  configure() { consume({ transform: true }); }",
+          "  transform(value: unknown) { return value; }",
+          "}",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0].declarationKind).toBe("method");
+    expect(result.syntax.candidates[0].signatureSnippet).toContain(
+      "transform(value: unknown)",
+    );
+  });
+
+  it("leaves evidence missing when a same-name declaration has no exact Tier A node key", () => {
+    const result = buildSyntax({
+      caller: "function caller() { transform(); }",
+      calleeName: "transform",
+      candidates: [
+        candidate(
+          "tierA:transform",
+          "src/decls.ts#ParseArrayPipe.transform@L999",
+          "src/decls.ts",
+          "transform",
+        ),
+      ],
+      files: {
+        "src/decls.ts":
+          "class ParseArrayPipe { transform(value: unknown) { return value; } }",
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "missing",
+      declarationKind: "unknown",
+      signatureSnippet: "",
+    });
+  });
+
+  it("maps the exact indexed name when Tree-sitter and TypeScript ranges differ", () => {
+    const result = buildSyntax({
+      caller: "function caller() { resolve(); }",
+      calleeName: "resolve",
+      candidates: [
+        candidate(
+          "tierA:resolve",
+          "src/decls.ts#resolve",
+          "src/decls.ts",
+          "resolve",
+        ),
+      ],
+      files: {
+        "src/decls.ts": "export function resolve(): void { return; }",
+      },
+      tierAIndexOverride: (indexed) => ({
+        ...indexed,
+        endIndex: indexed.endIndex - 1,
+      }),
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0].signatureSnippet).toBe(
+      "export function resolve(): void",
+    );
+  });
+
+  it("uses the Tier A binding declaration for an exported arrow function", () => {
+    const result = buildSyntax({
+      caller: "function caller() { WelcomeEmail(); }",
+      calleeName: "WelcomeEmail",
+      candidates: [
+        candidate(
+          "tierA:welcome-email",
+          "src/welcome.ts#WelcomeEmail",
+          "src/welcome.ts",
+          "WelcomeEmail",
+        ),
+      ],
+      files: {
+        "src/welcome.ts":
+          "export const WelcomeEmail = (username: string) => { return username; };",
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "present",
+      declarationKind: "variable",
+    });
+    expect(result.syntax.candidates[0].signatureSnippet).toContain(
+      "WelcomeEmail = (username: string) =>",
+    );
+  });
+
+  it("keeps an assignment-bound arrow missing when no declaration owns its key", () => {
+    const result = buildSyntax({
+      caller: "function caller() { classTarget(); }",
+      calleeName: "classTarget",
+      candidates: [
+        candidate(
+          "tierA:class-target",
+          "src/decls.ts#classTarget",
+          "src/decls.ts",
+          "classTarget",
+        ),
+      ],
+      files: {
+        "src/decls.ts":
+          "function build() { let classTarget; classTarget = () => true; }",
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      evidenceStatus: "missing",
+      declarationKind: "unknown",
+      signatureSnippet: "",
+    });
+  });
+
+  it("uses the @L key for a class method when Tier A indexed an earlier same-name local function", () => {
+    const result = buildSyntax({
+      caller: "function caller() { run(); }",
+      calleeName: "run",
+      candidates: [
+        candidate(
+          "tierA:run",
+          "src/decls.ts#Service.run@L2",
+          "src/decls.ts",
+          "run",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          "class Service {",
+          "  configure() { function run() { return 1; } }",
+          "  run() { return 2; }",
+          "}",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      declarationKind: "method",
+      signatureSnippet: "run()",
+    });
+  });
+
+  it("uses the node-key line to distinguish same-named methods in sibling classes", () => {
+    const result = buildSyntax({
+      caller: "function caller() { run(); }",
+      calleeName: "run",
+      candidates: [
+        candidate(
+          "tierA:run",
+          "src/decls.ts#Second.run",
+          "src/decls.ts",
+          "run",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          "class First {",
+          "  run(value: string) { return value; }",
+          "}",
+          "class Second {",
+          "  run(value: number) { return value; }",
+          "}",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0].signatureSnippet).toContain(
+      "run(value: number)",
+    );
+  });
+
+  it("uses Tier A's overload implementation for a base node key", () => {
+    const result = buildSyntax({
+      caller: "function caller() { run(); }",
+      calleeName: "run",
+      candidates: [
+        candidate(
+          "tierA:run",
+          "src/decls.ts#Service.run",
+          "src/decls.ts",
+          "run",
+        ),
+      ],
+      files: {
+        "src/decls.ts": [
+          "class Service {",
+          "  @Trace()",
+          "  run(value: string): string;",
+          "  run(value: number): number;",
+          "  run(value: string | number): string | number { return value; }",
+          "}",
+        ].join("\n"),
+      },
+    });
+
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.syntax.candidates[0]).toMatchObject({
+      declarationKind: "method",
+      overloadCount: 3,
+    });
+    expect(result.syntax.candidates[0].signatureSnippet).toContain(
+      "run(value: string | number): string | number",
+    );
   });
 
   it("counts overloads only within a callable declaration group", () => {
@@ -317,7 +718,7 @@ describe("System-1 syntax projection", () => {
       candidates: [
         candidate(
           "tierA:transform",
-          "src/api.ts#build.parser.transform",
+          "src/api.ts#transform",
           "src/api.ts",
           "transform",
         ),
@@ -522,12 +923,7 @@ describe("System-1 syntax projection", () => {
           "src/decls.ts",
           "value",
         ),
-        candidate(
-          "tierA:object",
-          "src/decls.ts#client.run",
-          "src/decls.ts",
-          "run",
-        ),
+        candidate("tierA:object", "src/decls.ts#run", "src/decls.ts", "run"),
       ],
       files: {
         "src/decls.ts":
@@ -573,6 +969,9 @@ function buildSyntax(input: {
   readonly files: Readonly<Record<string, string>>;
   readonly projectOptions?: System1SyntaxEnvironment["projectOptions"];
   readonly resolveModule?: System1SyntaxEnvironment["resolveModule"];
+  readonly tierAIndexOverride?: (
+    indexed: TierAIndexedDeclaration,
+  ) => TierAIndexedDeclaration;
 }) {
   const callerPath = "src/caller.ts";
   const files = new Map<string, string>([
@@ -605,9 +1004,34 @@ function buildSyntax(input: {
       { rank: 2 as const, evidence: "tier-a-same-name" as const },
     ]),
   );
+  const tierAIndex = new Map<
+    string,
+    Map<string, ReturnType<typeof extractTierAIndexedDeclarations>[number]>
+  >();
+  for (const [file, source] of files) {
+    const tree = system1TestParser.parse(source);
+    if (!tree) continue;
+    const declarations = extractTierAIndexedDeclarations(
+      file,
+      tree,
+      system1TestProvider,
+    );
+    tree.delete();
+    tierAIndex.set(
+      file,
+      new Map(
+        declarations.map((declaration) => {
+          const indexed =
+            input.tierAIndexOverride?.(declaration) ?? declaration;
+          return [indexed.nodeKey, indexed];
+        }),
+      ),
+    );
+  }
   const syntax = new System1SnapshotSyntax({
     trackedFiles: new Set(files.keys()),
     readText: (file) => files.get(file),
+    tierADeclaration: (file, targetId) => tierAIndex.get(file)?.get(targetId),
     projectOptions:
       input.projectOptions ?? (() => ({ options: {}, parsed: true })),
     resolveModule: input.resolveModule ?? (() => undefined),

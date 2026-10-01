@@ -1,10 +1,12 @@
 /** Pure parser-only syntax projection for the P1 System-1 state encoding. */
 import ts from "typescript";
+import { LanguageNodeTypes } from "@workspace/ast-core";
+import type { TierAIndexedDeclaration } from "../../ast/tier-a-declaration-index.js";
+import { AstNodeTypes } from "../../ast/ast-constants.js";
 import {
   SYSTEM1_BARREL_STATUSES,
   SYSTEM1_BOUNDED_IMPORT_MAX_BYTES,
   SYSTEM1_BYTE_LIMITS,
-  SYSTEM1_ANONYMOUS_CONTAINER,
   SYSTEM1_CALL_SOURCE_LINES,
   SYSTEM1_CALL_KINDS,
   SYSTEM1_CONSTRUCTOR_SYMBOL_NAME,
@@ -33,7 +35,6 @@ import type {
 } from "../../../../contracts/src/index.js";
 
 const GENERATED_MARKER = /@generated\b/i;
-const TARGET_LINE_SUFFIX = /@L(\d+)(?:#\d+)?$/;
 const DECLARATION_NAME_NODE_KINDS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.ModuleDeclaration,
   ts.SyntaxKind.Parameter,
@@ -53,32 +54,94 @@ const DECLARATION_NAME_NODE_KINDS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.InterfaceDeclaration,
   ts.SyntaxKind.EnumDeclaration,
 ]);
-const DECLARATION_KIND_BY_SYNTAX_KIND = new Map<
+const TIER_A_KIND_BY_NODE_TYPE = new Map<
+  string,
+  System1CandidateInput["declarationKind"]
+>([
+  [LanguageNodeTypes.METHOD_DEFINITION, SYSTEM1_DECLARATION_KINDS.METHOD],
+  [LanguageNodeTypes.FUNCTION_DECLARATION, SYSTEM1_DECLARATION_KINDS.FUNCTION],
+  [LanguageNodeTypes.ARROW_FUNCTION, SYSTEM1_DECLARATION_KINDS.FUNCTION],
+  [LanguageNodeTypes.FUNCTION_EXPRESSION, SYSTEM1_DECLARATION_KINDS.FUNCTION],
+  [
+    LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION,
+    SYSTEM1_DECLARATION_KINDS.FUNCTION,
+  ],
+  [LanguageNodeTypes.GENERATOR_FUNCTION, SYSTEM1_DECLARATION_KINDS.FUNCTION],
+  [LanguageNodeTypes.CLASS_DECLARATION, SYSTEM1_DECLARATION_KINDS.CLASS],
+  [
+    LanguageNodeTypes.ABSTRACT_CLASS_DECLARATION,
+    SYSTEM1_DECLARATION_KINDS.CLASS,
+  ],
+  [
+    LanguageNodeTypes.INTERFACE_DECLARATION,
+    SYSTEM1_DECLARATION_KINDS.INTERFACE,
+  ],
+  [
+    LanguageNodeTypes.TYPE_ALIAS_DECLARATION,
+    SYSTEM1_DECLARATION_KINDS.TYPE_ALIAS,
+  ],
+  [LanguageNodeTypes.ENUM_DECLARATION, SYSTEM1_DECLARATION_KINDS.ENUM],
+  [AstNodeTypes.VARIABLE_DECLARATOR, SYSTEM1_DECLARATION_KINDS.VARIABLE],
+]);
+const SYSTEM1_KIND_BY_TYPESCRIPT_NODE_KIND = new Map<
   ts.SyntaxKind,
   System1CandidateInput["declarationKind"]
 >([
   [ts.SyntaxKind.FunctionDeclaration, SYSTEM1_DECLARATION_KINDS.FUNCTION],
   [ts.SyntaxKind.FunctionExpression, SYSTEM1_DECLARATION_KINDS.FUNCTION],
+  [ts.SyntaxKind.ArrowFunction, SYSTEM1_DECLARATION_KINDS.FUNCTION],
   [ts.SyntaxKind.MethodDeclaration, SYSTEM1_DECLARATION_KINDS.METHOD],
+  [ts.SyntaxKind.MethodSignature, SYSTEM1_DECLARATION_KINDS.METHOD],
   [ts.SyntaxKind.GetAccessor, SYSTEM1_DECLARATION_KINDS.METHOD],
   [ts.SyntaxKind.SetAccessor, SYSTEM1_DECLARATION_KINDS.METHOD],
   [ts.SyntaxKind.Constructor, SYSTEM1_DECLARATION_KINDS.CONSTRUCTOR],
   [ts.SyntaxKind.ClassDeclaration, SYSTEM1_DECLARATION_KINDS.CLASS],
   [ts.SyntaxKind.ClassExpression, SYSTEM1_DECLARATION_KINDS.CLASS],
   [ts.SyntaxKind.InterfaceDeclaration, SYSTEM1_DECLARATION_KINDS.INTERFACE],
+  [ts.SyntaxKind.TypeAliasDeclaration, SYSTEM1_DECLARATION_KINDS.TYPE_ALIAS],
+  [ts.SyntaxKind.EnumDeclaration, SYSTEM1_DECLARATION_KINDS.ENUM],
   [ts.SyntaxKind.VariableDeclaration, SYSTEM1_DECLARATION_KINDS.VARIABLE],
   [ts.SyntaxKind.PropertyDeclaration, SYSTEM1_DECLARATION_KINDS.PROPERTY],
   [ts.SyntaxKind.PropertySignature, SYSTEM1_DECLARATION_KINDS.PROPERTY],
   [ts.SyntaxKind.PropertyAssignment, SYSTEM1_DECLARATION_KINDS.PROPERTY],
-  [ts.SyntaxKind.MethodSignature, SYSTEM1_DECLARATION_KINDS.METHOD_SIGNATURE],
-  [ts.SyntaxKind.TypeAliasDeclaration, SYSTEM1_DECLARATION_KINDS.TYPE_ALIAS],
-  [ts.SyntaxKind.EnumDeclaration, SYSTEM1_DECLARATION_KINDS.ENUM],
-  [ts.SyntaxKind.ModuleDeclaration, SYSTEM1_DECLARATION_KINDS.MODULE],
 ]);
-
+const TIER_A_TYPE_MATCHERS = new Map<string, (node: ts.Node) => boolean>([
+  [LanguageNodeTypes.FUNCTION_DECLARATION, ts.isFunctionDeclaration],
+  [LanguageNodeTypes.FUNCTION_EXPRESSION, ts.isFunctionExpression],
+  [LanguageNodeTypes.ARROW_FUNCTION, ts.isArrowFunction],
+  [
+    LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION,
+    (node) => ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node),
+  ],
+  [
+    LanguageNodeTypes.GENERATOR_FUNCTION,
+    (node) => ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node),
+  ],
+  [
+    LanguageNodeTypes.METHOD_DEFINITION,
+    (node) =>
+      ts.isMethodDeclaration(node) ||
+      ts.isConstructorDeclaration(node) ||
+      ts.isGetAccessorDeclaration(node) ||
+      ts.isSetAccessorDeclaration(node),
+  ],
+  [LanguageNodeTypes.CLASS_DECLARATION, (node) => ts.isClassDeclaration(node)],
+  [
+    LanguageNodeTypes.ABSTRACT_CLASS_DECLARATION,
+    (node) => ts.isClassDeclaration(node),
+  ],
+  [LanguageNodeTypes.INTERFACE_DECLARATION, ts.isInterfaceDeclaration],
+  [LanguageNodeTypes.TYPE_ALIAS_DECLARATION, ts.isTypeAliasDeclaration],
+  [LanguageNodeTypes.ENUM_DECLARATION, ts.isEnumDeclaration],
+  [AstNodeTypes.VARIABLE_DECLARATOR, ts.isVariableDeclaration],
+]);
 export interface System1SyntaxEnvironment {
   readonly trackedFiles: ReadonlySet<string>;
   readonly readText: (file: string) => string | undefined;
+  readonly tierADeclaration: (
+    file: string,
+    targetId: string,
+  ) => TierAIndexedDeclaration | undefined;
   readonly projectOptions: (projectId: string) => {
     readonly options: ts.CompilerOptions;
     readonly parsed: boolean;
@@ -229,46 +292,15 @@ export class System1SnapshotSyntax {
     "id" | "targetId" | "tierARank" | "tierAEvidence"
   > {
     if (!graphNode) return missingCandidateSyntax();
+    const indexed = this.environment.tierADeclaration(
+      graphNode.filePath,
+      targetId,
+    );
+    if (!indexed || indexed.nodeKey !== targetId)
+      return missingCandidateSyntax();
     const sourceFile = this.source(graphNode.filePath);
     if (!sourceFile) return missingCandidateSyntax();
-    const target = targetSymbol(targetId);
-    const allNamedMatches = namedDeclarations(sourceFile, target.name);
-    const lineMatch =
-      target.startLine === null
-        ? undefined
-        : allNamedMatches.find(
-            (declaration) =>
-              sourceFile.getLineAndCharacterOfPosition(
-                declaration.getStart(sourceFile),
-              ).line === target.startLine,
-          );
-    const containerMatches = allNamedMatches.filter(
-      (declaration) => declarationContainer(declaration) === target.container,
-    );
-    const selected = lineMatch ?? containerMatches[0];
-    if (!selected) return missingCandidateSyntax();
-    const kind = declarationKind(selected);
-    const fileName = graphNode.filePath.split("/").at(-1) ?? "";
-    const generatedMarker =
-      SYSTEM1_GENERATED_PATH_COMPONENTS.some((component) =>
-        graphNode.filePath
-          .split("/")
-          .some((part) => part.toLocaleLowerCase("en-US") === component),
-      ) ||
-      SYSTEM1_GENERATED_FILE_MARKERS.some((marker) =>
-        fileName.toLocaleLowerCase("en-US").includes(marker),
-      ) ||
-      hasGeneratedMarker(sourceFile.text, selected);
-    return {
-      evidenceStatus: SYSTEM1_EVIDENCE_STATUSES.PRESENT,
-      declarationKind: kind,
-      signatureSnippet: signatureText(selected, sourceFile),
-      overloadCount: isCallableDeclaration(selected)
-        ? overloadDeclarationCount(sourceFile, target.name, selected)
-        : 1,
-      generatedMarker,
-      forwardingWrapper: isForwardingWrapper(selected, sourceFile),
-    };
+    return describeTierADeclaration(graphNode.filePath, indexed, sourceFile);
   }
 
   private describeImport(
@@ -1175,14 +1207,15 @@ function findAncestor<T extends ts.Node>(
 }
 
 function isParameterProperty(parameter: ts.ParameterDeclaration): boolean {
-  return (parameter.modifiers ?? []).some((modifier) =>
-    [
-      ts.SyntaxKind.PublicKeyword,
-      ts.SyntaxKind.PrivateKeyword,
-      ts.SyntaxKind.ProtectedKeyword,
-      ts.SyntaxKind.ReadonlyKeyword,
-    ].includes(modifier.kind),
-  );
+  return (parameter.modifiers ?? []).some((modifier: ts.ModifierLike) => {
+    const modifierKind = modifier.kind;
+    return (
+      modifierKind === ts.SyntaxKind.PublicKeyword ||
+      modifierKind === ts.SyntaxKind.PrivateKeyword ||
+      modifierKind === ts.SyntaxKind.ProtectedKeyword ||
+      modifierKind === ts.SyntaxKind.ReadonlyKeyword
+    );
+  });
 }
 
 function isFluentChain(expression: ts.LeftHandSideExpression): boolean {
@@ -1275,63 +1308,103 @@ function aroundUtf8(
   return { text: points.slice(left, right).join(""), truncated: true };
 }
 
-function targetSymbol(targetId: string): {
-  readonly name: string;
-  readonly container: string | undefined;
-  readonly startLine: number | null;
-} {
-  const separator = targetId.indexOf("#");
-  const raw = separator < 0 ? "" : targetId.slice(separator + 1);
-  const line = TARGET_LINE_SUFFIX.exec(raw);
-  const withoutLine = raw.replace(TARGET_LINE_SUFFIX, "");
-  const lastDot = withoutLine.lastIndexOf(".");
+function tierADeclarationKind(
+  indexed: TierAIndexedDeclaration,
+  selected: ts.Declaration,
+): System1CandidateInput["declarationKind"] {
+  const selectedKind = SYSTEM1_KIND_BY_TYPESCRIPT_NODE_KIND.get(selected.kind);
+  if (selectedKind) return selectedKind;
+  return (
+    TIER_A_KIND_BY_NODE_TYPE.get(indexed.nodeType) ??
+    SYSTEM1_DECLARATION_KINDS.UNKNOWN
+  );
+}
+
+function describeTierADeclaration(
+  filePath: string,
+  indexed: TierAIndexedDeclaration,
+  sourceFile: ts.SourceFile,
+): Omit<
+  System1CandidateInput,
+  "id" | "targetId" | "tierARank" | "tierAEvidence"
+> {
+  const selected = findTypeScriptNodeForTierADeclaration(sourceFile, indexed);
+  if (!selected) return missingCandidateSyntax();
   return {
-    name: lastDot < 0 ? withoutLine : withoutLine.slice(lastDot + 1),
-    container: lastDot < 0 ? undefined : withoutLine.slice(0, lastDot),
-    startLine: line ? Number(line[1]) : null,
+    evidenceStatus: SYSTEM1_EVIDENCE_STATUSES.PRESENT,
+    declarationKind: tierADeclarationKind(indexed, selected),
+    signatureSnippet: signatureText(selected, sourceFile),
+    overloadCount: declarationOverloadCount(sourceFile, indexed, selected),
+    generatedMarker: hasGeneratedMarkerForDeclaration(
+      filePath,
+      sourceFile,
+      selected,
+    ),
+    forwardingWrapper: isForwardingWrapper(selected, sourceFile),
   };
 }
 
-function declarationContainer(declaration: ts.Node): string | undefined {
-  const containers: string[] = [];
-  for (
-    let current: ts.Node | undefined = declaration.parent;
-    current;
-    current = current.parent
-  ) {
-    const segment = declarationContainerSegment(current);
-    if (segment) containers.push(segment);
-  }
-  return containers.length > 0 ? containers.reverse().join(".") : undefined;
+function declarationOverloadCount(
+  sourceFile: ts.SourceFile,
+  indexed: TierAIndexedDeclaration,
+  selected: ts.Declaration,
+): number | null {
+  if (!isCallableDeclaration(selected)) return 1;
+  return overloadDeclarationCount(sourceFile, indexed.name, selected);
 }
 
-function declarationContainerSegment(node: ts.Node): string | undefined {
-  if (ts.isClassLike(node)) return node.name?.text;
-  if (ts.isInterfaceDeclaration(node)) return node.name.text;
-  const moduleOrType = moduleOrTypeContainerSegment(node);
-  if (moduleOrType !== undefined) return moduleOrType;
-  const functionOrMember = functionOrMemberContainerSegment(node);
-  if (functionOrMember !== undefined) return functionOrMember;
-  return undefined;
+function hasGeneratedMarkerForDeclaration(
+  filePath: string,
+  sourceFile: ts.SourceFile,
+  selected: ts.Declaration,
+): boolean {
+  const fileName = filePath.split("/").at(-1) ?? "";
+  const generatedPath = SYSTEM1_GENERATED_PATH_COMPONENTS.some((component) =>
+    filePath
+      .split("/")
+      .some((part) => part.toLocaleLowerCase("en-US") === component),
+  );
+  const generatedName = SYSTEM1_GENERATED_FILE_MARKERS.some((marker) =>
+    fileName.toLocaleLowerCase("en-US").includes(marker),
+  );
+  if (generatedPath || generatedName) return true;
+  return hasGeneratedMarker(sourceFile.text, selected);
 }
 
-function moduleOrTypeContainerSegment(node: ts.Node): string | undefined {
-  if (ts.isModuleDeclaration(node)) return declarationNameText(node);
-  if (ts.isTypeAliasDeclaration(node)) return node.name.text;
-  return undefined;
+function findTypeScriptNodeForTierADeclaration(
+  sourceFile: ts.SourceFile,
+  indexed: TierAIndexedDeclaration,
+): ts.Declaration | undefined {
+  const exactRangeMatches: ts.Declaration[] = [];
+  const exactNameMatches: ts.Declaration[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      indexed.nameStartIndex !== null &&
+      declarationNameNode(node as ts.Declaration)?.getStart(sourceFile) ===
+        indexed.nameStartIndex
+    )
+      exactNameMatches.push(node as ts.Declaration);
+    if (matchesTierAType(node, indexed.nodeType)) {
+      const declaration = node as ts.Declaration;
+      const start = declaration.getStart(sourceFile);
+      const end = declaration.getEnd();
+      if (start === indexed.startIndex && end === indexed.endIndex)
+        exactRangeMatches.push(declaration);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  if (exactNameMatches.length === 1) return exactNameMatches[0];
+  if (
+    exactNameMatches.length > 1 ||
+    indexed.name !== SYSTEM1_CONSTRUCTOR_SYMBOL_NAME
+  )
+    return undefined;
+  return exactRangeMatches.length === 1 ? exactRangeMatches[0] : undefined;
 }
 
-function functionOrMemberContainerSegment(node: ts.Node): string | undefined {
-  if (ts.isFunctionDeclaration(node))
-    return node.name?.text ?? SYSTEM1_ANONYMOUS_CONTAINER;
-  return namedMemberContainerSegment(node);
-}
-
-function namedMemberContainerSegment(node: ts.Node): string | undefined {
-  if (ts.isMethodDeclaration(node)) return declarationNameText(node);
-  if (ts.isVariableDeclaration(node)) return declarationNameText(node);
-  if (ts.isPropertyAssignment(node)) return declarationNameText(node);
-  return undefined;
+function matchesTierAType(node: ts.Node, type: string): boolean {
+  return TIER_A_TYPE_MATCHERS.get(type)?.(node) ?? false;
 }
 
 function namedDeclarations(
@@ -1370,15 +1443,6 @@ function declarationNameNode(node: ts.Node): ts.Node | undefined {
   if (!DECLARATION_NAME_NODE_KINDS.has(node.kind) || !("name" in node))
     return undefined;
   return (node as ts.Node & { readonly name?: ts.Node }).name;
-}
-
-function declarationKind(
-  node: ts.Declaration,
-): System1CandidateInput["declarationKind"] {
-  return (
-    DECLARATION_KIND_BY_SYNTAX_KIND.get(node.kind) ??
-    SYSTEM1_DECLARATION_KINDS.UNKNOWN
-  );
 }
 
 function isCallableDeclaration(node: ts.Declaration): boolean {

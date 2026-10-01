@@ -1,8 +1,38 @@
 import { SemanticDecisionLimits } from "@workspace/contracts";
 
-export const SYSTEM1_FEATURE_SCHEMA_VERSION = "system1-option-selection/v1";
-export const SYSTEM1_EXPORT_SCHEMA_VERSION = 1;
+export const SYSTEM1_FEATURE_SCHEMA_VERSION = "system1-option-selection/v2";
+export const SYSTEM1_PREVIOUS_FEATURE_SCHEMA_VERSION =
+  "system1-option-selection/v1";
+export const SYSTEM1_PREVIOUS_EXPORT_SCHEMA_VERSION = 1;
+export const SYSTEM1_EXPORT_SCHEMA_VERSION = 2;
+export const SYSTEM1_SUPPORTED_EXPORT_SCHEMA_VERSIONS = [
+  SYSTEM1_PREVIOUS_EXPORT_SCHEMA_VERSION,
+  SYSTEM1_EXPORT_SCHEMA_VERSION,
+] as const;
 export const SYSTEM1_SOURCE_CORPUS_VERSION = "1";
+export const SYSTEM1_PREVIOUS_DATASET_DIRECTORY =
+  "evaluate/results/semantic-corpus/v1/system1-dataset";
+export const SYSTEM1_DATASET_V2_DIRECTORY =
+  "evaluate/results/semantic-corpus/v1/system1-dataset-v2";
+export const SYSTEM1_DATASET_IMPACT_SCHEMA = "system1-dataset-impact/v1";
+export const SYSTEM1_DATASET_IMPACT_FILE_NAME = "declaration-impact.json";
+export const SYSTEM1_EXPORT_REPLAY_HASH_SCHEMA =
+  "system1-export-replay-hashes/v1";
+export const SYSTEM1_DATASET_IMPACT_FIELD_NAMES = {
+  DECLARATION_KIND: "declarationKind",
+  EVIDENCE_STATUS: "evidenceStatus",
+  SIGNATURE: "signature",
+  TARGET_ID: "targetId",
+} as const;
+export const SYSTEM1_DATASET_IMPACT_ERRORS = {
+  BLANK_STATE_ROW: "System-1 dataset impact found a blank state row.",
+  DUPLICATE_REQUEST_ID: "System-1 dataset impact found a duplicate request id.",
+  ROW_SET_MISMATCH: "System-1 dataset state rows differ between versions.",
+  CANDIDATE_SET_MISMATCH:
+    "System-1 dataset candidate identities differ between versions.",
+  TARGET_ID_MISMATCH:
+    "System-1 dataset candidate target ids differ between versions.",
+} as const;
 export const SYSTEM1_MEMORY_FLOOR_PERCENT = 12;
 export const SYSTEM1_TIER_A_REPLAY_MISMATCH_REASON =
   "tier-a-candidate-replay-mismatch";
@@ -27,7 +57,6 @@ export const SYSTEM1_OPTION_IDS = {
 export const SYSTEM1_REQUEST_ID_PREFIX = "system1:";
 export const SYSTEM1_JSON_LINE_ENDING = "\n";
 export const SYSTEM1_CONSTRUCTOR_SYMBOL_NAME = "constructor";
-export const SYSTEM1_ANONYMOUS_CONTAINER = "<anonymous>";
 
 export const SYSTEM1_SOURCE = {
   LANGUAGE: "typescript",
@@ -149,6 +178,8 @@ export const SYSTEM1_FILE_NAMES = {
   EXCLUDED: "excluded.jsonl",
   REPORT: "export-report.json",
   LABELS_REPORT: "labels-report.json",
+  REPLAY_HASHES: "replay-hashes.json",
+  DECLARATION_IMPACT: SYSTEM1_DATASET_IMPACT_FILE_NAME,
 } as const;
 
 export const SYSTEM1_FACTORY_NAME_PREFIXES = [

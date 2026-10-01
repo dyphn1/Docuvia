@@ -71,6 +71,25 @@ describe("System-1 evaluator scorer protocol", () => {
     expect(validateSystem1ScorerResponse(state, value)).toEqual(value);
   });
 
+  it("preserves a scorer-declared OOF fold family", () => {
+    const state = stateRecord();
+    const response = validateSystem1ScorerResponse(state, {
+      requestId: state.request.requestId,
+      foldFamily: "example/repo",
+      status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
+      scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+      scores: {
+        "candidate-a": 0.7,
+        "candidate-b": 0.6,
+        UNKNOWN: 0.2,
+        VERIFY_WITH_LSP: 0.1,
+      },
+    });
+
+    expect(response.foldFamily).toBe("example/repo");
+    expect(response.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.OK);
+  });
+
   it.each([
     [
       "missing option id",

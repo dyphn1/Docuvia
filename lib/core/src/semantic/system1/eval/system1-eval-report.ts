@@ -3,6 +3,7 @@ import {
   SYSTEM1_SPLITS,
 } from "../system1-constants.js";
 import {
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
   SYSTEM1_EVAL_PRECISION_TARGET_KEYS,
   SYSTEM1_EVAL_REPORT_COLUMNS,
   SYSTEM1_EVAL_REPORT_TEXT,
@@ -10,6 +11,8 @@ import {
   SYSTEM1_EVAL_THRESHOLD_STATUSES,
 } from "./system1-eval-constants.js";
 import type {
+  System1EvalCertificationMode,
+  System1EvaluationPolicy,
   System1SplitMetrics,
   System1TargetMetrics,
 } from "./system1-eval-types.js";
@@ -24,8 +27,14 @@ export interface System1EvalSealReference {
 export interface System1EvalReportInput {
   readonly scorerId: string;
   readonly policyHash: string;
+  readonly selectedCertificationMode: System1EvalCertificationMode;
   readonly splitMetrics: readonly System1SplitMetrics[];
   readonly sealedInputs: Readonly<Record<string, System1EvalSealReference>>;
+  readonly certificationModes?: readonly {
+    readonly mode: System1EvalCertificationMode;
+    readonly splitMetrics: readonly System1SplitMetrics[];
+  }[];
+  readonly lofoPolicy?: System1EvaluationPolicy;
 }
 
 function formatValue(value: number | null): string {
@@ -52,8 +61,14 @@ function formatPercent(value: number | null): string {
 function heldOutTargetStatus(
   split: string,
   target: System1TargetMetrics,
+  certificationMode: System1EvalCertificationMode,
 ): string {
-  if (split === SYSTEM1_SPLITS.CALIBRATION)
+  if (
+    split === SYSTEM1_SPLITS.CALIBRATION ||
+    (split === SYSTEM1_SPLITS.TRAIN &&
+      certificationMode ===
+        SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT)
+  )
     return SYSTEM1_EVAL_REPORT_TEXT.IN_SAMPLE;
   if (
     !SYSTEM1_HELD_OUT_SPLITS.includes(
@@ -77,20 +92,26 @@ function formatRow(
   key: string,
   target: System1TargetMetrics,
   ece: number | null,
+  certificationMode: System1EvalCertificationMode,
 ): string {
   const request = target.requestLevel;
+  const inSample =
+    split === SYSTEM1_SPLITS.CALIBRATION ||
+    (split === SYSTEM1_SPLITS.TRAIN &&
+      certificationMode ===
+        SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT);
   const certified =
     target.certification.status === SYSTEM1_EVAL_THRESHOLD_STATUSES.CERTIFIED;
   const row = [
     split,
     key,
     certified ? "certified" : "uncertifiable",
-    heldOutTargetStatus(split, target),
+    heldOutTargetStatus(split, target, certificationMode),
     formatPercentRate(request.lspAvoidanceRate),
     formatPercentRate(request.exactSetPrecision),
     formatPercent(target.candidateLevel.goldPositiveCoverage.rate),
     formatPercent(request.falseSafePerTrustedRequest.rate),
-    split === SYSTEM1_SPLITS.CALIBRATION
+    inSample
       ? `${formatValue(ece)} (${SYSTEM1_EVAL_REPORT_TEXT.IN_SAMPLE})`
       : formatValue(ece),
     formatPercent(request.unknownRate.rate),
@@ -103,10 +124,11 @@ function targetRows(
   split: string,
   byPrecisionTarget: Readonly<Record<string, System1TargetMetrics>>,
   ece: number | null,
+  certificationMode: System1EvalCertificationMode,
 ): string[] {
   return SYSTEM1_EVAL_PRECISION_TARGET_KEYS.map((key) => {
     const target = byPrecisionTarget[key];
-    if (target) return formatRow(split, key, target, ece);
+    if (target) return formatRow(split, key, target, ece, certificationMode);
     const emptyCells = [
       split,
       key,
@@ -170,6 +192,54 @@ function sliceSections(splits: readonly System1SplitMetrics[]): string[] {
   return output;
 }
 
+function certificationModeRows(
+  inputs: NonNullable<System1EvalReportInput["certificationModes"]>,
+): string[] {
+  const lines = [
+    SYSTEM1_EVAL_REPORT_TEXT.CERTIFICATION_MODES_HEADER,
+    "",
+    "| mode | split | target | threshold | commit / LSP avoidance | exact-set precision (95% CI) | meets target |",
+    "| --- | --- | ---: | ---: | --- | --- | --- |",
+  ];
+  for (const mode of inputs) {
+    const sorted = [...mode.splitMetrics].sort(
+      (left, right) => splitOrder(left.split) - splitOrder(right.split),
+    );
+    for (const split of sorted) {
+      for (const key of SYSTEM1_EVAL_PRECISION_TARGET_KEYS) {
+        const target = split.byPrecisionTarget[key];
+        if (!target) continue;
+        lines.push(
+          `| ${mode.mode} | ${split.split} | ${key} | ${target.certification.threshold ?? SYSTEM1_EVAL_REPORT_TEXT.NO_RATE} | ${formatPercentRate(target.requestLevel.lspAvoidanceRate)} | ${formatPercentRate(target.requestLevel.exactSetPrecision)} | ${heldOutTargetStatus(split.split, target, mode.mode)} |`,
+        );
+      }
+    }
+  }
+  return [...lines, ""];
+}
+
+function lofoFamilyRows(policy: System1EvaluationPolicy): string[] {
+  const lines = [
+    SYSTEM1_EVAL_REPORT_TEXT.LOFO_FAMILY_HEADER,
+    "",
+    "| target | diagnostic kind | threshold | pooled commits | pooled exact sets | pooled CP lower | worst-family CP lower | family | commits | exact-set precision | family CP lower | family gate |",
+    "| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | --- |",
+  ];
+  for (const target of policy.precisionTargets) {
+    const tables =
+      target.oofFamilyDiagnostics ??
+      (target.oofFamilyTable ? [target.oofFamilyTable] : []);
+    for (const table of tables) {
+      for (const family of table.families) {
+        lines.push(
+          `| ${target.targetPrecision.toFixed(3)} | ${table.diagnosticKind} | ${table.evaluatedThreshold ?? SYSTEM1_EVAL_REPORT_TEXT.NO_RATE} | ${table.pooledCommitCount} | ${table.pooledExactSetCount} | ${formatPercent(table.pooledLowerBound)} | ${formatPercent(table.worstFamilyLowerBound)} | ${family.family} | ${family.commits} | ${formatPercent(family.exactSetPrecision)} | ${formatPercent(family.lowerBound)} | ${family.usedForFamilyGate ? (family.familyGateSatisfied ? "pass" : "fail") : "below minimum"} |`,
+        );
+      }
+    }
+  }
+  return [...lines, ""];
+}
+
 /** Stable Markdown report; it contains no run timestamps or durations. */
 export function renderSystem1EvalReport(input: System1EvalReportInput): string {
   const lines = [
@@ -192,9 +262,13 @@ export function renderSystem1EvalReport(input: System1EvalReportInput): string {
         split.split,
         split.byPrecisionTarget,
         split.calibration.ece,
+        input.selectedCertificationMode,
       ),
     );
   }
+  if (input.certificationModes?.length)
+    lines.push(...certificationModeRows(input.certificationModes));
+  if (input.lofoPolicy) lines.push(...lofoFamilyRows(input.lofoPolicy));
   lines.push("", SYSTEM1_EVAL_REPORT_TEXT.SLICES_HEADER, "");
   lines.push(...sliceSections(sortedSplits));
   lines.push(SYSTEM1_EVAL_REPORT_TEXT.SEALS_HEADER, "");
@@ -211,7 +285,14 @@ export function renderSystem1EvalReport(input: System1EvalReportInput): string {
     "",
     SYSTEM1_EVAL_REPORT_TEXT.POLICY_HEADER,
     "",
-    "Thresholds are fitted on calibration only and certify request-level exact-set precision with a one-sided 95% Clopper–Pearson lower bound. Uncertifiable targets route to VERIFY_WITH_LSP.",
+    input.selectedCertificationMode ===
+      SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT
+      ? SYSTEM1_EVAL_REPORT_TEXT.LOFO_POLICY_DESCRIPTION
+      : SYSTEM1_EVAL_REPORT_TEXT.CALIBRATION_ONLY_POLICY_DESCRIPTION,
+    input.selectedCertificationMode ===
+      SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT
+      ? "The calibration-only comparison fits and certifies on in-sample calibration rows alone. A target is uncertifiable if no threshold passes its mode's certification gates."
+      : "The LOFO comparison fits fold-specific maps and certifies on out-of-fold train+calibration rows. A target is uncertifiable if no threshold passes its mode's certification gates.",
     "",
   );
   return `${lines.join("\n")}\n`;

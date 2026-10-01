@@ -14,6 +14,7 @@ import {
   SYSTEM1_EVAL_BASELINE_IDS,
   SYSTEM1_EVAL_BATCH_SIZE,
   SYSTEM1_EVAL_BATCH_TIMEOUT_MS,
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
   SYSTEM1_EVAL_CLI_FLAGS,
   SYSTEM1_EVAL_CLI_SEPARATOR,
   SYSTEM1_EVAL_DATASET_DIRECTORY,
@@ -31,6 +32,7 @@ import {
   SYSTEM1_EVAL_SCORER_RUNTIME_KEY_PREFIX,
   SYSTEM1_EVAL_RUNTIME_UNAVAILABLE,
   SYSTEM1_EVAL_SCHEMA_VERSION,
+  SYSTEM1_EVAL_SCORER_STATUSES,
   SYSTEM1_EVAL_BASELINE_NO_CANDIDATE_UNKNOWN_SCORE,
   SYSTEM1_EVAL_BASELINE_NO_CANDIDATE_VERIFY_SCORE,
   SYSTEM1_EVAL_SINGLE_RANK0_WITH_CANDIDATE_UNKNOWN_SCORE,
@@ -43,10 +45,20 @@ import {
   SYSTEM1_EVAL_SINGLE_RANK0_VERIFY_SCORE,
   SYSTEM1_EVAL_ALWAYS_VERIFY_SCORE,
   SYSTEM1_EVAL_SLICE_DIMENSIONS,
+  SYSTEM1_EVAL_TRAINING_MODES,
+  SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-constants.js";
 import { computeSystem1SplitMetrics } from "../../lib/core/src/semantic/system1/eval/system1-eval-metrics.js";
 import { runSystem1ExternalScorerBatch } from "../../lib/core/src/semantic/system1/eval/system1-eval-external-scorer.js";
-import { fitSystem1EvaluationPolicy } from "../../lib/core/src/semantic/system1/eval/system1-eval-policy.js";
+import {
+  fitSystem1EvaluationPolicy,
+  fitSystem1LeaveOneFamilyOutPolicy,
+} from "../../lib/core/src/semantic/system1/eval/system1-eval-policy.js";
+import {
+  buildSystem1RepoFamilyFolds,
+  createSystem1ScorerTrainingManifest,
+  system1RepoFamily,
+} from "../../lib/core/src/semantic/system1/eval/system1-eval-folds.js";
 import { renderSystem1EvalReport } from "../../lib/core/src/semantic/system1/eval/system1-eval-report.js";
 import {
   scoreSystem1Baseline,
@@ -56,6 +68,8 @@ import type {
   System1EvalExample,
   System1EvaluationPolicy,
   System1ScorerResponse,
+  System1EvalCertificationMode,
+  System1ScorerTrainingManifest,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-types.js";
 import type {
   System1DatasetRecord,
@@ -78,12 +92,14 @@ interface ExternalOptions {
   readonly scorerRuntimeVersions: Readonly<Record<string, string>>;
   readonly batchSize: number;
   readonly batchTimeoutMs: number;
+  readonly scorerTrainingManifest: System1ScorerTrainingManifest;
 }
 
 interface ParsedArguments {
   readonly finalEvaluation: boolean;
   readonly external: ExternalOptions | null;
   readonly selectedBaselineId: string | null;
+  readonly certificationMode: System1EvalCertificationMode;
 }
 
 interface ScorerManifest {
@@ -97,6 +113,7 @@ interface ScorerManifest {
     readonly batchSize: number;
     readonly batchTimeoutMs: number;
   };
+  readonly trainingPlan: System1ScorerTrainingManifest;
 }
 
 interface FrozenPolicy {
@@ -143,6 +160,8 @@ const ALL_SPLITS: readonly System1Split[] = [
 const CORRECTNESS_FILE_NAMES: readonly string[] = [
   SYSTEM1_EVAL_FILE_NAMES.POLICY,
   SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
+  SYSTEM1_EVAL_FILE_NAMES.COMPARISON_POLICY,
+  SYSTEM1_EVAL_FILE_NAMES.COMPARISON_POLICY_HASH,
   SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST,
   SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST_HASH,
   SYSTEM1_EVAL_FILE_NAMES.METRICS,
@@ -166,6 +185,49 @@ function ensurePositiveInteger(value: string, optionName: string): number {
   return parsed;
 }
 
+function parseScorerTrainingManifest(value: string): System1ScorerTrainingManifest {
+  const parsed: unknown = JSON.parse(value);
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed)
+  )
+    throw new Error("Scorer training manifest must be a JSON object.");
+  const record = parsed as Record<string, unknown>;
+  if (record.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING)
+    return {
+      mode: SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING,
+      foldTrainingFamilies: {},
+      heldOutTrainingFamilies: [],
+    };
+  if (record.mode !== SYSTEM1_EVAL_TRAINING_MODES.FOLDED)
+    throw new Error("Scorer training manifest mode must be folded or no-training.");
+  const folds = record.foldTrainingFamilies;
+  const heldOut = record.heldOutTrainingFamilies;
+  if (
+    folds === null ||
+    typeof folds !== "object" ||
+    Array.isArray(folds) ||
+    Object.values(folds).some(
+      (families) =>
+        !Array.isArray(families) ||
+        families.some((family) => typeof family !== "string"),
+    ) ||
+    !Array.isArray(heldOut) ||
+    heldOut.some((family) => typeof family !== "string")
+  )
+    throw new Error("Folded scorer declaration requires family arrays per fold and held-out training.");
+  return {
+    mode: SYSTEM1_EVAL_TRAINING_MODES.FOLDED,
+    foldTrainingFamilies: Object.fromEntries(
+      Object.entries(folds as Record<string, string[]>).sort(([a], [b]) =>
+        a < b ? -1 : a > b ? 1 : 0,
+      ),
+    ),
+    heldOutTrainingFamilies: [...heldOut as string[]].sort(),
+  };
+}
+
 function parseArguments(argv: readonly string[]): ParsedArguments {
   const values = new Map<string, string>();
   let finalEvaluation = false;
@@ -187,6 +249,16 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
     values.set(token, value);
     index += 1;
   }
+
+  const requestedMode =
+    values.get(SYSTEM1_EVAL_CLI_FLAGS.CERTIFICATION_MODE) ??
+    SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT;
+  if (
+    requestedMode !== SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY &&
+    requestedMode !== SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT
+  )
+    throw new Error("Unknown certification mode.");
+  const certificationMode = requestedMode as System1EvalCertificationMode;
 
   const selectedBaselineId =
     values.get(SYSTEM1_EVAL_CLI_FLAGS.SCORER_ID) ?? null;
@@ -212,6 +284,8 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
       throw new Error(
         "Batch timeout is configurable only for an external scorer.",
       );
+    if (values.has(SYSTEM1_EVAL_CLI_FLAGS.SCORER_TRAINING_MANIFEST_JSON))
+      throw new Error("A scorer training manifest requires an external scorer command.");
     if (
       selectedBaselineId !== null &&
       !Object.values(SYSTEM1_EVAL_BASELINE_IDS).includes(
@@ -221,7 +295,12 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
       throw new Error(
         `Unknown in-process baseline scorer: ${selectedBaselineId}`,
       );
-    return { finalEvaluation, external: null, selectedBaselineId };
+    return {
+      finalEvaluation,
+      external: null,
+      selectedBaselineId,
+      certificationMode,
+    };
   }
 
   const scorerId = selectedBaselineId;
@@ -262,6 +341,11 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
       left < right ? -1 : left > right ? 1 : 0,
     ),
   ) as Readonly<Record<string, string>>;
+  const trainingValue = values.get(
+    SYSTEM1_EVAL_CLI_FLAGS.SCORER_TRAINING_MANIFEST_JSON,
+  );
+  if (!trainingValue)
+    throw new Error("External scorers require --scorer-training-manifest-json.");
   const batchSize = ensurePositiveInteger(
     values.get(SYSTEM1_EVAL_CLI_FLAGS.BATCH_SIZE) ??
       String(SYSTEM1_EVAL_BATCH_SIZE),
@@ -284,8 +368,10 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
       scorerRuntimeVersions,
       batchSize,
       batchTimeoutMs,
+      scorerTrainingManifest: parseScorerTrainingManifest(trainingValue),
     },
     selectedBaselineId: null,
+    certificationMode,
   };
 }
 
@@ -463,22 +549,35 @@ async function scoreStates(
   scorerId: string,
   external: ExternalOptions | null,
   batchSize: number,
+  includeOOFFold = false,
 ): Promise<System1ScorerResponse[]> {
   const responses: System1ScorerResponse[] = [];
   for (let offset = 0; offset < states.length; offset += batchSize) {
     const batch = states.slice(offset, offset + batchSize);
     if (external) {
-      responses.push(
-        ...(await runSystem1ExternalScorerBatch(batch, {
+      const batchResponses = await runSystem1ExternalScorerBatch(batch, {
           command: external.command,
           args: external.args,
           batchTimeoutMs: external.batchTimeoutMs,
           workingDirectory: ROOT_DIRECTORY,
-        })),
+        });
+      responses.push(
+        ...batchResponses.map((response, index) =>
+          includeOOFFold &&
+          response.status !== SYSTEM1_EVAL_SCORER_STATUSES.OK &&
+          response.foldFamily === undefined
+            ? { ...response, foldFamily: system1RepoFamily(batch[index]) }
+            : response,
+        ),
       );
     } else {
       responses.push(
-        ...batch.map((state) => scoreSystem1Baseline(state, scorerId)),
+        ...batch.map((state) => {
+          const response = scoreSystem1Baseline(state, scorerId);
+          return includeOOFFold
+            ? { ...response, foldFamily: system1RepoFamily(state) }
+            : response;
+        }),
       );
     }
   }
@@ -540,6 +639,8 @@ function buildScorerManifest(
   external: ExternalOptions | null,
   batchSize: number,
   batchTimeoutMs: number,
+  folds: ReturnType<typeof buildSystem1RepoFamilyFolds>,
+  families: readonly string[],
 ): ScorerManifest {
   const weightsConfigSha256 = external?.weightsConfigPath
     ? sha256(
@@ -567,6 +668,15 @@ function buildScorerManifest(
         ),
       )
     : {};
+  const trainingPlan = !external ||
+    external.scorerTrainingManifest.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING
+    ? createSystem1ScorerTrainingManifest(
+        SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING,
+        folds,
+        families,
+      )
+    : external.scorerTrainingManifest;
+  assertTrainingPlanMatchesFolds(trainingPlan, folds, families);
   return {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
     scorerId,
@@ -575,7 +685,42 @@ function buildScorerManifest(
     runtimeVersions: { ...evaluatorRuntimeVersions, ...scorerRuntimeVersions },
     command,
     execution: { batchSize, batchTimeoutMs },
+    trainingPlan,
   };
+}
+
+function assertTrainingPlanMatchesFolds(
+  trainingPlan: System1ScorerTrainingManifest,
+  folds: ReturnType<typeof buildSystem1RepoFamilyFolds>,
+  families: readonly string[],
+): void {
+  if (trainingPlan.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING) return;
+  const expectedFoldNames = folds.map(({ foldFamily }) => foldFamily).sort();
+  const declaredFoldNames = Object.keys(trainingPlan.foldTrainingFamilies).sort();
+  if (
+    expectedFoldNames.length !== declaredFoldNames.length ||
+    expectedFoldNames.some((name, index) => name !== declaredFoldNames[index])
+  )
+    throw new Error("Scorer manifest must declare every OOF fold exactly once.");
+  for (const fold of folds) {
+    const declared = trainingPlan.foldTrainingFamilies[fold.foldFamily];
+    const expected = [...fold.trainingFamilies].sort();
+    if (
+      !declared ||
+      declared.length !== expected.length ||
+      [...declared].sort().some((family, index) => family !== expected[index]) ||
+      declared.includes(fold.foldFamily)
+    )
+      throw new Error(`Scorer fold training set is invalid for ${fold.foldFamily}.`);
+  }
+  const expectedHeldOut = [...families].sort();
+  if (
+    trainingPlan.heldOutTrainingFamilies.length !== expectedHeldOut.length ||
+    [...trainingPlan.heldOutTrainingFamilies]
+      .sort()
+      .some((family, index) => family !== expectedHeldOut[index])
+  )
+    throw new Error("Held-out scorer must declare training on all pool families.");
 }
 
 function writeText(
@@ -589,18 +734,17 @@ function writeText(
 function freezePolicy(
   directory: string,
   policy: System1EvaluationPolicy,
+  policyName = SYSTEM1_EVAL_FILE_NAMES.POLICY,
+  hashName = SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
 ): FrozenPolicy {
   const policyText = stableJson(policy);
   const policyHash = sha256(policyText);
-  const policyFilePath = path.join(directory, SYSTEM1_EVAL_FILE_NAMES.POLICY);
-  const policyHashFilePath = path.join(
-    directory,
-    SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
-  );
+  const policyFilePath = path.join(directory, policyName);
+  const policyHashFilePath = path.join(directory, hashName);
   writeFileSync(policyFilePath, policyText, "utf8");
   writeText(
     directory,
-    SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
+    hashName,
     `${policyHash}${SYSTEM1_EVAL_JSON_LINE_ENDING}`,
   );
   const persistedHash = sha256(readFileSync(policyFilePath));
@@ -654,21 +798,12 @@ async function runOneEvaluation(
   directory: string,
   scorerId: string,
   external: ExternalOptions | null,
-  manifest: ScorerManifest,
-  manifestHash: string,
+  batchSize: number,
+  batchTimeoutMs: number,
+  certificationMode: System1EvalCertificationMode,
 ): Promise<RunResult> {
   mkdirSync(directory, { recursive: true });
   const runStarted = process.hrtime.bigint();
-  writeText(
-    directory,
-    SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST,
-    stableJson(manifest),
-  );
-  writeText(
-    directory,
-    SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST_HASH,
-    `${manifestHash}${SYSTEM1_EVAL_JSON_LINE_ENDING}`,
-  );
   const timing: Record<string, number> = {};
   const timeStage = async <T,>(
     stage: string,
@@ -680,53 +815,117 @@ async function runOneEvaluation(
     return result;
   };
 
-  const calibration = await timeStage(
-    "readCalibration",
-    readCalibrationFitInput,
+  const training = await timeStage("readTrain", readTrainingEvaluationInput);
+  const calibration = await timeStage("readCalibration", readCalibrationFitInput);
+  const pool = [training, calibration] as const;
+  const families = [
+    ...new Set(
+      pool.flatMap((split) => split.states.map(system1RepoFamily)),
+    ),
+  ].sort();
+  const folds = buildSystem1RepoFamilyFolds(families);
+  const manifest = buildScorerManifest(
+    scorerId,
+    external,
+    batchSize,
+    batchTimeoutMs,
+    folds,
+    families,
   );
-  const calibrationResponses = await timeStage("scoreCalibration", () =>
-    scoreStates(
-      calibration.states,
-      scorerId,
-      external,
-      manifest.execution.batchSize,
+  const manifestText = stableJson(manifest);
+  const manifestHash = sha256(manifestText);
+  writeText(directory, SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST, manifestText);
+  writeText(
+    directory,
+    SYSTEM1_EVAL_FILE_NAMES.SCORER_MANIFEST_HASH,
+    `${manifestHash}${SYSTEM1_EVAL_JSON_LINE_ENDING}`,
+  );
+
+  const trainingResponses = await timeStage("scoreTrainOof", () =>
+    scoreStates(training.states, scorerId, external, batchSize, true),
+  );
+  const calibrationResponses = await timeStage("scoreCalibrationOof", () =>
+    scoreStates(calibration.states, scorerId, external, batchSize, true),
+  );
+  const trainingExamples = examplesFor(training, trainingResponses);
+  const calibrationExamples = examplesFor(calibration, calibrationResponses);
+  const poolExamples = [...trainingExamples, ...calibrationExamples];
+  const lofoPolicy = fitSystem1LeaveOneFamilyOutPolicy(
+    poolExamples,
+    manifestHash,
+    folds,
+    SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
+    manifest.trainingPlan,
+  );
+  const calibrationOnlyPolicy = fitSystem1EvaluationPolicy(
+    calibrationExamples,
+    manifestHash,
+  );
+  const policies = [
+    {
+      mode: SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY,
+      policy: calibrationOnlyPolicy,
+    },
+    {
+      mode: SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT,
+      policy: lofoPolicy,
+    },
+  ] as const;
+  const selected = policies.find(({ mode }) => mode === certificationMode);
+  const comparison = policies.find(({ mode }) => mode !== certificationMode);
+  if (!selected || !comparison) throw new Error("Unknown policy certification mode.");
+  const frozenByMode = new Map<System1EvalCertificationMode, FrozenPolicy>();
+  frozenByMode.set(
+    selected.mode,
+    freezePolicy(directory, selected.policy),
+  );
+  frozenByMode.set(
+    comparison.mode,
+    freezePolicy(
+      directory,
+      comparison.policy,
+      SYSTEM1_EVAL_FILE_NAMES.COMPARISON_POLICY,
+      SYSTEM1_EVAL_FILE_NAMES.COMPARISON_POLICY_HASH,
     ),
   );
-  const calibrationExamples = examplesFor(calibration, calibrationResponses);
-  const policy = fitSystem1EvaluationPolicy(calibrationExamples, manifestHash);
-  const frozenPolicy = freezePolicy(directory, policy);
+  const frozenPolicy = frozenByMode.get(certificationMode);
+  const frozenComparison = frozenByMode.get(comparison.mode);
+  if (!frozenPolicy || !frozenComparison)
+    throw new Error("Could not freeze both certification policies.");
 
-  if (manifestHash !== policy.scorerManifestHash)
+  if (manifestHash !== selected.policy.scorerManifestHash)
     throw new Error(
       "Policy scorer manifest hash does not match the scorer manifest.",
     );
 
-  const training = await timeStage("readTrain", readTrainingEvaluationInput);
+  verifyFrozenPolicy(frozenPolicy);
+  verifyFrozenPolicy(frozenComparison);
   const temporal = await timeStage("readTemporalAndVerifySeal", () =>
     readTemporalFinalEvaluationInput(frozenPolicy),
   );
   const test = await timeStage("readTestAndVerifySeal", () =>
     readTestFinalEvaluationInput(frozenPolicy),
   );
-  const otherSplits = [training, temporal, test] as const;
-
-  const splitData: LoadedSplit[] = [calibration, ...otherSplits];
-  const replayed: SplitReplayMetrics[] = [];
+  const heldOutResponses = new Map<string, readonly System1ScorerResponse[]>();
+  for (const split of [temporal, test]) {
+    heldOutResponses.set(
+      split.split,
+      await timeStage(`score:${split.split}`, () =>
+        scoreStates(split.states, scorerId, external, batchSize),
+      ),
+    );
+  }
+  const splitData: LoadedSplit[] = [training, calibration, temporal, test];
+  const responsesBySplit = new Map<string, readonly System1ScorerResponse[]>([
+    [training.split, trainingResponses],
+    [calibration.split, calibrationResponses],
+    ...heldOutResponses,
+  ]);
+  const examplesBySplit = new Map<string, readonly System1EvalExample[]>();
   for (const split of splitData) {
-    const responses =
-      split.split === SYSTEM1_SPLITS.CALIBRATION
-        ? calibrationResponses
-        : await timeStage(`score:${split.split}`, () =>
-            scoreStates(
-              split.states,
-              scorerId,
-              external,
-              manifest.execution.batchSize,
-            ),
-          );
-    const examples = examplesFor(split, responses);
-    const metrics = computeSystem1SplitMetrics(examples, policy);
-    replayed.push({ split: split.split, metrics, examples, responses });
+    const responses = responsesBySplit.get(split.split);
+    if (!responses) throw new Error(`Missing scored responses for ${split.split}.`);
+    examplesBySplit.set(split.split, examplesFor(split, responses));
     writeText(
       directory,
       SYSTEM1_EVAL_FILE_NAMES.RESPONSES(split.split),
@@ -739,33 +938,66 @@ async function runOneEvaluation(
       split.sealedInput ? [[split.split, split.sealedInput] as const] : [],
     ),
   );
+  const metricsByMode = policies.map(({ mode, policy }) => ({
+    mode,
+    policy,
+    policyHash: frozenByMode.get(mode)?.policyHash,
+    splitMetrics: splitData.map((split) => {
+      const examples = examplesBySplit.get(split.split);
+      if (!examples) throw new Error(`Missing examples for ${split.split}.`);
+      return computeSystem1SplitMetrics(examples, policy);
+    }),
+  }));
+  const primaryMetrics = metricsByMode.find(({ mode }) => mode === certificationMode);
+  if (!primaryMetrics) throw new Error("Missing metrics for selected policy mode.");
   const metricsDocument = {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
     mode: SYSTEM1_EVAL_FINAL_EVALUATION_MODE,
     scorerId,
     scorerManifestHash: manifestHash,
     policyHash: frozenPolicy.policyHash,
+    certificationMode,
     sealedInputs,
-    splits: replayed.map(({ metrics }) => stripSlices(metrics)),
-    repoFamilyBreakdown: replayed.map(({ metrics }) =>
+    splits: primaryMetrics.splitMetrics.map(stripSlices),
+    repoFamilyBreakdown: primaryMetrics.splitMetrics.map((metrics) =>
       repoFamilyBreakdown(metrics),
     ),
+    certificationModes: metricsByMode.map(({ mode, policy, policyHash, splitMetrics }) => ({
+      mode,
+      policyHash,
+      precisionTargets: policy.precisionTargets,
+      splits: splitMetrics.map(stripSlices),
+      repoFamilyBreakdown: splitMetrics.map(repoFamilyBreakdown),
+    })),
   };
   const slicesDocument = {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
     mode: SYSTEM1_EVAL_FINAL_EVALUATION_MODE,
     scorerId,
     policyHash: frozenPolicy.policyHash,
-    splits: replayed.map(({ metrics }) => ({
+    splits: primaryMetrics.splitMetrics.map((metrics) => ({
       split: metrics.split,
       slices: metrics.slices,
+    })),
+    certificationModes: metricsByMode.map(({ mode, splitMetrics }) => ({
+      mode,
+      splits: splitMetrics.map((metrics) => ({
+        split: metrics.split,
+        slices: metrics.slices,
+      })),
     })),
   };
   const report = renderSystem1EvalReport({
     scorerId,
     policyHash: frozenPolicy.policyHash,
-    splitMetrics: replayed.map(({ metrics }) => metrics),
+    selectedCertificationMode: certificationMode,
+    splitMetrics: primaryMetrics.splitMetrics,
     sealedInputs,
+    certificationModes: metricsByMode.map(({ mode, splitMetrics }) => ({
+      mode,
+      splitMetrics,
+    })),
+    lofoPolicy,
   });
 
   writeText(
@@ -816,15 +1048,9 @@ async function evaluateScorer(
   external: ExternalOptions | null,
   batchSize: number,
   batchTimeoutMs: number,
+  certificationMode: System1EvalCertificationMode,
 ): Promise<void> {
-  const manifest = buildScorerManifest(
-    scorerId,
-    external,
-    batchSize,
-    batchTimeoutMs,
-  );
-  const manifestHash = sha256(stableJson(manifest));
-  const outputDirectory = path.join(OUTPUT_DIRECTORY, scorerId);
+  const outputDirectory = path.join(OUTPUT_DIRECTORY, scorerId, certificationMode);
   rmSync(outputDirectory, { recursive: true, force: true });
   mkdirSync(outputDirectory, { recursive: true });
 
@@ -832,8 +1058,9 @@ async function evaluateScorer(
     outputDirectory,
     scorerId,
     external,
-    manifest,
-    manifestHash,
+    batchSize,
+    batchTimeoutMs,
+    certificationMode,
   );
   const secondDirectory = mkdtempSync(
     path.join(tmpdir(), SYSTEM1_EVAL_REPLAY_DIRECTORY_PREFIX),
@@ -844,8 +1071,9 @@ async function evaluateScorer(
       secondDirectory,
       scorerId,
       external,
-      manifest,
-      manifestHash,
+      batchSize,
+      batchTimeoutMs,
+      certificationMode,
     );
   } finally {
     rmSync(secondDirectory, { recursive: true, force: true });
@@ -857,6 +1085,7 @@ async function evaluateScorer(
     stableJson({
       schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
       scorerId,
+      certificationMode,
       correctnessBearingFiles: CORRECTNESS_FILE_NAMES,
       run1: first.hashes,
       run2: second.hashes,
@@ -901,6 +1130,7 @@ async function main(): Promise<void> {
       argumentsValue.external,
       batchSize,
       batchTimeoutMs,
+      argumentsValue.certificationMode,
     );
   }
 }

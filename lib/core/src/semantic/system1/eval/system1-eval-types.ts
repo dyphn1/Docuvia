@@ -3,6 +3,18 @@ import type {
   System1LabelRecord,
   System1Split,
 } from "../system1-types.js";
+import type {
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
+  SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS,
+  SYSTEM1_EVAL_TRAINING_MODES,
+} from "./system1-eval-constants.js";
+
+export type System1EvalCertificationMode =
+  (typeof SYSTEM1_EVAL_CERTIFICATION_MODES)[keyof typeof SYSTEM1_EVAL_CERTIFICATION_MODES];
+export type System1OOFDiagnosticKind =
+  (typeof SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS)[keyof typeof SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS];
+export type System1ScorerTrainingMode =
+  (typeof SYSTEM1_EVAL_TRAINING_MODES)[keyof typeof SYSTEM1_EVAL_TRAINING_MODES];
 import {
   SYSTEM1_EVAL_ACTIONS,
   SYSTEM1_EVAL_SCORER_STATUSES,
@@ -24,6 +36,38 @@ export interface System1ScorerResponse {
   readonly status: System1EvalScorerStatus;
   readonly scoreKind: "raw";
   readonly scores: Readonly<Record<string, number>>;
+  readonly foldFamily?: string;
+}
+
+export interface System1RepoFamilyFold {
+  readonly foldFamily: string;
+  readonly trainingFamilies: readonly string[];
+}
+
+export interface System1ScorerTrainingManifest {
+  readonly mode: System1ScorerTrainingMode;
+  readonly foldTrainingFamilies: Readonly<Record<string, readonly string[]>>;
+  readonly heldOutTrainingFamilies: readonly string[];
+}
+
+export interface System1OOFFamilyPrecision {
+  readonly family: string;
+  readonly commits: number;
+  readonly exactSetCount: number;
+  readonly exactSetPrecision: number | null;
+  readonly lowerBound: number | null;
+  readonly usedForFamilyGate: boolean;
+  readonly familyGateSatisfied: boolean | null;
+}
+
+export interface System1OOFFamilyTable {
+  readonly diagnosticKind: System1OOFDiagnosticKind;
+  readonly evaluatedThreshold: number | null;
+  readonly families: readonly System1OOFFamilyPrecision[];
+  readonly pooledCommitCount: number;
+  readonly pooledExactSetCount: number;
+  readonly pooledLowerBound: number | null;
+  readonly worstFamilyLowerBound: number | null;
 }
 
 /** State-only scorer callback shared by in-process TypeScript implementations. */
@@ -72,6 +116,8 @@ export interface System1PrecisionThreshold {
   readonly calibrationCommitCount: number;
   readonly calibrationExactSetCount: number;
   readonly lowerBound: number | null;
+  readonly oofFamilyTable?: System1OOFFamilyTable;
+  readonly oofFamilyDiagnostics?: readonly System1OOFFamilyTable[];
 }
 
 export interface System1EvaluationPolicy {
@@ -80,6 +126,16 @@ export interface System1EvaluationPolicy {
   readonly scorerManifestHash: string;
   readonly calibrator: System1IsotonicCalibrator;
   readonly precisionTargets: readonly System1PrecisionThreshold[];
+  readonly certificationMode?: System1EvalCertificationMode;
+  readonly minFamilyCommits?: number;
+  readonly folds?: readonly System1RepoFamilyFold[];
+  readonly foldCalibrationSummaries?: readonly {
+    readonly foldFamily: string;
+    readonly trainingFamilies: readonly string[];
+    readonly observationCount: number;
+    readonly calibrationSha256: string;
+  }[];
+  readonly certificationRule?: Readonly<Record<string, unknown>>;
 }
 
 export interface System1DecisionResult {

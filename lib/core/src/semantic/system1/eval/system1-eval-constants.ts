@@ -43,6 +43,24 @@ export const SYSTEM1_EVAL_THRESHOLD_STATUSES = {
 } as const;
 
 export const SYSTEM1_EVAL_CALIBRATION_METHOD = "isotonic-pava-v1";
+export const SYSTEM1_EVAL_CERTIFICATION_MODES = {
+  CALIBRATION_ONLY: "calibration-only",
+  LEAVE_ONE_FAMILY_OUT: "leave-one-family-out",
+} as const;
+export const SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS = {
+  CERTIFIED: "certified",
+  BEST_POOLED_LOWER_BOUND: "best-pooled-lower-bound",
+  STRICTEST: "strictest",
+  LEAST_STRICT: "least-strict",
+} as const;
+export const SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS = 200;
+export const SYSTEM1_EVAL_TRAINING_MODES = {
+  NO_TRAINING: "no-training",
+  FOLDED: "folded",
+} as const;
+export const SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY = "foldFamily";
+export const SYSTEM1_EVAL_FAMILY_REQUIREMENT =
+  "every-family-at-or-above-minimum-meets-target-point-precision";
 
 export const SYSTEM1_EVAL_BASELINE_IDS = {
   TIER_A_RANK_PRIOR: "tierA-rank-prior",
@@ -131,6 +149,8 @@ export const SYSTEM1_EVAL_CANDIDATE_SIZE_BUCKETS = [
 export const SYSTEM1_EVAL_FILE_NAMES = {
   POLICY: "policy.json",
   POLICY_HASH: "policy.sha256",
+  COMPARISON_POLICY: "comparison-policy.json",
+  COMPARISON_POLICY_HASH: "comparison-policy.sha256",
   SCORER_MANIFEST: "scorer-manifest.json",
   SCORER_MANIFEST_HASH: "scorer-manifest.sha256",
   METRICS: "metrics.json",
@@ -159,6 +179,8 @@ export const SYSTEM1_EVAL_CLI_FLAGS = {
   WEIGHTS_CONFIG: "--weights-config",
   BATCH_SIZE: "--batch-size",
   BATCH_TIMEOUT_MS: "--batch-timeout-ms",
+  CERTIFICATION_MODE: "--certification-mode",
+  SCORER_TRAINING_MANIFEST_JSON: "--scorer-training-manifest-json",
 } as const;
 
 export const SYSTEM1_EVAL_RESPONSE_KEYS = [
@@ -174,6 +196,12 @@ export const SYSTEM1_EVAL_REPORT_TEXT = {
   SLICES_HEADER: "## Per-slice tables",
   SEALS_HEADER: "## Sealed evaluation inputs",
   POLICY_HEADER: "## Frozen policy",
+  CERTIFICATION_MODES_HEADER: "## Calibration-only vs LOFO certification",
+  LOFO_FAMILY_HEADER: "## LOFO out-of-fold family diagnostics",
+  LOFO_POLICY_DESCRIPTION:
+    "LOFO fits one isotonic map per held-out repository family from the other train+calibration families, certifies on pooled OOF requests and applies the minimum-family precision gate.",
+  CALIBRATION_ONLY_POLICY_DESCRIPTION:
+    "Calibration-only fits its isotonic map and certifies the pooled threshold on calibration requests using the one-sided 95% Clopper–Pearson lower bound.",
   NO_RATE: "n/a",
   NO_SEALS: "No held-out seals were read.",
   IN_SAMPLE: "in-sample",
@@ -190,7 +218,7 @@ export const SYSTEM1_EVAL_REPORT_COLUMNS = [
   "exact-set precision (95% CI)",
   "gold-positive coverage",
   "false-safe / trusted request",
-  "ECE (calibration in-sample)",
+  "ECE",
   "UNKNOWN",
   "VERIFY_WITH_LSP",
 ] as const;

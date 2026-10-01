@@ -35,6 +35,7 @@ function example(
     readonly ambiguityClasses?: readonly string[];
     readonly notDetectedClasses?: readonly string[];
     readonly scoreOverrides?: Readonly<Record<string, number>>;
+    readonly repoId?: string;
   } = {},
 ): System1EvalExample {
   const candidateOptions = candidates.map((candidate) => ({
@@ -53,7 +54,7 @@ function example(
       requestId,
       featureSchemaVersion: "system1-option-selection/v1",
       evidence: {
-        repoId: "github.com/example/repo",
+        repoId: options.repoId ?? "github.com/example/repo",
         worktreeId: "revision",
         projectId: "tsconfig.json",
         snapshotHash: "snapshot",
@@ -112,6 +113,44 @@ function example(
 }
 
 describe("System-1 evaluation metrics", () => {
+  it("keeps repository families at owner/repository granularity", () => {
+    const first = example(
+      "repo-one",
+      [{ optionId: "a", targetId: "src/a.ts#call", rank: 0 }],
+      ["src/a.ts#call"],
+      { repoId: "github.com/acme/one" },
+    );
+    const second = example(
+      "repo-two",
+      [{ optionId: "b", targetId: "src/a.ts#call", rank: 0 }],
+      ["src/a.ts#call"],
+      { repoId: "github.com/acme/two" },
+    );
+    const policy: System1EvaluationPolicy = {
+      schemaVersion: 1,
+      calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
+      scorerManifestHash: "c".repeat(64),
+      calibrator: fitSystem1IsotonicCalibrator([]),
+      precisionTargets: SYSTEM1_EVAL_PRECISION_TARGETS.map(
+        (targetPrecision) => ({
+          targetPrecision,
+          status: "certified",
+          threshold: 0.75,
+          calibrationCommitCount: 300,
+          calibrationExactSetCount: 300,
+          lowerBound: 0.99,
+        }),
+      ),
+    };
+
+    const result = computeSystem1SplitMetrics([first, second], policy);
+    const families = result.slices
+      .filter(({ dimension }) => dimension === "repo-family")
+      .map(({ key }) => key);
+
+    expect(families).toEqual(["acme/one", "acme/two"]);
+  });
+
   it("uses negative Tier A candidates as the false-positive-rate denominator", () => {
     const sample = example(
       "false-positive",

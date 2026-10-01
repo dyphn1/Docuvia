@@ -11,6 +11,7 @@ import {
   SYSTEM1_EVAL_ALWAYS_VERIFY_SCORE,
   SYSTEM1_EVAL_SCORER_STATUSES,
   SYSTEM1_EVAL_RESPONSE_KEYS,
+  SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY,
   SYSTEM1_EVAL_SCORE_KIND,
   SYSTEM1_EVAL_SINGLE_RANK0_OTHER_SCORE,
   SYSTEM1_EVAL_SINGLE_RANK0_SCORE,
@@ -45,11 +46,15 @@ function sameKeys(
   );
 }
 
-function errorResponse(requestId: string): System1ScorerResponse {
+function errorResponse(
+  requestId: string,
+  foldFamily?: string,
+): System1ScorerResponse {
   return {
     requestId,
     status: SYSTEM1_EVAL_SCORER_STATUSES.ERROR,
     scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+    ...(foldFamily ? { foldFamily } : {}),
     scores: {},
   };
 }
@@ -71,6 +76,12 @@ function scoreValueIsValid(value: unknown): value is number {
   );
 }
 
+function readFoldFamily(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  const family = value[SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY];
+  return typeof family === "string" ? family : undefined;
+}
+
 function isValidResponseEnvelope(
   value: unknown,
   expectedRequestId: string,
@@ -78,14 +89,23 @@ function isValidResponseEnvelope(
   readonly requestId: string;
   readonly status: System1ScorerResponse["status"];
   readonly scores: Record<string, unknown>;
+  readonly foldFamily?: string;
 } {
+  if (!isRecord(value)) return false;
+  const keysAreValid =
+    sameKeys(value, SYSTEM1_EVAL_RESPONSE_KEYS) ||
+    sameKeys(value, [
+      ...SYSTEM1_EVAL_RESPONSE_KEYS,
+      SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY,
+    ]);
   return (
-    isRecord(value) &&
-    sameKeys(value, SYSTEM1_EVAL_RESPONSE_KEYS) &&
+    keysAreValid &&
     value.requestId === expectedRequestId &&
     value.scoreKind === SYSTEM1_EVAL_SCORE_KIND.RAW &&
     isScorerStatus(value.status) &&
-    isRecord(value.scores)
+    isRecord(value.scores) &&
+    (value[SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY] === undefined ||
+      typeof value[SYSTEM1_EVAL_RESPONSE_FOLD_FAMILY_KEY] === "string")
   );
 }
 
@@ -93,15 +113,17 @@ function nonOkResponse(
   requestId: string,
   status: System1ScorerResponse["status"],
   scores: Readonly<Record<string, unknown>>,
+  foldFamily?: string,
 ): System1ScorerResponse {
   return Object.keys(scores).length === 0
     ? {
         requestId,
         status,
         scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+        ...(foldFamily ? { foldFamily } : {}),
         scores: {},
       }
-    : errorResponse(requestId);
+    : errorResponse(requestId, foldFamily);
 }
 
 function orderedScoreMap(
@@ -125,18 +147,29 @@ export function validateSystem1ScorerResponse(
 ): System1ScorerResponse {
   const expectedRequestId = state.request.requestId;
   if (!isValidResponseEnvelope(value, expectedRequestId))
-    return errorResponse(expectedRequestId);
+    return errorResponse(expectedRequestId, readFoldFamily(value));
   const status = value.status;
   const scores = value.scores;
+  const foldFamily = value.foldFamily;
   if (status !== SYSTEM1_EVAL_SCORER_STATUSES.OK)
-    return nonOkResponse(expectedRequestId, status, scores);
+    return nonOkResponse(expectedRequestId, status, scores, foldFamily);
+  return okayResponse(state, scores, foldFamily);
+}
+
+function okayResponse(
+  state: System1DatasetRecord,
+  scores: Readonly<Record<string, unknown>>,
+  foldFamily?: string,
+): System1ScorerResponse {
   const optionIds = state.request.options.map((option) => option.id);
   const orderedScores = orderedScoreMap(scores, optionIds);
-  if (orderedScores === null) return errorResponse(expectedRequestId);
+  if (orderedScores === null)
+    return errorResponse(state.request.requestId, foldFamily);
   return {
-    requestId: expectedRequestId,
+    requestId: state.request.requestId,
     status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
     scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+    ...(foldFamily ? { foldFamily } : {}),
     scores: orderedScores,
   };
 }

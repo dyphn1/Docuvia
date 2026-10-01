@@ -1,8 +1,15 @@
+import { createHash } from "node:crypto";
 import { SemanticDecisionOptionKinds } from "@workspace/contracts";
 import { SYSTEM1_OPTION_IDS, SYSTEM1_SPLITS } from "../system1-constants.js";
 import {
   SYSTEM1_EVAL_ACTIONS,
   SYSTEM1_EVAL_CALIBRATION_METHOD,
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
+  SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
+  SYSTEM1_EVAL_FAMILY_REQUIREMENT,
+  SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS,
+  SYSTEM1_EVAL_TRAINING_MODES,
+  SYSTEM1_EVAL_ONE_SIDED_ALPHA,
   SYSTEM1_EVAL_LABEL_EXCLUSION_REASONS,
   SYSTEM1_EVAL_LABEL_STATUSES,
   SYSTEM1_EVAL_PRECISION_TARGETS,
@@ -21,8 +28,19 @@ import type {
   System1EvalExample,
   System1EvaluationPolicy,
   System1PrecisionThreshold,
+  System1OOFFamilyTable,
+  System1OOFDiagnosticKind,
+  System1RepoFamilyFold,
   System1ScorerResponse,
+  System1ScorerTrainingManifest,
 } from "./system1-eval-types.js";
+import {
+  buildSystem1RepoFamilyFolds,
+  assertSystem1FittingPoolSplits,
+  createSystem1ScorerTrainingManifest,
+  system1RepoFamily,
+  validateSystem1OutOfFoldAssignments,
+} from "./system1-eval-folds.js";
 import type {
   System1DatasetRecord,
   System1LabelRecord,
@@ -273,6 +291,355 @@ function thresholdCertification(
   };
 }
 
+interface OOFScoredRequest {
+  readonly example: System1EvalExample;
+  readonly family: string;
+  readonly candidates: readonly {
+    readonly targetId: string;
+    readonly score: number;
+  }[];
+}
+
+interface ThresholdFamilyCounts {
+  commits: number;
+  exactSetCount: number;
+}
+
+interface OOFThresholdCounts {
+  readonly pooledCommits: number;
+  readonly pooledExactSetCount: number;
+  readonly pooledLowerBound: number | null;
+  readonly familyCounts: ReadonlyMap<string, ThresholdFamilyCounts>;
+  readonly familyGatePasses: boolean;
+}
+
+function stableSha256(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function scoredOOFRequests(
+  examples: readonly System1EvalExample[],
+  foldCalibrators: ReadonlyMap<string, System1EvaluationPolicy["calibrator"]>,
+): readonly OOFScoredRequest[] {
+  return examples.map((example) => {
+    const family = system1RepoFamily(example.state);
+    const calibrator = foldCalibrators.get(family);
+    if (!calibrator) throw new Error(`No OOF calibrator for ${family}.`);
+    return {
+      example,
+      family,
+      candidates:
+        example.response.status === SYSTEM1_EVAL_SCORER_STATUSES.OK
+          ? candidateOptions(example.state).flatMap((option) => {
+              const targetId = option.attributes?.targetId;
+              const score = example.response.scores[option.id];
+              return typeof targetId === "string" &&
+                typeof score === "number" &&
+                Number.isFinite(score) &&
+                score >= 0 &&
+                score <= 1
+                ? [
+                    {
+                      targetId,
+                      score: calibrateSystem1Score(calibrator, score),
+                    },
+                  ]
+                : [];
+            })
+          : [],
+    };
+  });
+}
+
+function evaluateOOFThreshold(
+  requests: readonly OOFScoredRequest[],
+  families: readonly string[],
+  threshold: number,
+  targetPrecision: number,
+  minimumFamilyCommits: number,
+): OOFThresholdCounts {
+  const familyCounts = new Map<string, ThresholdFamilyCounts>(
+    families.map((family) => [family, { commits: 0, exactSetCount: 0 }]),
+  );
+  let pooledCommits = 0;
+  let pooledExactSetCount = 0;
+  for (const request of requests) {
+    if (system1LabelExclusionReason(request.example.labels) !== null) continue;
+    const accepted = new Set(
+      request.candidates
+        .filter(({ score }) => score >= threshold)
+        .map(({ targetId }) => targetId),
+    );
+    if (accepted.size === 0) continue;
+    pooledCommits += 1;
+    const gold = new Set(request.example.labels.positiveTargetIds);
+    const exact =
+      accepted.size === gold.size && [...accepted].every((id) => gold.has(id));
+    const family = familyCounts.get(request.family);
+    if (!family)
+      throw new Error(
+        `OOF score is outside the family pool: ${request.family}`,
+      );
+    family.commits += 1;
+    if (exact) {
+      pooledExactSetCount += 1;
+      family.exactSetCount += 1;
+    }
+  }
+  const pooledLowerBound =
+    pooledCommits > 0
+      ? clopperPearsonLowerBound(pooledExactSetCount, pooledCommits)
+      : null;
+  const familyGatePasses = [...familyCounts.values()].every((counts) => {
+    if (counts.commits < minimumFamilyCommits) return true;
+    return counts.exactSetCount / counts.commits >= targetPrecision;
+  });
+  return {
+    pooledCommits,
+    pooledExactSetCount,
+    pooledLowerBound,
+    familyCounts,
+    familyGatePasses,
+  };
+}
+
+function oofFamilyTable(
+  counts: OOFThresholdCounts,
+  families: readonly string[],
+  evaluatedThreshold: number | null,
+  targetPrecision: number,
+  minimumFamilyCommits: number,
+  diagnosticKind: System1OOFDiagnosticKind,
+): System1OOFFamilyTable {
+  const familyRows = families.map((family) => {
+    const value = counts.familyCounts.get(family) ?? {
+      commits: 0,
+      exactSetCount: 0,
+    };
+    const usedForFamilyGate = value.commits >= minimumFamilyCommits;
+    const exactSetPrecision =
+      value.commits > 0 ? value.exactSetCount / value.commits : null;
+    return {
+      family,
+      commits: value.commits,
+      exactSetCount: value.exactSetCount,
+      exactSetPrecision,
+      lowerBound:
+        value.commits > 0
+          ? clopperPearsonLowerBound(value.exactSetCount, value.commits)
+          : null,
+      usedForFamilyGate,
+      familyGateSatisfied:
+        usedForFamilyGate && exactSetPrecision !== null
+          ? exactSetPrecision >= targetPrecision
+          : null,
+    };
+  });
+  const familyLowerBounds = familyRows.flatMap(({ lowerBound }) =>
+    lowerBound === null ? [] : [lowerBound],
+  );
+  return {
+    diagnosticKind,
+    evaluatedThreshold,
+    families: familyRows,
+    pooledCommitCount: counts.pooledCommits,
+    pooledExactSetCount: counts.pooledExactSetCount,
+    pooledLowerBound: counts.pooledLowerBound,
+    worstFamilyLowerBound:
+      familyLowerBounds.length > 0 ? Math.min(...familyLowerBounds) : null,
+  };
+}
+
+interface OOFThresholdCandidate {
+  readonly threshold: number;
+  readonly counts: OOFThresholdCounts;
+}
+
+function isBetterPooledDiagnostic(
+  candidate: OOFThresholdCandidate,
+  current: OOFThresholdCandidate | null,
+): boolean {
+  if (current === null) return true;
+  const candidateBound = candidate.counts.pooledLowerBound ?? -1;
+  const currentBound = current.counts.pooledLowerBound ?? -1;
+  return (
+    candidateBound > currentBound ||
+    (candidateBound === currentBound &&
+      candidate.counts.pooledCommits > current.counts.pooledCommits)
+  );
+}
+
+function isStricterPooledDiagnostic(
+  candidate: OOFThresholdCandidate,
+  current: OOFThresholdCandidate | null,
+): boolean {
+  if (current === null) return true;
+  const candidateBound = candidate.counts.pooledLowerBound ?? -1;
+  const currentBound = current.counts.pooledLowerBound ?? -1;
+  return (
+    candidateBound > currentBound ||
+    (candidateBound === currentBound &&
+      (candidate.counts.pooledCommits < current.counts.pooledCommits ||
+        (candidate.counts.pooledCommits === current.counts.pooledCommits &&
+          candidate.threshold > current.threshold)))
+  );
+}
+
+function inspectOOFThresholdCandidates(
+  requests: readonly OOFScoredRequest[],
+  families: readonly string[],
+  targetPrecision: number,
+  minimumFamilyCommits: number,
+): {
+  readonly selected: OOFThresholdCandidate | null;
+  readonly bestPooled: OOFThresholdCandidate | null;
+  readonly strictest: OOFThresholdCandidate | null;
+  readonly leastStrict: OOFThresholdCandidate | null;
+} {
+  const thresholds = [
+    ...new Set(
+      requests.flatMap(({ candidates }) =>
+        candidates.map(({ score }) => score),
+      ),
+    ),
+  ].sort((left, right) => left - right);
+  let leastStrict: OOFThresholdCandidate | null = null;
+  let bestPooled: OOFThresholdCandidate | null = null;
+  let strictest: OOFThresholdCandidate | null = null;
+  let selected: OOFThresholdCandidate | null = null;
+  for (const threshold of thresholds) {
+    const counts = evaluateOOFThreshold(
+      requests,
+      families,
+      threshold,
+      targetPrecision,
+      minimumFamilyCommits,
+    );
+    const candidate = { threshold, counts };
+    leastStrict ??= candidate;
+    if (isStricterPooledDiagnostic(candidate, strictest)) strictest = candidate;
+    if (isBetterPooledDiagnostic(candidate, bestPooled)) bestPooled = candidate;
+    if (
+      selected === null &&
+      pooledBoundMeetsTarget(counts, targetPrecision) &&
+      counts.familyGatePasses
+    )
+      selected = candidate;
+  }
+  return { selected, bestPooled, strictest, leastStrict };
+}
+
+function pooledBoundMeetsTarget(
+  counts: OOFThresholdCounts,
+  targetPrecision: number,
+): boolean {
+  return (
+    counts.pooledLowerBound !== null &&
+    counts.pooledLowerBound >= targetPrecision
+  );
+}
+
+function emptyOOFFamilyTable(
+  families: readonly string[],
+  diagnosticKind: System1OOFDiagnosticKind,
+): System1OOFFamilyTable {
+  return {
+    diagnosticKind,
+    evaluatedThreshold: null,
+    families: families.map((family) => ({
+      family,
+      commits: 0,
+      exactSetCount: 0,
+      exactSetPrecision: null,
+      lowerBound: null,
+      usedForFamilyGate: false,
+      familyGateSatisfied: null,
+    })),
+    pooledCommitCount: 0,
+    pooledExactSetCount: 0,
+    pooledLowerBound: null,
+    worstFamilyLowerBound: null,
+  };
+}
+
+function lofoThresholdCertification(
+  requests: readonly OOFScoredRequest[],
+  families: readonly string[],
+  targetPrecision: number,
+  minimumFamilyCommits: number,
+): System1PrecisionThreshold {
+  const candidates = inspectOOFThresholdCandidates(
+    requests,
+    families,
+    targetPrecision,
+    minimumFamilyCommits,
+  );
+  const selected = candidates.selected;
+  const familyTable = selected
+    ? oofFamilyTable(
+        selected.counts,
+        families,
+        selected.threshold,
+        targetPrecision,
+        minimumFamilyCommits,
+        SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.CERTIFIED,
+      )
+    : candidates.bestPooled
+      ? oofFamilyTable(
+          candidates.bestPooled.counts,
+          families,
+          candidates.bestPooled.threshold,
+          targetPrecision,
+          minimumFamilyCommits,
+          SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.BEST_POOLED_LOWER_BOUND,
+        )
+      : emptyOOFFamilyTable(
+          families,
+          SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.BEST_POOLED_LOWER_BOUND,
+        );
+  const diagnosticCandidates = selected
+    ? []
+    : [
+        {
+          candidate: candidates.bestPooled,
+          kind: SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.BEST_POOLED_LOWER_BOUND,
+        },
+        {
+          candidate: candidates.strictest,
+          kind: SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.STRICTEST,
+        },
+        {
+          candidate: candidates.leastStrict,
+          kind: SYSTEM1_EVAL_OOF_DIAGNOSTIC_KINDS.LEAST_STRICT,
+        },
+      ];
+  const familyDiagnostics = diagnosticCandidates.map(({ candidate, kind }) =>
+    candidate
+      ? oofFamilyTable(
+          candidate.counts,
+          families,
+          candidate.threshold,
+          targetPrecision,
+          minimumFamilyCommits,
+          kind,
+        )
+      : emptyOOFFamilyTable(families, kind),
+  );
+  return {
+    targetPrecision,
+    status:
+      selected === null
+        ? SYSTEM1_EVAL_THRESHOLD_STATUSES.UNCERTIFIABLE
+        : SYSTEM1_EVAL_THRESHOLD_STATUSES.CERTIFIED,
+    threshold: selected?.threshold ?? null,
+    calibrationCommitCount: familyTable.pooledCommitCount,
+    calibrationExactSetCount: familyTable.pooledExactSetCount,
+    lowerBound: familyTable.pooledLowerBound,
+    oofFamilyTable: familyTable,
+    ...(selected === null ? { oofFamilyDiagnostics: familyDiagnostics } : {}),
+  };
+}
+
 /** Fits only from calibration rows. This guard rejects any accidental split mixing. */
 export function fitSystem1EvaluationPolicy(
   examples: readonly System1EvalExample[],
@@ -288,8 +655,88 @@ export function fitSystem1EvaluationPolicy(
     calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
     scorerManifestHash,
     calibrator,
+    certificationMode: SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY,
     precisionTargets: SYSTEM1_EVAL_PRECISION_TARGETS.map((targetPrecision) =>
       thresholdCertification(examples, targetPrecision, calibrator),
+    ),
+  };
+}
+
+/**
+ * Fits and certifies on train+calibration out-of-family scores only. Each
+ * request is calibrated with the fold map that excluded its repository family.
+ */
+export function fitSystem1LeaveOneFamilyOutPolicy(
+  examples: readonly System1EvalExample[],
+  scorerManifestHash: string,
+  folds: readonly System1RepoFamilyFold[] = buildSystem1RepoFamilyFolds(
+    examples.map(({ state }) => state.request.evidence.repoId),
+  ),
+  minimumFamilyCommits = SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
+  trainingManifest: System1ScorerTrainingManifest = createSystem1ScorerTrainingManifest(
+    SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING,
+    folds,
+    folds.map(({ foldFamily }) => foldFamily),
+  ),
+): System1EvaluationPolicy {
+  assertSystem1FittingPoolSplits(examples.map(({ split }) => split));
+  if (!Number.isSafeInteger(minimumFamilyCommits) || minimumFamilyCommits < 1)
+    throw new Error(
+      "The minimum family commit count must be a positive integer.",
+    );
+  validateSystem1OutOfFoldAssignments(
+    examples.map(({ state }) => state),
+    examples.map(({ response }) => response),
+    folds,
+    trainingManifest,
+  );
+  const families = folds.map(({ foldFamily }) => foldFamily);
+  const foldCalibrators = new Map<
+    string,
+    System1EvaluationPolicy["calibrator"]
+  >();
+  const foldCalibrationSummaries = folds.map((fold) => {
+    const observations = calibrationObservations(
+      examples.filter(
+        ({ state }) => system1RepoFamily(state) !== fold.foldFamily,
+      ),
+    );
+    const calibrator = fitSystem1IsotonicCalibrator(observations);
+    foldCalibrators.set(fold.foldFamily, calibrator);
+    return {
+      foldFamily: fold.foldFamily,
+      trainingFamilies: fold.trainingFamilies,
+      observationCount: calibrator.observationCount,
+      calibrationSha256: stableSha256(calibrator),
+    };
+  });
+  const requests = scoredOOFRequests(examples, foldCalibrators);
+  const finalCalibrator = fitSystem1IsotonicCalibrator(
+    calibrationObservations(examples),
+  );
+  return {
+    schemaVersion: SYSTEM1_EVAL_SCHEMA_VERSION,
+    calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
+    scorerManifestHash,
+    calibrator: finalCalibrator,
+    certificationMode: SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT,
+    minFamilyCommits: minimumFamilyCommits,
+    folds,
+    foldCalibrationSummaries,
+    certificationRule: {
+      pooledOneSidedClopperPearsonLowerBound: true,
+      alpha: SYSTEM1_EVAL_ONE_SIDED_ALPHA,
+      minimumFamilyCommits,
+      familyRequirement: SYSTEM1_EVAL_FAMILY_REQUIREMENT,
+      foldTrainingFamilies: trainingManifest.foldTrainingFamilies,
+    },
+    precisionTargets: SYSTEM1_EVAL_PRECISION_TARGETS.map((targetPrecision) =>
+      lofoThresholdCertification(
+        requests,
+        families,
+        targetPrecision,
+        minimumFamilyCommits,
+      ),
     ),
   };
 }

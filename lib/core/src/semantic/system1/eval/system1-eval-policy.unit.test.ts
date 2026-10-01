@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   SYSTEM1_EVAL_ACTIONS,
@@ -9,7 +10,10 @@ import {
 import {
   decideSystem1Request,
   fitSystem1EvaluationPolicy,
+  fitSystem1LeaveOneFamilyOutPolicy,
 } from "./system1-eval-policy.js";
+import { fitSystem1IsotonicCalibrator } from "./system1-eval-calibration.js";
+import { buildSystem1RepoFamilyFolds } from "./system1-eval-folds.js";
 import { scoreSystem1Baseline } from "./system1-eval-scorer.js";
 import type {
   System1DatasetRecord,
@@ -59,24 +63,39 @@ function stateRecord(requestId: string): System1DatasetRecord {
   } as unknown as System1DatasetRecord;
 }
 
-function example(requestId: string, split: string): System1EvalExample {
+function example(
+  requestId: string,
+  split: string,
+  family = "github.com/example/repo",
+  positiveTargetId = "src/a.ts#call",
+): System1EvalExample {
   const state = stateRecord(requestId);
+  const familyState = {
+    ...state,
+    request: {
+      ...state.request,
+      evidence: { ...state.request.evidence, repoId: family },
+    },
+  } as System1DatasetRecord;
   const labels: System1LabelRecord = {
     requestId,
-    positiveTargetIds: ["src/a.ts#call"],
-    negativeTargetIds: ["src/b.ts#call"],
+    positiveTargetIds: [positiveTargetId],
+    negativeTargetIds: [
+      positiveTargetId === "src/a.ts#call" ? "src/b.ts#call" : "src/a.ts#call",
+    ],
     reviewStatus: "confirmed",
     oracleStatus: "resolved",
     candidateMiss: false,
   };
   return {
     split: split as System1EvalExample["split"],
-    state,
+    state: familyState,
     labels,
     response: {
       requestId,
       status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
       scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+      foldFamily: family.replace(/^github\.com\//, "").replace(/\.git$/, ""),
       scores: {
         "candidate-a": 1,
         "candidate-b": 0,
@@ -269,5 +288,242 @@ describe("System-1 calibration policy", () => {
         SYSTEM1_EVAL_PRECISION_TARGETS[0],
       ).action,
     ).toBe(SYSTEM1_EVAL_ACTIONS.UNKNOWN);
+  });
+
+  it("fits every OOF fold without that family's observations and refits on all pool rows", () => {
+    const pool = Array.from({ length: 7 }, (_, familyIndex) =>
+      Array.from({ length: familyIndex + 1 }, (_, requestIndex) =>
+        example(
+          `pool-${familyIndex}-${requestIndex}`,
+          familyIndex < 5 ? "train" : "calibration",
+          `github.com/family/repo-${familyIndex}`,
+        ),
+      ),
+    ).flat();
+    const folds = buildSystem1RepoFamilyFolds(
+      pool.map(({ state }) => state.request.evidence.repoId),
+    );
+    const policy = fitSystem1LeaveOneFamilyOutPolicy(
+      pool,
+      "f".repeat(64),
+      folds,
+      1,
+    );
+
+    expect(policy.folds).toHaveLength(7);
+    for (const summary of policy.foldCalibrationSummaries ?? []) {
+      const fold = policy.folds?.find(
+        ({ foldFamily }) => foldFamily === summary.foldFamily,
+      );
+      const expectedTrainingFamilies = (policy.folds ?? [])
+        .map(({ foldFamily }) => foldFamily)
+        .filter((family) => family !== summary.foldFamily);
+      const expectedObservations = pool
+        .filter(
+          ({ state }) =>
+            state.request.evidence.repoId !==
+            `github.com/${summary.foldFamily}`,
+        )
+        .flatMap(({ labels, response, state }) =>
+          state.request.options
+            .filter((option) => option.kind === "candidate")
+            .map((option) => {
+              const targetId = option.attributes?.targetId;
+              return {
+                score: response.scores[option.id],
+                positive:
+                  typeof targetId === "string" &&
+                  labels.positiveTargetIds.includes(targetId),
+              };
+            }),
+        );
+      const expectedCalibrator =
+        fitSystem1IsotonicCalibrator(expectedObservations);
+      const expectedHash = createHash("sha256")
+        .update(JSON.stringify(expectedCalibrator))
+        .digest("hex");
+
+      expect(fold?.trainingFamilies).toEqual(expectedTrainingFamilies);
+      expect(summary.trainingFamilies).toEqual(expectedTrainingFamilies);
+      expect(summary.observationCount).toBe(expectedObservations.length);
+      expect(summary.calibrationSha256).toBe(expectedHash);
+    }
+    expect(policy.calibrator.observationCount).toBe(56);
+    expect(policy.precisionTargets[0].oofFamilyTable?.families).toHaveLength(7);
+  });
+
+  it("rejects a fitting-pool family that has no OOF fold", () => {
+    const pool = [
+      example("family-a", "train", "github.com/family/a"),
+      example("family-b", "calibration", "github.com/family/b"),
+      example("family-c", "train", "github.com/family/c"),
+    ];
+    const folds = buildSystem1RepoFamilyFolds([
+      "github.com/family/a",
+      "github.com/family/b",
+    ]);
+
+    expect(() =>
+      fitSystem1LeaveOneFamilyOutPolicy(pool, "f".repeat(64), folds),
+    ).toThrow(/missing out-of-fold fold for family\/c/i);
+  });
+
+  it("reports best-pooled, strictest and least-strict diagnostics when uncertifiable", () => {
+    const pool = [
+      ...Array.from({ length: 100 }, (_, index) =>
+        example(`good-a-${index}`, "train", "github.com/family/good-a"),
+      ),
+      ...Array.from({ length: 100 }, (_, index) =>
+        example(`good-b-${index}`, "train", "github.com/family/good-b"),
+      ),
+      ...Array.from({ length: 20 }, (_, index) =>
+        example(
+          `poor-${index}`,
+          "calibration",
+          "github.com/family/poor",
+          "src/b.ts#call",
+        ),
+      ),
+    ];
+    const folds = buildSystem1RepoFamilyFolds(
+      pool.map(({ state }) => state.request.evidence.repoId),
+    );
+    const target = fitSystem1LeaveOneFamilyOutPolicy(
+      pool,
+      "e".repeat(64),
+      folds,
+      1,
+    ).precisionTargets[0];
+    const diagnostics = target.oofFamilyDiagnostics ?? [];
+    const leastStrict = diagnostics.find(
+      ({ diagnosticKind }) => diagnosticKind === "least-strict",
+    );
+    const bestPooled = diagnostics.find(
+      ({ diagnosticKind }) => diagnosticKind === "best-pooled-lower-bound",
+    );
+    const strictest = diagnostics.find(
+      ({ diagnosticKind }) => diagnosticKind === "strictest",
+    );
+    const poorFamily = bestPooled?.families.find(
+      ({ family }) => family === "family/poor",
+    );
+
+    expect(target.status).toBe("uncertifiable");
+    expect(target.oofFamilyTable?.diagnosticKind).toBe(
+      "best-pooled-lower-bound",
+    );
+    expect(diagnostics.map(({ diagnosticKind }) => diagnosticKind)).toEqual([
+      "best-pooled-lower-bound",
+      "strictest",
+      "least-strict",
+    ]);
+    expect(bestPooled?.evaluatedThreshold).not.toBe(
+      leastStrict?.evaluatedThreshold,
+    );
+    expect(poorFamily).toMatchObject({
+      usedForFamilyGate: true,
+      familyGateSatisfied: false,
+    });
+    expect(
+      strictest?.families.find(({ family }) => family === "family/poor"),
+    ).toMatchObject({ familyGateSatisfied: false });
+  });
+
+  it("does not certify a pooled pass when a sufficiently large family misses the target", () => {
+    const good = ["good-a", "good-c"].flatMap((family) =>
+      Array.from({ length: 5_000 }, (_, index) =>
+        example(
+          `good-${family}-${index}`,
+          "train",
+          `github.com/family/${family}`,
+        ),
+      ),
+    );
+    const poor = Array.from({ length: 200 }, (_, index) =>
+      example(
+        `poor-${index}`,
+        "calibration",
+        "github.com/family/poor",
+        index < 197 ? "src/a.ts#call" : "src/b.ts#call",
+      ),
+    );
+    const pool = [...good, ...poor];
+    const folds = buildSystem1RepoFamilyFolds(
+      pool.map(({ state }) => state.request.evidence.repoId),
+    );
+    const policy = fitSystem1LeaveOneFamilyOutPolicy(
+      pool,
+      "a".repeat(64),
+      folds,
+      200,
+    );
+    const target = policy.precisionTargets[0];
+
+    expect(target.status).toBe("uncertifiable");
+    expect(target.oofFamilyTable?.pooledLowerBound).toBeGreaterThanOrEqual(
+      0.99,
+    );
+    expect(
+      target.oofFamilyTable?.families.find(
+        ({ family }) => family === "family/poor",
+      )?.exactSetPrecision,
+    ).toBeLessThan(0.99);
+  });
+
+  it("counts below-minimum families in pooled certification but omits them from the family gate", () => {
+    const good = ["large-a", "large-b"].flatMap((family) =>
+      Array.from({ length: 2_500 }, (_, index) =>
+        example(
+          `large-${family}-${index}`,
+          "train",
+          `github.com/family/${family}`,
+        ),
+      ),
+    );
+    const small = [
+      example(
+        "small-0",
+        "calibration",
+        "github.com/family/small",
+        "src/b.ts#call",
+      ),
+    ];
+    const pool = [...good, ...small];
+    const folds = buildSystem1RepoFamilyFolds(
+      pool.map(({ state }) => state.request.evidence.repoId),
+    );
+    const policy = fitSystem1LeaveOneFamilyOutPolicy(
+      pool,
+      "b".repeat(64),
+      folds,
+      200,
+    );
+    const target = policy.precisionTargets[0];
+    const family = target.oofFamilyTable?.families.find(
+      ({ family: key }) => key === "family/small",
+    );
+
+    expect(target.status).toBe("certified");
+    expect(target.calibrationCommitCount).toBe(5_001);
+    expect(family).toMatchObject({ commits: 1, usedForFamilyGate: false });
+  });
+
+  it("rejects held-out records from the LOFO fit entry point", () => {
+    const train = example("pool-a", "train", "github.com/family/a");
+    const calibration = example("pool-b", "calibration", "github.com/family/b");
+    const folds = buildSystem1RepoFamilyFolds(["family/a", "family/b"]);
+    for (const split of ["temporal", "test"]) {
+      expect(() =>
+        fitSystem1LeaveOneFamilyOutPolicy(
+          [
+            train,
+            calibration,
+            example("held-out", split, "github.com/family/c"),
+          ],
+          "c".repeat(64),
+          folds,
+        ),
+      ).toThrow(/train and calibration/i);
+    }
   });
 });

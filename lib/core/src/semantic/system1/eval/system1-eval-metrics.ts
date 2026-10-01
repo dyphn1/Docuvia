@@ -35,6 +35,7 @@ import type {
   System1SplitMetrics,
   System1TargetMetrics,
 } from "./system1-eval-types.js";
+import { system1RepoFamily } from "./system1-eval-folds.js";
 import type { System1DatasetRecord } from "../system1-types.js";
 
 interface RateInput {
@@ -385,12 +386,6 @@ function targetMetrics(
   };
 }
 
-function repoFamily(state: System1DatasetRecord): string {
-  const repoId = state.request.evidence.repoId;
-  const parts = repoId.split("/").filter(Boolean);
-  return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : repoId;
-}
-
 function candidateSizeBucket(candidateCount: number): string {
   const bucket = SYSTEM1_EVAL_CANDIDATE_SIZE_BUCKETS.find(
     ({ minimum, maximum }) =>
@@ -460,7 +455,7 @@ function buildSlices(
     }
     add(
       SYSTEM1_EVAL_SLICE_DIMENSIONS.REPO_FAMILY,
-      repoFamily(example.state),
+      system1RepoFamily(example.state),
       example,
     );
     add(

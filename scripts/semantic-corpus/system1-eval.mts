@@ -24,14 +24,12 @@ import {
   SYSTEM1_EVAL_IN_PROCESS_COMMAND,
   SYSTEM1_EVAL_JSON_LINE_ENDING,
   SYSTEM1_EVAL_NO_CONFIG_SENTINEL,
-  SYSTEM1_EVAL_OUTPUT_DIRECTORY,
   SYSTEM1_EVAL_OUTPUT_DIRECTORY_NAME_PATTERN,
   SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
   SYSTEM1_EVAL_REPLAY_DIRECTORY_PREFIX,
   SYSTEM1_EVAL_RUNTIME_KEYS,
   SYSTEM1_EVAL_SCORER_RUNTIME_KEY_PREFIX,
   SYSTEM1_EVAL_RUNTIME_UNAVAILABLE,
-  SYSTEM1_EVAL_SCHEMA_VERSION,
   SYSTEM1_EVAL_SCORER_STATUSES,
   SYSTEM1_EVAL_BASELINE_NO_CANDIDATE_UNKNOWN_SCORE,
   SYSTEM1_EVAL_BASELINE_NO_CANDIDATE_VERIFY_SCORE,
@@ -48,6 +46,7 @@ import {
   SYSTEM1_EVAL_TRAINING_MODES,
   SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-constants.js";
+import { system1EvalOutputDirectory } from "../../lib/core/src/semantic/system1/eval/system1-eval-output.js";
 import { computeSystem1SplitMetrics } from "../../lib/core/src/semantic/system1/eval/system1-eval-metrics.js";
 import { runSystem1ExternalScorerBatch } from "../../lib/core/src/semantic/system1/eval/system1-eval-external-scorer.js";
 import {
@@ -60,6 +59,7 @@ import {
   system1RepoFamily,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-folds.js";
 import { renderSystem1EvalReport } from "../../lib/core/src/semantic/system1/eval/system1-eval-report.js";
+import { isSupportedSystem1DatasetSealSchemaVersion } from "../../lib/core/src/semantic/system1/eval/system1-eval-seals.js";
 import {
   scoreSystem1Baseline,
   validateSystem1ScorerResponse,
@@ -100,6 +100,7 @@ interface ParsedArguments {
   readonly external: ExternalOptions | null;
   readonly selectedBaselineId: string | null;
   readonly certificationMode: System1EvalCertificationMode;
+  readonly datasetDirectory: string;
 }
 
 interface ScorerManifest {
@@ -143,14 +144,6 @@ interface RunResult {
 }
 
 const ROOT_DIRECTORY = process.cwd();
-const DATASET_DIRECTORY = path.join(
-  ROOT_DIRECTORY,
-  SYSTEM1_EVAL_DATASET_DIRECTORY,
-);
-const OUTPUT_DIRECTORY = path.join(
-  ROOT_DIRECTORY,
-  SYSTEM1_EVAL_OUTPUT_DIRECTORY,
-);
 const ALL_SPLITS: readonly System1Split[] = [
   SYSTEM1_SPLITS.TRAIN,
   SYSTEM1_SPLITS.CALIBRATION,
@@ -261,6 +254,11 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
   )
     throw new Error("Unknown certification mode.");
   const certificationMode = requestedMode as System1EvalCertificationMode;
+  const datasetDirectory = path.resolve(
+    ROOT_DIRECTORY,
+    values.get(SYSTEM1_EVAL_CLI_FLAGS.DATASET_DIRECTORY) ??
+      SYSTEM1_EVAL_DATASET_DIRECTORY,
+  );
 
   const selectedBaselineId =
     values.get(SYSTEM1_EVAL_CLI_FLAGS.SCORER_ID) ?? null;
@@ -304,6 +302,7 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
       external: null,
       selectedBaselineId,
       certificationMode,
+      datasetDirectory,
     };
   }
 
@@ -378,6 +377,7 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
     },
     selectedBaselineId: null,
     certificationMode,
+    datasetDirectory,
   };
 }
 
@@ -419,14 +419,14 @@ function assertUniqueRequestIds(
     throw new Error(`State/label request ids do not match in ${split}.`);
 }
 
-function readCalibrationFitInput(): LoadedSplit {
+function readCalibrationFitInput(datasetDirectory: string): LoadedSplit {
   const split = SYSTEM1_SPLITS.CALIBRATION;
   const statePath = path.join(
-    DATASET_DIRECTORY,
+    datasetDirectory,
     SYSTEM1_FILE_NAMES.STATE(SYSTEM1_SPLITS.CALIBRATION),
   );
   const labelsPath = path.join(
-    DATASET_DIRECTORY,
+    datasetDirectory,
     SYSTEM1_FILE_NAMES.LABELS(SYSTEM1_SPLITS.CALIBRATION),
   );
   const states = jsonLines<System1DatasetRecord>(
@@ -441,14 +441,14 @@ function readCalibrationFitInput(): LoadedSplit {
   return { split, states, labels, sealedInput: null };
 }
 
-function readTrainingEvaluationInput(): LoadedSplit {
+function readTrainingEvaluationInput(datasetDirectory: string): LoadedSplit {
   const split = SYSTEM1_SPLITS.TRAIN;
   const statePath = path.join(
-    DATASET_DIRECTORY,
+    datasetDirectory,
     SYSTEM1_FILE_NAMES.STATE(SYSTEM1_SPLITS.TRAIN),
   );
   const labelsPath = path.join(
-    DATASET_DIRECTORY,
+    datasetDirectory,
     SYSTEM1_FILE_NAMES.LABELS(SYSTEM1_SPLITS.TRAIN),
   );
   const states = jsonLines<System1DatasetRecord>(
@@ -490,9 +490,10 @@ function verifyFrozenPolicy(frozenPolicy: FrozenPolicy): void {
 function readSealedHeldOutSplit(
   split: (typeof SYSTEM1_HELD_OUT_SPLITS)[number],
   frozenPolicy: FrozenPolicy,
+  datasetDirectory: string,
 ): LoadedSplit {
   verifyFrozenPolicy(frozenPolicy);
-  const sealPath = path.join(DATASET_DIRECTORY, SYSTEM1_FILE_NAMES.SEAL(split));
+  const sealPath = path.join(datasetDirectory, SYSTEM1_FILE_NAMES.SEAL(split));
   const sealBytes = readFileSync(sealPath);
   const seal = JSON.parse(sealBytes.toString("utf8")) as {
     readonly schemaVersion: number;
@@ -504,15 +505,15 @@ function readSealedHeldOutSplit(
     readonly count: number;
   };
   if (
-    seal.schemaVersion !== SYSTEM1_EVAL_SCHEMA_VERSION ||
+    !isSupportedSystem1DatasetSealSchemaVersion(seal.schemaVersion) ||
     seal.partition !== split ||
     seal.stateFile !== SYSTEM1_FILE_NAMES.STATE(split) ||
     seal.labelsFile !== SYSTEM1_FILE_NAMES.LABELS(split)
   )
     throw new Error(`Invalid ${split} seal manifest.`);
 
-  const statePath = path.join(DATASET_DIRECTORY, seal.stateFile);
-  const labelsPath = path.join(DATASET_DIRECTORY, seal.labelsFile);
+  const statePath = path.join(datasetDirectory, seal.stateFile);
+  const labelsPath = path.join(datasetDirectory, seal.labelsFile);
   const stateBytes = readFileSync(statePath);
   const labelsBytes = readFileSync(labelsPath);
   if (sha256(stateBytes) !== seal.stateSha256)
@@ -542,12 +543,24 @@ function readSealedHeldOutSplit(
 
 function readTemporalFinalEvaluationInput(
   frozenPolicy: FrozenPolicy,
+  datasetDirectory: string,
 ): LoadedSplit {
-  return readSealedHeldOutSplit(SYSTEM1_SPLITS.TEMPORAL, frozenPolicy);
+  return readSealedHeldOutSplit(
+    SYSTEM1_SPLITS.TEMPORAL,
+    frozenPolicy,
+    datasetDirectory,
+  );
 }
 
-function readTestFinalEvaluationInput(frozenPolicy: FrozenPolicy): LoadedSplit {
-  return readSealedHeldOutSplit(SYSTEM1_SPLITS.TEST, frozenPolicy);
+function readTestFinalEvaluationInput(
+  frozenPolicy: FrozenPolicy,
+  datasetDirectory: string,
+): LoadedSplit {
+  return readSealedHeldOutSplit(
+    SYSTEM1_SPLITS.TEST,
+    frozenPolicy,
+    datasetDirectory,
+  );
 }
 
 async function scoreStates(
@@ -819,6 +832,7 @@ async function runOneEvaluation(
   batchSize: number,
   batchTimeoutMs: number,
   certificationMode: System1EvalCertificationMode,
+  datasetDirectory: string,
 ): Promise<RunResult> {
   mkdirSync(directory, { recursive: true });
   const runStarted = process.hrtime.bigint();
@@ -833,10 +847,11 @@ async function runOneEvaluation(
     return result;
   };
 
-  const training = await timeStage("readTrain", readTrainingEvaluationInput);
-  const calibration = await timeStage(
-    "readCalibration",
-    readCalibrationFitInput,
+  const training = await timeStage("readTrain", () =>
+    readTrainingEvaluationInput(datasetDirectory),
+  );
+  const calibration = await timeStage("readCalibration", () =>
+    readCalibrationFitInput(datasetDirectory),
   );
   const pool = [training, calibration] as const;
   const families = [
@@ -918,10 +933,10 @@ async function runOneEvaluation(
   verifyFrozenPolicy(frozenPolicy);
   verifyFrozenPolicy(frozenComparison);
   const temporal = await timeStage("readTemporalAndVerifySeal", () =>
-    readTemporalFinalEvaluationInput(frozenPolicy),
+    readTemporalFinalEvaluationInput(frozenPolicy, datasetDirectory),
   );
   const test = await timeStage("readTestAndVerifySeal", () =>
-    readTestFinalEvaluationInput(frozenPolicy),
+    readTestFinalEvaluationInput(frozenPolicy, datasetDirectory),
   );
   const heldOutResponses = new Map<string, readonly System1ScorerResponse[]>();
   for (const split of [temporal, test]) {
@@ -1072,9 +1087,10 @@ async function evaluateScorer(
   batchSize: number,
   batchTimeoutMs: number,
   certificationMode: System1EvalCertificationMode,
+  datasetDirectory: string,
 ): Promise<void> {
   const outputDirectory = path.join(
-    OUTPUT_DIRECTORY,
+    system1EvalOutputDirectory(datasetDirectory),
     scorerId,
     certificationMode,
   );
@@ -1088,6 +1104,7 @@ async function evaluateScorer(
     batchSize,
     batchTimeoutMs,
     certificationMode,
+    datasetDirectory,
   );
   const secondDirectory = mkdtempSync(
     path.join(tmpdir(), SYSTEM1_EVAL_REPLAY_DIRECTORY_PREFIX),
@@ -1101,6 +1118,7 @@ async function evaluateScorer(
       batchSize,
       batchTimeoutMs,
       certificationMode,
+      datasetDirectory,
     );
   } finally {
     rmSync(secondDirectory, { recursive: true, force: true });
@@ -1158,6 +1176,7 @@ async function main(): Promise<void> {
       batchSize,
       batchTimeoutMs,
       argumentsValue.certificationMode,
+      argumentsValue.datasetDirectory,
     );
   }
 }

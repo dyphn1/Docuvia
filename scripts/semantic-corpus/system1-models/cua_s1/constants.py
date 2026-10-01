@@ -5,7 +5,12 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parent
 REPOSITORY_ROOT = PACKAGE_ROOT.parents[3]
 DEFAULT_DATASET_DIRECTORY = (
-    REPOSITORY_ROOT / "evaluate" / "results" / "semantic-corpus" / "v1" / "system1-dataset"
+    REPOSITORY_ROOT
+    / "evaluate"
+    / "results"
+    / "semantic-corpus"
+    / "v1"
+    / "system1-dataset-v2"
 )
 DEFAULT_MODEL_DIRECTORY = (
     REPOSITORY_ROOT / "evaluate" / "results" / "semantic-corpus" / "v1" / "system1-models" / "cua-s1"

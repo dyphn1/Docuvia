@@ -18,6 +18,7 @@ from constants import (
     AUDIT_SCHEMA_FIELD,
     AUDIT_SPLITS_FIELD,
     AUDIT_TRAINING_STARTED_FIELD,
+    DEFAULT_DATASET_DIRECTORY,
     ENCODING_AUDIT_SCHEMA,
     ENCODING_AUDIT_SPLITS,
     LABEL_FILE_SUFFIX,
@@ -37,6 +38,9 @@ torch.use_deterministic_algorithms(True)
 
 
 class AdapterContractTest(unittest.TestCase):
+    def test_default_dataset_directory_uses_system1_state_v2(self) -> None:
+        self.assertEqual(DEFAULT_DATASET_DIRECTORY.name, "system1-dataset-v2")
+
     def test_state_context_and_ordered_options_are_encoded(self) -> None:
         state = {
             "request": {

@@ -1,3 +1,4 @@
+import { SYSTEM1_DATASET_V2_DIRECTORY } from "../system1-constants.js";
 export {
   SYSTEM1_AMBIGUITY_CLASSES,
   SYSTEM1_AMBIGUITY_CLASS_ORDER,
@@ -5,10 +6,16 @@ export {
 
 export const SYSTEM1_EVAL_SCHEMA_VERSION = 1;
 export const SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION = 1;
-export const SYSTEM1_EVAL_DATASET_DIRECTORY =
-  "evaluate/results/semantic-corpus/v1/system1-dataset";
-export const SYSTEM1_EVAL_OUTPUT_DIRECTORY =
-  "evaluate/results/semantic-corpus/v1/system1-eval";
+export const SYSTEM1_EVAL_DATASET_DIRECTORY = SYSTEM1_DATASET_V2_DIRECTORY;
+export const SYSTEM1_EVAL_OUTPUT_PATH = {
+  DATASET_DIRECTORY_NAME: "system1-dataset",
+  EVALUATION_DIRECTORY_NAME: "system1-eval",
+  VERSION_SEPARATOR: "-v",
+} as const;
+export const SYSTEM1_EVAL_OUTPUT_PATH_ERRORS = {
+  INVALID_DATASET_DIRECTORY:
+    "System-1 dataset directory must be named system1-dataset or system1-dataset-vN.",
+} as const;
 export const SYSTEM1_EVAL_NO_CONFIG_SENTINEL = "no-weights-config";
 export const SYSTEM1_EVAL_IN_PROCESS_COMMAND = "in-process";
 export const SYSTEM1_EVAL_DEFAULT_BASELINE_VERSION = "1";
@@ -171,6 +178,7 @@ export const SYSTEM1_EVAL_RUNTIME_KEYS = {
 
 export const SYSTEM1_EVAL_CLI_FLAGS = {
   FINAL_EVALUATION: "--final-evaluation",
+  DATASET_DIRECTORY: "--dataset-dir",
   SCORER_ID: "--scorer-id",
   SCORER_VERSION: "--scorer-version",
   SCORER_COMMAND: "--scorer-command",

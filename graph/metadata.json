@@ -4547,6 +4547,12 @@
       "lastTierBCommitSha": null
     },
     {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/router_feasibility.py",
+      "contentHash": "7a4c70f4dda16e80afd5bcef7a5b0db0633e7fe7",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "scripts/semantic-corpus/system1-models/cua_s1/score.py",
       "contentHash": "1c83c700927cb37d4dc4b0baf8a96b9e93bd4c4f",
       "lastTierBProcessedAt": null,
@@ -4554,7 +4560,7 @@
     },
     {
       "filePath": "scripts/semantic-corpus/system1-models/cua_s1/self_test.py",
-      "contentHash": "bf3a9967e561f138561764a9d04eb00b0136abaf",
+      "contentHash": "a48260edd20e94cbee726f86e338aea45367e6a3",
       "lastTierBProcessedAt": null,
       "lastTierBCommitSha": null
     },
@@ -4703,7 +4709,7 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     }
   ],
-  "lastIngestedSourceSha": "d8a69336a18d14e58a3ba4972e986a5c031cf0ed",
+  "lastIngestedSourceSha": "0af97662c7db48933b0b3f1ebd38383bb3a984bd",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

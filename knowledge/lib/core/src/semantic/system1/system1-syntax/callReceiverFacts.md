@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/system1/system1-syntax.ts#callReceiverFacts
+id: lib/core/src/semantic/system1/system1-syntax.ts#CallReceiverFacts
 type: symbol
-name: callReceiverFacts
+name: CallReceiverFacts
 filePath: lib/core/src/semantic/system1/system1-syntax.ts
 ---
-# Symbol: callReceiverFacts
+# Symbol: CallReceiverFacts
 
 File: `lib/core/src/semantic/system1/system1-syntax.ts`

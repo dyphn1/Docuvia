@@ -54,6 +54,8 @@ export interface System1OOFFamilyPrecision {
   readonly family: string;
   readonly commits: number;
   readonly exactSetCount: number;
+  readonly rowCommits: number;
+  readonly rowExactSetCount: number;
   readonly exactSetPrecision: number | null;
   readonly lowerBound: number | null;
   readonly usedForFamilyGate: boolean;
@@ -66,6 +68,8 @@ export interface System1OOFFamilyTable {
   readonly families: readonly System1OOFFamilyPrecision[];
   readonly pooledCommitCount: number;
   readonly pooledExactSetCount: number;
+  readonly pooledRowCommitCount: number;
+  readonly pooledRowExactSetCount: number;
   readonly pooledLowerBound: number | null;
   readonly worstFamilyLowerBound: number | null;
 }
@@ -84,6 +88,8 @@ export interface System1EvalExample {
   readonly split: System1Split;
   readonly state: System1DatasetRecord;
   readonly labels: System1LabelRecord;
+  /** C-06 source metadata joined outside model state. */
+  readonly duplicateGroup: string;
   readonly response: System1ScorerResponse;
 }
 
@@ -113,17 +119,38 @@ export interface System1PrecisionThreshold {
   readonly targetPrecision: number;
   readonly status: System1EvalThresholdStatus;
   readonly threshold: number | null;
+  readonly diagnosticThreshold?: number | null;
   readonly calibrationCommitCount: number;
   readonly calibrationExactSetCount: number;
+  readonly calibrationRowCommitCount: number;
+  readonly calibrationRowExactSetCount: number;
+  readonly minimumIndependentCommits: number;
+  readonly independentSupportSufficient: boolean;
+  readonly rowLevelComparison?: System1ThresholdComparison | null;
   readonly lowerBound: number | null;
   readonly oofFamilyTable?: System1OOFFamilyTable;
   readonly oofFamilyDiagnostics?: readonly System1OOFFamilyTable[];
 }
 
+export interface System1ThresholdComparison {
+  readonly status: System1EvalThresholdStatus;
+  readonly threshold: number | null;
+  readonly commitCount: number;
+  readonly exactSetCount: number;
+  readonly lowerBound: number | null;
+}
+
+export interface System1CorpusManifestReference {
+  readonly path: string;
+  readonly sha256: string;
+}
+
 export interface System1EvaluationPolicy {
   readonly schemaVersion: number;
+  readonly protocolVersion: string;
   readonly calibrationMethod: string;
   readonly scorerManifestHash: string;
+  readonly corpusManifest?: System1CorpusManifestReference;
   readonly calibrator: System1IsotonicCalibrator;
   readonly precisionTargets: readonly System1PrecisionThreshold[];
   readonly certificationMode?: System1EvalCertificationMode;
@@ -134,6 +161,7 @@ export interface System1EvaluationPolicy {
     readonly trainingFamilies: readonly string[];
     readonly observationCount: number;
     readonly calibrationSha256: string;
+    readonly calibrator: System1IsotonicCalibrator;
   }[];
   readonly certificationRule?: Readonly<Record<string, unknown>>;
 }
@@ -167,11 +195,32 @@ export interface System1ReliabilityBin {
 }
 
 export interface System1CalibrationMetrics {
+  readonly measurementSplit: System1Split;
   readonly method: string;
   readonly scoredRequestCount: number;
   readonly candidateCount: number;
   readonly ece: number | null;
+  readonly brierScore: number | null;
   readonly reliability: readonly System1ReliabilityBin[];
+  readonly riskCoverage: readonly System1RiskCoveragePoint[];
+}
+
+export interface System1RiskCoveragePoint {
+  readonly threshold: number;
+  readonly rowCommittedCount: number;
+  readonly rowCoverage: number | null;
+  readonly rowExactSetPrecision: number | null;
+  readonly independentCommittedCount: number;
+  readonly independentCoverage: number | null;
+  readonly independentExactSetPrecision: number | null;
+}
+
+export interface System1IndependentGroupMetrics {
+  readonly groupCount: number;
+  readonly committedCount: number;
+  readonly exactSetCount: number;
+  readonly commitRate: System1RateMetric;
+  readonly exactSetPrecision: System1RateMetric;
 }
 
 export interface System1RequestLevelMetrics {
@@ -184,6 +233,7 @@ export interface System1RequestLevelMetrics {
   readonly falseSafePerTrustedRequest: System1RateMetric;
   readonly falseSafeAmongCommits: System1RateMetric;
   readonly candidateMissCommits: number;
+  readonly independentGroups: System1IndependentGroupMetrics;
 }
 
 export interface System1CandidateLevelMetrics {
@@ -219,4 +269,30 @@ export interface System1SplitMetrics {
   readonly calibration: System1CalibrationMetrics;
   readonly byPrecisionTarget: Readonly<Record<string, System1TargetMetrics>>;
   readonly slices: readonly System1SliceMetrics[];
+}
+
+export interface System1AccountingCount {
+  readonly rows: number;
+  readonly duplicateGroups: number;
+}
+
+export interface System1SplitAccountingFunnel {
+  readonly split: System1Split;
+  readonly rawCorpus: System1AccountingCount;
+  readonly exportExclusions: System1AccountingCount;
+  readonly exportExclusionsByReason: Readonly<
+    Record<string, System1AccountingCount>
+  >;
+  readonly afterExportExclusions: System1AccountingCount;
+  readonly untrustedLabelsByReason: Readonly<
+    Record<string, System1AccountingCount>
+  >;
+  readonly trusted: System1AccountingCount;
+  readonly eligibleWithCandidates: System1AccountingCount;
+  readonly candidateMisses: System1AccountingCount;
+  readonly candidateMissesWithoutCandidates: System1AccountingCount;
+  readonly eligibleWithoutCandidateMiss: System1AccountingCount;
+  readonly committed: System1AccountingCount;
+  readonly exact: System1AccountingCount;
+  readonly candidateMissCommits: System1AccountingCount;
 }

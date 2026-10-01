@@ -91,6 +91,7 @@ function example(
     split: split as System1EvalExample["split"],
     state: familyState,
     labels,
+    duplicateGroup: requestId,
     response: {
       requestId,
       status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
@@ -137,6 +138,37 @@ describe("System-1 calibration policy", () => {
     expect(uncertifiable).toMatchObject({
       status: "uncertifiable",
       threshold: null,
+    });
+  });
+
+  it("certifies calibration precision on duplicate groups rather than export rows", () => {
+    const examples = Array.from({ length: 300 }, (_, index) => ({
+      ...example("duplicate-" + index, "calibration"),
+      duplicateGroup: "same-context",
+    }));
+    const policy = fitSystem1EvaluationPolicy(examples, "f".repeat(64));
+    const target = policy.precisionTargets.find(
+      ({ targetPrecision }) =>
+        targetPrecision === SYSTEM1_EVAL_PRECISION_TARGETS[0],
+    );
+
+    expect(target).toMatchObject({
+      status: "uncertifiable",
+      threshold: null,
+      diagnosticThreshold: 1,
+      calibrationCommitCount: 1,
+      calibrationExactSetCount: 1,
+      calibrationRowCommitCount: 300,
+      calibrationRowExactSetCount: 300,
+      lowerBound: 0.05,
+      independentSupportSufficient: false,
+      rowLevelComparison: {
+        status: "certified",
+        threshold: 1,
+        commitCount: 300,
+        exactSetCount: 300,
+        lowerBound: expect.any(Number),
+      },
     });
   });
 
@@ -350,6 +382,54 @@ describe("System-1 calibration policy", () => {
     }
     expect(policy.calibrator.observationCount).toBe(56);
     expect(policy.precisionTargets[0].oofFamilyTable?.families).toHaveLength(7);
+  });
+
+  it("collapses duplicate OOF rows into one pooled and per-family unit", () => {
+    const pool = ["repo-a", "repo-b"].flatMap((repo) =>
+      Array.from({ length: 3 }, (_, index) => ({
+        ...example(
+          `${repo}-${index}`,
+          repo === "repo-a" ? "train" : "calibration",
+          `github.com/family/${repo}`,
+        ),
+        duplicateGroup: `duplicate-${repo}`,
+      })),
+    );
+    const folds = buildSystem1RepoFamilyFolds(
+      pool.map(({ state }) => state.request.evidence.repoId),
+    );
+    const policy = fitSystem1LeaveOneFamilyOutPolicy(
+      pool,
+      "c".repeat(64),
+      folds,
+      1,
+    );
+    const diagnostic = policy.precisionTargets[0].oofFamilyTable;
+
+    expect(diagnostic).toMatchObject({
+      pooledCommitCount: 2,
+      pooledExactSetCount: 2,
+      pooledRowCommitCount: 6,
+      pooledRowExactSetCount: 6,
+    });
+    expect(diagnostic?.families).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          family: "family/repo-a",
+          commits: 1,
+          exactSetCount: 1,
+          rowCommits: 3,
+          rowExactSetCount: 3,
+        }),
+        expect.objectContaining({
+          family: "family/repo-b",
+          commits: 1,
+          exactSetCount: 1,
+          rowCommits: 3,
+          rowExactSetCount: 3,
+        }),
+      ]),
+    );
   });
 
   it("rejects a fitting-pool family that has no OOF fold", () => {

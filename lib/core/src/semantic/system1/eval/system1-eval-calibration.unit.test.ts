@@ -3,9 +3,18 @@ import {
   calibrateSystem1Score,
   clopperPearsonLowerBound,
   fitSystem1IsotonicCalibrator,
+  minimumIndependentCommitsForZeroErrorPrecision,
 } from "./system1-eval-calibration.js";
 
 describe("System-1 calibration and confidence bounds", () => {
+  it("reports the minimum independent zero-error commits for each target", () => {
+    expect(
+      [0.99, 0.995, 0.999].map((target) =>
+        minimumIndependentCommitsForZeroErrorPrecision(target),
+      ),
+    ).toEqual([299, 598, 2995]);
+  });
+
   it("fits a deterministic monotone isotonic map with pooled adjacent violators", () => {
     const calibrator = fitSystem1IsotonicCalibrator([
       { score: 0.1, positive: false },

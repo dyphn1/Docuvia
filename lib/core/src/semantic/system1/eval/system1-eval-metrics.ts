@@ -6,6 +6,7 @@ import {
 } from "../system1-constants.js";
 import {
   SYSTEM1_EVAL_ACTIONS,
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
   SYSTEM1_EVAL_CANDIDATE_SIZE_BUCKETS,
   SYSTEM1_EVAL_CANDIDATE_SIZE_OVERFLOW_BUCKET,
   SYSTEM1_EVAL_CANDIDATE_MISSING_EVIDENCE,
@@ -17,7 +18,11 @@ import {
   SYSTEM1_EVAL_SLICE_DIMENSIONS,
   SYSTEM1_EVAL_WILSON_Z_95,
 } from "./system1-eval-constants.js";
-import { calibrateSystem1Score } from "./system1-eval-calibration.js";
+import {
+  calibrateSystem1Score,
+  minimumIndependentCommitsForZeroErrorPrecision,
+} from "./system1-eval-calibration.js";
+import { aggregateCommittedDuplicateGroups } from "./system1-eval-independent-units.js";
 import {
   decideSystem1Request,
   system1LabelExclusionReason,
@@ -34,6 +39,8 @@ import type {
   System1SliceMetrics,
   System1SplitMetrics,
   System1TargetMetrics,
+  System1RiskCoveragePoint,
+  System1IndependentGroupMetrics,
 } from "./system1-eval-types.js";
 import { system1RepoFamily } from "./system1-eval-folds.js";
 import type { System1DatasetRecord } from "../system1-types.js";
@@ -98,6 +105,29 @@ function isCalibrationEligible(example: System1EvalExample): boolean {
   );
 }
 
+export function system1CalibratorForExample(
+  example: System1EvalExample,
+  policy: System1EvaluationPolicy,
+): System1EvaluationPolicy["calibrator"] {
+  if (
+    policy.certificationMode ===
+      SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT &&
+    (example.split === SYSTEM1_SPLITS.TRAIN ||
+      example.split === SYSTEM1_SPLITS.CALIBRATION)
+  ) {
+    const family = system1RepoFamily(example.state);
+    const fold = policy.foldCalibrationSummaries?.find(
+      (entry) => entry.foldFamily === family,
+    );
+    if (!fold)
+      throw new Error(
+        `Missing OOF calibrator for repository family ${family}.`,
+      );
+    return fold.calibrator;
+  }
+  return policy.calibrator;
+}
+
 function getCalibrationObservations(
   examples: readonly System1EvalExample[],
   policy: System1EvaluationPolicy,
@@ -105,13 +135,14 @@ function getCalibrationObservations(
   const observations: CalibrationObservation[] = [];
   for (const example of examples) {
     if (!isCalibrationEligible(example)) continue;
+    const calibrator = system1CalibratorForExample(example, policy);
     for (const option of candidateOptions(example.state)) {
       const rawScore = example.response.scores[option.id];
       const targetId = option.attributes?.targetId;
       if (typeof rawScore !== "number" || typeof targetId !== "string")
         continue;
       observations.push({
-        score: calibrateSystem1Score(policy.calibrator, rawScore),
+        score: calibrateSystem1Score(calibrator, rawScore),
         positive: example.labels.positiveTargetIds.includes(targetId),
       });
     }
@@ -122,6 +153,7 @@ function getCalibrationObservations(
 function calibrationMetrics(
   examples: readonly System1EvalExample[],
   policy: System1EvaluationPolicy,
+  includeRiskCoverage: boolean,
 ): System1CalibrationMetrics {
   const observations = getCalibrationObservations(examples, policy);
   const bins: CalibrationObservation[][] = Array.from(
@@ -137,6 +169,11 @@ function calibrationMetrics(
   }
 
   let weightedError = 0;
+  let squaredError = 0;
+  for (const observation of observations) {
+    const difference = observation.score - Number(observation.positive);
+    squaredError += difference * difference;
+  }
   const reliability: System1ReliabilityBin[] = bins.map((items, index) => {
     const positiveCount = items.filter(({ positive }) => positive).length;
     const observedRate = rate({
@@ -162,6 +199,7 @@ function calibrationMetrics(
   });
 
   return {
+    measurementSplit: examples[0]?.split ?? SYSTEM1_SPLITS.CALIBRATION,
     method: policy.calibrationMethod,
     scoredRequestCount: new Set(
       examples
@@ -170,7 +208,12 @@ function calibrationMetrics(
     ).size,
     candidateCount: observations.length,
     ece: observations.length > 0 ? weightedError : null,
+    brierScore:
+      observations.length > 0 ? squaredError / observations.length : null,
     reliability,
+    riskCoverage: includeRiskCoverage
+      ? riskCoverageCurve(examples, policy)
+      : [],
   };
 }
 
@@ -183,6 +226,85 @@ function acceptedTargetSetIsExact(
   return (
     accepted.size === gold.size && [...accepted].every((id) => gold.has(id))
   );
+}
+
+function riskCoverageCurve(
+  examples: readonly System1EvalExample[],
+  policy: System1EvaluationPolicy,
+): readonly System1RiskCoveragePoint[] {
+  const trusted = examples.filter(isTrusted);
+  const scoresByRequest = new Map<
+    string,
+    readonly { targetId: string; score: number }[]
+  >();
+  const thresholdSet = new Set<number>();
+  for (const example of trusted) {
+    const calibrator = system1CalibratorForExample(example, policy);
+    const scores =
+      example.response.status === SYSTEM1_EVAL_SCORER_STATUSES.OK
+        ? candidateOptions(example.state).flatMap((option) => {
+            const targetId = option.attributes?.targetId;
+            const rawScore = example.response.scores[option.id];
+            return typeof targetId === "string" &&
+              typeof rawScore === "number" &&
+              Number.isFinite(rawScore) &&
+              rawScore >= 0 &&
+              rawScore <= 1
+              ? [
+                  {
+                    targetId,
+                    score: calibrateSystem1Score(calibrator, rawScore),
+                  },
+                ]
+              : [];
+          })
+        : [];
+    scores.forEach(({ score }) => thresholdSet.add(score));
+    scoresByRequest.set(example.state.request.requestId, scores);
+  }
+  const trustedGroupCount = new Set(
+    trusted.map(({ duplicateGroup }) => duplicateGroup),
+  ).size;
+  return [...thresholdSet]
+    .sort((left, right) => left - right)
+    .map((threshold) => {
+      const accepted = trusted.map((example) => {
+        const targetIds = (
+          scoresByRequest.get(example.state.request.requestId) ?? []
+        )
+          .filter(({ score }) => score >= threshold)
+          .map(({ targetId }) => targetId);
+        return {
+          example,
+          committed: targetIds.length > 0,
+          exact: acceptedTargetSetIsExact(
+            targetIds,
+            example.labels.positiveTargetIds,
+          ),
+        };
+      });
+      const committedRows = accepted.filter(({ committed }) => committed);
+      const groups = aggregateCommittedDuplicateGroups(accepted, {
+        duplicateGroup: ({ example }) => example.duplicateGroup,
+        committed: ({ committed }) => committed,
+        exact: ({ exact }) => exact,
+      });
+      const exactRows = committedRows.filter(({ exact }) => exact).length;
+      const exactGroups = groups.filter(({ exact }) => exact).length;
+      return {
+        threshold,
+        rowCommittedCount: committedRows.length,
+        rowCoverage:
+          trusted.length > 0 ? committedRows.length / trusted.length : null,
+        rowExactSetPrecision:
+          committedRows.length > 0 ? exactRows / committedRows.length : null,
+        independentCommittedCount: groups.length,
+        independentCoverage:
+          trustedGroupCount > 0 ? groups.length / trustedGroupCount : null,
+        independentExactSetPrecision:
+          groups.length > 0 ? exactGroups / groups.length : null,
+      };
+    });
 }
 
 function topCandidateIsPositive(example: System1EvalExample): boolean | null {
@@ -227,6 +349,31 @@ function requestLevelMetrics(
       verifyCount += 1;
     }
   }
+  const independentGroups = aggregateCommittedDuplicateGroups(
+    trusted.map((example) => {
+      const decision = decisions.get(example.state.request.requestId);
+      const exact = decision
+        ? acceptedTargetSetIsExact(
+            decision.acceptedTargetIds,
+            example.labels.positiveTargetIds,
+          )
+        : false;
+      return {
+        example,
+        committed: decision?.action === SYSTEM1_EVAL_ACTIONS.COMMIT,
+        exact,
+      };
+    }),
+    {
+      duplicateGroup: ({ example }) => example.duplicateGroup,
+      committed: ({ committed }) => committed,
+      exact: ({ exact }) => exact,
+    },
+  );
+  const trustedGroupCount = new Set(
+    trusted.map(({ duplicateGroup }) => duplicateGroup),
+  ).size;
+  const exactGroupCount = independentGroups.filter(({ exact }) => exact).length;
   return {
     commitRate: rate({ numerator: commitCount, denominator: trusted.length }),
     lspAvoidanceRate: rate({
@@ -252,6 +399,19 @@ function requestLevelMetrics(
       denominator: commitCount,
     }),
     candidateMissCommits,
+    independentGroups: {
+      groupCount: trustedGroupCount,
+      committedCount: independentGroups.length,
+      exactSetCount: exactGroupCount,
+      commitRate: rate({
+        numerator: independentGroups.length,
+        denominator: trustedGroupCount,
+      }),
+      exactSetPrecision: rate({
+        numerator: exactGroupCount,
+        denominator: independentGroups.length,
+      }),
+    },
   };
 }
 
@@ -361,7 +521,7 @@ function targetMetrics(
       decideSystem1Request(
         example.state,
         example.response,
-        policy,
+        { ...policy, calibrator: system1CalibratorForExample(example, policy) },
         targetPrecision,
       ),
     ]),
@@ -375,6 +535,11 @@ function targetMetrics(
     threshold: null,
     calibrationCommitCount: 0,
     calibrationExactSetCount: 0,
+    calibrationRowCommitCount: 0,
+    calibrationRowExactSetCount: 0,
+    minimumIndependentCommits:
+      minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+    independentSupportSufficient: false,
     lowerBound: null,
   };
 
@@ -502,7 +667,7 @@ function buildSlices(
       sampleCount: rows.length,
       trustedRequestCount,
       candidateMissCount,
-      calibration: calibrationMetrics(rows, policy),
+      calibration: calibrationMetrics(rows, policy, false),
       byPrecisionTarget: Object.fromEntries(
         SYSTEM1_EVAL_PRECISION_TARGETS.map((targetPrecision, index) => [
           SYSTEM1_EVAL_PRECISION_TARGET_KEYS[index],
@@ -543,7 +708,7 @@ export function computeSystem1SplitMetrics(
       ),
     ),
     candidateMissCount,
-    calibration: calibrationMetrics(examples, policy),
+    calibration: calibrationMetrics(examples, policy, true),
     byPrecisionTarget: Object.fromEntries(
       SYSTEM1_EVAL_PRECISION_TARGETS.map((targetPrecision, index) => [
         SYSTEM1_EVAL_PRECISION_TARGET_KEYS[index],

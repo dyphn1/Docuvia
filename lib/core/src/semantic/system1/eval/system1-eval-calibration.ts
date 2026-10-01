@@ -247,3 +247,14 @@ export function clopperPearsonLowerBound(
   if (successes === trials) return alpha ** (1 / trials);
   return invertRegularizedBetaLowerTail(successes, trials, alpha);
 }
+
+/** Minimum independent, zero-error commits needed to certify a precision target. */
+export function minimumIndependentCommitsForZeroErrorPrecision(
+  targetPrecision: number,
+): number {
+  if (!(targetPrecision > 0 && targetPrecision < 1))
+    throw new RangeError("Precision target must be between zero and one.");
+  return Math.ceil(
+    Math.log(SYSTEM1_EVAL_ONE_SIDED_ALPHA) / Math.log(targetPrecision),
+  );
+}

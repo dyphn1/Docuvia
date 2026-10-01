@@ -21,11 +21,17 @@ import {
   SYSTEM1_EVAL_DEFAULT_BASELINE_VERSION,
   SYSTEM1_EVAL_FILE_NAMES,
   SYSTEM1_EVAL_FINAL_EVALUATION_MODE,
+  SYSTEM1_EVAL_ACTIONS,
   SYSTEM1_EVAL_IN_PROCESS_COMMAND,
   SYSTEM1_EVAL_JSON_LINE_ENDING,
   SYSTEM1_EVAL_NO_CONFIG_SENTINEL,
   SYSTEM1_EVAL_OUTPUT_DIRECTORY_NAME_PATTERN,
   SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
+  SYSTEM1_EVAL_PROTOCOL_VERSION,
+  SYSTEM1_EVAL_CORPUS_MANIFEST_RELATIVE_PATH,
+  SYSTEM1_EVAL_CORPUS_MANIFEST_ERRORS,
+  SYSTEM1_EVAL_PRECISION_TARGETS,
+  SYSTEM1_EVAL_PRECISION_TARGET_KEYS,
   SYSTEM1_EVAL_REPLAY_DIRECTORY_PREFIX,
   SYSTEM1_EVAL_RUNTIME_KEYS,
   SYSTEM1_EVAL_SCORER_RUNTIME_KEY_PREFIX,
@@ -47,11 +53,19 @@ import {
   SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-constants.js";
 import { system1EvalOutputDirectory } from "../../lib/core/src/semantic/system1/eval/system1-eval-output.js";
-import { computeSystem1SplitMetrics } from "../../lib/core/src/semantic/system1/eval/system1-eval-metrics.js";
+import {
+  computeSystem1SplitMetrics,
+  system1CalibratorForExample,
+} from "../../lib/core/src/semantic/system1/eval/system1-eval-metrics.js";
+import { computeSystem1AccountingFunnel } from "../../lib/core/src/semantic/system1/eval/system1-eval-funnel.js";
+import type { System1AccountingSample } from "../../lib/core/src/semantic/system1/eval/system1-eval-funnel.js";
+import { assertSystem1CorpusManifestPin } from "../../lib/core/src/semantic/system1/eval/system1-eval-corpus-manifest.js";
 import { runSystem1ExternalScorerBatch } from "../../lib/core/src/semantic/system1/eval/system1-eval-external-scorer.js";
 import {
+  decideSystem1Request,
   fitSystem1EvaluationPolicy,
   fitSystem1LeaveOneFamilyOutPolicy,
+  system1LabelExclusionReason,
 } from "../../lib/core/src/semantic/system1/eval/system1-eval-policy.js";
 import {
   buildSystem1RepoFamilyFolds,
@@ -67,6 +81,7 @@ import {
 import type {
   System1EvalExample,
   System1EvaluationPolicy,
+  System1CorpusManifestReference,
   System1ScorerResponse,
   System1EvalCertificationMode,
   System1ScorerTrainingManifest,
@@ -76,6 +91,7 @@ import type {
   System1LabelRecord,
   System1Split,
 } from "../../lib/core/src/semantic/system1/system1-types.js";
+import { system1RequestId } from "../../lib/core/src/semantic/system1/system1-state-builder.js";
 import {
   SYSTEM1_FILE_NAMES,
   SYSTEM1_HELD_OUT_SPLITS,
@@ -129,6 +145,25 @@ interface LoadedSplit {
   readonly states: readonly System1DatasetRecord[];
   readonly labels: readonly System1LabelRecord[];
   readonly sealedInput: System1EvalSealReference | null;
+}
+
+interface CorpusSourceMetadata {
+  readonly sampleId: string;
+  readonly requestId: string;
+  readonly split: System1Split;
+  readonly duplicateGroup: string;
+}
+
+interface CorpusSourceMetadataRead {
+  readonly manifest: System1CorpusManifestReference;
+  readonly records: CorpusSourceMetadata[];
+}
+
+interface ExportExclusionRecord {
+  readonly sampleId: string;
+  readonly requestId: string;
+  readonly split: System1Split;
+  readonly reason: string;
 }
 
 interface SplitReplayMetrics {
@@ -400,6 +435,177 @@ function jsonLines<T>(contents: Buffer, inputName: string): T[] {
   });
 }
 
+interface JsonRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+function skipJsonWhitespace(contents: string, start: number): number {
+  let index = start;
+  while (/\s/.test(contents[index] ?? "")) index += 1;
+  return index;
+}
+
+function jsonValueEnd(contents: string, start: number): number {
+  const initial = contents[start];
+  if (initial === '"') {
+    let escaped = false;
+    for (let index = start + 1; index < contents.length; index += 1) {
+      if (escaped) escaped = false;
+      else if (contents[index] === "\\") escaped = true;
+      else if (contents[index] === '"') return index + 1;
+    }
+    throw new Error("Unterminated JSON string in corpus manifest.");
+  }
+  if (initial !== "{" && initial !== "[") {
+    let index = start;
+    while (index < contents.length && !/[\s,}\]]/.test(contents[index]))
+      index += 1;
+    return index;
+  }
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < contents.length; index += 1) {
+    const character = contents[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+    if (character === '"') inString = true;
+    else if (character === "{" || character === "[") depth += 1;
+    else if (character === "}" || character === "]") {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+  throw new Error("Unterminated JSON value in corpus manifest.");
+}
+
+function objectFieldRanges(
+  contents: string,
+  objectStart: number,
+): ReadonlyMap<string, JsonRange> {
+  const end = jsonValueEnd(contents, objectStart);
+  if (contents[objectStart] !== "{")
+    throw new Error("Corpus manifest value should be an object.");
+  const fields = new Map<string, JsonRange>();
+  let cursor = skipJsonWhitespace(contents, objectStart + 1);
+  while (cursor < end && contents[cursor] !== "}") {
+    const keyEnd = jsonValueEnd(contents, cursor);
+    const key = JSON.parse(contents.slice(cursor, keyEnd)) as string;
+    cursor = skipJsonWhitespace(contents, keyEnd);
+    if (contents[cursor] !== ":")
+      throw new Error("Malformed corpus manifest object property.");
+    const valueStart = skipJsonWhitespace(contents, cursor + 1);
+    const valueEnd = jsonValueEnd(contents, valueStart);
+    fields.set(key, { start: valueStart, end: valueEnd });
+    cursor = skipJsonWhitespace(contents, valueEnd);
+    if (contents[cursor] === ",")
+      cursor = skipJsonWhitespace(contents, cursor + 1);
+    else if (contents[cursor] !== "}")
+      throw new Error("Malformed corpus manifest object delimiter.");
+  }
+  return fields;
+}
+
+function readCorpusSourceMetadata(
+  datasetDirectory: string,
+  includedSplits: ReadonlySet<System1Split>,
+  expectedManifest?: System1CorpusManifestReference,
+): CorpusSourceMetadataRead {
+  const manifestPath = path.resolve(
+    datasetDirectory,
+    SYSTEM1_EVAL_CORPUS_MANIFEST_RELATIVE_PATH,
+  );
+  const manifestBytes = readFileSync(manifestPath);
+  const manifest = {
+    path: SYSTEM1_EVAL_CORPUS_MANIFEST_RELATIVE_PATH,
+    sha256: sha256(manifestBytes),
+  };
+  if (expectedManifest)
+    assertSystem1CorpusManifestPin(expectedManifest, manifest);
+  const contents = manifestBytes.toString("utf8");
+  const rootFields = objectFieldRanges(
+    contents,
+    skipJsonWhitespace(contents, 0),
+  );
+  const samplesRange = rootFields.get("samples");
+  if (!samplesRange || contents[samplesRange.start] !== "[")
+    throw new Error("Corpus manifest has no samples array.");
+  const metadata: CorpusSourceMetadata[] = [];
+  let cursor = skipJsonWhitespace(contents, samplesRange.start + 1);
+  while (cursor < samplesRange.end && contents[cursor] !== "]") {
+    const sampleEnd = jsonValueEnd(contents, cursor);
+    const sampleFields = objectFieldRanges(contents, cursor);
+    const sampleIdRange = sampleFields.get("sampleId");
+    const sourceRange = sampleFields.get("source");
+    if (!sampleIdRange || !sourceRange)
+      throw new Error("Corpus sample is missing identity or source metadata.");
+    const sampleId = JSON.parse(
+      contents.slice(sampleIdRange.start, sampleIdRange.end),
+    ) as string;
+    const sourceFields = objectFieldRanges(contents, sourceRange.start);
+    const splitRange = sourceFields.get("split");
+    if (!splitRange)
+      throw new Error(
+        "Corpus source metadata has no split for " + sampleId + ".",
+      );
+    const split = JSON.parse(
+      contents.slice(splitRange.start, splitRange.end),
+    ) as unknown;
+    if (!Object.values(SYSTEM1_SPLITS).includes(split as System1Split))
+      throw new Error("Invalid corpus split for " + sampleId + ".");
+    if (!includedSplits.has(split as System1Split)) {
+      cursor = skipJsonWhitespace(contents, sampleEnd);
+      if (contents[cursor] === ",")
+        cursor = skipJsonWhitespace(contents, cursor + 1);
+      else if (contents[cursor] !== "]")
+        throw new Error("Malformed corpus manifest samples array.");
+      continue;
+    }
+    const duplicateGroupRange = sourceFields.get("duplicateGroup");
+    if (!duplicateGroupRange)
+      throw new Error(
+        "Corpus source metadata has no duplicate group for " + sampleId + ".",
+      );
+    const duplicateGroup = JSON.parse(
+      contents.slice(duplicateGroupRange.start, duplicateGroupRange.end),
+    ) as unknown;
+    if (typeof duplicateGroup !== "string" || duplicateGroup.length === 0)
+      throw new Error(
+        "Invalid C-06 duplicate-group metadata for " + sampleId + ".",
+      );
+    metadata.push({
+      sampleId,
+      requestId: system1RequestId(sampleId),
+      split: split as System1Split,
+      duplicateGroup,
+    });
+    cursor = skipJsonWhitespace(contents, sampleEnd);
+    if (contents[cursor] === ",")
+      cursor = skipJsonWhitespace(contents, cursor + 1);
+    else if (contents[cursor] !== "]")
+      throw new Error("Malformed corpus manifest samples array.");
+  }
+  return { manifest, records: metadata };
+}
+
+function readExportExclusions(
+  datasetDirectory: string,
+): ExportExclusionRecord[] {
+  const exclusionPath = path.join(
+    datasetDirectory,
+    SYSTEM1_FILE_NAMES.EXCLUDED,
+  );
+  return jsonLines<ExportExclusionRecord>(
+    readFileSync(exclusionPath),
+    exclusionPath,
+  );
+}
+
 function assertUniqueRequestIds(
   states: readonly System1DatasetRecord[],
   labels: readonly System1LabelRecord[],
@@ -606,6 +812,7 @@ async function scoreStates(
 function examplesFor(
   split: LoadedSplit,
   responses: readonly System1ScorerResponse[],
+  sourceMetadataByRequestId: ReadonlyMap<string, CorpusSourceMetadata>,
 ): System1EvalExample[] {
   if (responses.length !== split.states.length)
     throw new Error(`Scorer response count does not match ${split.split}.`);
@@ -615,9 +822,108 @@ function examplesFor(
   return split.states.map((state, index) => {
     const labels = labelsById.get(state.request.requestId);
     if (!labels) throw new Error(`No label for ${state.request.requestId}.`);
+    const sourceMetadata = sourceMetadataByRequestId.get(
+      state.request.requestId,
+    );
+    if (!sourceMetadata || sourceMetadata.split !== split.split)
+      throw new Error(
+        "No C-06 group metadata for " + state.request.requestId + ".",
+      );
     const response = validateSystem1ScorerResponse(state, responses[index]);
-    return { split: split.split, state, labels, response };
+    return {
+      split: split.split,
+      state,
+      labels,
+      duplicateGroup: sourceMetadata.duplicateGroup,
+      response,
+    };
   });
+}
+
+function accountingFunnelForSplit(
+  split: System1Split,
+  examples: readonly System1EvalExample[],
+  sourceMetadata: readonly CorpusSourceMetadata[],
+  exclusions: readonly ExportExclusionRecord[],
+  policy: System1EvaluationPolicy,
+  targetPrecision: number,
+): ReturnType<typeof computeSystem1AccountingFunnel> {
+  const examplesById = new Map(
+    examples.map(
+      (example) => [example.state.request.requestId, example] as const,
+    ),
+  );
+  const exclusionsById = new Map(
+    exclusions
+      .filter((record) => record.split === split)
+      .map((record) => [record.requestId, record] as const),
+  );
+  const samples: System1AccountingSample[] = sourceMetadata
+    .filter((metadata) => metadata.split === split)
+    .map((metadata) => {
+      const exclusion = exclusionsById.get(metadata.requestId);
+      const example = examplesById.get(metadata.requestId);
+      if (exclusion) {
+        if (example || exclusion.sampleId !== metadata.sampleId)
+          throw new Error(
+            "Export exclusion disagrees with the C-06 source index.",
+          );
+        return {
+          duplicateGroup: metadata.duplicateGroup,
+          exportExclusionReason: exclusion.reason,
+          labelExclusionReason: null,
+          hasCandidates: false,
+          candidateMiss: false,
+          committed: false,
+          exact: false,
+        };
+      }
+      if (!example)
+        throw new Error("Corpus sample is neither exported nor excluded.");
+      const labelExclusionReason = system1LabelExclusionReason(example.labels);
+      if (labelExclusionReason !== null) {
+        return {
+          duplicateGroup: metadata.duplicateGroup,
+          exportExclusionReason: null,
+          labelExclusionReason,
+          hasCandidates: example.state.candidateCount > 0,
+          candidateMiss: example.labels.candidateMiss,
+          committed: false,
+          exact: false,
+        };
+      }
+      const decision = decideSystem1Request(
+        example.state,
+        example.response,
+        {
+          ...policy,
+          calibrator: system1CalibratorForExample(example, policy),
+        },
+        targetPrecision,
+      );
+      const accepted = new Set(decision.acceptedTargetIds);
+      const gold = new Set(example.labels.positiveTargetIds);
+      const exact =
+        accepted.size === gold.size &&
+        [...accepted].every((target) => gold.has(target));
+      return {
+        duplicateGroup: metadata.duplicateGroup,
+        exportExclusionReason: null,
+        labelExclusionReason: null,
+        hasCandidates: example.state.candidateCount > 0,
+        candidateMiss: example.labels.candidateMiss,
+        committed: decision.action === SYSTEM1_EVAL_ACTIONS.COMMIT,
+        exact,
+      };
+    });
+  if (
+    samples.length !==
+    sourceMetadata.filter(({ split: itemSplit }) => itemSplit === split).length
+  )
+    throw new Error(
+      "Accounting source metadata contains duplicate request ids.",
+    );
+  return computeSystem1AccountingFunnel(split, samples);
 }
 
 function baselineConfigurationHash(scorerId: string): string {
@@ -765,8 +1071,8 @@ function writeText(
 function freezePolicy(
   directory: string,
   policy: System1EvaluationPolicy,
-  policyName = SYSTEM1_EVAL_FILE_NAMES.POLICY,
-  hashName = SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
+  policyName: string = SYSTEM1_EVAL_FILE_NAMES.POLICY,
+  hashName: string = SYSTEM1_EVAL_FILE_NAMES.POLICY_HASH,
 ): FrozenPolicy {
   const policyText = stableJson(policy);
   const policyHash = sha256(policyText);
@@ -811,6 +1117,10 @@ function repoFamilyBreakdown(
             {
               commitRate: metrics.requestLevel.commitRate,
               exactSetPrecision: metrics.requestLevel.exactSetPrecision,
+              independentGroupCommitRate:
+                metrics.requestLevel.independentGroups.commitRate,
+              independentGroupExactSetPrecision:
+                metrics.requestLevel.independentGroups.exactSetPrecision,
             },
           ]),
         ),
@@ -853,6 +1163,17 @@ async function runOneEvaluation(
   const calibration = await timeStage("readCalibration", () =>
     readCalibrationFitInput(datasetDirectory),
   );
+  const poolSourceMetadata = readCorpusSourceMetadata(
+    datasetDirectory,
+    new Set([SYSTEM1_SPLITS.TRAIN, SYSTEM1_SPLITS.CALIBRATION]),
+  );
+  const corpusManifest = poolSourceMetadata.manifest;
+  const sourceMetadata = poolSourceMetadata.records;
+  const sourceMetadataByRequestId = new Map(
+    sourceMetadata.map((metadata) => [metadata.requestId, metadata] as const),
+  );
+  if (sourceMetadataByRequestId.size !== sourceMetadata.length)
+    throw new Error("Duplicate request id in C-06 source metadata.");
   const pool = [training, calibration] as const;
   const families = [
     ...new Set(pool.flatMap((split) => split.states.map(system1RepoFamily))),
@@ -881,20 +1202,31 @@ async function runOneEvaluation(
   const calibrationResponses = await timeStage("scoreCalibrationOof", () =>
     scoreStates(calibration.states, scorerId, external, batchSize, true),
   );
-  const trainingExamples = examplesFor(training, trainingResponses);
-  const calibrationExamples = examplesFor(calibration, calibrationResponses);
+  const trainingExamples = examplesFor(
+    training,
+    trainingResponses,
+    sourceMetadataByRequestId,
+  );
+  const calibrationExamples = examplesFor(
+    calibration,
+    calibrationResponses,
+    sourceMetadataByRequestId,
+  );
   const poolExamples = [...trainingExamples, ...calibrationExamples];
-  const lofoPolicy = fitSystem1LeaveOneFamilyOutPolicy(
-    poolExamples,
-    manifestHash,
-    folds,
-    SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
-    manifest.trainingPlan,
-  );
-  const calibrationOnlyPolicy = fitSystem1EvaluationPolicy(
-    calibrationExamples,
-    manifestHash,
-  );
+  const lofoPolicy: System1EvaluationPolicy = {
+    ...fitSystem1LeaveOneFamilyOutPolicy(
+      poolExamples,
+      manifestHash,
+      folds,
+      SYSTEM1_EVAL_DEFAULT_MIN_FAMILY_COMMITS,
+      manifest.trainingPlan,
+    ),
+    corpusManifest,
+  };
+  const calibrationOnlyPolicy: System1EvaluationPolicy = {
+    ...fitSystem1EvaluationPolicy(calibrationExamples, manifestHash),
+    corpusManifest,
+  };
   const policies = [
     {
       mode: SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY,
@@ -938,6 +1270,21 @@ async function runOneEvaluation(
   const test = await timeStage("readTestAndVerifySeal", () =>
     readTestFinalEvaluationInput(frozenPolicy, datasetDirectory),
   );
+  if (!frozenPolicy.policy.corpusManifest)
+    throw new Error(SYSTEM1_EVAL_CORPUS_MANIFEST_ERRORS.MISSING_POLICY_PIN);
+  const heldOutSourceMetadataRead = readCorpusSourceMetadata(
+    datasetDirectory,
+    new Set([SYSTEM1_SPLITS.TEMPORAL, SYSTEM1_SPLITS.TEST]),
+    frozenPolicy.policy.corpusManifest,
+  );
+  const heldOutSourceMetadata = heldOutSourceMetadataRead.records;
+  for (const metadata of heldOutSourceMetadata) {
+    if (sourceMetadataByRequestId.has(metadata.requestId))
+      throw new Error("Duplicate request id in C-06 source metadata.");
+    sourceMetadataByRequestId.set(metadata.requestId, metadata);
+  }
+  sourceMetadata.push(...heldOutSourceMetadata);
+  const exportExclusions = readExportExclusions(datasetDirectory);
   const heldOutResponses = new Map<string, readonly System1ScorerResponse[]>();
   for (const split of [temporal, test]) {
     heldOutResponses.set(
@@ -958,7 +1305,10 @@ async function runOneEvaluation(
     const responses = responsesBySplit.get(split.split);
     if (!responses)
       throw new Error(`Missing scored responses for ${split.split}.`);
-    examplesBySplit.set(split.split, examplesFor(split, responses));
+    examplesBySplit.set(
+      split.split,
+      examplesFor(split, responses, sourceMetadataByRequestId),
+    );
     writeText(
       directory,
       SYSTEM1_EVAL_FILE_NAMES.RESPONSES(split.split),
@@ -986,11 +1336,43 @@ async function runOneEvaluation(
   );
   if (!primaryMetrics)
     throw new Error("Missing metrics for selected policy mode.");
+  const accountingFunnelsByMode = metricsByMode.map(
+    ({ mode, policy, splitMetrics }) => ({
+      mode,
+      byTarget: Object.fromEntries(
+        SYSTEM1_EVAL_PRECISION_TARGET_KEYS.map((targetKey, index) => [
+          targetKey,
+          splitMetrics.map((metrics) => {
+            const examples = examplesBySplit.get(metrics.split);
+            if (!examples)
+              throw new Error(
+                "Missing examples for funnel split " + metrics.split + ".",
+              );
+            return accountingFunnelForSplit(
+              metrics.split,
+              examples,
+              sourceMetadata,
+              exportExclusions,
+              policy,
+              SYSTEM1_EVAL_PRECISION_TARGETS[index],
+            );
+          }),
+        ]),
+      ),
+    }),
+  );
+  const primaryAccountingFunnels = accountingFunnelsByMode.find(
+    ({ mode }) => mode === certificationMode,
+  );
+  if (!primaryAccountingFunnels)
+    throw new Error("Missing accounting funnel for selected policy mode.");
   const metricsDocument = {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
+    protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
     mode: SYSTEM1_EVAL_FINAL_EVALUATION_MODE,
     scorerId,
     scorerManifestHash: manifestHash,
+    corpusManifest,
     policyHash: frozenPolicy.policyHash,
     certificationMode,
     sealedInputs,
@@ -998,6 +1380,7 @@ async function runOneEvaluation(
     repoFamilyBreakdown: primaryMetrics.splitMetrics.map((metrics) =>
       repoFamilyBreakdown(metrics),
     ),
+    accountingFunnelsByTarget: primaryAccountingFunnels.byTarget,
     certificationModes: metricsByMode.map(
       ({ mode, policy, policyHash, splitMetrics }) => ({
         mode,
@@ -1005,6 +1388,9 @@ async function runOneEvaluation(
         precisionTargets: policy.precisionTargets,
         splits: splitMetrics.map(stripSlices),
         repoFamilyBreakdown: splitMetrics.map(repoFamilyBreakdown),
+        accountingFunnelsByTarget: accountingFunnelsByMode.find(
+          (entry) => entry.mode === mode,
+        )?.byTarget,
       }),
     ),
   };
@@ -1036,6 +1422,7 @@ async function runOneEvaluation(
       splitMetrics,
     })),
     lofoPolicy,
+    accountingFunnels: primaryAccountingFunnels.byTarget,
   });
 
   writeText(
@@ -1059,12 +1446,12 @@ async function runOneEvaluation(
   const hashes = Object.fromEntries(
     [...CORRECTNESS_FILE_NAMES]
       .sort()
-      .map((name) => [
-        name,
-        sha256(readFileSync(path.join(directory, name))) as const,
-      ]),
+      .map((name) => [name, sha256(readFileSync(path.join(directory, name)))]),
   );
-  return { hashes, elapsedMs };
+  return {
+    hashes: hashes as Readonly<Record<string, string>>,
+    elapsedMs,
+  };
 }
 
 function sameHashSet(

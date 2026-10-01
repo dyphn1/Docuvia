@@ -6,9 +6,13 @@ import {
   SYSTEM1_EVAL_PRECISION_TARGETS,
   SYSTEM1_EVAL_SCORER_STATUSES,
   SYSTEM1_EVAL_SCORE_KIND,
+  SYSTEM1_EVAL_PROTOCOL_VERSION,
 } from "./system1-eval-constants.js";
 import { computeSystem1SplitMetrics } from "./system1-eval-metrics.js";
-import { fitSystem1IsotonicCalibrator } from "./system1-eval-calibration.js";
+import {
+  fitSystem1IsotonicCalibrator,
+  minimumIndependentCommitsForZeroErrorPrecision,
+} from "./system1-eval-calibration.js";
 import type {
   System1DatasetRecord,
   System1LabelRecord,
@@ -103,6 +107,7 @@ function example(
     split: "test",
     state,
     labels,
+    duplicateGroup: requestId,
     response: {
       requestId,
       status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
@@ -128,6 +133,7 @@ describe("System-1 evaluation metrics", () => {
     );
     const policy: System1EvaluationPolicy = {
       schemaVersion: 1,
+      protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
       calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
       scorerManifestHash: "c".repeat(64),
       calibrator: fitSystem1IsotonicCalibrator([]),
@@ -138,6 +144,11 @@ describe("System-1 evaluation metrics", () => {
           threshold: 0.75,
           calibrationCommitCount: 300,
           calibrationExactSetCount: 300,
+          calibrationRowCommitCount: 300,
+          calibrationRowExactSetCount: 300,
+          minimumIndependentCommits:
+            minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+          independentSupportSufficient: true,
           lowerBound: 0.99,
         }),
       ),
@@ -163,6 +174,7 @@ describe("System-1 evaluation metrics", () => {
     );
     const policy: System1EvaluationPolicy = {
       schemaVersion: 1,
+      protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
       calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
       scorerManifestHash: "c".repeat(64),
       calibrator: fitSystem1IsotonicCalibrator([]),
@@ -173,6 +185,11 @@ describe("System-1 evaluation metrics", () => {
           threshold: 0.75,
           calibrationCommitCount: 300,
           calibrationExactSetCount: 300,
+          calibrationRowCommitCount: 300,
+          calibrationRowExactSetCount: 300,
+          minimumIndependentCommits:
+            minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+          independentSupportSufficient: true,
           lowerBound: 0.99,
         }),
       ),
@@ -195,6 +212,54 @@ describe("System-1 evaluation metrics", () => {
       numerator: 1,
       denominator: 1,
       rate: 1,
+    });
+  });
+
+  it("reports split-labelled Brier scores and a row/group risk-coverage curve", () => {
+    const sample = example(
+      "brier",
+      [
+        { optionId: "gold", targetId: "src/a.ts#call", rank: 0 },
+        { optionId: "decoy", targetId: "src/b.ts#call", rank: 1 },
+      ],
+      ["src/a.ts#call"],
+      { scoreOverrides: { gold: 0.9, decoy: 0.2 } },
+    );
+    const policy: System1EvaluationPolicy = {
+      schemaVersion: 1,
+      protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
+      calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
+      scorerManifestHash: "d".repeat(64),
+      calibrator: fitSystem1IsotonicCalibrator([]),
+      precisionTargets: SYSTEM1_EVAL_PRECISION_TARGETS.map(
+        (targetPrecision) => ({
+          targetPrecision,
+          status: "certified",
+          threshold: 0.75,
+          calibrationCommitCount: 300,
+          calibrationExactSetCount: 300,
+          calibrationRowCommitCount: 300,
+          calibrationRowExactSetCount: 300,
+          minimumIndependentCommits:
+            minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+          independentSupportSufficient: true,
+          lowerBound: 0.99,
+        }),
+      ),
+    };
+
+    const result = computeSystem1SplitMetrics([sample], policy);
+    const target = result.byPrecisionTarget["0.990"];
+
+    expect(result.calibration.measurementSplit).toBe("test");
+    expect(result.calibration.brierScore).toBeCloseTo(0.025);
+    expect(
+      result.calibration.riskCoverage.map(({ threshold }) => threshold),
+    ).toEqual([0.2, 0.9]);
+    expect(target.requestLevel.independentGroups).toMatchObject({
+      groupCount: 1,
+      committedCount: 1,
+      exactSetCount: 1,
     });
   });
 
@@ -237,6 +302,7 @@ describe("System-1 evaluation metrics", () => {
     ];
     const policy: System1EvaluationPolicy = {
       schemaVersion: 1,
+      protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
       calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
       scorerManifestHash: "a".repeat(64),
       calibrator: fitSystem1IsotonicCalibrator([]),
@@ -247,6 +313,11 @@ describe("System-1 evaluation metrics", () => {
           threshold: 0.75,
           calibrationCommitCount: 300,
           calibrationExactSetCount: 300,
+          calibrationRowCommitCount: 300,
+          calibrationRowExactSetCount: 300,
+          minimumIndependentCommits:
+            minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+          independentSupportSufficient: true,
           lowerBound: 0.99,
         }),
       ),
@@ -319,6 +390,7 @@ describe("System-1 evaluation metrics", () => {
     ];
     const policy: System1EvaluationPolicy = {
       schemaVersion: 1,
+      protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
       calibrationMethod: SYSTEM1_EVAL_CALIBRATION_METHOD,
       scorerManifestHash: "b".repeat(64),
       calibrator: fitSystem1IsotonicCalibrator([]),
@@ -329,6 +401,11 @@ describe("System-1 evaluation metrics", () => {
           threshold: 0.75,
           calibrationCommitCount: 300,
           calibrationExactSetCount: 300,
+          calibrationRowCommitCount: 300,
+          calibrationRowExactSetCount: 300,
+          minimumIndependentCommits:
+            minimumIndependentCommitsForZeroErrorPrecision(targetPrecision),
+          independentSupportSufficient: true,
           lowerBound: 0.99,
         }),
       ),

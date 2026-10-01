@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SYSTEM1_EVAL_CERTIFICATION_MODES,
   SYSTEM1_EVAL_PRECISION_TARGET_KEYS,
+  SYSTEM1_EVAL_PROTOCOL_VERSION,
   SYSTEM1_EVAL_REPORT_TEXT,
   SYSTEM1_EVAL_THRESHOLD_STATUSES,
 } from "./system1-eval-constants.js";
@@ -12,7 +13,7 @@ import type {
 } from "./system1-eval-types.js";
 
 function splitMetrics(
-  split: string,
+  split: System1SplitMetrics["split"],
   exactSetRate: number,
   lowerBound: number,
 ): System1SplitMetrics {
@@ -24,6 +25,10 @@ function splitMetrics(
       threshold: 0.8,
       calibrationCommitCount: 300,
       calibrationExactSetCount: 300,
+      calibrationRowCommitCount: 300,
+      calibrationRowExactSetCount: 300,
+      minimumIndependentCommits: 299,
+      independentSupportSufficient: true,
       lowerBound: 0.99,
     },
     requestLevel: {
@@ -50,6 +55,23 @@ function splitMetrics(
         denominator: 100,
         rate: 0.01,
         interval95: null,
+      },
+      independentGroups: {
+        groupCount: 100,
+        committedCount: 50,
+        exactSetCount: 49,
+        commitRate: {
+          numerator: 50,
+          denominator: 100,
+          rate: 0.5,
+          interval95: null,
+        },
+        exactSetPrecision: {
+          numerator: 49,
+          denominator: 50,
+          rate: exactSetRate,
+          interval95: { lower: lowerBound, upper: 1 },
+        },
       },
       unknownRate: {
         numerator: 25,
@@ -80,11 +102,14 @@ function splitMetrics(
     excludedLabelCounts: {},
     candidateMissCount: 0,
     calibration: {
+      measurementSplit: split,
       method: "isotonic-pava-v1",
       scoredRequestCount: 100,
       candidateCount: 200,
       ece: 0.04,
+      brierScore: 0.06,
       reliability: [],
+      riskCoverage: [],
     },
     byPrecisionTarget: {
       [SYSTEM1_EVAL_PRECISION_TARGET_KEYS[0]]: target,
@@ -94,7 +119,7 @@ function splitMetrics(
 }
 
 describe("System-1 evaluation report", () => {
-  it("marks held-out rows that miss the certified target and labels calibration ECE in-sample", () => {
+  it("marks held-out misses and labels LOFO pool metrics out-of-fold", () => {
     const report = renderSystem1EvalReport({
       scorerId: "test-scorer",
       policyHash: "a".repeat(64),
@@ -118,6 +143,7 @@ describe("System-1 evaluation report", () => {
       ],
       lofoPolicy: {
         schemaVersion: 1,
+        protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
         calibrationMethod: "isotonic-pava-v1",
         scorerManifestHash: "a".repeat(64),
         calibrator: {
@@ -135,6 +161,10 @@ describe("System-1 evaluation report", () => {
             threshold: 0.8,
             calibrationCommitCount: 1,
             calibrationExactSetCount: 1,
+            calibrationRowCommitCount: 1,
+            calibrationRowExactSetCount: 1,
+            minimumIndependentCommits: 299,
+            independentSupportSufficient: false,
             lowerBound: 0.05,
             oofFamilyTable: {
               diagnosticKind: "certified",
@@ -144,6 +174,8 @@ describe("System-1 evaluation report", () => {
                   family: "acme/repo",
                   commits: 1,
                   exactSetCount: 1,
+                  rowCommits: 1,
+                  rowExactSetCount: 1,
                   exactSetPrecision: 1,
                   lowerBound: 0.05,
                   usedForFamilyGate: false,
@@ -152,6 +184,8 @@ describe("System-1 evaluation report", () => {
               ],
               pooledCommitCount: 1,
               pooledExactSetCount: 1,
+              pooledRowCommitCount: 1,
+              pooledRowExactSetCount: 1,
               pooledLowerBound: 0.05,
               worstFamilyLowerBound: 0.05,
             },
@@ -160,21 +194,25 @@ describe("System-1 evaluation report", () => {
       },
     });
 
-    expect(report).toContain("meets target on held-out");
-    expect(report).toContain("| train | 0.990 | certified | in-sample |");
-    expect(report).toContain("| calibration | 0.990 | certified | in-sample |");
+    expect(report).toContain("precision provenance / held-out target");
+    expect(report).toContain("| train | 0.990 | certified | out-of-fold |");
+    expect(report).toContain(
+      "| calibration | 0.990 | certified | out-of-fold |",
+    );
     expect(report).toContain("| test | 0.990 | certified | NO |");
-    expect(report).toContain(`${SYSTEM1_EVAL_REPORT_TEXT.IN_SAMPLE})`);
+    expect(report).toContain(`${SYSTEM1_EVAL_REPORT_TEXT.OUT_OF_FOLD})`);
     expect(report).toContain(
       SYSTEM1_EVAL_REPORT_TEXT.CERTIFICATION_MODES_HEADER,
     );
     expect(report).toContain("| leave-one-family-out | test | 0.990 |");
-    expect(report).toContain("| acme/repo | 1 | 100.00% | 5.00% |");
+    expect(report).toContain("| acme/repo | 1 | 1 | 100.00% | 5.00% | 1 |");
     expect(report).toContain(
-      "| diagnostic kind | threshold | pooled commits |",
+      "| target | diagnostic kind | threshold | pooled groups |",
     );
-    expect(report).toContain("| 0.990 | certified | 0.8 | 1 | 1 |");
-    expect(report).toContain("in-sample calibration rows");
+    expect(report).toContain(
+      "| 0.990 | certified | 0.8 | 1 | 1 | 5.00% | 1 | 1 |",
+    );
+    expect(report).toContain("in-sample calibration duplicate groups");
   });
 
   it("describes the selected calibration-only frozen policy", () => {
@@ -183,12 +221,17 @@ describe("System-1 evaluation report", () => {
       policyHash: "b".repeat(64),
       selectedCertificationMode:
         SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY,
-      splitMetrics: [splitMetrics("train", 1, 1)],
+      splitMetrics: [
+        splitMetrics("train", 1, 1),
+        splitMetrics("calibration", 1, 1),
+      ],
       sealedInputs: {},
     });
 
     expect(report).toContain("Calibration-only fits its isotonic map");
     expect(report).not.toContain("LOFO fits one isotonic map");
     expect(report).toContain("train | 0.990 | certified | n/a");
+    expect(report).toContain("| calibration | 0.990 | certified | in-sample |");
+    expect(report).toContain(`${SYSTEM1_EVAL_REPORT_TEXT.IN_SAMPLE})`);
   });
 });

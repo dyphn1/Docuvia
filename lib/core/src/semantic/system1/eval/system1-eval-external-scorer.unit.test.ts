@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   SYSTEM1_EVAL_ACTIONS,
+  SYSTEM1_EVAL_PROTOCOL_VERSION,
   SYSTEM1_EVAL_SCORER_STATUSES,
 } from "./system1-eval-constants.js";
 import { decideSystem1Request } from "./system1-eval-policy.js";
@@ -56,6 +57,7 @@ function stateRecord(requestId: string): System1DatasetRecord {
 function frozenPolicy(): System1EvaluationPolicy {
   return {
     schemaVersion: 1,
+    protocolVersion: SYSTEM1_EVAL_PROTOCOL_VERSION,
     calibrationMethod: "isotonic-pava-v1",
     scorerManifestHash: "a".repeat(64),
     calibrator: {

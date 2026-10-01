@@ -313,3 +313,57 @@ Both P2 runs report `byteIdentical: true`; each replay manifest contains identic
 - Ambiguity tags overlap; several held-out classes are absent or have fewer than 20 samples. Their percentages have wide uncertainty and do not support strong class-specific conclusions.
 - The prior routing checkpoint is an out-of-domain 13-label model. Its corrected-v2 row is useful as a compatibility floor, but it is not a trained semantic baseline.
 - The P2 policy remains an offline report/evaluation mechanism only. Nothing in this work changes production routing or writes graph edges.
+
+### v2 (independent-event training)
+
+B-4 retrains CUA-S1 on `system1-dataset-v2/` with each candidate treated as an independent event. Positive targets receive candidate BCE target 1. A candidate receives target 0 only when its ID appears in the label's `negativeTargetIds`; every other candidate has zero loss weight. This follows C-04: member, receiver, and argument-chain alternatives are masked when the oracle did not establish that they were wrong. Protocol control options are excluded from candidate loss.
+
+A separate request routing head predicts whether the evidence is sufficient to commit without LSP. For trusted, review-confirmed labels, its target is 1 exactly when the gold positive set is nonempty and every positive ID is present among the request candidates; trusted requests with an empty or incomplete gold set receive target 0. Untrusted rows are excluded from both losses. At inference, each candidate's raw P2 score is `sigmoid(candidate_logit) * sigmoid(routing_logit)`, and VERIFY_WITH_LSP receives `1 - sigmoid(routing_logit)`. UNKNOWN keeps its existing raw option score and is relevant to the P2 request policy only when there are no candidate options. The P2 response shape and evaluator are unchanged.
+
+The fit uses nested leave-one-family-out training: each of seven pool folds excludes its family, and the final model fits all seven train+calibration families. Fold-family assertions run before training and during OOF diagnostics. Temporal and test data are reserved for the frozen-policy evaluation. Those held-out results are regression checks because this corpus has been seen in earlier work.
+
+#### Independent-event masking counts
+
+Counts below cover candidate options in the trusted fit rows; protocol controls are excluded. Untrusted train rows are listed separately.
+
+| Split / family                                                | Positive candidates | Confirmed negatives | Masked candidates | Excluded untrusted requests |
+| ------------------------------------------------------------- | ------------------: | ------------------: | ----------------: | --------------------------: |
+| Train — dyphn1/Docuvia                                        |               3,608 |                 403 |             4,954 |                           0 |
+| Train — nestjs/nest                                           |               7,936 |               2,719 |            32,959 |                          59 |
+| Train — tirth8205/code-review-graph                           |                  77 |                   7 |                22 |                           0 |
+| Train — trailhq/Graft                                         |                 888 |                  46 |                21 |                           0 |
+| Train — typescript-language-server/typescript-language-server |                 921 |                 117 |               366 |                           0 |
+| **Train total**                                               |          **13,430** |           **3,292** |        **38,322** |                      **59** |
+| Calibration — 403errors/repomind                              |               1,190 |                 289 |                 0 |                           0 |
+| Calibration — Egonex-AI/Understand-Anything                   |               1,759 |                  12 |             7,024 |                           0 |
+| **Calibration total**                                         |           **2,949** |             **301** |         **7,024** |                       **0** |
+
+The routing target counts are 13,419 positive and 11 negative for train, and 2,949 positive and 17 negative for calibration. All 16,455 raw train+calibration labels have nonempty `positiveTargetIds`, while 59 train rows are excluded because their oracle is unresolved or unsupported. Therefore the 28 trusted negative routing examples are cases whose nonempty gold set is not fully represented by candidate options; this dataset has no trusted empty-gold examples for the routing head to learn from. The verified training manifest also records per-family fold membership, parameter/config hashes, candidate and routing losses, and the model artifact hashes.
+
+#### Training resource record
+
+The smoke run trained one fold for one epoch on 1,024 examples in 39.596 seconds, with peak process RSS 2,295,578,624 bytes and 63% minimum system free memory. Its time-based projection was 73.9 minutes for eight full models, so the optional candidate-only ablation was skipped. The full seven-fold plus final-model training completed in 4,286.088 seconds (71m 26s), with peak RSS 2,731,737,088 bytes, minimum free memory 55%, and 25,917,653 bytes across model weights. The final model is 3,239,695 bytes. Training used CPU, at most four intra-op threads and one inter-op thread, with one model trained at a time.
+
+#### OOF and held-out evaluation
+
+The unchanged P2 `system1-eval-protocol/v2` evaluator used nested LOFO calibration, duplicate-group accounting, and the sealed temporal/test accessors. The policy is uncertifiable at .990, .995, and .999. At the best pooled diagnostic threshold, `0.95238095`, 260/277 OOF duplicate groups are exact (93.86%) and 279/297 OOF rows are exact (93.94%); the pooled group CP lower bound is 90.94% and the worst-family bound is 85.46%. This diagnostic threshold does not meet a certification target. The TierA-rank-prior OOF reference is 6,718/6,718 exact groups with a 0.99955 CP lower bound and thresholds 1/1/1.
+
+| Split    | Requests / duplicate groups |                       CUA-S1 LSP avoidance | CUA-S1 exact-set precision | TierA-rank-prior avoidance | Avoidance change |
+| -------- | --------------------------: | -----------------------------------------: | -------------------------: | -------------------------: | ---------------: |
+| Temporal |               2,694 / 2,636 |   0 / 2,694 rows; 0 / 2,636 groups (0.00%) |         n/a (zero commits) |     2,113 / 2,694 (78.43%) |        -78.43 pp |
+| Test     |             12,422 / 11,155 | 0 / 12,422 rows; 0 / 11,155 groups (0.00%) |         n/a (zero commits) |    4,941 / 12,422 (39.78%) |        -39.78 pp |
+
+At all three precision targets, the frozen policy routes every request to VERIFY_WITH_LSP. Thus this retrain adds no certified avoidance over TierA-rank-prior. Temporal and test values are regression checks only because these held-out data were seen in earlier work.
+
+The OOF component diagnostics include raw candidate probabilities, composed candidate probabilities, route probabilities, and mask weights for every train/calibration request. Candidate top-1 is 14,538/16,368 (88.82%) over all eligible OOF candidate sets and 4,203/6,033 (69.67%) for multi-candidate sets; these are diagnostics, not gates. The pool contains 11 multi-positive requests, all with multiple candidates. OOF routing has AUROC 0.2117 and Brier 0.00170831 over 16,396 trusted rows (16,368 positive route targets, 28 negative); the low negative count makes AUROC especially unstable. Train and calibration routing AUROC/Brier are 0.4874/0.00081851 and 0.2391/0.00573729 respectively.
+
+The evaluator replay reports `byteIdentical: true` for all 13 correctness-bearing outputs. The frozen policy SHA-256 is `8ffa34defc017177b98f0fddbbc6a704416a6934ac8443ec6b8ba509351d67ef`. Machine-readable P2 results are under `evaluate/results/semantic-corpus/v1/system1-eval-v2/cua-s1-independent-event-v2/leave-one-family-out/`; the separate component diagnostics are in `domain-adapt-independent-v2/diagnostics-oof.json` outside the P2 protocol output.
+
+### Interpretation: the routing target was mis-specified
+
+The B-4 routing target measures **candidate coverage** (is the gold set inside the candidate set?), not **ambiguity**. On this pool every one of the 28 trusted routing negatives is a Tier A candidate miss, so the head had almost nothing to learn and its OOF AUROC (0.21) is below chance. The errors that actually block certification live elsewhere: 1,830 of 6,033 trusted multi-candidate OOF requests (30.3%) have a wrong candidate top-1, and every one of them carries routing target 1. Composing `candidate × route` therefore could not suppress those commits, and because CUA-S1 scores single-candidate requests too, it also gives up the single-candidate avoidance that Tier A certifies deterministically.
+
+Two consequences for the next iteration:
+
+1. A useful "is LSP needed?" target must be defined on what the commit would get wrong, for example whether the candidate head's committed set is exact, learned out-of-fold so the label reflects held-out behaviour. Under that target the 1,830 wrong top-1 requests become routing negatives.
+2. The scorer should defer to Tier A's deterministic rule on single-candidate requests and be certified only on the multi-candidate stratum (#555), so a learned model can only add avoidance on top of Tier A, never remove it.

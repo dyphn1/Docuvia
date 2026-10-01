@@ -2711,6 +2711,192 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-calibration.ts",
+      "contentHash": "b30e8db0ce855ee1f942c8d4ee137582565ff942",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-calibration.unit.test.ts",
+      "contentHash": "efa3e36bb65d46c733b3dfb9b47a6889a82c33f4",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-constants.ts",
+      "contentHash": "5f3ca609831c834bd16efe2a8b70e38d0bce01be",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-external-scorer.ts",
+      "contentHash": "279b228aa895f6ab8ea6f31ac116beec8004b437",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-external-scorer.unit.test.ts",
+      "contentHash": "f1e8ad336a48d88b8810d3d2a6c6d9e7c10c72a3",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-folds.ts",
+      "contentHash": "df85f36c4856cc50740e650d5f930c41ecbf110c",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-folds.unit.test.ts",
+      "contentHash": "9db5cffdb72909fb075c178d3ee662c5de374791",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-metrics.ts",
+      "contentHash": "80136ee9e6927e0fb6b1139d3d8bafe1e1b3effb",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-metrics.unit.test.ts",
+      "contentHash": "715d9bf89b014d82672b89e871fe32b4300f5e2a",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-policy.ts",
+      "contentHash": "90472ab8ff688240cc352693ebf2c731be2f21a8",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-policy.unit.test.ts",
+      "contentHash": "d9b2226059bbc428e793719e9da1042abd1c175d",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-report.ts",
+      "contentHash": "ef71a6875b930b92c08b359dbdd93c4211098411",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-report.unit.test.ts",
+      "contentHash": "ca929326d0b7b751153564445df4646811d41964",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-scorer.ts",
+      "contentHash": "87a68429d44541bdc59494fc9c3d95a9555cc886",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-scorer.unit.test.ts",
+      "contentHash": "bf705c84ccbaa01e3551775828ac83b42add766e",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/eval/system1-eval-types.ts",
+      "contentHash": "60c663bd8cc58983cf1d310bce8069ea567512cb",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-ambiguity-classifiers.ts",
+      "contentHash": "3e19617361b871db7fdc784838ad6c88553ec4ec",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-ambiguity-classifiers.unit.test.ts",
+      "contentHash": "0d1044872ca9ddb3891cd242615a320ccf5277e7",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-constants.ts",
+      "contentHash": "516fc7e9e86b0de0ae2b13873b21d7866be475d4",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-exclusions.ts",
+      "contentHash": "d05a8e19400828ccec134d9205a91f160fa61d62",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-exclusions.unit.test.ts",
+      "contentHash": "317e1d88df94046319948668d38af267cabe1046",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-labels.ts",
+      "contentHash": "d4fffa1caebef0d5768d6f823e95b784aa9d8a49",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-labels.unit.test.ts",
+      "contentHash": "af1625407a7c5d94a49041389e714a9a7f76a149",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-split-policy.ts",
+      "contentHash": "50b3a7691ab1acb8a9b920a65d82edbd482f17ee",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-state-builder.ts",
+      "contentHash": "5da6076add510c271c30ba10bba3a532624baf42",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-state-builder.unit.test.ts",
+      "contentHash": "8ee14f4b028d7a474e467fc7944b75e28455c0b0",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-syntax.ts",
+      "contentHash": "039e0a136bfca221a7dc5dadf7499a0f62e3602e",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-syntax.unit.test.ts",
+      "contentHash": "e7be327265e605f4ec3d46bac5576268409e15eb",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-tsconfig.ts",
+      "contentHash": "9913d9b78f9bb4bd89ad2ba135d7447a77bb6bc9",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-tsconfig.unit.test.ts",
+      "contentHash": "03825433e5674646eb92f994ea8155920d0f2208",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "lib/core/src/semantic/system1/system1-types.ts",
+      "contentHash": "355db07bf9aadae1d133babea602cdd04ba17eae",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
       "filePath": "lib/core/src/temp-files/temp-file-manager.ts",
       "contentHash": "c39dae08049c7b4c9add476e3276eda05f0a6392",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
@@ -4217,6 +4403,66 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
+      "filePath": "scripts/semantic-corpus/system1-eval.mts",
+      "contentHash": "9b2644e9b02917d6771420f6a8bc85f2f028fd48",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-export.mts",
+      "contentHash": "9c1b831be00861f12d2b6dd39e6c0cacc3d05a73",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/adapter.py",
+      "contentHash": "b122d7eb3ddc1ad6315270b8e0061fd8c01754e2",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/audit_encoding.py",
+      "contentHash": "9cb09a30959df84351c4fde0493a1054ebeea3d2",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/constants.py",
+      "contentHash": "d32e632586b6fe18e0b5c65d31b2754e5530e287",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/pool-diagnostics.mts",
+      "contentHash": "1c8b4883b06fcd8d5ffea61eeceee890757dc7ff",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/score.py",
+      "contentHash": "bd0968fe7fc1b441f618a1aac1828e949bb13fd0",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/self_test.py",
+      "contentHash": "a26abaa7d2ce5e853c3c281022a26cffc1ac1ca1",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/cua_s1/train.py",
+      "contentHash": "c10591814cf252c58dc5210cd8d919c096cf705b",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-syntax.mts",
+      "contentHash": "829df86a226b86dd8a25de3f071bb1e1a889c682",
+      "lastTierBProcessedAt": "2026-10-01 08:19:31",
+      "lastTierBCommitSha": "9b38a39624248954c4c33848919f518a916ebfb4"
+    },
+    {
       "filePath": "scripts/semantic-corpus/tier-a.mts",
       "contentHash": "f37df270aba08aa83106d14d8e0b49188586d2cf",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
@@ -4349,7 +4595,7 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     }
   ],
-  "lastIngestedSourceSha": "9f6efd104aa51538c845e3638f6d8fb2d212ec74",
+  "lastIngestedSourceSha": "9b38a39624248954c4c33848919f518a916ebfb4",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

@@ -50,6 +50,7 @@
   - [Semantic decision Phase 1 corpus](analysis/semantic-decision-phase1-corpus.md)
   - [Semantic decision Phase 1 collection](analysis/semantic-decision-phase1-collection.md)
   - [Semantic decision Phase 2 System-1 encoding](analysis/semantic-decision-phase2-system1-encoding.md)
+  - [Semantic decision Phase 2 System-1 offline evaluation](analysis/semantic-decision-phase2-system1-eval.md)
 
 ## 🔄 Workflows
 

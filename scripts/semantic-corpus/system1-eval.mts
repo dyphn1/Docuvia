@@ -185,13 +185,11 @@ function ensurePositiveInteger(value: string, optionName: string): number {
   return parsed;
 }
 
-function parseScorerTrainingManifest(value: string): System1ScorerTrainingManifest {
+function parseScorerTrainingManifest(
+  value: string,
+): System1ScorerTrainingManifest {
   const parsed: unknown = JSON.parse(value);
-  if (
-    parsed === null ||
-    typeof parsed !== "object" ||
-    Array.isArray(parsed)
-  )
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
     throw new Error("Scorer training manifest must be a JSON object.");
   const record = parsed as Record<string, unknown>;
   if (record.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING)
@@ -201,7 +199,9 @@ function parseScorerTrainingManifest(value: string): System1ScorerTrainingManife
       heldOutTrainingFamilies: [],
     };
   if (record.mode !== SYSTEM1_EVAL_TRAINING_MODES.FOLDED)
-    throw new Error("Scorer training manifest mode must be folded or no-training.");
+    throw new Error(
+      "Scorer training manifest mode must be folded or no-training.",
+    );
   const folds = record.foldTrainingFamilies;
   const heldOut = record.heldOutTrainingFamilies;
   if (
@@ -216,7 +216,9 @@ function parseScorerTrainingManifest(value: string): System1ScorerTrainingManife
     !Array.isArray(heldOut) ||
     heldOut.some((family) => typeof family !== "string")
   )
-    throw new Error("Folded scorer declaration requires family arrays per fold and held-out training.");
+    throw new Error(
+      "Folded scorer declaration requires family arrays per fold and held-out training.",
+    );
   return {
     mode: SYSTEM1_EVAL_TRAINING_MODES.FOLDED,
     foldTrainingFamilies: Object.fromEntries(
@@ -224,7 +226,7 @@ function parseScorerTrainingManifest(value: string): System1ScorerTrainingManife
         a < b ? -1 : a > b ? 1 : 0,
       ),
     ),
-    heldOutTrainingFamilies: [...heldOut as string[]].sort(),
+    heldOutTrainingFamilies: [...(heldOut as string[])].sort(),
   };
 }
 
@@ -285,7 +287,9 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
         "Batch timeout is configurable only for an external scorer.",
       );
     if (values.has(SYSTEM1_EVAL_CLI_FLAGS.SCORER_TRAINING_MANIFEST_JSON))
-      throw new Error("A scorer training manifest requires an external scorer command.");
+      throw new Error(
+        "A scorer training manifest requires an external scorer command.",
+      );
     if (
       selectedBaselineId !== null &&
       !Object.values(SYSTEM1_EVAL_BASELINE_IDS).includes(
@@ -345,7 +349,9 @@ function parseArguments(argv: readonly string[]): ParsedArguments {
     SYSTEM1_EVAL_CLI_FLAGS.SCORER_TRAINING_MANIFEST_JSON,
   );
   if (!trainingValue)
-    throw new Error("External scorers require --scorer-training-manifest-json.");
+    throw new Error(
+      "External scorers require --scorer-training-manifest-json.",
+    );
   const batchSize = ensurePositiveInteger(
     values.get(SYSTEM1_EVAL_CLI_FLAGS.BATCH_SIZE) ??
       String(SYSTEM1_EVAL_BATCH_SIZE),
@@ -556,11 +562,11 @@ async function scoreStates(
     const batch = states.slice(offset, offset + batchSize);
     if (external) {
       const batchResponses = await runSystem1ExternalScorerBatch(batch, {
-          command: external.command,
-          args: external.args,
-          batchTimeoutMs: external.batchTimeoutMs,
-          workingDirectory: ROOT_DIRECTORY,
-        });
+        command: external.command,
+        args: external.args,
+        batchTimeoutMs: external.batchTimeoutMs,
+        workingDirectory: ROOT_DIRECTORY,
+      });
       responses.push(
         ...batchResponses.map((response, index) =>
           includeOOFFold &&
@@ -668,14 +674,16 @@ function buildScorerManifest(
         ),
       )
     : {};
-  const trainingPlan = !external ||
-    external.scorerTrainingManifest.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING
-    ? createSystem1ScorerTrainingManifest(
-        SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING,
-        folds,
-        families,
-      )
-    : external.scorerTrainingManifest;
+  const trainingPlan =
+    !external ||
+    external.scorerTrainingManifest.mode ===
+      SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING
+      ? createSystem1ScorerTrainingManifest(
+          SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING,
+          folds,
+          families,
+        )
+      : external.scorerTrainingManifest;
   assertTrainingPlanMatchesFolds(trainingPlan, folds, families);
   return {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
@@ -696,22 +704,30 @@ function assertTrainingPlanMatchesFolds(
 ): void {
   if (trainingPlan.mode === SYSTEM1_EVAL_TRAINING_MODES.NO_TRAINING) return;
   const expectedFoldNames = folds.map(({ foldFamily }) => foldFamily).sort();
-  const declaredFoldNames = Object.keys(trainingPlan.foldTrainingFamilies).sort();
+  const declaredFoldNames = Object.keys(
+    trainingPlan.foldTrainingFamilies,
+  ).sort();
   if (
     expectedFoldNames.length !== declaredFoldNames.length ||
     expectedFoldNames.some((name, index) => name !== declaredFoldNames[index])
   )
-    throw new Error("Scorer manifest must declare every OOF fold exactly once.");
+    throw new Error(
+      "Scorer manifest must declare every OOF fold exactly once.",
+    );
   for (const fold of folds) {
     const declared = trainingPlan.foldTrainingFamilies[fold.foldFamily];
     const expected = [...fold.trainingFamilies].sort();
     if (
       !declared ||
       declared.length !== expected.length ||
-      [...declared].sort().some((family, index) => family !== expected[index]) ||
+      [...declared]
+        .sort()
+        .some((family, index) => family !== expected[index]) ||
       declared.includes(fold.foldFamily)
     )
-      throw new Error(`Scorer fold training set is invalid for ${fold.foldFamily}.`);
+      throw new Error(
+        `Scorer fold training set is invalid for ${fold.foldFamily}.`,
+      );
   }
   const expectedHeldOut = [...families].sort();
   if (
@@ -720,7 +736,9 @@ function assertTrainingPlanMatchesFolds(
       .sort()
       .some((family, index) => family !== expectedHeldOut[index])
   )
-    throw new Error("Held-out scorer must declare training on all pool families.");
+    throw new Error(
+      "Held-out scorer must declare training on all pool families.",
+    );
 }
 
 function writeText(
@@ -816,12 +834,13 @@ async function runOneEvaluation(
   };
 
   const training = await timeStage("readTrain", readTrainingEvaluationInput);
-  const calibration = await timeStage("readCalibration", readCalibrationFitInput);
+  const calibration = await timeStage(
+    "readCalibration",
+    readCalibrationFitInput,
+  );
   const pool = [training, calibration] as const;
   const families = [
-    ...new Set(
-      pool.flatMap((split) => split.states.map(system1RepoFamily)),
-    ),
+    ...new Set(pool.flatMap((split) => split.states.map(system1RepoFamily))),
   ].sort();
   const folds = buildSystem1RepoFamilyFolds(families);
   const manifest = buildScorerManifest(
@@ -873,12 +892,10 @@ async function runOneEvaluation(
   ] as const;
   const selected = policies.find(({ mode }) => mode === certificationMode);
   const comparison = policies.find(({ mode }) => mode !== certificationMode);
-  if (!selected || !comparison) throw new Error("Unknown policy certification mode.");
+  if (!selected || !comparison)
+    throw new Error("Unknown policy certification mode.");
   const frozenByMode = new Map<System1EvalCertificationMode, FrozenPolicy>();
-  frozenByMode.set(
-    selected.mode,
-    freezePolicy(directory, selected.policy),
-  );
+  frozenByMode.set(selected.mode, freezePolicy(directory, selected.policy));
   frozenByMode.set(
     comparison.mode,
     freezePolicy(
@@ -924,7 +941,8 @@ async function runOneEvaluation(
   const examplesBySplit = new Map<string, readonly System1EvalExample[]>();
   for (const split of splitData) {
     const responses = responsesBySplit.get(split.split);
-    if (!responses) throw new Error(`Missing scored responses for ${split.split}.`);
+    if (!responses)
+      throw new Error(`Missing scored responses for ${split.split}.`);
     examplesBySplit.set(split.split, examplesFor(split, responses));
     writeText(
       directory,
@@ -948,8 +966,11 @@ async function runOneEvaluation(
       return computeSystem1SplitMetrics(examples, policy);
     }),
   }));
-  const primaryMetrics = metricsByMode.find(({ mode }) => mode === certificationMode);
-  if (!primaryMetrics) throw new Error("Missing metrics for selected policy mode.");
+  const primaryMetrics = metricsByMode.find(
+    ({ mode }) => mode === certificationMode,
+  );
+  if (!primaryMetrics)
+    throw new Error("Missing metrics for selected policy mode.");
   const metricsDocument = {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
     mode: SYSTEM1_EVAL_FINAL_EVALUATION_MODE,
@@ -962,13 +983,15 @@ async function runOneEvaluation(
     repoFamilyBreakdown: primaryMetrics.splitMetrics.map((metrics) =>
       repoFamilyBreakdown(metrics),
     ),
-    certificationModes: metricsByMode.map(({ mode, policy, policyHash, splitMetrics }) => ({
-      mode,
-      policyHash,
-      precisionTargets: policy.precisionTargets,
-      splits: splitMetrics.map(stripSlices),
-      repoFamilyBreakdown: splitMetrics.map(repoFamilyBreakdown),
-    })),
+    certificationModes: metricsByMode.map(
+      ({ mode, policy, policyHash, splitMetrics }) => ({
+        mode,
+        policyHash,
+        precisionTargets: policy.precisionTargets,
+        splits: splitMetrics.map(stripSlices),
+        repoFamilyBreakdown: splitMetrics.map(repoFamilyBreakdown),
+      }),
+    ),
   };
   const slicesDocument = {
     schemaVersion: SYSTEM1_EVAL_OUTPUT_SCHEMA_VERSION,
@@ -1050,7 +1073,11 @@ async function evaluateScorer(
   batchTimeoutMs: number,
   certificationMode: System1EvalCertificationMode,
 ): Promise<void> {
-  const outputDirectory = path.join(OUTPUT_DIRECTORY, scorerId, certificationMode);
+  const outputDirectory = path.join(
+    OUTPUT_DIRECTORY,
+    scorerId,
+    certificationMode,
+  );
   rmSync(outputDirectory, { recursive: true, force: true });
   mkdirSync(outputDirectory, { recursive: true });
 

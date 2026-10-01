@@ -27,7 +27,23 @@ The response shape is:
 
 `scores` must contain every option ID exactly once and no other keys. Every value must be a finite number in `[0, 1]`. Scores are independent raw probabilities and are not required to sum to one. A wrong request ID, invalid status/score kind, missing/extra option, or invalid score normalizes to `status: "error"`. `timeout`, `error`, and `ood` have an empty score map. Every non-`ok` response takes the `VERIFY_WITH_LSP` action; it is never interpreted as a negative decision.
 
-The evaluator records a scorer manifest with scorer ID/version, SHA-256 for the weights/config (or the deterministic baseline configuration), evaluator and runtime versions, command/arguments, batch size, and timeout. The canonical manifest bytes are hashed, and that hash is embedded in the policy and metrics.
+The evaluator records a scorer manifest with scorer ID/version, SHA-256 for the weights/config (or the deterministic baseline configuration), evaluator and runtime versions, command/arguments, batch size, timeout, and the scorer's training-family declaration. The canonical manifest bytes are hashed, and that hash is embedded in both policies and metrics.
+
+For the default leave-one-family-out (LOFO) run, each pool response must add `foldFamily: "owner/repository"`. The evaluator checks that the response request ID matches its state row, each request appears exactly once, the fold family matches the request's normalized repository family, and the training manifest excludes that family. Learned scorer manifests use this shape:
+
+```json
+{
+  "mode": "folded",
+  "foldTrainingFamilies": {
+    "owner/repo-a": ["owner/repo-b", "owner/repo-c"],
+    "owner/repo-b": ["owner/repo-a", "owner/repo-c"],
+    "owner/repo-c": ["owner/repo-a", "owner/repo-b"]
+  },
+  "heldOutTrainingFamilies": ["owner/repo-a", "owner/repo-b", "owner/repo-c"]
+}
+```
+
+The actual fitting pool currently has seven families, so each LOFO training list must contain the other six and the held-out model must declare all seven. The family keys and lists are compared as sets after normalization; missing, duplicate, extra, or self-trained folds fail before calibration. An in-process reference baseline declares `{"mode":"no-training"}` and is valid for every fold. Temporal/test scoring uses the model trained on the full fitting pool; those rows do not carry an OOF fold assignment.
 
 Run all deterministic baselines through the same final-evaluation path:
 
@@ -44,12 +60,13 @@ pnpm run eval:semantic:system1-eval -- \
   --scorer-command python \
   --scorer-args-json '["path/to/scorer.py"]' \
   --scorer-runtime-json '{"python":"3.12.1","torch":"2.4.0"}' \
+  --scorer-training-manifest-json '{"mode":"folded","foldTrainingFamilies":{...},"heldOutTrainingFamilies":[...]}' \
   --weights-config path/to/weights-or-config.json \
   --batch-size 64 \
   --batch-timeout-ms 30000
 ```
 
-The command's arguments are passed directly; shell expansion is not performed. `--scorer-runtime-json` is a nonempty JSON object of scorer runtime/package version strings and is required for external scorers; these appear with a `scorer.` prefix next to the evaluator's Node, V8, TypeScript, and pnpm versions in the manifest. Omitting `--weights-config` records the SHA-256 of a fixed no-config sentinel. The external command is responsible for reporting deterministic scores for the given state records and its declared version/config.
+The command's arguments are passed directly; shell expansion is not performed. `--scorer-runtime-json` is a nonempty JSON object of scorer runtime/package version strings and is required for external scorers; these appear with a `scorer.` prefix next to the evaluator's Node, V8, TypeScript, and pnpm versions in the manifest. `--scorer-training-manifest-json` is required and must declare either `{"mode":"no-training"}` or the complete folded plan above. Omitting `--weights-config` records the SHA-256 of a fixed no-config sentinel. The external command is responsible for reporting deterministic scores for the given state records and its declared version/config/training plan.
 
 ## Baseline scorers
 
@@ -57,15 +74,23 @@ The command's arguments are passed directly; shell expansion is not performed. `
 - **`single-rank0`** gives a rank-0 option `0.99` only when exactly one rank-0 candidate exists; other candidates score `0.01`. With candidates, controls rank VERIFY above UNKNOWN: `0.01`/`0.20` when rank 0 is unique, otherwise `0.10`/`0.20`. With no candidate options, `UNKNOWN`/`VERIFY_WITH_LSP` score `0.80`/`0.20`.
 - **`always-verify`** scores candidate options and `UNKNOWN` as `0`, and `VERIFY_WITH_LSP` as `1`.
 
-Each scorer is run twice. Correctness-bearing files are SHA-256 hashed on both runs and compared byte-for-byte; timing is written separately and excluded from the hash set. Hash sets and the equality result are recorded in `replay-hashes.json`.
+The default certification mode is LOFO; pass `--certification-mode calibration-only` to select the legacy comparison output as the primary `policy.json`. Each mode computes and reports both certification policies so the report always compares calibration-only and LOFO thresholds. Each scorer/mode is run twice. Correctness-bearing files are SHA-256 hashed on both runs and compared byte-for-byte; timing is written separately and excluded from the hash set. Hash sets and the equality result are recorded in `replay-hashes.json`.
 
 ## Calibration and frozen request policy
 
-Only trusted, non-candidate-miss `calibration` candidates with an `ok` scorer response fit the calibration map. The deterministic calibrator is pool-adjacent-violators isotonic regression (`isotonic-pava-v1`): candidate raw scores are grouped by equal value, ordered ascending, and adjacent blocks are pooled until empirical positive rates are nondecreasing. If the calibration set has no positive or no negative candidate outcomes, the map is marked unfitted and raw scores pass through unchanged.
+The fitting pool is exactly `train + calibration`; train examples may inform LOFO thresholds but are never used by the legacy calibration-only threshold rule. Temporal and test are held-out evaluation splits and never enter a calibrator, threshold scan, or family fold. The loader exposes only train/calibration paths to policy fitting. In the pinned v1 corpus, evaluation-only license rows appear in both temporal and test; both remain sealed and are kept outside the fitting pool.
 
-Policy fitting accepts calibration examples only and throws if any train, temporal, or test example is passed to it. For each request-level exact-set precision target (`0.990`, `0.995`, `0.999`), the evaluator considers only calibrated candidate scores observed in calibration, from least strict (lowest observed numeric threshold) to most strict. It does not invent a zero threshold below observed score support. At each threshold it counts trusted calibration requests that accept at least one candidate. A request is correct only if the unique accepted `targetId` set exactly equals the full positive target set. A committed candidate-miss request is therefore a calibration failure. The threshold is certified only when the one-sided 95% Clopper–Pearson lower bound on this exact-set precision reaches the target. With no candidate threshold satisfying that bound, the target is `uncertifiable` and its policy action is `VERIFY_WITH_LSP`.
+The deterministic calibrator is pool-adjacent-violators isotonic regression (`isotonic-pava-v1`): candidate raw scores are grouped by equal value, ordered ascending, and adjacent blocks are pooled until empirical positive rates are nondecreasing. A map without both positive and negative candidate observations is marked unfitted and raw scores pass through unchanged. Only trusted, non-candidate-miss rows with an `ok` response contribute candidate outcomes to a map.
 
-Before reading temporal or test state/labels, the evaluator writes `policy.json` and `policy.sha256`, then re-reads and verifies the policy bytes. `policy.json` is not rewritten afterward. This frozen hash is required by the held-out accessors and is recorded in metrics and the report.
+For the default LOFO policy, families are normalized to `owner/repository` and sorted deterministically. One fold is created per family. The fold calibrator is fit on trusted train+calibration candidate outcomes from the other families, then scores only requests from its excluded family. The evaluator verifies that every pool row has exactly one OOF response with the matching `foldFamily` and that a learned model's declared fold training set is exactly the other families. The final policy calibrator is then refit on all seven pool families.
+
+For each request-level exact-set precision target (`0.990`, `0.995`, `0.999`), LOFO considers observed calibrated OOF candidate scores from least strict to most strict, grouping tied scores. A committed request is exact only when its accepted unique `targetId` set equals the full positive target set. Candidate-miss commits count as false-safe failures. A threshold certifies only when (a) pooled OOF one-sided 95% Clopper–Pearson lower bound reaches the target and (b) every family with at least `MIN_FAMILY_COMMITS = 200` commits has point exact-set precision at or above the target. Families below 200 commits are reported but do not gate condition (b); their commits and outcomes remain in the pooled bound. Per-family CP bounds and the worst family bound are diagnostics, not additional gates. If no threshold passes both gates, the target is `uncertifiable` and the policy action is `VERIFY_WITH_LSP`.
+
+For compatibility with the original P2 metrics schema, `calibrationCommitCount`, `calibrationExactSetCount`, and `lowerBound` on an LOFO threshold record describe the pooled OOF rows shown in its family table. Each table has a `diagnosticKind`: `certified` is the selected certified threshold; for an uncertifiable target, `best-pooled-lower-bound` is the threshold with the highest pooled CP lower bound (ties prefer more commits), `strictest` is the maximum-bound threshold with the fewest commits (remaining ties prefer the higher threshold), and `least-strict` is the lowest observed threshold retained as an explicitly labelled extra. Uncertifiable targets show all three diagnostic tables, with the best-pooled table as the primary table; none of these diagnostics changes the policy action.
+
+`calibration-only` remains available as a comparison: it fits its isotonic map and certifies its threshold on in-sample calibration rows alone using the pooled Clopper–Pearson rule. LOFO is the default. The report includes both mode thresholds, held-out results, and LOFO's per-family OOF table for every target.
+
+Before reading temporal or test state/labels, the evaluator writes and verifies `policy.json` plus its SHA-256 sidecar and also writes/verifies the comparison policy and hash. The selected mode's policy is `policy.json`; the other mode is in `comparison-policy.json`. Both hashes are frozen before either sealed split is opened, and neither policy file is rewritten afterward.
 
 The calibrator uses a conservative floor map: a raw score maps to the last isotonic block whose minimum score is at most that raw score. Scores in gaps between observed blocks use the lower block, and scores below observed support use the lowest block. This avoids rounding an unseen gap upward into a more confident calibration block.
 
@@ -79,17 +104,18 @@ The request policy is:
 
 ## Sealed access and outputs
 
-`pnpm run eval:semantic:system1-eval` invokes the script with explicit `--final-evaluation` mode. That mode reads and scores calibration, freezes the policy, then evaluates train, temporal, and test. Train is never read by policy fitting. Temporal and test each have a separate accessor: after checking the persisted policy hash, it reads the corresponding P1 seal manifest, hashes the raw state and labels bytes, checks both SHA-256 values and row counts against the seal, and only then parses those files. A seal mismatch aborts evaluation. No held-out rows enter calibration or threshold selection.
+`pnpm run eval:semantic:system1-eval` invokes the script with explicit `--final-evaluation` mode. It reads and scores train and calibration first, constructs both policies, freezes their hashes, then evaluates temporal and test. Temporal and test each have a separate accessor: after checking both persisted policy hashes, it reads the corresponding P1 seal manifest, hashes the raw state and labels bytes, checks both SHA-256 values and row counts against the seal, and only then parses those files. A seal mismatch aborts evaluation. No held-out rows enter calibration or threshold selection.
 
-For each scorer the output is under `evaluate/results/semantic-corpus/v1/system1-eval/<scorerId>/` (gitignored):
+For each scorer and selected certification mode the output is under `evaluate/results/semantic-corpus/v1/system1-eval/<scorerId>/<mode>/` (gitignored):
 
 - `scorer-manifest.json` and `scorer-manifest.sha256`;
 - frozen `policy.json` and `policy.sha256`;
+- frozen comparison `comparison-policy.json` and `comparison-policy.sha256`;
 - one state-only response JSONL per split;
-- `metrics.json`, label-aware per-split metrics and verified seal references;
+- `metrics.json`, label-aware per-split metrics and verified seal references for the selected policy plus both certification modes;
 - a per-split `repoFamilyBreakdown` in `metrics.json`, with trusted commit rate and exact-set precision (including intervals) for each family and target;
 - `slices.json`, per-slice metrics;
-- `report.md`, comparison rows for the precision targets and slice tables;
+- `report.md`, calibration-only vs LOFO threshold/held-out comparison rows, LOFO per-family OOF tables, and slice tables;
 - `replay-hashes.json`, per-file hashes for both runs; and
 - `timing.json`, which is deliberately outside the deterministic hash set.
 
@@ -111,13 +137,19 @@ Labels are trusted only when review status is `confirmed`, oracle status is `res
 
 The report does not use aggregate F1 as a headline. `metrics.json` reports denominators and intervals alongside rates so small slices and zero-denominator metrics remain explicit.
 
-Calibration-split ECE is an in-sample diagnostic because the isotonic map was fit on that split; the headline report marks this explicitly. Temporal/test ECE are held-out diagnostics and should be used to judge generalization. Held-out headline rows say `NO` when either the exact-set precision point estimate or its Wilson lower bound is below the certified target; calibration rows are marked `in-sample` and do not claim held-out success.
+Calibration-split ECE is an in-sample diagnostic because calibration rows contribute to the final calibrator refit in LOFO and fit the map in calibration-only mode. Train ECE is also marked in-sample for LOFO because the final map is refit on train+calibration; train is not labelled in-sample for calibration-only mode. Temporal/test ECE are held-out diagnostics and should be used to judge generalization. Held-out headline rows say `NO` when either the exact-set precision point estimate or its Wilson lower bound is below the certified target; in-sample rows do not claim held-out success.
 
 ## Limitations
 
 - Calibration contains only two repository families: `Egonex-AI/Understand-Anything` (1,759 requests) and `403errors/repomind` (1,207 requests). All splits are repo-disjoint, so calibration and held-out behavior can vary by repository family; `metrics.json` exposes exact-set precision and commit rate by family for every split.
-- Clopper–Pearson treats requests as independent, but requests are clustered by repository. With only two calibration repository families, the effective number of independent clusters is two, so the request-level confidence bound can overstate cross-repository certainty.
-- The least-strict certified threshold is selected on the same calibration split used to fit the isotonic map. That reuse makes the Clopper–Pearson certification bound optimistic even though the held-out rows remain sealed from fitting.
+- LOFO raises the fitting/certification pool to seven repository families, but seven clusters are still few. Clopper–Pearson treats requests as independent even though requests are clustered by repository, so its pooled bound can still overstate cross-repository certainty. Per-family point precision gates reduce but do not remove that limitation.
+- `MIN_FAMILY_COMMITS = 200` is a deterministic support cutoff. Families below it are visible and included in pooled certification but cannot fail the family point-precision gate; the choice trades gate stability for the risk of leaving small families unchecked.
+- The least-strict certified threshold is selected on the same OOF scores used to calculate the LOFO certification bounds. This selection reuse makes the reported bound optimistic, despite the request-family folds. The final calibrator is refit on the full pool, so its score map can differ from the fold maps used for certification.
+- For the tierA rank prior, LOFO threshold `1` commits only single-candidate rank-0/1 requests. Its precision therefore reflects candidate-set completeness, not meaningful discrimination among competing candidates.
+- OOF calibrated values are fold-specific. For coarse scorers, a held-out family's quality can affect the fold map inversely with its score distribution, so the pooled threshold scan partly selects families as well as score cutoffs.
+- Commit-everything diagnostic rows are not meaningful for scorers such as `always-verify`; they are retained only as explicitly labelled diagnostics and do not imply that the scorer would commit under its certified policy.
+- For external learned scorers, the evaluator verifies the declared family plan and the `foldFamily` response metadata, but cannot independently prove which data the supplied weights actually used for training. That part of the protocol is a scorer-manifest attestation.
+- The legacy calibration-only comparison has only two repository families and retains the stronger clustering limitation of the original P2 rule.
 - P1 missing-evidence status is available from syntax and Tier A source reads and can be a strong scorer feature. Missingness differs between candidate ranks/gold status in the corpus, so this is a potential dataset shortcut and should be examined by the missing-evidence slices before interpreting generalization.
 
 ## Slice definitions
@@ -126,7 +158,7 @@ Slices are multi-label where appropriate and retain not-detected outcomes:
 
 - `ambiguity-class`: every syntax/Tier-A class tag present on a P1 state record;
 - `not-detected-class`: every P1 class detector recorded as not detected;
-- `repo-family`: Git host plus repository owner (for example, `github.com/acme`);
+- `repo-family`: normalized owner/repository (for example, `acme/widget`), matching the LOFO cluster key;
 - `candidate-set-size`: `0`, `1`, `2-4`, `5-8`, `9-16`, `17-32`, or `33+` candidates; and
 - `missing-evidence`: `has-missing-evidence` when any candidate has P1 `evidenceStatus: "missing"`, otherwise `no-missing-evidence`.
 

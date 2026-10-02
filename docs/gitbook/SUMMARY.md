@@ -49,6 +49,11 @@
   - [Semantic Decision Phase 0 Contract](analysis/semantic-decision-phase0-contract.md)
   - [Semantic decision Phase 1 corpus](analysis/semantic-decision-phase1-corpus.md)
   - [Semantic decision Phase 1 collection](analysis/semantic-decision-phase1-collection.md)
+  - [Semantic decision Phase 2 System-1 encoding](analysis/semantic-decision-phase2-system1-encoding.md)
+  - [Semantic decision Phase 2 System-1 offline evaluation](analysis/semantic-decision-phase2-system1-eval.md)
+  - [Semantic decision Phase 3 CUA-S1 option scoring](analysis/semantic-decision-phase2-system1-cua-s1.md)
+  - [Semantic decision Phase 4 Laya capability baseline and resource envelope](analysis/semantic-decision-phase2-system1-laya.md)
+  - [Semantic decision System-1 deterministic query routing](analysis/semantic-decision-phase2-system1-query-routing.md)
 
 ## 🔄 Workflows
 

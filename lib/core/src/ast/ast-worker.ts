@@ -2,7 +2,6 @@ import { parentPort } from "worker_threads";
 import { Parser, Language, type Node, type Tree } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
-import { createHash } from "crypto";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
 import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import {
@@ -10,30 +9,23 @@ import {
   loadDefaultRegistry,
 } from "@workspace/ast-core";
 import {
-  ENCODING_HEX,
-  HASH_ALGO_SHA256,
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
   type AstExportKind,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
-
-/**
- * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
- * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
- * produce a one-line JSONL diff for that symbol without touching its untouched siblings' hashes.
- *
- * The algorithm/digest constants come from `@workspace/contracts` (issue #211) so the worker's
- * hashes can never drift from the main thread's (`ast-worker-pool.ts`, `file-discovery.service.ts`)
- * or `lib/schema`'s. Package-name imports resolve through node_modules and work fine inside a
- * `worker_threads` Worker (as the existing contracts/ast-core imports above prove) — only bare
- * relative `.js`-to-`.ts` sibling imports needed a tsx resolve hook that doesn't propagate into
- * workers, and even that limitation is moot in dist/ where a fully-compiled worker ships.
- */
-function symbolContentHash(node: Node): string {
-  return createHash(HASH_ALGO_SHA256).update(node.text).digest(ENCODING_HEX);
-}
+import {
+  collectClassNodes,
+  collectFunctionNodes,
+  collectVariableNodes,
+  findEnclosingContainerName,
+  resolveCallableName,
+} from "./tier-a-declaration-index.js";
+export {
+  collectFunctionNodes,
+  resolveCallableName,
+} from "./tier-a-declaration-index.js";
 
 /**
  * Worker threads share the host process's stdout/stderr by default, so `console.*` here would
@@ -186,81 +178,6 @@ function extractFallbackImports(code: string): ImportDescriptor[] {
   return fallbackImports;
 }
 
-function getNodeName(node: Node): string {
-  return (
-    node.childForFieldName("name")?.text ||
-    node.descendantsOfType("identifier")[0]?.text ||
-    AstMessages.ANONYMOUS_NAME
-  );
-}
-
-/**
- * For anonymous callables (arrow_function/function_expression with no own name), resolve
- * the binding name from the nearest enclosing variable_declarator / assignment_expression /
- * pair (object property) / public_field_definition (class field arrow method). Returns
- * "anonymous" for truly unbound cases (IIFEs, bare callback arguments).
- *
- * Named nodes (function_declaration, method_definition) already have a "name" field, so the
- * fast path below returns the same result getNodeName() would — safe to use uniformly for
- * every function-kind node, not just anonymous ones.
- *
- * GRPH-006 follow-up: C/C++'s `function_definition` has no direct "name" field at all — the name
- * sits two levels down, inside `function_declarator`'s own "declarator" field (`identifier` for a
- * free function, `field_identifier` for an inline method, `qualified_identifier` -- scope::name --
- * for an out-of-line one). Verified this was silently returning "anonymous" for every C/C++
- * function before this fix (never previously observed for C++ specifically because
- * `cppConfig`'s functions query didn't even extract methods until the GRPH-006 follow-up fix to
- * `cpp.ts` — this pass surfaced both bugs together).
- */
-/** GRPH-006 follow-up: resolves a C/C++ `function_definition`'s name from its declarator-nested
- *  shape (see `resolveCallableName`'s own doc comment) -- `identifier`/`field_identifier` return
- *  their own text directly, `qualified_identifier` (an out-of-line `Class::method`) returns just
- *  its `name` field, not the qualifier. Extracted purely to keep `resolveCallableName`'s own
- *  complexity within budget. */
-function resolveDeclaratorNestedName(node: Node): string | undefined {
-  const declaratorName = node
-    .childForFieldName("declarator")
-    ?.childForFieldName("declarator");
-  if (!declaratorName) return undefined;
-  return declaratorName.type === AstNodeTypes.QUALIFIED_IDENTIFIER
-    ? (declaratorName.childForFieldName("name")?.text ??
-        AstMessages.ANONYMOUS_NAME)
-    : declaratorName.text;
-}
-
-export function resolveCallableName(node: Node): string {
-  const ownName = node.childForFieldName("name");
-  if (ownName) return ownName.text;
-
-  const declaratorName = resolveDeclaratorNestedName(node);
-  if (declaratorName) return declaratorName;
-
-  const NAME_BEARING_PARENTS = new Set<string>([
-    AstNodeTypes.VARIABLE_DECLARATOR,
-    AstNodeTypes.ASSIGNMENT_EXPRESSION,
-    AstNodeTypes.PAIR,
-    AstNodeTypes.PUBLIC_FIELD_DEFINITION,
-  ]);
-  let current = node.parent;
-  while (current) {
-    // An "arguments" ancestor means this callable is itself passed as a call argument
-    // (e.g. arr.map(x => x + 1)) rather than being the direct value of a declarator/
-    // assignment/property/field. Stop here — climbing further would misattribute the
-    // name of the outer binding the call happens to live inside (e.g. `results` in
-    // `const results = arr.map(x => x + 1)`) to this unrelated, unbound callback.
-    if (current.type === AstNodeTypes.ARGUMENTS) break;
-    if (NAME_BEARING_PARENTS.has(current.type)) {
-      const nameNode =
-        current.childForFieldName("name") ||
-        current.childForFieldName("key") ||
-        current.childForFieldName("left");
-      if (nameNode) return nameNode.text;
-    }
-    current = current.parent;
-  }
-  return AstMessages.ANONYMOUS_NAME;
-}
-
 /**
  * Normalizes the many capture shapes the per-language `calls` queries produce into "the
  * callee expression":
@@ -402,182 +319,8 @@ function getCallSitePosition(node: Node): { row: number; column: number } {
   return (calleeIdentifier ?? node).startPosition;
 }
 
-/** Walks up from `node` to find the nearest ancestor present in `containerIds` (function/class nodes already extracted for this file), returning its name, or "anonymous" for top-level (file-scoped) call/implements/extends sites. */
-function findEnclosingContainerName(
-  node: Node,
-  containerIds: Set<number>,
-): string {
-  let current = node.parent;
-  while (current) {
-    if (containerIds.has(current.id)) {
-      return getNodeName(current);
-    }
-    current = current.parent;
-  }
-  return AstMessages.ANONYMOUS_NAME;
-}
-
-/** Resolves the base type name whether `node` is itself a `type_identifier` or wraps one one level
- *  deep -- Rust generic impls (`impl<T> Wrapper<T>` -- field is `generic_type`) and Go pointer
- *  receivers (`*Receiver` -- field is `pointer_type`) both need the unwrap; a plain `type_identifier`
- *  field (the common case) is returned as-is. */
-function firstTypeIdentifierText(node: Node): string | undefined {
-  return node.type === AstNodeTypes.TYPE_IDENTIFIER
-    ? node.text
-    : node.descendantsOfType(AstNodeTypes.TYPE_IDENTIFIER)[0]?.text;
-}
-
-/** GRPH-006 follow-up (Rust): a method's lexical parent is `impl_item`, which `rustConfig.classes`
- *  deliberately excludes (so `findEnclosingContainerName` over `classIds` always returns
- *  "anonymous" for a Rust method) -- the target struct/enum's name lives on the impl block's own
- *  `type` field instead (the Self type, not `trait` -- `impl Trait for Type` still qualifies by
- *  `Type`, the concrete struct, not whichever trait it happens to implement). */
-function resolveRustImplContainerName(node: Node): string | undefined {
-  let current = node.parent;
-  while (current) {
-    if (current.type === AstNodeTypes.IMPL_ITEM) {
-      const typeField = current.childForFieldName("type");
-      return typeField ? firstTypeIdentifierText(typeField) : undefined;
-    }
-    current = current.parent;
-  }
-  return undefined;
-}
-
-/** GRPH-006 follow-up (Go): a method's receiver type is referenced through its own `receiver:`
- *  field, never as an AST ancestor (`type_declaration` never encloses a `method_declaration`), so
- *  `findEnclosingContainerName` over `classIds` always returns "anonymous" here too -- resolve the
- *  receiver parameter's type directly instead. */
-function resolveGoReceiverContainerName(node: Node): string | undefined {
-  const receiver = node.childForFieldName("receiver");
-  const paramType = receiver?.namedChild(0)?.childForFieldName("type");
-  return paramType ? firstTypeIdentifierText(paramType) : undefined;
-}
-
-/** GRPH-006 follow-up (C++): an out-of-line `Ret Class::method(){}` definition is never lexically
- *  nested inside its class (inline methods already resolve via the generic ancestor walk once
- *  they're extracted at all -- see `cpp.ts`'s functions-query fix), so its declarator is a
- *  `qualified_identifier` carrying the class name in its own `scope` field instead. Recurses one
- *  level for a nested qualifier (`A::B::method`), taking the innermost (`B`) as the immediate
- *  container -- this scheme only ever tracks one level of containment, matching every other
- *  language here. */
-function resolveCppQualifiedContainerName(node: Node): string | undefined {
-  const declarator = node.childForFieldName("declarator");
-  const inner = declarator?.childForFieldName("declarator");
-  if (inner?.type !== AstNodeTypes.QUALIFIED_IDENTIFIER) return undefined;
-  const scope = inner.childForFieldName("scope");
-  if (!scope) return undefined;
-  return scope.type === AstNodeTypes.QUALIFIED_IDENTIFIER
-    ? scope.childForFieldName("name")?.text
-    : scope.text;
-}
-
-/** GRPH-006 follow-up: for a function whose enclosing container the generic ancestor walk
- *  couldn't find (Rust/Go/C++'s deferred gaps -- see the ADR), try each language-specific
- *  resolver in turn. Mutually exclusive by construction (each checks for a node shape only its own
- *  grammar produces -- e.g. only Rust ever has an `impl_item` ancestor), so no explicit language
- *  tag is needed; a language not covered here (or a function with no enclosing container at all)
- *  falls through to `undefined`, unchanged from before this follow-up. */
-function resolveDeferredLanguageContainerName(node: Node): string | undefined {
-  return (
-    resolveRustImplContainerName(node) ??
-    resolveGoReceiverContainerName(node) ??
-    resolveCppQualifiedContainerName(node)
-  );
-}
-
 /** Shape of a fully-populated `AstParseResponse["data"]` (i.e. the non-optional variant produced once parsing has actually run). */
 type AstExtractionResult = NonNullable<AstParseResponse["data"]>;
-
-/** Extracts class declaration nodes via the provider and appends their summaries to `classes`. Returns the raw nodes so callers can derive id sets for edge extraction. */
-function collectClassNodes(
-  tree: Tree,
-  provider: LanguageProvider,
-  classes: AstExtractionResult["classes"],
-): Node[] {
-  const classNodes = provider.extractClasses(tree.rootNode);
-  for (const node of classNodes) {
-    classes.push({
-      name: getNodeName(node),
-      startLine: node.startPosition.row,
-      endLine: node.endPosition.row,
-      methods: [],
-      contentHash: symbolContentHash(node),
-    });
-  }
-  return classNodes;
-}
-
-/**
- * Extracts exported variable declarators via the provider and appends their summaries to
- * `variables` (issue #192 gap 1: `export const X = ...` must be an indexable symbol so
- * `impact <X>` resolves instead of "No matching node"). The query only matches exported
- * `lexical_declaration` declarators with plain identifier names; this collector additionally
- * skips function-valued initializers (arrow_function/function_expression) since those are
- * already indexed as functions by the `functions` query + resolveCallableName path.
- */
-const FUNCTION_VALUE_NODE_TYPES = new Set<string>([
-  "arrow_function",
-  "function_expression",
-]);
-
-function collectVariableNodes(
-  tree: Tree,
-  provider: LanguageProvider,
-  variables: NonNullable<AstExtractionResult["variables"]>,
-): Node[] {
-  const variableNodes = provider.extractVariables?.(tree.rootNode) ?? [];
-  for (const node of variableNodes) {
-    const value = node.childForFieldName("value");
-    if (value && FUNCTION_VALUE_NODE_TYPES.has(value.type)) continue;
-    variables.push({
-      name: getNodeName(node),
-      startLine: node.startPosition.row,
-      endLine: node.endPosition.row,
-      contentHash: symbolContentHash(node),
-    });
-  }
-  return variableNodes;
-}
-
-/** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction.
- *
- *  `classNodes` (GRPH-006) lets each function's enclosing class/struct be resolved via the same
- *  `findEnclosingContainerName` ancestor walk `collectCallEdges`/`collectImplementsEdges`/
- *  `collectExtendsEdges` already use -- `containerName` is what qualifies this symbol's `node_key`
- *  down the line (`persist-ast-graph.ts`'s `buildQualifiedBaseKey`). `findEnclosingContainerName`'s
- *  "nothing found" sentinel is the literal string `AstMessages.ANONYMOUS_NAME` ("anonymous") --
- *  that means "top-level, outside any class" here, a different meaning than its existing use in
- *  `collectCallEdges` ("outside any function"), so it must be converted to `undefined` rather than
- *  stored as-is (storing it as-is would qualify every top-level function as `file#anonymous.name`).
- *
- *  When the ancestor walk finds nothing, `resolveDeferredLanguageContainerName` (GRPH-006
- *  follow-up) tries Rust/Go/C++'s own non-lexical containment shapes before giving up to
- *  `undefined` -- see that function's own doc comment for why each needs a different mechanism. */
-export function collectFunctionNodes(
-  tree: Tree,
-  provider: LanguageProvider,
-  functions: AstExtractionResult["functions"],
-  classNodes: Node[],
-): Node[] {
-  const classIds = new Set(classNodes.map((n) => n.id));
-  const functionNodes = provider.extractFunctions(tree.rootNode);
-  for (const node of functionNodes) {
-    const container = findEnclosingContainerName(node, classIds);
-    const containerName =
-      container === AstMessages.ANONYMOUS_NAME
-        ? resolveDeferredLanguageContainerName(node)
-        : container;
-    functions.push({
-      name: resolveCallableName(node),
-      startLine: node.startPosition.row,
-      endLine: node.endPosition.row,
-      contentHash: symbolContentHash(node),
-      containerName,
-    });
-  }
-  return functionNodes;
-}
 
 /** Extracts call-site edges via the provider, attributing each call to its enclosing function (or "anonymous"), up to the 1000-call circuit breaker. */
 function collectCallEdges(

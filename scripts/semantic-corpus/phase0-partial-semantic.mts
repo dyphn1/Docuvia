@@ -3,10 +3,14 @@
  * Results are measurement evidence, never deterministic call-resolution proof.
  */
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import ts from "typescript";
+import { MAX_FILE_SIZE_BYTES } from "../../lib/contracts/src/index.js";
+import {
+  inspectSnapshotPath,
+  readSnapshotSourceFile,
+} from "./phase0-snapshot-safety.mts";
 
 const UTF8 = "utf8";
 const HASH_SEPARATOR = "\0";
@@ -26,7 +30,7 @@ export type PartialSemanticStatus =
 
 export interface PartialSemanticCallSite {
   readonly filePath: string | null;
-  /** 0-based Tree-sitter row and UTF-8 byte column. */
+  /** 0-based worker source row and UTF-16 code-unit column. */
   readonly line: number | null;
   readonly column: number | null;
   /** TypeScript UTF-16 code-unit offset at the callee/member property. */
@@ -39,10 +43,12 @@ export interface PartialSemanticCallSite {
 
 export interface PartialSemanticDefinitionRef {
   readonly filePath: string;
-  readonly startLine: number;
-  readonly startColumn: number;
-  readonly endLine: number;
-  readonly endColumn: number;
+  readonly startLine: number | null;
+  readonly startColumn: number | null;
+  readonly endLine: number | null;
+  readonly endColumn: number | null;
+  /** Original TypeScript span, retained even when source text is unavailable. */
+  readonly textSpan: { readonly start: number; readonly length: number };
   readonly symbolName: string | null;
   readonly containerName: string | null;
   readonly external: boolean;
@@ -118,12 +124,6 @@ function isWithin(directory: string, filePath: string): boolean {
   );
 }
 
-function isSnapshotPath(root: string, filePath: string): boolean {
-  if (relativePath(root, filePath) === null) return false;
-  const realpath = ts.sys.realpath?.(filePath);
-  return realpath === undefined || relativePath(root, realpath) !== null;
-}
-
 function stableConfigValue(value: unknown, root: string): unknown {
   if (Array.isArray(value))
     return value.map((entry) => stableConfigValue(entry, root));
@@ -160,33 +160,36 @@ function normalizeExternalPath(filePath: string): string {
 
 function definitionRef(
   root: string,
-  snapshotFiles: ReadonlySet<string>,
+  requestedRoot: string,
+  verifiedSnapshotFiles: ReadonlyMap<string, string>,
   program: ts.Program,
   definition: ts.DefinitionInfo,
-): PartialSemanticDefinitionRef {
+): PartialSemanticDefinitionRef | null {
   const absolute = path.resolve(definition.fileName);
-  const relative = relativePath(root, absolute);
-  const isInSnapshot = relative !== null && snapshotFiles.has(relative);
+  const relative =
+    relativePath(root, absolute) ?? relativePath(requestedRoot, absolute);
+  const external = relative === null || !verifiedSnapshotFiles.has(relative);
   const sourceFile = program.getSourceFile(absolute);
-  const sourceText = sourceFile?.text ?? ts.sys.readFile(absolute) ?? "";
-  const locationFile =
-    sourceFile ??
-    ts.createSourceFile(absolute, sourceText, ts.ScriptTarget.Latest, true);
-  const start = locationFile.getLineAndCharacterOfPosition(
+  if (!sourceFile && !external) return null;
+  const start = sourceFile?.getLineAndCharacterOfPosition(
     definition.textSpan.start,
   );
-  const end = locationFile.getLineAndCharacterOfPosition(
+  const end = sourceFile?.getLineAndCharacterOfPosition(
     definition.textSpan.start + definition.textSpan.length,
   );
   return {
-    filePath: isInSnapshot ? relative : normalizeExternalPath(absolute),
-    startLine: start.line,
-    startColumn: start.character,
-    endLine: end.line,
-    endColumn: end.character,
+    filePath: external ? normalizeExternalPath(absolute) : (relative as string),
+    startLine: start?.line ?? null,
+    startColumn: start?.character ?? null,
+    endLine: end?.line ?? null,
+    endColumn: end?.character ?? null,
+    textSpan: {
+      start: definition.textSpan.start,
+      length: definition.textSpan.length,
+    },
     symbolName: definition.name || null,
     containerName: definition.containerName || null,
-    external: !isInSnapshot,
+    external,
   };
 }
 
@@ -262,18 +265,14 @@ function callKindAtIdentifier(
   return null;
 }
 
-function bytePositionAt(
+function positionAt(
   sourceFile: ts.SourceFile,
   offsetUtf16: number,
 ): { readonly line: number; readonly column: number } {
   const location = sourceFile.getLineAndCharacterOfPosition(offsetUtf16);
-  const lineStart = sourceFile.getLineStarts()[location.line];
   return {
     line: location.line,
-    column: Buffer.byteLength(
-      sourceFile.text.slice(lineStart, offsetUtf16),
-      UTF8,
-    ),
+    column: location.character,
   };
 }
 
@@ -296,8 +295,39 @@ function identifierAt(
 }
 
 function normalizedSnapshotFiles(files: ReadonlySet<string>): Set<string> {
-  return new Set([...files].map((file) => file.replaceAll("\\", "/")));
+  const normalized = new Set<string>();
+  for (const file of files) {
+    const relative = file.replaceAll("\\", "/");
+    if (
+      relative.length > 0 &&
+      !relative.startsWith("/") &&
+      !relative
+        .split("/")
+        .some(
+          (segment) => segment === "" || segment === "." || segment === "..",
+        )
+    )
+      normalized.add(relative);
+  }
+  return normalized;
 }
+
+interface SnapshotDirectoryEntries {
+  readonly files: readonly string[];
+  readonly directories: readonly string[];
+}
+
+type MatchFiles = (
+  path: string,
+  extensions: readonly string[] | undefined,
+  excludes: readonly string[] | undefined,
+  includes: readonly string[] | undefined,
+  useCaseSensitiveFileNames: boolean,
+  currentDirectory: string,
+  depth: number | undefined,
+  getFileSystemEntries: (directory: string) => SnapshotDirectoryEntries,
+  realpath: (path: string) => string,
+) => string[];
 
 /** Opens one isolated project in the actual TypeScript PartialSemantic mode. */
 export function createPartialSemanticProject(
@@ -306,6 +336,92 @@ export function createPartialSemanticProject(
   const startupStart = performance.now();
   const requestedRoot = path.resolve(options.snapshotRoot);
   const root = ts.sys.realpath?.(requestedRoot) ?? requestedRoot;
+
+  const snapshotFiles = normalizedSnapshotFiles(options.snapshotFiles);
+  const verifiedSnapshotFiles = new Map<string, string>();
+  for (const file of snapshotFiles) {
+    const inspection = inspectSnapshotPath(root, file);
+    if (
+      inspection.status === "safe" &&
+      inspection.sizeBytes <= MAX_FILE_SIZE_BYTES
+    )
+      verifiedSnapshotFiles.set(file, inspection.absolutePath);
+  }
+
+  const relativeSnapshotPath = (fileName: string): string | null =>
+    relativePath(requestedRoot, fileName) ?? relativePath(root, fileName);
+  const readSnapshotCache = new Map<string, Buffer>();
+  const readVerifiedSnapshotFile = (relative: string): Buffer | undefined => {
+    const cached = readSnapshotCache.get(relative);
+    if (cached) return cached;
+    if (!verifiedSnapshotFiles.has(relative)) return undefined;
+    const result = readSnapshotSourceFile(root, relative, MAX_FILE_SIZE_BYTES);
+    if (result.status !== "readable") return undefined;
+    readSnapshotCache.set(relative, result.bytes);
+    return result.bytes;
+  };
+  const readVerifiedSnapshotText = (fileName: string): string | undefined => {
+    const relative = relativeSnapshotPath(fileName);
+    if (relative === null) return undefined;
+    return readVerifiedSnapshotFile(relative)?.toString(UTF8);
+  };
+  const snapshotDirectoryEntries = (
+    directory: string,
+  ): SnapshotDirectoryEntries => {
+    const relativeDirectory = relativeSnapshotPath(directory);
+    if (relativeDirectory === null) return { files: [], directories: [] };
+    const prefix = relativeDirectory === "" ? "" : `${relativeDirectory}/`;
+    const files = new Set<string>();
+    const directories = new Set<string>();
+    for (const relativeFile of verifiedSnapshotFiles.keys()) {
+      if (!relativeFile.startsWith(prefix)) continue;
+      const remainder = relativeFile.slice(prefix.length);
+      if (remainder.length === 0) continue;
+      const separator = remainder.indexOf("/");
+      if (separator < 0) files.add(remainder);
+      else directories.add(remainder.slice(0, separator));
+    }
+    return {
+      files: [...files].sort(),
+      directories: [...directories].sort(),
+    };
+  };
+  const snapshotDirectoryExists = (directory: string): boolean => {
+    const relativeDirectory = relativeSnapshotPath(directory);
+    if (relativeDirectory === null) return false;
+    if (relativeDirectory === "") return true;
+    const prefix = `${relativeDirectory}/`;
+    return [...verifiedSnapshotFiles.keys()].some((file) =>
+      file.startsWith(prefix),
+    );
+  };
+  const snapshotReadDirectory = (
+    directory: string,
+    extensions: readonly string[] | undefined,
+    excludes: readonly string[] | undefined,
+    includes: readonly string[] | undefined,
+    depth: number | undefined,
+  ): string[] => {
+    const relativeDirectory = relativeSnapshotPath(directory);
+    if (relativeDirectory === null) return [];
+    const matchFiles = (ts as unknown as { readonly matchFiles?: MatchFiles })
+      .matchFiles;
+    if (!matchFiles)
+      throw new Error("TypeScript safe snapshot matcher is unavailable.");
+    const safeDirectory = path.resolve(root, relativeDirectory);
+    return matchFiles(
+      safeDirectory,
+      extensions,
+      excludes,
+      includes,
+      ts.sys.useCaseSensitiveFileNames,
+      root,
+      depth,
+      snapshotDirectoryEntries,
+      (fileName) => fileName,
+    );
+  };
+
   const projectPath = path.resolve(root, options.projectId);
   const projectRelative = relativePath(root, projectPath);
   if (projectRelative === null || projectRelative === "")
@@ -313,18 +429,56 @@ export function createPartialSemanticProject(
       `Project config escapes the source snapshot: ${options.projectId}`,
     );
 
+  if (!verifiedSnapshotFiles.has(projectRelative))
+    throw new Error(
+      `Project config is not a verified snapshot file: ${options.projectId}`,
+    );
+
+  const projectConfigBytes = readVerifiedSnapshotFile(projectRelative);
+  if (!projectConfigBytes)
+    throw new Error(
+      `Project config is not readable from the verified snapshot: ${options.projectId}`,
+    );
+
+  const snapshotFileExists = (fileName: string): boolean => {
+    const relative = relativeSnapshotPath(fileName);
+    return relative !== null && verifiedSnapshotFiles.has(relative);
+  };
+
   const parseHost: ts.ParseConfigFileHost = {
     useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
     fileExists: (fileName) =>
-      isSnapshotPath(root, fileName) && ts.sys.fileExists(fileName),
-    readFile: (fileName) =>
-      !isSnapshotPath(root, fileName) ? undefined : ts.sys.readFile(fileName),
-    readDirectory: (directory, extensions, excludes, includes, depth) =>
-      !isSnapshotPath(root, directory)
-        ? []
-        : ts.sys
-            .readDirectory(directory, extensions, excludes, includes, depth)
-            .filter((fileName) => isSnapshotPath(root, fileName)),
+      snapshotFileExists(fileName) ||
+      (isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName) &&
+        ts.sys.fileExists(fileName)),
+    readFile: (fileName) => {
+      const snapshotText = readVerifiedSnapshotText(fileName);
+      if (snapshotText !== undefined) return snapshotText;
+      return isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName)
+        ? ts.sys.readFile(fileName)
+        : undefined;
+    },
+    readDirectory: (directory, extensions, excludes, includes, depth) => {
+      if (isWithin(TYPESCRIPT_LIBRARY_ROOT, directory))
+        return ts.sys.readDirectory(
+          directory,
+          extensions,
+          excludes,
+          includes,
+          depth,
+        );
+      return snapshotReadDirectory(
+        directory,
+        extensions,
+        excludes,
+        includes,
+        depth,
+      );
+    },
+    directoryExists: (directory) =>
+      isWithin(TYPESCRIPT_LIBRARY_ROOT, directory)
+        ? ts.sys.directoryExists?.(directory) === true
+        : snapshotDirectoryExists(directory),
   };
   const config = ts.readConfigFile(projectPath, parseHost.readFile);
   if (config.error) throw new Error(configDiagnostics([config.error]));
@@ -338,11 +492,10 @@ export function createPartialSemanticProject(
   if (parsed.errors.length > 0)
     throw new Error(configDiagnostics(parsed.errors));
 
-  const snapshotFiles = normalizedSnapshotFiles(options.snapshotFiles);
   const rootFiles = parsed.fileNames
     .filter((fileName) => {
-      const relative = relativePath(root, fileName);
-      return relative !== null && snapshotFiles.has(relative);
+      const relative = relativeSnapshotPath(fileName);
+      return relative !== null && verifiedSnapshotFiles.has(relative);
     })
     .sort();
   const compilerOptions: ts.CompilerOptions = {
@@ -350,13 +503,21 @@ export function createPartialSemanticProject(
     noResolve: true,
     types: [],
   };
-  const isAllowedFile = (fileName: string): boolean =>
-    isSnapshotPath(root, fileName) ||
-    isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName);
-  const readFile = (fileName: string): string | undefined =>
-    isAllowedFile(fileName) ? ts.sys.readFile(fileName) : undefined;
-  const fileExists = (fileName: string): boolean =>
-    isAllowedFile(fileName) && ts.sys.fileExists(fileName);
+  const readFile = (fileName: string): string | undefined => {
+    const snapshotText = readVerifiedSnapshotText(fileName);
+    if (snapshotText !== undefined) return snapshotText;
+    return isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName)
+      ? ts.sys.readFile(fileName)
+      : undefined;
+  };
+  const fileExists = (fileName: string): boolean => {
+    const relative = relativeSnapshotPath(fileName);
+    return (
+      (relative !== null && verifiedSnapshotFiles.has(relative)) ||
+      (isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName) &&
+        ts.sys.fileExists(fileName))
+    );
+  };
   const host: ts.LanguageServiceHost = {
     getCompilationSettings: () => compilerOptions,
     getScriptFileNames: () => rootFiles,
@@ -372,25 +533,43 @@ export function createPartialSemanticProject(
       ts.getDefaultLibFilePath(compilerOptions),
     fileExists,
     readFile,
-    readDirectory: (directory, extensions, excludes, includes, depth) =>
-      !isSnapshotPath(root, directory)
-        ? []
-        : ts.sys
-            .readDirectory(directory, extensions, excludes, includes, depth)
-            .filter((fileName) => isSnapshotPath(root, fileName)),
+    readDirectory: (directory, extensions, excludes, includes, depth) => {
+      if (isWithin(TYPESCRIPT_LIBRARY_ROOT, directory))
+        return ts.sys.readDirectory(
+          directory,
+          extensions,
+          excludes,
+          includes,
+          depth,
+        );
+      return snapshotReadDirectory(
+        directory,
+        extensions,
+        excludes,
+        includes,
+        depth,
+      );
+    },
     directoryExists: (directory) =>
-      isSnapshotPath(root, directory) &&
-      ts.sys.directoryExists?.(directory) === true,
-    getDirectories: (directory) =>
-      !isSnapshotPath(root, directory)
-        ? []
-        : (ts.sys.getDirectories?.(directory) ?? []).filter((entry) =>
-            isSnapshotPath(root, path.join(directory, entry)),
-          ),
+      isWithin(TYPESCRIPT_LIBRARY_ROOT, directory)
+        ? ts.sys.directoryExists?.(directory) === true
+        : snapshotDirectoryExists(directory),
+    getDirectories: (directory) => {
+      if (isWithin(TYPESCRIPT_LIBRARY_ROOT, directory))
+        return ts.sys.getDirectories?.(directory) ?? [];
+      return [...snapshotDirectoryEntries(directory).directories];
+    },
     realpath: (fileName) => {
-      const resolved = ts.sys.realpath?.(fileName) ?? fileName;
-      if (isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName)) return resolved;
-      return isSnapshotPath(root, resolved) ? resolved : fileName;
+      if (isWithin(TYPESCRIPT_LIBRARY_ROOT, fileName))
+        return ts.sys.realpath?.(fileName) ?? fileName;
+      const relative = relativeSnapshotPath(fileName);
+      if (
+        relative !== null &&
+        (verifiedSnapshotFiles.has(relative) ||
+          snapshotDirectoryExists(fileName))
+      )
+        return path.resolve(root, relative);
+      return fileName;
     },
     useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames,
   };
@@ -415,15 +594,19 @@ export function createPartialSemanticProject(
   const programFiles = program
     .getSourceFiles()
     .map((sourceFile) => {
-      const relative = relativePath(root, sourceFile.fileName);
-      return relative ?? normalizeExternalPath(sourceFile.fileName);
+      const relative = relativeSnapshotPath(sourceFile.fileName);
+      return relative !== null && verifiedSnapshotFiles.has(relative)
+        ? relative
+        : normalizeExternalPath(sourceFile.fileName);
     })
     .sort();
   const configHash = sha256(
     [
-      sha256(readFileSync(projectPath)),
+      sha256(projectConfigBytes),
       JSON.stringify(stableConfigValue(compilerOptions, root)),
-      JSON.stringify(rootFiles.map((fileName) => relativePath(root, fileName))),
+      JSON.stringify(
+        rootFiles.map((fileName) => relativeSnapshotPath(fileName)),
+      ),
       ts.version,
     ].join(HASH_SEPARATOR),
   );
@@ -435,7 +618,7 @@ export function createPartialSemanticProject(
     configHash,
     compilerOptions: { noResolve: true, types: [] },
     rootFiles: rootFiles.map(
-      (fileName) => relativePath(root, fileName) as string,
+      (fileName) => relativeSnapshotPath(fileName) as string,
     ),
     programFiles,
     startupMs,
@@ -506,9 +689,9 @@ export function createPartialSemanticProject(
           "invalid-position",
           "callee-offset-not-at-token-start",
         );
-      const position = bytePositionAt(sourceFile, site.offsetUtf16);
+      const position = positionAt(sourceFile, site.offsetUtf16);
       if (site.line !== position.line || site.column !== position.column)
-        return emptyResult("invalid-position", "callee-byte-position-mismatch");
+        return emptyResult("invalid-position", "callee-position-mismatch");
       const actualKind = callKindAtIdentifier(identifier);
       if (actualKind === "unsupported")
         return emptyResult("unsupported", "unsupported-callee-shape");
@@ -519,12 +702,26 @@ export function createPartialSemanticProject(
 
       const queryStart = performance.now();
       try {
-        const definitions =
-          languageService
-            .getDefinitionAtPosition(absolute, site.offsetUtf16)
-            ?.map((definition) =>
-              definitionRef(root, snapshotFiles, program, definition),
-            ) ?? [];
+        const rawDefinitions =
+          languageService.getDefinitionAtPosition(absolute, site.offsetUtf16) ??
+          [];
+        const definitions: PartialSemanticDefinitionRef[] = [];
+        for (const definition of rawDefinitions) {
+          const reference = definitionRef(
+            root,
+            requestedRoot,
+            verifiedSnapshotFiles,
+            program,
+            definition,
+          );
+          if (!reference)
+            return emptyResult(
+              "error",
+              "definition-source-not-in-partial-program",
+              performance.now() - queryStart,
+            );
+          definitions.push(reference);
+        }
         return {
           ...classifyPartialSemanticDefinitions(definitions),
           definitions,

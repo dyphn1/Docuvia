@@ -1,5 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
@@ -46,7 +52,7 @@ function callSite(
   return {
     filePath: "caller.ts",
     line,
-    column: Buffer.byteLength(linePrefix, "utf8"),
+    column: linePrefix.length,
     offsetUtf16,
     calleeKind: "bare",
     calleeName,
@@ -197,7 +203,7 @@ describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
     expect(secondHash).toBe(firstHash);
   });
 
-  it("[happy] validates UTF-16 offsets against Tree-sitter byte columns after astral Unicode", () => {
+  it("[happy] validates UTF-16 offsets and columns after astral Unicode", () => {
     const caller = `function invokeMe() {}\nconst marker = "😀"; invokeMe();\n`;
     const source = fixture({
       "tsconfig.json": JSON.stringify({
@@ -209,9 +215,10 @@ describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
 
     withProject(source, (project) => {
       const correctOffset = caller.lastIndexOf("invokeMe");
-      const correct = project.query(
-        callSite(caller, "invokeMe", { offsetUtf16: correctOffset }),
-      );
+      const workerPosition = callSite(caller, "invokeMe", {
+        offsetUtf16: correctOffset,
+      });
+      const correct = project.query(workerPosition);
       expect(correct.status).toBe("resolved");
       expect(correct.definitions[0]).toEqual(
         expect.objectContaining({ filePath: "caller.ts", external: false }),
@@ -223,11 +230,12 @@ describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
       expect(byteColumn).not.toBe(utf16Column);
       const stale = project.query(
         callSite(caller, "invokeMe", {
-          offsetUtf16: caller.indexOf(linePrefix) + byteColumn,
+          offsetUtf16: correctOffset,
+          column: byteColumn,
         }),
       );
       expect(stale.status).toBe("invalid-position");
-      expect(stale.reason).toBe("callee-offset-not-at-token-start");
+      expect(stale.reason).toBe("callee-position-mismatch");
     });
   });
 
@@ -260,7 +268,7 @@ describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
         project.query(callSite(caller, "invokeMe", { column: 99 })),
       ).toMatchObject({
         status: "invalid-position",
-        reason: "callee-byte-position-mismatch",
+        reason: "callee-position-mismatch",
       });
       expect(
         project.query(
@@ -412,5 +420,160 @@ describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
       },
     );
     expect(disposeCount).toBe(1);
+  });
+
+  it("[invalid-input] limits config, source reads, and enumeration to verified nonsymlink snapshot files", () => {
+    const caller = "invokeMe();\n";
+    const source = fixture({
+      "tsconfig.json": JSON.stringify({
+        compilerOptions: { target: "ES2022" },
+        include: ["**/*.ts"],
+      }),
+      "caller.ts": caller,
+    });
+    const external = fixture({ "outside.ts": "export const secret = 1;\n" });
+    const unlistedPath = path.join(source.root, "unlisted.ts");
+    const symlinkPath = path.join(source.root, "linked.ts");
+    const externalPath = path.join(external.root, "outside.ts");
+    writeFileSync(unlistedPath, "export const unlisted = 1;\n");
+    symlinkSync(externalPath, symlinkPath);
+
+    const systemReads: string[] = [];
+    const originalReadFile = ts.sys.readFile.bind(ts.sys);
+    const readSpy = vi
+      .spyOn(ts.sys, "readFile")
+      .mockImplementation((fileName, encoding) => {
+        systemReads.push(path.resolve(fileName));
+        return originalReadFile(fileName, encoding);
+      });
+    try {
+      withProject(
+        source,
+        (project) => {
+          expect(project.metadata.rootFiles).toEqual(["caller.ts"]);
+          expect(project.metadata.programFiles).toContain("caller.ts");
+          expect(project.metadata.programFiles).not.toContain("unlisted.ts");
+          expect(project.metadata.programFiles).not.toContain("linked.ts");
+        },
+        {
+          createLanguageService: (host, mode) => {
+            expect(host.readFile(unlistedPath)).toBeUndefined();
+            expect(host.fileExists(unlistedPath)).toBe(false);
+            expect(host.readFile(symlinkPath)).toBeUndefined();
+            expect(host.fileExists(symlinkPath)).toBe(false);
+            expect(host.readFile(externalPath)).toBeUndefined();
+            expect(host.fileExists(externalPath)).toBe(false);
+            expect(
+              host
+                .readDirectory?.(source.root, [".ts"], undefined, ["**/*.ts"])
+                ?.map((fileName) => path.basename(fileName)),
+            ).toEqual(["caller.ts"]);
+            expect(host.readDirectory?.(external.root, [".ts"])).toEqual([]);
+            return ts.createLanguageService(host, undefined, mode);
+          },
+        },
+      );
+    } finally {
+      readSpy.mockRestore();
+    }
+
+    expect(systemReads).not.toContain(path.resolve(unlistedPath));
+    expect(systemReads).not.toContain(path.resolve(symlinkPath));
+    expect(systemReads).not.toContain(path.resolve(externalPath));
+  });
+
+  it("[error-handling] rejects an unverified tsconfig before reading it", () => {
+    const source = fixture({
+      "tsconfig.json": JSON.stringify({ files: ["caller.ts"] }),
+      "caller.ts": "invokeMe();\n",
+    });
+    const configPath = path.join(source.root, "tsconfig.json");
+    const systemReads: string[] = [];
+    const originalReadFile = ts.sys.readFile.bind(ts.sys);
+    const readSpy = vi
+      .spyOn(ts.sys, "readFile")
+      .mockImplementation((fileName, encoding) => {
+        systemReads.push(path.resolve(fileName));
+        return originalReadFile(fileName, encoding);
+      });
+    try {
+      expect(() =>
+        createPartialSemanticProject({
+          snapshotRoot: source.root,
+          projectId: "tsconfig.json",
+          snapshotFiles: new Set(["caller.ts"]),
+        }),
+      ).toThrow("Project config is not a verified snapshot file");
+    } finally {
+      readSpy.mockRestore();
+    }
+    expect(systemReads).not.toContain(path.resolve(configPath));
+  });
+
+  it("[boundary] preserves an external raw definition without reading outside the program", () => {
+    const caller = "invokeMe();\n";
+    const source = fixture({
+      "tsconfig.json": JSON.stringify({ files: ["caller.ts"] }),
+      "caller.ts": caller,
+    });
+    const external = fixture({
+      "outside.ts": "export function invokeMe() {}\n",
+    });
+    const externalPath = path.join(external.root, "outside.ts");
+    const systemReads: string[] = [];
+    const originalReadFile = ts.sys.readFile.bind(ts.sys);
+    const readSpy = vi
+      .spyOn(ts.sys, "readFile")
+      .mockImplementation((fileName, encoding) => {
+        systemReads.push(path.resolve(fileName));
+        return originalReadFile(fileName, encoding);
+      });
+    try {
+      const result = withProject(
+        source,
+        (project) => project.query(callSite(caller, "invokeMe")),
+        {
+          createLanguageService: (host, mode) => {
+            const service = ts.createLanguageService(host, undefined, mode);
+            const definition = {
+              fileName: externalPath,
+              textSpan: { start: 16, length: 8 },
+              kind: ts.ScriptElementKind.functionElement,
+              name: "invokeMe",
+              containerKind: ts.ScriptElementKind.unknown,
+              containerName: "",
+            } satisfies ts.DefinitionInfo;
+            return new Proxy(service, {
+              get(target, property) {
+                if (property === "getDefinitionAtPosition")
+                  return () => [definition];
+                const value = Reflect.get(target, property, target) as unknown;
+                return typeof value === "function" ? value.bind(target) : value;
+              },
+            }) as ts.LanguageService;
+          },
+        },
+      );
+      expect(result).toMatchObject({
+        status: "external-only",
+        reason: "definitions-outside-snapshot",
+        definitions: [
+          {
+            filePath: "outside-snapshot/outside.ts",
+            startLine: null,
+            startColumn: null,
+            endLine: null,
+            endColumn: null,
+            textSpan: { start: 16, length: 8 },
+            symbolName: "invokeMe",
+            external: true,
+          },
+        ],
+        latencyMs: expect.any(Number),
+      });
+    } finally {
+      readSpy.mockRestore();
+    }
+    expect(systemReads).not.toContain(path.resolve(externalPath));
   });
 });

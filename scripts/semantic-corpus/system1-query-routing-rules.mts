@@ -43,8 +43,7 @@ export interface System1QueryState {
 export type System1QueryId = "q1" | "q2" | "q3";
 
 /** Exact call-site location supplied out of band from model-visible request context. `column`
- *  uses TypeScript's UTF-16 code-unit convention; callers reading Tier A byte columns must
- *  convert them before constructing this value. */
+ *  uses the canonical AstWorker/corpus and TypeScript UTF-16 code-unit convention. */
 export interface System1CallSitePosition {
   readonly line: number;
   readonly column: number;

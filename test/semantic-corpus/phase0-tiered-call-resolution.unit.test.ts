@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
 import {
-  mapCallExpressionAtBytePosition,
+  mapCallExpressionAtPosition,
   portableCallSiteKey,
   type PortableCallSiteKeyInput,
 } from "../../scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts";
@@ -12,7 +12,7 @@ const keyInput = (
   filePath: "src/caller.ts",
   fileContentHash: "a".repeat(64),
   row: 4,
-  columnByte: 12,
+  columnUtf16: 12,
   calleeKind: "member",
   calleeName: "run",
   ...overrides,
@@ -27,10 +27,10 @@ describe("Phase 0 portable call-site mapping", () => {
     expect(
       portableCallSiteKey(keyInput({ fileContentHash: "b".repeat(64) })),
     ).not.toBe(first);
-    expect(portableCallSiteKey(keyInput({ columnByte: 13 }))).not.toBe(first);
+    expect(portableCallSiteKey(keyInput({ columnUtf16: 13 }))).not.toBe(first);
   });
 
-  it("maps duplicate call expressions by the exact UTF-8 byte position", () => {
+  it("maps duplicate call expressions by the exact UTF-16 worker column", () => {
     const text = "const label = '😀'; service.run(); service.run();";
     const sourceFile = ts.createSourceFile(
       "caller.ts",
@@ -40,20 +40,19 @@ describe("Phase 0 portable call-site mapping", () => {
       ts.ScriptKind.TS,
     );
     const secondCallee = text.lastIndexOf("service.run");
-    const columnByte = Buffer.byteLength(text.slice(0, secondCallee), "utf8");
+    const columnUtf16 = secondCallee;
 
-    const mapped = mapCallExpressionAtBytePosition(
+    const mapped = mapCallExpressionAtPosition(
       sourceFile,
       text,
       0,
-      columnByte,
+      columnUtf16,
     );
 
     expect(mapped.status).toBe("unique");
     if (mapped.status !== "unique") return;
-    expect(mapped.position.columnByte).toBeGreaterThan(
-      mapped.position.columnUtf16,
-    );
+    expect(mapped.position.columnUtf16).toBe(columnUtf16);
+    expect(mapped.position.offsetUtf16).toBe(secondCallee);
     expect(mapped.callExpression.expression.getStart(sourceFile)).toBe(
       secondCallee,
     );
@@ -69,17 +68,32 @@ describe("Phase 0 portable call-site mapping", () => {
       ts.ScriptKind.TS,
     );
 
-    const mapped = mapCallExpressionAtBytePosition(
+    const mapped = mapCallExpressionAtPosition(
       sourceFile,
       text,
       0,
-      Buffer.byteLength("service.run", "utf8"),
+      "service.run".length,
     );
 
     expect(mapped).toMatchObject({
       status: "excluded",
       reason: "no-call-at-position",
     });
+  });
+
+  it("[invalid-input] rejects a UTF-16 column past the requested row", () => {
+    const text = "x();\nservice.run();";
+    const sourceFile = ts.createSourceFile(
+      "caller.ts",
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+
+    expect(
+      mapCallExpressionAtPosition(sourceFile, text, 0, "x();".length + 1),
+    ).toEqual({ status: "excluded", reason: "invalid-column" });
   });
 
   it("[invalid-input] rejects workspace-absolute paths and non-SHA-256 content hashes", () => {
@@ -101,7 +115,7 @@ describe("Phase 0 portable call-site mapping", () => {
     );
 
     expect(
-      mapCallExpressionAtBytePosition(sourceFile, "other.run();", 0, 0),
+      mapCallExpressionAtPosition(sourceFile, "other.run();", 0, 0),
     ).toEqual({
       status: "excluded",
       reason: "source-text-mismatch",

@@ -10,15 +10,14 @@ export interface PortableCallSiteKeyInput {
   /** SHA-256 of the exact file bytes, before any newline or encoding normalization. */
   readonly fileContentHash: string;
   readonly row: number;
-  /** Tree-sitter's zero-based UTF-8 byte column used by the stored Tier A call-site row. */
-  readonly columnByte: number;
+  /** Zero-based UTF-16 code-unit column from AstWorker/corpus call-site positions. */
+  readonly columnUtf16: number;
   readonly calleeKind: string;
   readonly calleeName: string;
 }
 
 export interface MappedCallSitePosition {
   readonly row: number;
-  readonly columnByte: number;
   readonly columnUtf16: number;
   readonly offsetUtf16: number;
 }
@@ -35,7 +34,6 @@ export type CallSitePositionMapping =
         | "source-text-mismatch"
         | "invalid-row"
         | "invalid-column"
-        | "column-splits-utf8-codepoint"
         | "no-call-at-position"
         | "multiple-calls-at-position";
       readonly position?: MappedCallSitePosition;
@@ -49,8 +47,8 @@ export function portableCallSiteKey(input: PortableCallSiteKeyInput): string {
     throw new Error("Call-site content hash must be a SHA-256 hex digest.");
   if (!Number.isSafeInteger(input.row) || input.row < 0)
     throw new Error("Call-site row must be a non-negative integer.");
-  if (!Number.isSafeInteger(input.columnByte) || input.columnByte < 0)
-    throw new Error("Call-site byte column must be a non-negative integer.");
+  if (!Number.isSafeInteger(input.columnUtf16) || input.columnUtf16 < 0)
+    throw new Error("Call-site UTF-16 column must be a non-negative integer.");
   if (!input.calleeKind.trim() || !input.calleeName.trim())
     throw new Error("Call-site callee kind and name must be non-empty.");
 
@@ -61,7 +59,7 @@ export function portableCallSiteKey(input: PortableCallSiteKeyInput): string {
         filePath,
         input.fileContentHash.toLowerCase(),
         String(input.row),
-        String(input.columnByte),
+        String(input.columnUtf16),
         input.calleeKind,
         input.calleeName,
       ].join(CALL_SITE_KEY_SEPARATOR),
@@ -71,44 +69,34 @@ export function portableCallSiteKey(input: PortableCallSiteKeyInput): string {
   return `${CALL_SITE_KEY_VERSION}:${digest}`;
 }
 
-/** Maps Tree-sitter's UTF-8 byte column to the UTF-16 offset used by TypeScript AST/LSP APIs,
- *  then selects the innermost call expression whose callee contains that exact position. */
-export function mapCallExpressionAtBytePosition(
+/** Maps an AstWorker/corpus UTF-16 column to a TypeScript source offset, then selects the
+ *  innermost call expression whose callee contains that exact position. */
+export function mapCallExpressionAtPosition(
   sourceFile: ts.SourceFile,
   sourceText: string,
   row: number,
-  columnByte: number,
+  columnUtf16: number,
 ): CallSitePositionMapping {
   if (sourceFile.text !== sourceText)
     return { status: "excluded", reason: "source-text-mismatch" };
   if (!Number.isSafeInteger(row) || row < 0)
     return { status: "excluded", reason: "invalid-row" };
-  if (!Number.isSafeInteger(columnByte) || columnByte < 0)
+  if (!Number.isSafeInteger(columnUtf16) || columnUtf16 < 0)
     return { status: "excluded", reason: "invalid-column" };
 
   const lines = sourceText.split(/\r\n|\n|\r/);
   const lineText = lines[row];
   if (lineText === undefined)
     return { status: "excluded", reason: "invalid-row" };
-  const lineBytes = Buffer.from(lineText, "utf8");
-  if (columnByte > lineBytes.length)
+  if (columnUtf16 > lineText.length)
     return { status: "excluded", reason: "invalid-column" };
-  const bytePrefix = lineBytes.subarray(0, columnByte);
-  const prefixText = bytePrefix.toString("utf8");
-  if (!Buffer.from(prefixText, "utf8").equals(bytePrefix))
-    return {
-      status: "excluded",
-      reason: "column-splits-utf8-codepoint",
-    };
-
-  const columnUtf16 = prefixText.length;
   let offsetUtf16: number;
   try {
     offsetUtf16 = sourceFile.getPositionOfLineAndCharacter(row, columnUtf16);
   } catch {
     return { status: "excluded", reason: "invalid-column" };
   }
-  const position = { row, columnByte, columnUtf16, offsetUtf16 };
+  const position = { row, columnUtf16, offsetUtf16 };
   const matchingCalls: ts.CallExpression[] = [];
   const visit = (node: ts.Node): void => {
     if (

@@ -27,7 +27,7 @@ This ADR accepts the architecture and engineering defaults below. It does not ce
 ### Resolution record
 
 1. Raw AST call-site evidence remains separate from derived resolution.
-2. Every call site has a portable, content-scoped identity: versioned SHA-256 over the workspace-relative POSIX path, file-content SHA-256, zero-based callee start row/column, callee kind and callee name, separated by NUL bytes. SQLite row IDs and project IDs are not identity.
+2. Every call site has a portable, content-scoped identity: versioned SHA-256 over the workspace-relative POSIX path, file-content SHA-256, zero-based callee start row and UTF-16 code-unit column, callee kind and callee name, separated by NUL bytes. The column follows the AstWorker/corpus and TypeScript offset convention, including astral Unicode before the callee. SQLite row IDs and project IDs are not identity.
 3. The per-site current resolution stores caller source node key, resolution class, selected target, resolver and rule signature, dependency fingerprint, and verification state. Proven has no confidence value. Confidence is present only for likely.
 4. Ordered candidate alternatives live in a normalized per-site candidate table, not solely in an aggregate edge or an opaque JSON field. Resolution observations are append-only so later LSP evidence cannot erase earlier ScopeResolver, proof or ranking evidence.
 5. Keep resolution class separate from verification status:

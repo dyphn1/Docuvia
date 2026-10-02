@@ -19,7 +19,7 @@ This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) i
 
 **Work:**
 
-1. Define and round-trip a portable call-site key. Use a versioned SHA-256 over workspace-relative POSIX file path, exact file content hash, zero-based callee start row and column, callee kind, and callee name, separated by NUL bytes. A SQLite row ID or project ID is never part of the identity. The current corpus helper identifies a site as file path plus line and column; reuse its position convention, but add content and callee evidence for production identity.
+1. Define and round-trip a portable call-site key. Use a versioned SHA-256 over workspace-relative POSIX file path, exact file content hash, zero-based callee start row and UTF-16 code-unit column, callee kind, and callee name, separated by NUL bytes. A SQLite row ID or project ID is never part of the identity. Reuse the AstWorker/corpus position convention and TypeScript offsets; UTF-8 byte length must not alter identity when astral Unicode precedes the callee.
 2. For every eligible call-site row, resolve its position to exactly one AST call node. Record explicit exclusion reasons for zero or multiple matches. Include receiver calls such as this.m() in the audit.
 3. Recompute ScopeResolver's baseline at call-site level. Do not use file-level call-target evidence to claim call-site precision. Separate true bare-call target misroutes from same-file member calls whose file-level evidence only appeared to match.
 4. Finish a receiver-binding-not-found taxonomy and a per-shape table.
@@ -63,7 +63,7 @@ This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) i
 
 **Portable identity:** The call-site key is versioned and file-version scoped:
 
-- Hash workspace-relative POSIX path, exact file content SHA-256, zero-based callee start row and column, callee kind, and callee name with NUL separators.
+- Hash workspace-relative POSIX path, exact file content SHA-256, zero-based callee start row and UTF-16 code-unit column, callee kind, and callee name with NUL separators.
 - Do not use SQLite IDs, project IDs, or an identity that claims to survive edits.
 - Store the exact source node key for the enclosing caller function, falling back to the file node only when the AST has no function container.
 

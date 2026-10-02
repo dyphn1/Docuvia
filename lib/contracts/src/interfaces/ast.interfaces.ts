@@ -46,7 +46,8 @@ export interface ParsedAstFileData {
     contentHash?: string;
   }>;
   /** One static call site. `startLine`/`startColumn` are the 0-based source position of the
-   *  callee expression's start (Tier A's own `startPosition` convention) -- the seed Tier B
+   *  callee expression's start (Tier A's `startPosition` convention; column is a UTF-16 code-unit
+   *  column, matching TypeScript offsets) -- the seed Tier B
    *  forward resolution (issue #11 plan A) issues `textDocument/definition` at this position per
    *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1.
    *

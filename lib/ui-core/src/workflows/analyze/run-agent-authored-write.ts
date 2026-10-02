@@ -5,11 +5,13 @@ import {
   ErrorCodes,
   L3DecisionSources,
   type ILogger,
+  type NotAttachedReason,
 } from "@workspace/contracts";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { collectSourceFiles } from "./decision-extraction.js";
 import { persistDecisions } from "./persist-l3-decisions.js";
+import { stagePendingDecisions } from "./pending-l3-decisions-store.js";
 import {
   AnalyzeResultKind,
   type AnalyzeResult,
@@ -121,7 +123,7 @@ export async function runAgentAuthoredWrite(deps: {
     );
   }
 
-  const { persisted, deduped } = await persistDecisions({
+  const { persisted, deduped, notAttachedReason } = await persistDecisions({
     workspaceRoot,
     logger,
     resolvedTargetPath: resolvedPath,
@@ -131,10 +133,19 @@ export async function runAgentAuthoredWrite(deps: {
     extractionModel: null,
   });
 
+  const staged = await stageUnattachedDecisions(
+    workspaceRoot,
+    targetPath,
+    decisions,
+    logger,
+    notAttachedReason,
+  );
+
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.FOCUSED_SUMMARY,
     targetPath,
     decisionsCount: decisions.length,
+    ...staged,
   });
 
   return {
@@ -143,5 +154,31 @@ export async function runAgentAuthoredWrite(deps: {
     decisions,
     persisted,
     deduped,
+    ...staged,
   };
+}
+
+/**
+ * #557: decisions that could not attach to an L2 node (a new, not-yet-ingested file, or no graph
+ * yet) are staged rather than dropped, so the post-commit flush writes them once the file is
+ * ingested. Returns the result fields to merge, or `{}` when everything attached.
+ */
+async function stageUnattachedDecisions(
+  workspaceRoot: string,
+  targetPath: string,
+  decisions: ExtractedDecision[],
+  logger: ILogger,
+  notAttachedReason: NotAttachedReason | null,
+): Promise<
+  | { stagedUntilIngested: number; notAttachedReason: NotAttachedReason }
+  | Record<string, never>
+> {
+  if (notAttachedReason === null) return {};
+  const { staged } = await stagePendingDecisions(
+    workspaceRoot,
+    targetPath,
+    decisions,
+    logger,
+  );
+  return { stagedUntilIngested: staged, notAttachedReason };
 }

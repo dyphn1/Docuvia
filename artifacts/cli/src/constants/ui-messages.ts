@@ -258,6 +258,15 @@ export const UI_MESSAGES = {
    *  the no-graph-to-attach path -- the actionable guidance `ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH`
    *  previously existed only in the JSONL log, leaving a manual `--flush-staged-l3` on a
    *  never-ingested graph with an unexplained "0 flushed, N left staged". */
+  /** #557: `--agent-authored` could not attach its decisions, so it staged them instead of
+   *  silently persisting 0. The wording differs by why the anchor was missing. */
+  ANALYZE_AGENT_AUTHORED_STAGED_UNTIL_INGESTED: (
+    staged: number,
+    noGraph: boolean,
+  ) =>
+    noGraph
+      ? `${staged} decision(s) staged, not written: there is no knowledge graph yet. Run \`docuvia init\`; they are written on the next commit that touches this file.`
+      : `${staged} decision(s) staged, not written: this file is not in the knowledge graph yet (new or uncommitted). They are written automatically when a commit that touches it is ingested.`,
   ANALYZE_FLUSH_STAGED_L3_NO_GRAPH_ADVICE:
     "Some staged decisions could not be attached: the knowledge graph is empty (or hasn't ingested this file yet). Run `docuvia init` first -- decisions need a graph to attach to. They stay staged and retry on the next flush.",
 

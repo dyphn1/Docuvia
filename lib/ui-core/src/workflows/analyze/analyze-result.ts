@@ -1,5 +1,8 @@
 import { AnalyzeResultKind } from "@workspace/contracts";
-import type { ExtractedDecision } from "@workspace/contracts";
+import type {
+  ExtractedDecision,
+  NotAttachedReason,
+} from "@workspace/contracts";
 
 // Keep ui-core's existing public surface while sourcing cross-layer vocabulary from contracts.
 export { AnalyzeResultKind, DecisionNodeType } from "@workspace/contracts";
@@ -157,6 +160,11 @@ export type AnalyzeResult =
       /** Count of `decisions` that matched an existing `l3_nodes` row by content_hash and were
        *  merged into it (occurrence bump) rather than inserted as a duplicate. */
       deduped: number;
+      /** `--agent-authored` only (#557): decisions that could not attach to an L2 node yet and
+       *  were staged instead of dropped; the post-commit flush writes them once ingested. */
+      stagedUntilIngested?: number;
+      /** Why those decisions could not attach; absent when nothing was staged. */
+      notAttachedReason?: NotAttachedReason;
     }
   | TierBBatchResult
   | {

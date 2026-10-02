@@ -99,6 +99,11 @@ shells where piping is awkward, e.g. Windows PowerShell):
   message naming the problem. An agent's own structured payload is a caller that can simply fix its
   input; silently coercing it would hide a real bug in whatever produced the payload.
 - `{"decisions":[]}` is valid and succeeds with 0 persisted, 0 deduplicated.
+- If the target cannot be attached to the graph yet, the decisions are **staged instead of dropped**
+  (issue #557). This happens when `[path]` is a new or uncommitted file that has not been ingested,
+  or when the workspace has no graph yet. The command prints a warning saying how many decisions
+  were staged and why, and they land through the Mode D flush once a commit touching that file is
+  ingested. Before this, the write reported `0 persisted` and the decisions were lost.
 
 **Flag ordering matters**: `--agent-authored` (and `--stage`, `--decisions-file=`) must come
 _after_ the positional `[path]` — `docuvia analyze <path> --agent-authored`, never

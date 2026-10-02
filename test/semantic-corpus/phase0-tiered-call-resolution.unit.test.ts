@@ -19,7 +19,7 @@ const keyInput = (
 });
 
 describe("Phase 0 portable call-site mapping", () => {
-  it("keys a site from its relative path, exact content version, position and callee", () => {
+  it("[happy] keys a site from its relative path, exact content version, position and callee", () => {
     const first = portableCallSiteKey(keyInput());
 
     expect(first).toMatch(/^v1:[a-f0-9]{64}$/);
@@ -82,12 +82,29 @@ describe("Phase 0 portable call-site mapping", () => {
     });
   });
 
-  it("rejects workspace-absolute paths and non-SHA-256 content hashes", () => {
+  it("[invalid-input] rejects workspace-absolute paths and non-SHA-256 content hashes", () => {
     expect(() =>
       portableCallSiteKey(keyInput({ filePath: "/repo/src/a.ts" })),
     ).toThrow(/workspace-relative/);
     expect(() =>
       portableCallSiteKey(keyInput({ fileContentHash: "short" })),
     ).toThrow(/SHA-256/);
+  });
+
+  it("[error-handling] excludes a source file that no longer matches the measured text", () => {
+    const sourceFile = ts.createSourceFile(
+      "caller.ts",
+      "service.run();",
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+
+    expect(
+      mapCallExpressionAtBytePosition(sourceFile, "other.run();", 0, 0),
+    ).toEqual({
+      status: "excluded",
+      reason: "source-text-mismatch",
+    });
   });
 });

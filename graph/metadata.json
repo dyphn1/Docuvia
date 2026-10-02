@@ -4463,6 +4463,12 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts",
+      "contentHash": "66fb5b51957e838c10ad5930460a2758f873a80d",
+      "lastTierBProcessedAt": "2026-10-02 14:22:48",
+      "lastTierBCommitSha": "ec26887653387dd3b44f7b72cb92978b2461e483"
+    },
+    {
       "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts",
       "contentHash": "5961c7bc88a165ae266e270498283cf5d1e3a082",
       "lastTierBProcessedAt": "2026-10-02 13:54:49",
@@ -4763,10 +4769,16 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     },
     {
+      "filePath": "test/semantic-corpus/phase0-tiered-call-resolution-replay.unit.test.ts",
+      "contentHash": "4c6615edc87c68da5f08e2957fef7f0f9b15bc65",
+      "lastTierBProcessedAt": "2026-10-02 14:22:48",
+      "lastTierBCommitSha": "ec26887653387dd3b44f7b72cb92978b2461e483"
+    },
+    {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts",
-      "contentHash": "a1b2e8eb5526a8ad285fb0b5491568dfa4ec547c",
-      "lastTierBProcessedAt": "2026-10-02 13:54:49",
-      "lastTierBCommitSha": "042c68a9c7c92f1ad27bbe98daa807adc8251ebe"
+      "contentHash": "dc37909e15be1d61d6297726bba00380689ddb1a",
+      "lastTierBProcessedAt": "2026-10-02 14:22:48",
+      "lastTierBCommitSha": "ec26887653387dd3b44f7b72cb92978b2461e483"
     },
     {
       "filePath": "test/system1-query-routing-rules.test.ts",
@@ -4805,7 +4817,7 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     }
   ],
-  "lastIngestedSourceSha": "1c24d4df075008dbc1f575493d772ff1d972d764",
+  "lastIngestedSourceSha": "98f08a57002b5f98550ea80a2825e9e870bc4b56",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

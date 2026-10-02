@@ -29,6 +29,8 @@ This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) i
 
 **Exit gate:** The position audit accounts for 100% of call-site rows as uniquely mapped or explicitly excluded. The baseline and all exclusions are reproducible from pinned revisions and hashes. PartialSemantic remains measurement-only.
 
+**Status: Complete.** The fixed-source run accounts for all 31,578 rows, verifies all ten pinned snapshot hashes, and leaves PartialSemantic measurement-only. See the [Phase 0 measurement gate report](./tiered-call-resolution-phase0-results.md) for metrics, exclusions, costs, and artifact checksums. This closes measurement only; it does not certify signatures or permit Tier B skips.
+
 ## Phase 1 — Declared type facts
 
 **Purpose:** Build a syntax-only index that later proof and hypothesis rules can consume.

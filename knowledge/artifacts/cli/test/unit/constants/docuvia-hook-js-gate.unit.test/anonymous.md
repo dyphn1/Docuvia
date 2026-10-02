@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts#anonymous@L55
+id: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts#anonymous@L65
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts

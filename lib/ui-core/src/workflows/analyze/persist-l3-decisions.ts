@@ -3,7 +3,9 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  NotAttachedReasons,
   type IGraphStore,
+  type NotAttachedReason,
   type ILogger,
   type L3DecisionSource,
   type L3NodeRow,
@@ -67,6 +69,8 @@ export async function persistDecisions(deps: {
    *  written" from "swallowed skip" without re-deriving the graph state itself. The flush path
    *  (`run-flush-staged-l3.ts`) surfaces this as a loud "run `docuvia init`" nudge (issue #57). */
   noGraphToAttach: boolean;
+  /** Which no-graph-to-attach case was hit (#557); `null` when the decisions were attached. */
+  notAttachedReason: NotAttachedReason | null;
 }> {
   const {
     workspaceRoot,
@@ -79,17 +83,21 @@ export async function persistDecisions(deps: {
     commitSha,
   } = deps;
   if (decisions.length === 0)
-    return { persisted: 0, deduped: 0, noGraphToAttach: false };
+    return {
+      persisted: 0,
+      deduped: 0,
+      noGraphToAttach: false,
+      notAttachedReason: null,
+    };
 
   const store = await openStoreForPersist(workspaceRoot, logger);
-  if (store === null)
-    return { persisted: 0, deduped: 0, noGraphToAttach: true };
+  if (store === null) return notAttached(NotAttachedReasons.NO_GRAPH);
 
   try {
     const project = store.projects.getFirst();
     if (!project) {
       await warnNoGraphToAttach(workspaceRoot, logger);
-      return { persisted: 0, deduped: 0, noGraphToAttach: true };
+      return notAttached(NotAttachedReasons.NO_GRAPH);
     }
 
     const anchorL2NodeId = resolveAnchorL2NodeId(
@@ -100,7 +108,7 @@ export async function persistDecisions(deps: {
     );
     if (anchorL2NodeId === undefined) {
       await warnNoGraphToAttach(workspaceRoot, logger);
-      return { persisted: 0, deduped: 0, noGraphToAttach: true };
+      return notAttached(NotAttachedReasons.ANCHOR_NOT_IN_GRAPH);
     }
 
     if (deps.writerEnhancements?.warnOnAnchorContradictions) {
@@ -131,7 +139,7 @@ export async function persistDecisions(deps: {
       deduped: counts.deduped,
     });
 
-    return { ...counts, noGraphToAttach: false };
+    return { ...counts, noGraphToAttach: false, notAttachedReason: null };
   } finally {
     await store.close();
   }
@@ -252,6 +260,20 @@ async function upsertDecisions(deps: {
   }
 
   return { persisted, deduped };
+}
+
+function notAttached(reason: NotAttachedReason): {
+  persisted: number;
+  deduped: number;
+  noGraphToAttach: boolean;
+  notAttachedReason: NotAttachedReason;
+} {
+  return {
+    persisted: 0,
+    deduped: 0,
+    noGraphToAttach: true,
+    notAttachedReason: reason,
+  };
 }
 
 async function warnNoGraphToAttach(

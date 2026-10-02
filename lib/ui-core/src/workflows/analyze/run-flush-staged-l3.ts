@@ -5,7 +5,9 @@ import {
   TOKENS,
   HookNames,
   L3DecisionSources,
+  NotAttachedReasons,
   type ILogger,
+  type NotAttachedReason,
 } from "@workspace/contracts";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
@@ -54,9 +56,12 @@ function groupByFilePath(
 ): Map<string, PendingL3Decision[]> {
   const groups = new Map<string, PendingL3Decision[]>();
   for (const entry of entries) {
-    const existing = groups.get(entry.filePath);
+    // Carried-over entries (#557) keep their own commit, so they never share a persist call (and
+    // its commit stamp) with entries flushed for the current commit.
+    const key = `${entry.filePath}\u0000${entry.awaitingIngestionOf ?? ""}`;
+    const existing = groups.get(key);
     if (existing) existing.push(entry);
-    else groups.set(entry.filePath, [entry]);
+    else groups.set(key, [entry]);
   }
   return groups;
 }
@@ -72,7 +77,8 @@ function partitionByDiffMatch(
   const toFlush: PendingL3Decision[] = [];
   const stillPending: PendingL3Decision[] = [];
   for (const entry of pending) {
-    if (changedFiles.has(entry.filePath)) toFlush.push(entry);
+    if (changedFiles.has(entry.filePath) || entry.awaitingIngestionOf)
+      toFlush.push(entry);
     else stillPending.push(entry);
   }
   return { toFlush, stillPending };
@@ -112,6 +118,24 @@ interface FlushGroupOutcome {
  * `runFlushStagedL3`'s caller-level try/catch handles by aborting the whole flush (durability
  * before dequeue, issue #42 §8.2 step 7).
  */
+/**
+ * #557: when the only reason is that this commit's file has not been ingested yet (the post-commit
+ * `analyze` runs concurrently with this flush), remember the commit so a later flush can land the
+ * entry without waiting for another commit to touch the same file.
+ */
+function carryUntilIngested(
+  entries: PendingL3Decision[],
+  reason: NotAttachedReason | null,
+  commitSha: string | undefined,
+): PendingL3Decision[] {
+  if (reason !== NotAttachedReasons.ANCHOR_NOT_IN_GRAPH || !commitSha)
+    return entries;
+  return entries.map((entry) => ({
+    ...entry,
+    awaitingIngestionOf: entry.awaitingIngestionOf ?? commitSha,
+  }));
+}
+
 async function flushFileGroup(
   workspaceRoot: string,
   logger: ILogger,
@@ -181,7 +205,7 @@ async function flushFileGroup(
       persisted: 0,
       deduped: 0,
       dropped: [],
-      retry: entries,
+      retry: carryUntilIngested(entries, result.notAttachedReason, commitSha),
       noGraphToAttach: result.noGraphToAttach,
     };
   }
@@ -286,13 +310,13 @@ export async function runFlushStagedL3(deps: {
   const retryLater: PendingL3Decision[] = [];
 
   try {
-    for (const [filePath, entries] of groups) {
+    for (const entries of groups.values()) {
       const outcome = await flushFileGroup(
         workspaceRoot,
         logger,
-        filePath,
+        entries[0].filePath,
         entries,
-        headSha,
+        entries[0].awaitingIngestionOf ?? headSha,
       );
       flushed += outcome.persisted;
       deduped += outcome.deduped;

@@ -35,3 +35,24 @@ resolve_test_category_refs() {
   CATEGORY_RESOLVED_HEAD_REF="$head_ref"
   CATEGORY_RESOLVED_BASE_REF="$base_ref"
 }
+
+# Base for a local pre-push run (issue #558): the commit the push replaces, so every pushed commit
+# is ratcheted, not only the last one. A new branch (all-zero remote SHA) falls back to its
+# merge-base with the default upstream branch; empty output means "no trustworthy base".
+resolve_prepush_category_base() {
+  local repo_root="$1"
+  local local_sha="$2"
+  local remote_sha="$3"
+  if [ -n "$remote_sha" ] && ! [[ "$remote_sha" =~ ^0+$ ]] &&
+    git -C "$repo_root" rev-parse --verify --quiet "${remote_sha}^{commit}" >/dev/null; then
+    printf '%s\n' "$remote_sha"
+    return 0
+  fi
+  local upstream
+  for upstream in origin/HEAD origin/main origin/master; do
+    if git -C "$repo_root" rev-parse --verify --quiet "${upstream}^{commit}" >/dev/null; then
+      git -C "$repo_root" merge-base "$local_sha" "$upstream" 2>/dev/null || true
+      return 0
+    fi
+  done
+}

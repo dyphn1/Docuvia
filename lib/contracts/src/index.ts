@@ -150,10 +150,14 @@ export {
   ValidityStatuses,
   L3DecisionSources,
 } from "./interfaces/graph-store.interfaces.js";
-export type { ExtractedDecision } from "./interfaces/analyze.interfaces.js";
+export type {
+  ExtractedDecision,
+  NotAttachedReason,
+} from "./interfaces/analyze.interfaces.js";
 export {
   DecisionNodeType,
   AnalyzeResultKind,
+  NotAttachedReasons,
 } from "./interfaces/analyze.interfaces.js";
 export type {
   HydrationResult,

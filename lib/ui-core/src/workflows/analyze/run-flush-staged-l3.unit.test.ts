@@ -464,6 +464,57 @@ describe("runFlushStagedL3", () => {
     expect(stillStaged[0].filePath).toBe("src/a.ts");
   });
 
+  it("a new file whose ingestion has not landed yet is carried to the next flush with its commit, even if that commit does not touch the file (#557)", async () => {
+    writeHooksConfig(tmpDir, true);
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "src", "a.ts"), "export const a = 1;\n");
+    await stagePendingDecisions(
+      tmpDir,
+      "src/a.ts",
+      oneDecision,
+      createMockLogger(),
+    );
+
+    // Flush 1 races the post-commit ingestion of the commit that adds src/a.ts: no anchor yet.
+    let ingested = false;
+    const store = makeMockStore();
+    (
+      store.graph.findNodeIdByNodeKey as ReturnType<typeof vi.fn>
+    ).mockImplementation(() => (ingested ? 42 : undefined));
+    const getHeadSha = vi.fn().mockResolvedValue(HEAD_SHA);
+    const getFilesChangedByCommit = vi
+      .fn()
+      .mockResolvedValueOnce(["src/a.ts"])
+      .mockResolvedValueOnce(["src/unrelated.ts"]);
+    registerPersistenceMocks(store, { getHeadSha, getFilesChangedByCommit });
+    docuviaFactory.lock();
+
+    const first = await runFlushStagedL3({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+    });
+    expect(first).toMatchObject({ flushed: 0, stillPending: 1 });
+    expect(await readPendingDecisions(tmpDir, createMockLogger())).toEqual([
+      expect.objectContaining({
+        filePath: "src/a.ts",
+        awaitingIngestionOf: HEAD_SHA,
+      }),
+    ]);
+
+    // Flush 2 runs for a later commit that does not touch src/a.ts; ingestion has landed by now.
+    ingested = true;
+    getHeadSha.mockResolvedValue("later-commit-sha");
+    const second = await runFlushStagedL3({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+    });
+
+    expect(second).toMatchObject({ flushed: 1, stillPending: 0 });
+    expect(store.l3.upsertDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ l2NodeId: 42, commitSha: HEAD_SHA }),
+    );
+  });
+
   it("reports noGraphToAttach: false when the flush fully lands (mixed staging test's healthy counterpart -- issue #57 doesn't false-positive on a populated graph)", async () => {
     writeHooksConfig(tmpDir, true);
     fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });

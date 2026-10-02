@@ -16,9 +16,16 @@ set -e
 # with deletions still runs the full gate below.
 zero_sha="0000000000000000000000000000000000000000"
 delete_only=1
+category_head_sha=""
+category_remote_sha=""
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$local_sha" != "$zero_sha" ]; then
     delete_only=0
+    # Ratchet the first pushed (non-deletion) ref against what the push replaces (issue #558).
+    if [ -z "$category_head_sha" ]; then
+      category_head_sha="$local_sha"
+      category_remote_sha="$remote_sha"
+    fi
   fi
 done
 
@@ -41,7 +48,11 @@ else
   pnpm run test
 
   echo "Running test quality gate..."
-  bash scripts/test-quality-gate.sh
+  # The resolver is bash (this hook runs under sh), so evaluate it in a bash subprocess.
+  category_base_sha="$(bash -c '. scripts/test-category-ratchet-refs.sh && resolve_prepush_category_base "$@"' \
+    _ "$(pwd)" "$category_head_sha" "$category_remote_sha")"
+  CATEGORY_HEAD_REF="$category_head_sha" CATEGORY_BASE_REF="$category_base_sha" \
+    bash scripts/test-quality-gate.sh
 fi
 
 #!/bin/bash

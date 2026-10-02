@@ -11,6 +11,7 @@ import {
   UTF8_ENCODING,
   DecisionNodeType,
   AnalyzeResultKind as ANALYZE_RESULT_KIND,
+  NotAttachedReasons,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
@@ -280,6 +281,14 @@ function printFocusedResult(
   ui.info(
     UI_MESSAGES.ANALYZE_FOCUSED_PERSISTED(result.persisted, result.deduped),
   );
+  if (result.stagedUntilIngested && result.notAttachedReason) {
+    ui.warn(
+      UI_MESSAGES.ANALYZE_AGENT_AUTHORED_STAGED_UNTIL_INGESTED(
+        result.stagedUntilIngested,
+        result.notAttachedReason === NotAttachedReasons.NO_GRAPH,
+      ),
+    );
+  }
 }
 
 function printTierBBatchResult(

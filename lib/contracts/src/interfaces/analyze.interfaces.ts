@@ -29,3 +29,14 @@ export const AnalyzeResultKind = {
 
 export type AnalyzeResultKind =
   (typeof AnalyzeResultKind)[keyof typeof AnalyzeResultKind];
+
+/** Why an `analyze --agent-authored` write could not attach its decisions to an L2 node (#557). */
+export const NotAttachedReasons = {
+  /** No local database or no project row yet -- `docuvia init` has not run. */
+  NO_GRAPH: "no-graph",
+  /** The graph exists but the target file is not ingested yet (e.g. a new, uncommitted file). */
+  ANCHOR_NOT_IN_GRAPH: "anchor-not-in-graph",
+} as const;
+
+export type NotAttachedReason =
+  (typeof NotAttachedReasons)[keyof typeof NotAttachedReasons];

@@ -79,4 +79,32 @@ resolve_test_category_refs "$TMP_REPO"
 assert_eq "HEAD" "$CATEGORY_RESOLVED_HEAD_REF" "asymmetric PR head fallback"
 assert_eq "origin/main" "$CATEGORY_RESOLVED_BASE_REF" "asymmetric PR base fallback"
 
+
+# Issue #558: a local pre-push run must ratchet against the commit the push replaces, not HEAD^1,
+# so debt added in an earlier commit of a multi-commit push is still counted.
+printf 'one\n' > "$TMP_REPO/one.txt"
+git -C "$TMP_REPO" add one.txt
+git -C "$TMP_REPO" commit -q -m "one"
+REMOTE_TIP="$(git -C "$TMP_REPO" rev-parse HEAD)"
+for n in two three; do
+  printf '%s\n' "$n" > "$TMP_REPO/$n.txt"
+  git -C "$TMP_REPO" add "$n.txt"
+  git -C "$TMP_REPO" commit -q -m "$n"
+done
+LOCAL_TIP="$(git -C "$TMP_REPO" rev-parse HEAD)"
+assert_eq "$REMOTE_TIP" "$(resolve_prepush_category_base "$TMP_REPO" "$LOCAL_TIP" "$REMOTE_TIP")" \
+  "pre-push base is the replaced remote tip, not HEAD^1"
+
+# A new branch (all-zero remote SHA) without any upstream ref has no trustworthy base.
+assert_eq "" "$(resolve_prepush_category_base "$TMP_REPO" "$LOCAL_TIP" "0000000000000000000000000000000000000000")" \
+  "new branch without upstream degrades to an empty base"
+
+# A new branch with an upstream default branch uses the merge-base with it.
+git -C "$TMP_REPO" update-ref refs/remotes/origin/main "$REMOTE_TIP"
+assert_eq "$REMOTE_TIP" "$(resolve_prepush_category_base "$TMP_REPO" "$LOCAL_TIP" "0000000000000000000000000000000000000000")" \
+  "new branch uses merge-base with origin/main"
+
+# An unknown remote SHA (not present locally) also falls back to the upstream merge-base.
+assert_eq "$REMOTE_TIP" "$(resolve_prepush_category_base "$TMP_REPO" "$LOCAL_TIP" "1111111111111111111111111111111111111111")" \
+  "unknown remote SHA falls back to merge-base"
 echo "test-category-ratchet ref resolution: PASS"

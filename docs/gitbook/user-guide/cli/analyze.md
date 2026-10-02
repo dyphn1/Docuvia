@@ -99,6 +99,11 @@ shells where piping is awkward, e.g. Windows PowerShell):
   message naming the problem. An agent's own structured payload is a caller that can simply fix its
   input; silently coercing it would hide a real bug in whatever produced the payload.
 - `{"decisions":[]}` is valid and succeeds with 0 persisted, 0 deduplicated.
+- If the target cannot be attached to the graph yet, the decisions are **staged instead of dropped**
+  (issue #557). This happens when `[path]` is a new or uncommitted file that has not been ingested,
+  or when the workspace has no graph yet. The command prints a warning saying how many decisions
+  were staged and why, and they land through the Mode D flush once a commit touching that file is
+  ingested. Before this, the write reported `0 persisted` and the decisions were lost.
 
 **Flag ordering matters**: `--agent-authored` (and `--stage`, `--decisions-file=`) must come
 _after_ the positional `[path]` — `docuvia analyze <path> --agent-authored`, never
@@ -161,6 +166,11 @@ commit-l3-write`), this exits as a no-op immediately — nothing is read or writ
    repo root.)
 5. A persist failure partway through leaves the _entire_ staging file unchanged (no partial drop)
    — the next flush retries from the same state rather than silently losing the remainder.
+6. The flush runs alongside the post-commit `analyze` that ingests the same commit, so a file the
+   commit just added may not have an L2 node yet. Such entries are kept with the commit they
+   belong to (`awaitingIngestionOf`) and land on the next flush once ingestion has caught up, even
+   if that later commit does not touch the file, still stamped with their original commit (issue
+   #557).
 
 `.docuvia/logs/analyze.log` gets a summary line either way (flushed/deduplicated/still-pending
 counts, or the disabled/empty no-op reason).

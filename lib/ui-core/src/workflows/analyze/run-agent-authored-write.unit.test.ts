@@ -12,6 +12,7 @@ import {
   type IGraphStore,
 } from "@workspace/contracts";
 import { runAgentAuthoredWrite } from "./run-agent-authored-write.js";
+import { readPendingDecisions } from "./pending-l3-decisions-store.js";
 import type { ExtractedDecision } from "./analyze-result.js";
 
 /** Mirrors `run-full-ingestion.unit.test.ts`'s/`analyze-workflow.unit.test.ts`'s mocking style. */
@@ -276,10 +277,10 @@ describe("runAgentAuthoredWrite", () => {
     expect(result).toMatchObject({ persisted: 1, deduped: 0 });
   });
 
-  it("warns and persists 0 (no throw) when the anchor is unresolvable", async () => {
+  it("stages the decisions instead of dropping them when the file is not in the graph yet (#557)", async () => {
     fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
     const store = makeMockStore();
-    // findNodeIdByNodeKey always undefined -- no anchor resolves.
+    // findNodeIdByNodeKey always undefined -- a new, not-yet-ingested file has no anchor.
     registerPersistenceMocks(store);
     docuviaFactory.lock();
 
@@ -291,13 +292,46 @@ describe("runAgentAuthoredWrite", () => {
       decisions: oneDecision,
     });
 
-    expect(result).toMatchObject({ persisted: 0, deduped: 0 });
+    expect(result).toMatchObject({
+      persisted: 0,
+      deduped: 0,
+      stagedUntilIngested: 1,
+      notAttachedReason: "anchor-not-in-graph",
+    });
     expect(store.l3.upsertDecision).not.toHaveBeenCalled();
-    expect(
-      logger.events.some(
-        (e) => e.level === "warn" && e.message.includes("docuvia init"),
-      ),
-    ).toBe(true);
+    const pending = await readPendingDecisions(tmpDir, logger);
+    expect(pending).toEqual([
+      expect.objectContaining({
+        filePath: "sample.ts",
+        title: oneDecision[0].title,
+        content: oneDecision[0].content,
+      }),
+    ]);
+  });
+
+  it("stages the decisions with a no-graph reason when the graph has no project yet (#557)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+    const store = makeMockStore();
+    (store.projects.getFirst as ReturnType<typeof vi.fn>).mockReturnValue(
+      undefined,
+    );
+    registerPersistenceMocks(store);
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    const result = await runAgentAuthoredWrite({
+      workspaceRoot: tmpDir,
+      logger,
+      targetPath: "sample.ts",
+      decisions: oneDecision,
+    });
+
+    expect(result).toMatchObject({
+      persisted: 0,
+      stagedUntilIngested: 1,
+      notAttachedReason: "no-graph",
+    });
+    expect(await readPendingDecisions(tmpDir, logger)).toHaveLength(1);
   });
 
   it("aggregates persisted/deduped counts independently across multiple decisions in one call", async () => {

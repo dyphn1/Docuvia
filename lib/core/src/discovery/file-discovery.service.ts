@@ -277,16 +277,21 @@ export class FileDiscoveryService implements IFileDiscovery {
       return { kind: "skip" };
     }
 
+    const diskPreflight = await this.preflightDiskFileSize(file, ctx);
+    if (diskPreflight) return diskPreflight;
+
     const read = await this.readFileForHashing(file, currentHash, ctx);
     if (!read) {
       return { kind: "unreadable" };
     }
 
-    // Check again after manual hashing
+    // Check again after manual hashing.
     if (ctx.existingHashes.get(file) === read.hash) {
       return { kind: "skip" };
     }
 
+    // Check content size after reading too, including Git blobs and files that
+    // changed between stat and read.
     const sizeBytes = Buffer.byteLength(read.code);
     if (sizeBytes > MAX_FILE_SIZE_BYTES) {
       this.logger.warn(DISCOVERY_MESSAGES.SKIPPING_OVERSIZED_FILE, {
@@ -297,6 +302,29 @@ export class FileDiscoveryService implements IFileDiscovery {
     }
 
     return { kind: "parse", entry: { file, hash: read.hash, code: read.code } };
+  }
+
+  /** Checks disk size before reading; pinned indexed blobs use their own bytes and bypass this working-tree check. */
+  private async preflightDiskFileSize(
+    file: string,
+    ctx: FileResolutionContext,
+  ): Promise<FileOutcome | null> {
+    const readsIndexedBlob =
+      ctx.onlyIndexed && ctx.usingGit && ctx.gitBlobHashes.has(file);
+    if (readsIndexedBlob) return null;
+
+    try {
+      const { size } = await fs.stat(path.join(ctx.workspaceRoot, file));
+      if (size <= MAX_FILE_SIZE_BYTES) return null;
+
+      this.logger.warn(DISCOVERY_MESSAGES.SKIPPING_OVERSIZED_FILE, {
+        file,
+        sizeBytes: size,
+      });
+      return { kind: "oversized", file, sizeBytes: size };
+    } catch {
+      return { kind: "unreadable" };
+    }
   }
 
   /** Looks up a file's already-known content hash from the git blob scan, if any (empty string when unknown and a read is required). */

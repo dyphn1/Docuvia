@@ -4571,6 +4571,72 @@
       "lastTierBCommitSha": null
     },
     {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/adapter.py",
+      "contentHash": "270821d840f785a0a14d4eaf783e0aeeb241263a",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/cua_contract.py",
+      "contentHash": "fd30dd2c2957ee20062e79fe6097ffb4de313830",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/diagnostics.py",
+      "contentHash": "e031175c578dd48299ff83bf91fa0c6fc6d7c458",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/laya_constants.py",
+      "contentHash": "dfd2fd32dc41b6450bedc6098a39670828705edc",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/model.py",
+      "contentHash": "c84092bb0413c262b0ec348b1ee1f4a775ee838e",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/resource_budget.py",
+      "contentHash": "0e2e8707eb46fb21d14ba40f4c3c15bcdbc58fc6",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/router_feasibility.py",
+      "contentHash": "bc69e7e320b1dffcd009394b084f9dfef0424cfb",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/score.py",
+      "contentHash": "a9bbad516fd435c1af08c9a0e910906e8f677ff7",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/self_test.py",
+      "contentHash": "3e4a2b4747c04a98d639bac3657cd63e6ae73102",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/laya/train.py",
+      "contentHash": "00021b175a466eebf59dc49861d7e04518cf2b52",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-models/p5_resource_envelope.py",
+      "contentHash": "c6bc61b0631e2264d52ce04d6a77a9573ca6c080",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "scripts/semantic-corpus/system1-syntax.mts",
       "contentHash": "502acae191f406c7e55fa783f9f8d454476bd11a",
       "lastTierBProcessedAt": "2026-10-01 23:20:00",
@@ -4709,7 +4775,7 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     }
   ],
-  "lastIngestedSourceSha": "0af97662c7db48933b0b3f1ebd38383bb3a984bd",
+  "lastIngestedSourceSha": "6b5587a5e1de11acfab39337d37fe8eb21182a08",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

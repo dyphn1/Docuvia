@@ -9,6 +9,7 @@ import { GraphStore } from "@workspace/schema";
 import type { ParsedAstFileResult } from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
+import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import { resolveWasmPath } from "../ast/resolve-wasm-path.js";
 import { extractTierAIndexedDeclarations } from "../ast/tier-a-declaration-index.js";
 
@@ -70,6 +71,94 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("links an imported bare call to a const factory, not its returned anonymous arrow", async () => {
+    const factoryFile = "src/decorator.ts";
+    const callerFile = "src/consumer.ts";
+    const factoryCode = [
+      "export const RequestMapping = (path: string) => {",
+      "  return (target: object) => {",
+      "    void path;",
+      "    void target;",
+      "  };",
+      "};",
+    ].join("\n");
+    const callerCode = [
+      'import { RequestMapping } from "./decorator";',
+      "export function controller() {",
+      '  RequestMapping("/test");',
+      "}",
+    ].join("\n");
+
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, factoryFile), factoryCode);
+    fs.writeFileSync(path.join(tmpDir, callerFile), callerCode);
+
+    const workerPool = new AstWorkerPool();
+    try {
+      await workerPool.initialize(1);
+      const factoryResponse = await workerPool.parse({
+        filePath: factoryFile,
+        code: factoryCode,
+        language: "typescript",
+      });
+      const callerResponse = await workerPool.parse({
+        filePath: callerFile,
+        code: callerCode,
+        language: "typescript",
+      });
+      expect(factoryResponse.data?.functions.map(({ name }) => name)).toEqual([
+        "RequestMapping",
+        "anonymous",
+      ]);
+
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          {
+            file: factoryFile,
+            hash: "factory-hash",
+            data: factoryResponse.data!,
+          },
+          {
+            file: callerFile,
+            hash: "caller-hash",
+            data: callerResponse.data!,
+          },
+        ],
+        tags: [],
+      });
+
+      const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+      const raw = new DatabaseCtor(dbPath, { readonly: true });
+      try {
+        const edge = raw
+          .prepare(
+            `SELECT target.node_key AS targetNodeKey
+           FROM node_links AS link
+           JOIN l2_nodes AS source ON source.id = link.source_node_id
+           JOIN l2_nodes AS target ON target.id = link.target_node_id
+           WHERE source.node_key = ? AND link.link_type = 'calls'`,
+          )
+          .get(`${callerFile}#controller`) as
+          { targetNodeKey: string } | undefined;
+
+        expect(edge?.targetNodeKey).toBe(`${factoryFile}#RequestMapping`);
+        expect(
+          store.graph.findNodeIdByNodeKey(`${factoryFile}#RequestMapping`),
+        ).toBeTypeOf("number");
+        expect(
+          store.graph.findNodeIdByNodeKey(`${factoryFile}#anonymous`),
+        ).toBeTypeOf("number");
+      } finally {
+        raw.close();
+      }
+    } finally {
+      await workerPool.terminate();
+    }
   });
 
   it("matches the extracted declaration index to Tier A's persisted node_key insertion order", async () => {

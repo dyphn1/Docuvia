@@ -58,6 +58,26 @@ const NAME_BEARING_PARENT_TYPES = new Set<string>([
   AstNodeTypes.PUBLIC_FIELD_DEFINITION,
 ]);
 
+const CALLABLE_SCOPE_NODE_TYPES = new Set<string>([
+  LanguageNodeTypes.ARROW_FUNCTION,
+  LanguageNodeTypes.FUNCTION_EXPRESSION,
+  LanguageNodeTypes.FUNCTION_DECLARATION,
+  LanguageNodeTypes.GENERATOR_FUNCTION,
+  LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION,
+  LanguageNodeTypes.FUNCTION_DEFINITION,
+  LanguageNodeTypes.METHOD_DECLARATION,
+  LanguageNodeTypes.METHOD_DEFINITION,
+  LanguageNodeTypes.LOCAL_FUNCTION_STATEMENT,
+  LanguageNodeTypes.CONSTRUCTOR_DECLARATION,
+  LanguageNodeTypes.DESTRUCTOR_DECLARATION,
+  LanguageNodeTypes.CONVERSION_OPERATOR_DECLARATION,
+  LanguageNodeTypes.OPERATOR_DECLARATION,
+  LanguageNodeTypes.COMPACT_CONSTRUCTOR_DECLARATION,
+  LanguageNodeTypes.METHOD,
+  LanguageNodeTypes.SINGLETON_METHOD,
+  LanguageNodeTypes.FUNCTION_ITEM,
+]);
+
 /**
  * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
  * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
@@ -108,6 +128,9 @@ function callableNameFromParent(node: Node): CallableName | undefined {
     // (for example, `arr.map(x => x + 1)`). Stop here: climbing further would misattribute
     // the outer binding, such as `results` in `const results = arr.map(...)`, to this callback.
     if (current.type === AstNodeTypes.ARGUMENTS) return undefined;
+    // A callable nested in another function belongs to its own scope. Do not climb through that
+    // boundary to inherit an outer binding, as with `const factory = () => { return () => {}; }`.
+    if (CALLABLE_SCOPE_NODE_TYPES.has(current.type)) return undefined;
     if (NAME_BEARING_PARENT_TYPES.has(current.type)) {
       const nameNode =
         current.childForFieldName("name") ||

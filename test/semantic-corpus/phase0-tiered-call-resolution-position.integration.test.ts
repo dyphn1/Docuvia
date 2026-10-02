@@ -27,16 +27,17 @@ afterEach(() => {
 });
 
 describe("Phase 0 UTF-16 worker call-site positions", () => {
-  it("[integration] preserves an astral-prefixed worker position through mapping, Q1 and PartialSemantic", async () => {
+  it("[happy][stress] preserves an astral-prefixed worker position through mapping, Q1 and PartialSemantic", async () => {
     const root = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-phase0-utf16-position-"),
     );
     temporaryRoots.push(root);
     const callerFile = "src/caller.ts";
     const targetFile = "src/targets.ts";
+    const astralPrefix = "😀".repeat(64);
     const callerText = [
       'import { a } from "./targets";',
-      'export function caller() { const marker = "😀"; a(); z(); }',
+      `export function caller() { const marker = "${astralPrefix}"; a(); z(); }`,
       "function z() {}",
     ].join("\n");
     const targetText = "export function a() {}\n";
@@ -203,4 +204,58 @@ describe("Phase 0 UTF-16 worker call-site positions", () => {
       await workerPool.terminate();
     }
   }, 120_000);
+
+  it("[invalid-input] rejects the byte-counted column after repeated astral characters", () => {
+    const astralPrefix = "😀".repeat(64);
+    const text = `const marker = "${astralPrefix}"; a();`;
+    const sourceFile = ts.createSourceFile(
+      "caller.ts",
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const utf16Column = text.indexOf("a();");
+    const byteColumn = Buffer.byteLength(text.slice(0, utf16Column), "utf8");
+
+    expect(byteColumn).toBeGreaterThan(utf16Column);
+    expect(
+      mapCallExpressionAtPosition(sourceFile, text, 0, byteColumn),
+    ).toEqual({ status: "excluded", reason: "invalid-column" });
+  });
+
+  it("[error-handling] rejects an unverified TypeScript project config", () => {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-phase0-missing-config-"),
+    );
+    temporaryRoots.push(root);
+
+    expect(() =>
+      createPartialSemanticProject({
+        snapshotRoot: root,
+        projectId: "tsconfig.json",
+        snapshotFiles: new Set(),
+      }),
+    ).toThrow("Project config is not a verified snapshot file: tsconfig.json");
+  });
+
+  it("[state-diff] changes portable identity when source content changes", () => {
+    const before = "function caller() { target(); }\n";
+    const after = `${before}// trailing source edit\n`;
+    const callOffset = before.indexOf("target()");
+    const callSiteKeyFor = (source: string) =>
+      portableCallSiteKey({
+        filePath: "src/caller.ts",
+        fileContentHash: crypto
+          .createHash("sha256")
+          .update(Buffer.from(source, "utf8"))
+          .digest("hex"),
+        row: 0,
+        columnUtf16: callOffset,
+        calleeKind: "bare",
+        calleeName: "target",
+      });
+
+    expect(callSiteKeyFor(before)).not.toBe(callSiteKeyFor(after));
+  });
 });

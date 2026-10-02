@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/system1-query-routing-rules.mts#receiverEvidence
+id: scripts/semantic-corpus/system1-query-routing-rules.mts#ReceiverEvidence
 type: symbol
-name: receiverEvidence
+name: ReceiverEvidence
 filePath: scripts/semantic-corpus/system1-query-routing-rules.mts
 ---
-# Symbol: receiverEvidence
+# Symbol: ReceiverEvidence
 
 File: `scripts/semantic-corpus/system1-query-routing-rules.mts`

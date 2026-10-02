@@ -1,5 +1,5 @@
 ---
-id: test/layer-boundary.test.ts#anonymous@L76
+id: test/layer-boundary.test.ts#anonymous@L70
 type: symbol
 name: anonymous
 filePath: test/layer-boundary.test.ts

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/hydrate-metadata-roundtrip.integration.test.ts#anonymous@L44
+id: artifacts/cli/test/integration/hydrate-metadata-roundtrip.integration.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/hydrate-metadata-roundtrip.integration.test.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/hydrate-metadata-roundtrip.integration.
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/hydrate-metadata-roundtrip.integration.test.ts`
+ts`

@@ -1,10 +1,9 @@
 ---
-id: lib/core/src/semantic/system1/system1-labels.unit.test.ts#anonymous@L7
+id: lib/core/src/semantic/system1/system1-labels.unit.test.ts#captureError
 type: symbol
-name: anonymous
+name: captureError
 filePath: lib/core/src/semantic/system1/system1-labels.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: captureError
 
 File: `lib/core/src/semantic/system1/system1-labels.unit.test.ts`
-

@@ -36,6 +36,10 @@ export interface PendingL3Decision {
   nodeType: string;
   confidence: number;
   stagedAt: string;
+  /** #557: set when a flush found no L2 anchor yet for a file in its commit's diff (the commit's
+   *  own post-commit ingestion had not landed). The entry then flushes on any later flush, stamped
+   *  with this commit, without waiting for another commit to touch the same file. */
+  awaitingIngestionOf?: string;
 }
 
 function resolvePendingPath(workspaceRoot: string): string {

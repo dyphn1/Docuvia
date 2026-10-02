@@ -1,3 +1,9 @@
+import {
+  buildQualifiedBaseKey,
+  buildUniqueNodeKey,
+} from "../../lib/core/src/graph/node-key.js";
+import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
+
 /** Phase 0 helpers that mirror the existing Tier A ScopeResolver call path. */
 
 export interface ReplayCallSite {
@@ -48,8 +54,8 @@ export function matchParsedCallAtPosition(
 
 export interface ReplayImport {
   readonly localName: string;
-  readonly originalName?: string;
-  readonly modulePath?: string;
+  readonly originalName: string;
+  readonly modulePath: string;
 }
 
 export type ReceiverCategory =
@@ -162,6 +168,214 @@ export interface ScopeResolverLike {
   ): ScopeResolverTarget | null;
 }
 
+export interface ParsedGraphFileLike {
+  readonly file: string;
+  readonly data: {
+    readonly imports?: readonly ReplayImport[];
+    readonly functions?: readonly {
+      readonly name: string;
+      readonly startLine: number;
+      readonly endLine?: number;
+      readonly containerName?: string;
+    }[];
+    readonly classes?: readonly {
+      readonly name: string;
+      readonly startLine: number;
+      readonly endLine?: number;
+    }[];
+    readonly variables?: readonly {
+      readonly name: string;
+      readonly startLine: number;
+      readonly endLine?: number;
+    }[];
+  };
+}
+
+export interface ScopeResolverRegistryLike extends ScopeResolverLike {
+  registerFile(
+    filePath: string,
+    imports: ReplayImport[],
+    exports: string[],
+    locals: string[],
+  ): void;
+}
+
+/** Matches GraphPersisterService.registerResolverFiles: register the complete parsed batch before
+ *  replaying any call, using the same local-symbol families. */
+export function registerScopeResolverFiles(
+  resolver: ScopeResolverRegistryLike,
+  parsedResults: readonly ParsedGraphFileLike[],
+): void {
+  for (const result of parsedResults) {
+    const locals = [
+      ...(result.data.functions ?? []).map((item) => item.name),
+      ...(result.data.classes ?? []).map((item) => item.name),
+      ...(result.data.variables ?? []).map((item) => item.name),
+    ];
+    resolver.registerFile(
+      result.file,
+      [...(result.data.imports ?? [])],
+      [],
+      locals,
+    );
+  }
+}
+
+export interface ParsedSymbolNodeKeyIndex {
+  readonly files: ReadonlySet<string>;
+  readonly byFileSymbol: ReadonlyMap<string, ReadonlyMap<string, string>>;
+  readonly declarationsByFile: ReadonlyMap<
+    string,
+    readonly ParsedSymbolDeclarationNode[]
+  >;
+}
+
+export interface ParsedSymbolDeclarationNode {
+  readonly name: string;
+  readonly startLine: number;
+  readonly endLine: number;
+  readonly containerName?: string;
+  readonly nodeKey: string;
+}
+
+/** Mirrors GraphPersisterService's function → class → variable insertion order and collision
+ *  policy so ScopeResolver's `(file, symbol)` proposal can be compared with a graph node key. */
+export function buildParsedSymbolNodeKeyIndex(
+  parsedResults: readonly ParsedGraphFileLike[],
+): ParsedSymbolNodeKeyIndex {
+  const byFileSymbol = new Map<string, Map<string, string>>();
+  const declarationsByFile = new Map<string, ParsedSymbolDeclarationNode[]>();
+  for (const result of parsedResults) {
+    const usedNodeKeys = new Set<string>([result.file]);
+    const symbols = new Map<string, string>();
+    const declarations: ParsedSymbolDeclarationNode[] = [];
+    byFileSymbol.set(result.file.replaceAll("\\", "/"), symbols);
+    declarationsByFile.set(result.file.replaceAll("\\", "/"), declarations);
+    for (const fn of result.data.functions ?? []) {
+      const key = buildUniqueNodeKey(
+        usedNodeKeys,
+        buildQualifiedBaseKey(result.file, fn.name, fn.containerName),
+        fn.startLine,
+      );
+      usedNodeKeys.add(key);
+      symbols.set(fn.name, key);
+      declarations.push({
+        name: fn.name,
+        startLine: fn.startLine,
+        endLine: fn.endLine ?? fn.startLine,
+        ...(fn.containerName === undefined
+          ? {}
+          : { containerName: fn.containerName }),
+        nodeKey: key,
+      });
+    }
+    for (const cls of result.data.classes ?? []) {
+      const key = buildUniqueNodeKey(
+        usedNodeKeys,
+        `${result.file}#${cls.name}`,
+        cls.startLine,
+      );
+      usedNodeKeys.add(key);
+      symbols.set(cls.name, key);
+      declarations.push({
+        name: cls.name,
+        startLine: cls.startLine,
+        endLine: cls.endLine ?? cls.startLine,
+        nodeKey: key,
+      });
+    }
+    for (const variable of result.data.variables ?? []) {
+      const key = buildUniqueNodeKey(
+        usedNodeKeys,
+        `${result.file}#${variable.name}`,
+        variable.startLine,
+      );
+      usedNodeKeys.add(key);
+      symbols.set(variable.name, key);
+      declarations.push({
+        name: variable.name,
+        startLine: variable.startLine,
+        endLine: variable.endLine ?? variable.startLine,
+        nodeKey: key,
+      });
+    }
+  }
+  return {
+    files: new Set(
+      parsedResults.map((result) => result.file.replaceAll("\\", "/")),
+    ),
+    byFileSymbol,
+    declarationsByFile,
+  };
+}
+
+export type ParsedDeclarationNodeMatch =
+  | { readonly status: "unique"; readonly nodeKey: string }
+  | { readonly status: "ambiguous"; readonly candidates: readonly string[] }
+  | { readonly status: "not-found" };
+
+/** Maps a language-service definition by its declaration span, never by bare name alone. */
+export function nodeKeyForParsedDeclarationAtPosition(
+  index: ParsedSymbolNodeKeyIndex,
+  filePath: string,
+  name: string,
+  line: number,
+  containerName?: string | null,
+): ParsedDeclarationNodeMatch {
+  const normalizedFile = filePath.replaceAll("\\", "/");
+  const candidates = (
+    index.declarationsByFile.get(normalizedFile) ?? []
+  ).filter(
+    (declaration) =>
+      declaration.name === name &&
+      declaration.startLine <= line &&
+      line <= declaration.endLine,
+  );
+  if (candidates.length === 0) return { status: "not-found" };
+  if (candidates.length === 1)
+    return { status: "unique", nodeKey: candidates[0].nodeKey };
+
+  if (containerName) {
+    const containerMatches = candidates.filter(
+      (candidate) => candidate.containerName === containerName,
+    );
+    if (containerMatches.length === 1)
+      return { status: "unique", nodeKey: containerMatches[0].nodeKey };
+  }
+  return {
+    status: "ambiguous",
+    candidates: candidates.map((candidate) => candidate.nodeKey),
+  };
+}
+
+/** Mirrors the target node fallback in GraphPersisterService.resolveTargetNodeId. */
+export function nodeKeyForResolverTarget(
+  index: ParsedSymbolNodeKeyIndex,
+  target: ScopeResolverTarget,
+): string | null {
+  const filePath = target.targetFile.replaceAll("\\", "/");
+  return (
+    index.byFileSymbol.get(filePath)?.get(target.targetSymbol) ??
+    (index.files.has(filePath) ? filePath : null)
+  );
+}
+
+/** Mirrors GraphPersisterService.resolveSourceNodeId for a parsed call's enclosing function. */
+export function nodeKeyForSourceFunction(
+  index: ParsedSymbolNodeKeyIndex,
+  filePath: string,
+  sourceFunction: string,
+): string {
+  const normalizedPath = filePath.replaceAll("\\", "/");
+  if (sourceFunction !== ANONYMOUS_SYMBOL_NAME) {
+    const symbolKey = index.byFileSymbol
+      .get(normalizedPath)
+      ?.get(sourceFunction);
+    if (symbolKey) return symbolKey;
+  }
+  return normalizedPath;
+}
+
 export type ScopeResolverProposal =
   | {
       readonly status: "resolved";
@@ -220,10 +434,32 @@ export interface BaselineCallRow {
   readonly split: string;
   readonly duplicateGroup: string;
   readonly receiverCategory?: ReceiverCategory;
+  readonly callShape?: string;
   readonly positionStatus: "unique" | "excluded";
   readonly scopeResolverStatus:
-    "resolved" | "unresolved" | "unsupported" | "not-run";
+    "resolved" | "unresolved" | "unsupported" | "unmapped-target" | "not-run";
   readonly resolverTargetId: string | null;
+}
+
+/** Guards a source-row sidecar against omissions, duplicates, or injected sample ids. */
+export function assertExactSampleCoverage(
+  name: string,
+  expectedSampleIds: ReadonlySet<string>,
+  rows: readonly { readonly sampleId: string }[],
+): void {
+  const actualSampleIds = new Set<string>();
+  for (const row of rows) {
+    if (actualSampleIds.has(row.sampleId))
+      throw new Error(`${name} contains duplicate sample id ${row.sampleId}.`);
+    actualSampleIds.add(row.sampleId);
+  }
+  if (
+    rows.length !== expectedSampleIds.size ||
+    actualSampleIds.size !== expectedSampleIds.size ||
+    [...expectedSampleIds].some((sampleId) => !actualSampleIds.has(sampleId)) ||
+    [...actualSampleIds].some((sampleId) => !expectedSampleIds.has(sampleId))
+  )
+    throw new Error(`${name} does not cover the exact expected sample-id set.`);
 }
 
 export interface BaselineLabel {
@@ -251,6 +487,7 @@ export interface BaselineSummary extends BaselineCounts {
   readonly bySplit: Readonly<Record<string, BaselineCounts>>;
   readonly byFamily: Readonly<Record<string, BaselineCounts>>;
   readonly byReceiverCategory: Readonly<Record<string, BaselineCounts>>;
+  readonly byCallShape: Readonly<Record<string, BaselineCounts>>;
 }
 
 export function summarizeBaselineRows(
@@ -335,5 +572,6 @@ export function summarizeBaselineRows(
     bySplit: groupBy((row) => row.split),
     byFamily: groupBy((row) => row.repoFamily),
     byReceiverCategory: groupBy((row) => row.receiverCategory),
+    byCallShape: groupBy((row) => row.callShape),
   };
 }

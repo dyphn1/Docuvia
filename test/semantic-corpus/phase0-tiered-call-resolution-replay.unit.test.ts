@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import { ScopeResolver } from "../../lib/core/src/graph/scope-resolver.js";
 import {
   classifyReceiver,
+  buildParsedSymbolNodeKeyIndex,
+  assertExactSampleCoverage,
   matchParsedCallAtPosition,
+  nodeKeyForParsedDeclarationAtPosition,
   resolveScopeResolverProposal,
   summarizeBaselineRows,
   type BaselineCallRow,
@@ -28,6 +31,84 @@ const call = (
 });
 
 describe("Phase 0 call-site baseline replay", () => {
+  it("[happy] accepts an exact one-row-per-sample sidecar", () => {
+    expect(() =>
+      assertExactSampleCoverage("sidecar", new Set(["a", "b"]), [
+        { sampleId: "b" },
+        { sampleId: "a" },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("[invalid-input] rejects duplicate, missing, and injected sample ids", () => {
+    const expected = new Set(["a", "b"]);
+    expect(() =>
+      assertExactSampleCoverage("sidecar", expected, [
+        { sampleId: "a" },
+        { sampleId: "a" },
+      ]),
+    ).toThrow(/duplicate sample id/);
+    expect(() =>
+      assertExactSampleCoverage("sidecar", expected, [{ sampleId: "a" }]),
+    ).toThrow(/exact expected sample-id set/);
+    expect(() =>
+      assertExactSampleCoverage("sidecar", expected, [
+        { sampleId: "a" },
+        { sampleId: "c" },
+      ]),
+    ).toThrow(/exact expected sample-id set/);
+  });
+
+  it("[happy] maps definition spans to distinct declarations with a fail-closed name collision", () => {
+    const index = buildParsedSymbolNodeKeyIndex([
+      {
+        file: "src/targets.ts",
+        data: {
+          functions: [
+            {
+              name: "run",
+              startLine: 0,
+              endLine: 0,
+              containerName: "First",
+            },
+            {
+              name: "run",
+              startLine: 0,
+              endLine: 0,
+              containerName: "Second",
+            },
+            { name: "overload", startLine: 2, endLine: 2 },
+            { name: "overload", startLine: 4, endLine: 5 },
+          ],
+        },
+      },
+    ]);
+
+    expect(
+      nodeKeyForParsedDeclarationAtPosition(
+        index,
+        "src/targets.ts",
+        "run",
+        0,
+        "Second",
+      ),
+    ).toEqual({
+      status: "unique",
+      nodeKey: "src/targets.ts#Second.run",
+    });
+    expect(
+      nodeKeyForParsedDeclarationAtPosition(index, "src/targets.ts", "run", 0),
+    ).toMatchObject({ status: "ambiguous" });
+    expect(
+      nodeKeyForParsedDeclarationAtPosition(
+        index,
+        "src/targets.ts",
+        "overload",
+        4,
+      ),
+    ).toEqual({ status: "unique", nodeKey: "src/targets.ts#overload@L4" });
+  });
+
   it("[happy] maps an exact source position to the single parsed call row", () => {
     const first = call({ startColumn: 2, targetFunction: "cache.get" });
     const second = call({ startColumn: 8, targetFunction: "store.commit" });
@@ -228,6 +309,7 @@ describe("Phase 0 call-site baseline replay", () => {
         repoFamily: "a",
         split: "train",
         duplicateGroup: "g1",
+        callShape: "member",
         positionStatus: "unique",
         scopeResolverStatus: "resolved",
         resolverTargetId: "target-a",
@@ -237,6 +319,7 @@ describe("Phase 0 call-site baseline replay", () => {
         repoFamily: "b",
         split: "test",
         duplicateGroup: "g2",
+        callShape: "bare",
         positionStatus: "unique",
         scopeResolverStatus: "unresolved",
         resolverTargetId: null,
@@ -246,6 +329,7 @@ describe("Phase 0 call-site baseline replay", () => {
         repoFamily: "a",
         split: "train",
         duplicateGroup: "g3",
+        callShape: "member",
         positionStatus: "excluded",
         scopeResolverStatus: "not-run",
         resolverTargetId: null,
@@ -255,6 +339,7 @@ describe("Phase 0 call-site baseline replay", () => {
         repoFamily: "b",
         split: "test",
         duplicateGroup: "g4",
+        callShape: "this",
         positionStatus: "unique",
         scopeResolverStatus: "resolved",
         resolverTargetId: "unlabeled-target",
@@ -292,6 +377,10 @@ describe("Phase 0 call-site baseline replay", () => {
       resolverResolvedRows: 1,
     });
     expect(summary.byFamily.a).toMatchObject({
+      sourceRows: 2,
+      excludedRows: 1,
+    });
+    expect(summary.byCallShape.member).toMatchObject({
       sourceRows: 2,
       excludedRows: 1,
     });

@@ -2,6 +2,31 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.17.0](https://github.com/dyphn1/Docuvia/compare/v1.16.0...v1.17.0) (2026-10-02)
+
+### Bug Fixes
+
+- **analyze:** carry staged decisions for not-yet-ingested files to the next flush ([3f6c665](https://github.com/dyphn1/Docuvia/commit/3f6c665cf1926862f7bef6f885fc6b161756b6c6)), closes [#557](https://github.com/dyphn1/Docuvia/issues/557)
+- **analyze:** stage agent-authored decisions that cannot attach instead of dropping them ([6381b10](https://github.com/dyphn1/Docuvia/commit/6381b109ff0b2a55cf43eb6c4cdb964b37e3bdb9)), closes [#557](https://github.com/dyphn1/Docuvia/issues/557)
+- **ci:** ratchet pre-push test categories against the replaced remote tip ([f15ba16](https://github.com/dyphn1/Docuvia/commit/f15ba168a7574d35d9468f2c196222b4acb58cb8)), closes [#558](https://github.com/dyphn1/Docuvia/issues/558)
+- **semantic:** resolve System-1 candidate evidence by exact Tier A node_key ([#554](https://github.com/dyphn1/Docuvia/issues/554)) ([853a846](https://github.com/dyphn1/Docuvia/commit/853a846747ae0429612de1559a8f8fc0b32d6737))
+
+### Features
+
+- **eval:** add B-5 commit-is-exact router feasibility gate ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([e868771](https://github.com/dyphn1/Docuvia/commit/e868771fe0c2c3995fb0f85684a54df71189b32e))
+- **eval:** add CUA-S1 System-1 scorer adapter with nested LOFO training ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([6de0df4](https://github.com/dyphn1/Docuvia/commit/6de0df42723eaf0f86581033e3160f68c8c952d5))
+- **eval:** add deterministic System-1 query routing analysis ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([b2ceeec](https://github.com/dyphn1/Docuvia/commit/b2ceeecc664dfc795ed359907abda003f8b2d995))
+- **eval:** add eval:semantic:system1-eval runner ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([d754591](https://github.com/dyphn1/Docuvia/commit/d754591d60d345cf7ca3b582306ea067b7ea7690))
+- **eval:** add eval:semantic:system1-export for corpus v1 ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([4487a83](https://github.com/dyphn1/Docuvia/commit/4487a83b8ddfd187b306fe3fc15d4c20fe24eadb))
+- **eval:** add Laya frozen-encoder System-1 scorer with nested LOFO ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([d13f94e](https://github.com/dyphn1/Docuvia/commit/d13f94e5f930e5bdb273e4d87d7ab010a4d7c1ff))
+- **eval:** add P5 System-1 resource-envelope harness ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([a571669](https://github.com/dyphn1/Docuvia/commit/a5716699c67bdd490aced4cff3ebc51742023ad0))
+- **eval:** count System-1 eval by duplicate group and pin corpus manifest ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([e171a24](https://github.com/dyphn1/Docuvia/commit/e171a24edf50e649c98bdc232b59af4cc6b09019))
+- **eval:** run System-1 eval and CUA-S1 on dataset v2 ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([02db845](https://github.com/dyphn1/Docuvia/commit/02db84530e532ed1aacad0fdc645cf769981d23c))
+- **eval:** train CUA-S1 v2 with independent-event targets and a routing head ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([16c2825](https://github.com/dyphn1/Docuvia/commit/16c28256ce6b48b1c16b6cf0d73b48304c024261))
+- **semantic:** add label-free System-1 option-selection encoding ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([964779e](https://github.com/dyphn1/Docuvia/commit/964779ed8a55094111fb543f161bfbab4b231cbe))
+- **semantic:** add offline System-1 evaluation core ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([b72d661](https://github.com/dyphn1/Docuvia/commit/b72d6616e4d3fbb9a7efb629630dc0aa70a8dced))
+- **semantic:** certify System-1 thresholds with leave-one-family-out ([#553](https://github.com/dyphn1/Docuvia/issues/553)) ([058ef55](https://github.com/dyphn1/Docuvia/commit/058ef55d8d4b2ae351940c2ed2b7a731f6a68164))
+
 # [1.16.0](https://github.com/dyphn1/Docuvia/compare/v1.15.7...v1.16.0) (2026-09-30)
 
 ### Bug Fixes

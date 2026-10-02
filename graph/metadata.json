@@ -4637,6 +4637,24 @@
       "lastTierBCommitSha": null
     },
     {
+      "filePath": "scripts/semantic-corpus/system1-query-routing-classifier.py",
+      "contentHash": "7ad4861f6e47d53481a58a83faf7481ade618324",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-query-routing-rules.mts",
+      "contentHash": "1352d90a33d7bc5ffd7adb2dcec17dcb4109787c",
+      "lastTierBProcessedAt": "2026-10-02 09:12:51",
+      "lastTierBCommitSha": "208df4a60479b6f22df30bfde7039d0cc28ec4f9"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/system1-query-routing.mts",
+      "contentHash": "b02d56af26b6144a2049fce3ef4446ee305b73ad",
+      "lastTierBProcessedAt": "2026-10-02 09:12:51",
+      "lastTierBCommitSha": "208df4a60479b6f22df30bfde7039d0cc28ec4f9"
+    },
+    {
       "filePath": "scripts/semantic-corpus/system1-syntax.mts",
       "contentHash": "502acae191f406c7e55fa783f9f8d454476bd11a",
       "lastTierBProcessedAt": "2026-10-01 23:20:00",
@@ -4745,6 +4763,12 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     },
     {
+      "filePath": "test/system1-query-routing-rules.test.ts",
+      "contentHash": "f1d45454a3566c9b2f15cd58bbe3708d8eb7611d",
+      "lastTierBProcessedAt": "2026-10-02 09:12:51",
+      "lastTierBCommitSha": "208df4a60479b6f22df30bfde7039d0cc28ec4f9"
+    },
+    {
       "filePath": "test/tdd-quality-score.test.ts",
       "contentHash": "4b53df4838492fb5d2e6b83696a2cfc0c351e034",
       "lastTierBProcessedAt": "2026-09-30 08:01:50",
@@ -4775,7 +4799,7 @@
       "lastTierBCommitSha": "52daaecbeaf2e5b87d84929ee2127ae80d0465ba"
     }
   ],
-  "lastIngestedSourceSha": "6b5587a5e1de11acfab39337d37fe8eb21182a08",
+  "lastIngestedSourceSha": "208df4a60479b6f22df30bfde7039d0cc28ec4f9",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

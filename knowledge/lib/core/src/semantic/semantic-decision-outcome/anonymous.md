@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-decision-outcome.ts#anonymous@L88
+id: lib/core/src/semantic/semantic-decision-outcome.ts#anonymous@L67
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-decision-outcome.ts

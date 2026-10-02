@@ -1,9 +1,0 @@
----
-id: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts#anonymous@L712
-type: symbol
-name: anonymous
-filePath: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts
----
-# Symbol: anonymous
-
-File: `lib/core/src/semantic/system1/eval/system1-eval-metrics.ts`

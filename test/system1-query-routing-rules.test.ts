@@ -57,8 +57,13 @@ function run(
   source: System1QuerySourceIndex,
   options: readonly string[],
   context: unknown,
+  callSitePosition?: { readonly line: number; readonly column: number },
 ) {
-  return resolveSystem1DeterministicQueries(state(options, context), source);
+  return resolveSystem1DeterministicQueries(
+    state(options, context),
+    source,
+    callSitePosition,
+  );
 }
 
 describe("System-1 deterministic query routing", () => {
@@ -86,6 +91,123 @@ describe("System-1 deterministic query routing", () => {
       status: "commit",
       optionId: "candidate-0",
       targetId: "direct.ts#wanted",
+    });
+  });
+
+  it("uses the exact supplied position to select one of two identical calls", () => {
+    const { source } = fixture({
+      "caller.ts": "import { wanted } from './direct';\nwanted(); wanted();",
+      "direct.ts": "export function wanted() {}",
+      "tsconfig.json": "{}",
+    });
+    const context = {
+      caller: { filePath: "caller.ts", symbol: "caller" },
+      call: { kind: "bare", calleeName: "wanted", expression: "wanted()" },
+      importBinding: {
+        kind: "named",
+        local: "wanted",
+        imported: "wanted",
+        sourceSpecifier: "./direct",
+        pathAlias: false,
+      },
+    };
+
+    const results = run(source, ["direct.ts#wanted"], context, {
+      line: 1,
+      column: 10,
+    });
+
+    expect(results.q1).toMatchObject({
+      status: "commit",
+      targetId: "direct.ts#wanted",
+    });
+  });
+
+  it("abstains when the supplied position is not on the callee expression", () => {
+    const { source } = fixture({
+      "caller.ts": "import { wanted } from './direct';\nwanted(); wanted();",
+      "direct.ts": "export function wanted() {}",
+      "tsconfig.json": "{}",
+    });
+    const context = {
+      caller: { filePath: "caller.ts", symbol: "caller" },
+      call: { kind: "bare", calleeName: "wanted", expression: "wanted()" },
+      importBinding: {
+        kind: "named",
+        local: "wanted",
+        imported: "wanted",
+        sourceSpecifier: "./direct",
+        pathAlias: false,
+      },
+    };
+
+    const results = run(source, ["direct.ts#wanted"], context, {
+      line: 1,
+      column: 7,
+    });
+
+    expect(results.q1).toMatchObject({
+      status: "abstain",
+      reason: "callsite-not-at-position",
+    });
+  });
+
+  it("does not let an out-of-range column wrap into the following line", () => {
+    const importLine = "import { wanted } from './direct';";
+    const { source } = fixture({
+      "caller.ts": `${importLine}\nwanted();`,
+      "direct.ts": "export function wanted() {}",
+      "tsconfig.json": "{}",
+    });
+    const context = {
+      caller: { filePath: "caller.ts", symbol: "caller" },
+      call: { kind: "bare", calleeName: "wanted", expression: "wanted()" },
+      importBinding: {
+        kind: "named",
+        local: "wanted",
+        imported: "wanted",
+        sourceSpecifier: "./direct",
+        pathAlias: false,
+      },
+    };
+
+    const results = run(source, ["direct.ts#wanted"], context, {
+      line: 0,
+      column: importLine.length + 2,
+    });
+
+    expect(results.q1).toMatchObject({
+      status: "abstain",
+      reason: "callsite-not-at-position",
+    });
+  });
+
+  it("rejects a request expression that disagrees with the positioned call", () => {
+    const { source } = fixture({
+      "caller.ts": "import { wanted } from './direct';\nwanted();",
+      "direct.ts": "export function wanted() {}",
+      "tsconfig.json": "{}",
+    });
+    const context = {
+      caller: { filePath: "caller.ts", symbol: "caller" },
+      call: { kind: "bare", calleeName: "wanted", expression: "other()" },
+      importBinding: {
+        kind: "named",
+        local: "wanted",
+        imported: "wanted",
+        sourceSpecifier: "./direct",
+        pathAlias: false,
+      },
+    };
+
+    const results = run(source, ["direct.ts#wanted"], context, {
+      line: 1,
+      column: 0,
+    });
+
+    expect(results.q1).toMatchObject({
+      status: "abstain",
+      reason: "callsite-context-mismatch",
     });
   });
 
@@ -345,6 +467,57 @@ describe("System-1 deterministic query routing", () => {
       status: "commit",
       optionId: "candidate-0",
       targetId: "client.ts#Client.run",
+    });
+  });
+
+  it("Q3 uses the exact supplied position among identical member calls", () => {
+    const calls = "function caller(x: Client) { x.run(); x.run(); }";
+    const { source } = fixture({
+      "caller.ts": `import { Client } from './client';\n${calls}`,
+      "client.ts": "export class Client { run() {} }",
+      "tsconfig.json": "{}",
+    });
+
+    const results = run(
+      source,
+      ["client.ts#Client.run"],
+      {
+        caller: { filePath: "caller.ts", symbol: "caller" },
+        call: { kind: "member", calleeName: "run", expression: "x.run()" },
+        importBinding: null,
+      },
+      { line: 1, column: calls.lastIndexOf("x.run") },
+    );
+
+    expect(results.q3).toMatchObject({
+      status: "commit",
+      targetId: "client.ts#Client.run",
+      proof: "receiver-parameter-type",
+    });
+  });
+
+  it("Q3 rejects a positioned call that disagrees with the request expression", () => {
+    const { source } = fixture({
+      "caller.ts":
+        "import { Client } from './client';\nfunction caller(x: Client) { x.run(); }",
+      "client.ts": "export class Client { run() {} }",
+      "tsconfig.json": "{}",
+    });
+
+    const results = run(
+      source,
+      ["client.ts#Client.run"],
+      {
+        caller: { filePath: "caller.ts", symbol: "caller" },
+        call: { kind: "member", calleeName: "run", expression: "other.run()" },
+        importBinding: null,
+      },
+      { line: 1, column: 32 },
+    );
+
+    expect(results.q3).toMatchObject({
+      status: "abstain",
+      reason: "callsite-context-mismatch",
     });
   });
 

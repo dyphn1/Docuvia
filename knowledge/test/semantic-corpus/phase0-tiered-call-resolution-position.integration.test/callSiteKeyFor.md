@@ -1,10 +1,9 @@
 ---
-id: test/semantic-corpus/phase0-tiered-call-resolution-position.integration.test.ts#anonymous@L77
+id: test/semantic-corpus/phase0-tiered-call-resolution-position.integration.test.ts#callSiteKeyFor
 type: symbol
-name: anonymous
+name: callSiteKeyFor
 filePath: test/semantic-corpus/phase0-tiered-call-resolution-position.integration.test.ts
 ---
-# Symbol: anonymous
+# Symbol: callSiteKeyFor
 
 File: `test/semantic-corpus/phase0-tiered-call-resolution-position.integration.test.ts`
-

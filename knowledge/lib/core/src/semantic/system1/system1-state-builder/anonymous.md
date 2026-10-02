@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/system1-state-builder.ts#anonymous@L293
+id: lib/core/src/semantic/system1/system1-state-builder.ts#anonymous@L240
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/system1/system1-state-builder.ts

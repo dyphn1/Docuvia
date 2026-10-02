@@ -1776,15 +1776,15 @@
     },
     {
       "filePath": "lib/core/src/discovery/file-discovery.service.ts",
-      "contentHash": "05903a6bab604b168344e100267275a782c842a2",
+      "contentHash": "f4796fc829086593cf07db8b1dfe086755a12170",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     },
     {
       "filePath": "lib/core/src/discovery/file-discovery.service.unit.test.ts",
-      "contentHash": "08c9f4061922947446c81022ca9de8d75862eec2",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "824c6bd0c16a59d3459bf19585bf8377aa4244c4",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "lib/core/src/discovery/phase2-discovery-hardening.unit.test.ts",
@@ -4476,21 +4476,21 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase0-snapshot-safety.mts",
-      "contentHash": "75bc9af0429558e0ceb8546a75e2a0c44fc8a669",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "222af9e73627c67f91e100dc19cd533dfcf7c3da",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts",
-      "contentHash": "ad036b0ed3d0b39c11dbad0f0d336a72948c81087e268a02fe20e459a3d24be4",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "2d0f6519245b0fc8753d011e81d91213004c1d2b",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-runner.mts",
-      "contentHash": "08d3d607f0717891f34f611c516fbbbc1b76ea2aa239a01444bcef37d31e4438",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "6b85ff50dbca1814aae3c8a356f95baffdce0882",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts",
@@ -4806,27 +4806,27 @@
     },
     {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution-parity.integration.test.ts",
-      "contentHash": "e366af0cf375b1bf96c3f3bb74f95888215bbfcd5983cc2ccdf065479a595799",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "cd5908da506059f2b59f6c43dcf18d73592070b0",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution-position.integration.test.ts",
-      "contentHash": "685af2e0924dc8707ee2b410a5b32e60b545c6bb8560f47a94f07181c6ae9dd9",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "aca93fc0e09578450c0926b851daeabfc98444f9",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution-replay.unit.test.ts",
-      "contentHash": "39e237fb43417eb383e49f766d80208ed624baaa7b14f961d015eb80f5684348",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "8ca32191d12928a767e865fd05d6bbbb32851cc1",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution-runner.unit.test.ts",
-      "contentHash": "3e83eaf88b04d7571fc7f915e87554cab9201fa81eb5fe0f452db7381699af33",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "15a4bc48caaed338ffb9c2e550031a3495492661",
+      "lastTierBProcessedAt": "2026-10-02 16:29:32",
+      "lastTierBCommitSha": "fde5717c29f99418e77d58492b46163dced35d9e"
     },
     {
       "filePath": "test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts",
@@ -4871,7 +4871,7 @@
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     }
   ],
-  "lastIngestedSourceSha": "c9e59a641f1745fff8a335a0eac6812c8aa65c48",
+  "lastIngestedSourceSha": "fde5717c29f99418e77d58492b46163dced35d9e",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

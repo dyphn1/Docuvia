@@ -1,6 +1,5 @@
 import { Worker } from "worker_threads";
 import * as path from "path";
-import * as fs from "fs";
 import { fileURLToPath } from "url";
 import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
@@ -12,17 +11,13 @@ import {
   IpcLogRouter,
 } from "@workspace/contracts";
 import { AST_WORKER_CRASH_ERROR_NAME, AstMessages } from "./ast-constants.js";
+import {
+  compileWorkerForDevMode,
+  needsDevWorkerCompile,
+} from "./dev-worker-compiler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-/** esbuild options for `compileWorkerForDevMode()` below — literal values dictated by esbuild's own API. */
-const DevWorkerBuildConfig = {
-  FORMAT: "esm",
-  PLATFORM: "node",
-  TARGET: "node20",
-  EXTERNAL_TREE_SITTER: "web-tree-sitter",
-} as const;
 
 /**
  * Node `execArgv` flags manipulated by `initialize()`'s test-only fixture seam: the test runner's
@@ -35,69 +30,6 @@ const NodeExecArgvFlags = {
   IMPORT: "--import",
   TSX_LOADER: "tsx",
 } as const;
-
-/**
- * Compiles `ast-worker.ts` into a real, standalone `ast-worker.js` sitting right next to it, for
- * dev/test runs where `dist/`'s own pre-built worker (built as its own tsup entry — see
- * artifacts/cli/tsup.config.ts) doesn't exist yet.
- *
- * This exists because tsx's `.js`-to-`.ts` resolve hook — the one that lets the *main* thread
- * transparently run TypeScript from source — does not propagate into `worker_threads`, on any
- * Node/tsx version tested (confirmed empirically: identical failure whether the loader is passed
- * as an absolute file:// URL, the bare "tsx" specifier, or the documented "tsx/esm" register
- * entry point). Spawning a raw `.ts` worker with that loader inherited via `execArgv` reliably
- * throws `ERR_MODULE_NOT_FOUND` on the first relative import that needs the remap — not just in
- * this file, but in every relatively-imported module reachable from it (e.g. `@workspace/contracts`'s
- * own internal `./logging/logger.js`-style re-exports), so there is no finite set of individual
- * imports to work around. Compiling once, up front, sidesteps the whole class of problem the same
- * way the production build does — just lazily, for dev/test instead of via a separate build step.
- *
- * `web-tree-sitter` is kept external rather than bundled: it locates its own `tree-sitter.wasm`
- * relative to its own module file at runtime, which stays correct as long as it keeps resolving
- * through `lib/core`'s real `node_modules/web-tree-sitter` (true here, since `lib/core` declares
- * it as a direct dependency) rather than being physically relocated into a bundle.
- *
- * Writes atomically (compile to a per-process temp file, then rename) so concurrent test workers
- * compiling at the same time can't observe — or produce — a partially-written file.
- */
-async function compileWorkerForDevMode(
-  sourcePath: string,
-  outPath: string,
-): Promise<void> {
-  const esbuild = await import("esbuild");
-  const tmpPath = `${outPath}.${process.pid}.tmp`;
-
-  await esbuild.build({
-    entryPoints: [sourcePath],
-    outfile: tmpPath,
-    bundle: true,
-    format: DevWorkerBuildConfig.FORMAT,
-    platform: DevWorkerBuildConfig.PLATFORM,
-    target: DevWorkerBuildConfig.TARGET,
-    // No createRequire banner needed here (unlike artifacts/cli/tsup.config.ts's build of this
-    // same file): ast-worker.ts already declares its own top-level
-    // `const require = createRequire(import.meta.url)` for resolveWasmPath()'s
-    // require.resolve() calls, which — since esbuild bundles everything into one shared
-    // scope — any bundled-in CJS interop code ends up using too.
-    external: [DevWorkerBuildConfig.EXTERNAL_TREE_SITTER],
-  });
-
-  fs.renameSync(tmpPath, outPath);
-}
-
-/**
- * True when `compileWorkerForDevMode`'s cache needs a (re)build: missing outright, or
- * present but older than the `ast-worker.ts` it was compiled from -- nothing else
- * invalidates that cache, so without this a stale cached .js keeps silently serving an
- * old ast-worker.ts forever (e.g. missing fields on parse results, no error raised).
- * Always false when `sourcePath` doesn't exist: dist/ never ships the sibling .ts, and
- * its pre-built worker is authoritative there regardless of mtimes.
- */
-function needsDevWorkerCompile(sourcePath: string, wPath: string): boolean {
-  if (!fs.existsSync(wPath)) return true;
-  if (!fs.existsSync(sourcePath)) return false;
-  return fs.statSync(sourcePath).mtimeMs > fs.statSync(wPath).mtimeMs;
-}
 
 export interface CacheMetrics {
   hits: number;

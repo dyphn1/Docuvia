@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
@@ -19,6 +20,7 @@ import {
   preflightSnapshotPaths,
   readSnapshotSourceFile,
 } from "../../scripts/semantic-corpus/phase0-snapshot-safety.mts";
+import { hashSnapshot } from "../../scripts/semantic-corpus/snapshot.mts";
 
 const tempRoots: string[] = [];
 const runnerPath = fileURLToPath(
@@ -101,7 +103,57 @@ describe("phase 0 pinned source reader", () => {
       expect(result.bytes.toString("utf8")).toBe("export const call = 1;\n");
   });
 
-  it("[invalid-input] excludes symlinks, traversal paths, and oversized files", () => {
+  it("[happy] soft-skips an oversized vendor source without losing caller hash", () => {
+    const root = makeSnapshot();
+    const caller = Buffer.from("export const caller = () => 1;\n");
+    mkdirSync(path.join(root, "vendor"));
+    writeFileSync(path.join(root, "caller.ts"), caller);
+    writeFileSync(
+      path.join(root, "vendor", "parser.c"),
+      Buffer.alloc(MAX_FILE_SIZE_BYTES + 1),
+    );
+    expect(
+      spawnSync("git", ["init", "-q", "-b", "main"], {
+        cwd: root,
+        encoding: "utf8",
+      }).status,
+    ).toBe(0);
+    expect(spawnSync("git", ["add", "-A"], { cwd: root }).status).toBe(0);
+    expect(
+      spawnSync(
+        "git",
+        [
+          "-c",
+          "user.name=Test",
+          "-c",
+          "user.email=test@example.invalid",
+          "commit",
+          "-q",
+          "-m",
+          "snapshot",
+        ],
+        { cwd: root },
+      ).status,
+    ).toBe(0);
+
+    const preflight = preflightSnapshotPaths(root, [
+      "caller.ts",
+      "vendor/parser.c",
+    ]);
+    const snapshot = hashSnapshot(root);
+
+    expect(preflight.exclusions).toEqual([]);
+    expect(preflight.oversizedSourceFiles).toEqual([
+      { path: "vendor/parser.c", sizeBytes: MAX_FILE_SIZE_BYTES + 1 },
+    ]);
+    expect(snapshot.files.has("caller.ts")).toBe(true);
+    expect(snapshot.files.has("vendor/parser.c")).toBe(false);
+    expect(snapshot.files.get("caller.ts")).toBe(
+      createHash("sha256").update(caller).digest("hex"),
+    );
+  });
+
+  it("[invalid-input] hard-excludes unsafe paths and oversized hash inputs", () => {
     const root = makeSnapshot();
     const outside = path.join(
       os.tmpdir(),
@@ -139,32 +191,28 @@ describe("phase 0 pinned source reader", () => {
         status: "excluded",
         reason: "source-file-over-discovery-size-limit",
       });
-      expect(
-        preflightSnapshotPaths(root, [
-          "outside.ts",
-          "large.ts",
-          "large.TS",
-          "large.py",
-          "package.json",
-        ]).exclusions,
-      ).toEqual([
+      const preflight = preflightSnapshotPaths(root, [
+        "outside.ts",
+        "large.ts",
+        "large.TS",
+        "large.py",
+        "package.json",
+      ]);
+
+      expect(preflight.exclusions).toEqual([
         { path: "outside.ts", reason: "source-file-symlink" },
         {
           path: "large.ts",
           reason: "source-file-over-discovery-size-limit",
         },
         {
-          path: "large.TS",
-          reason: "source-file-over-discovery-size-limit",
-        },
-        {
-          path: "large.py",
-          reason: "source-file-over-discovery-size-limit",
-        },
-        {
           path: "package.json",
           reason: "tracked-file-over-size-limit",
         },
+      ]);
+      expect(preflight.oversizedSourceFiles).toEqual([
+        { path: "large.TS", sizeBytes: MAX_FILE_SIZE_BYTES + 1 },
+        { path: "large.py", sizeBytes: MAX_FILE_SIZE_BYTES + 1 },
       ]);
     } finally {
       rmSync(outside, { force: true });

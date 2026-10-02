@@ -4,6 +4,7 @@ import {
   isDiscoverableSourceFile,
   MAX_FILE_SIZE_BYTES,
 } from "../../lib/contracts/src/index.js";
+import { isSnapshotPath } from "../../lib/core/src/semantic/collection/semantic-snapshot-hash.js";
 
 export type SnapshotPathExclusionReason =
   | "source-file-path-escapes-snapshot"
@@ -27,6 +28,10 @@ export type SnapshotPathInspection =
 export interface SnapshotPathPreflight {
   readonly trackedPathCount: number;
   readonly safePathCount: number;
+  readonly oversizedSourceFiles: readonly {
+    readonly path: string;
+    readonly sizeBytes: number;
+  }[];
   readonly exclusions: readonly {
     readonly path: string;
     readonly reason: SnapshotPathExclusionReason;
@@ -93,23 +98,37 @@ export function preflightSnapshotPaths(
   trackedPaths: readonly string[],
 ): SnapshotPathPreflight {
   const exclusions: SnapshotPathPreflight["exclusions"][number][] = [];
+  const oversizedSourceFiles: SnapshotPathPreflight["oversizedSourceFiles"][number][] =
+    [];
   let safePathCount = 0;
   for (const filePath of trackedPaths) {
     const inspection = inspectSnapshotPath(snapshotRoot, filePath);
     if (inspection.status === "excluded") {
       exclusions.push({ path: filePath, reason: inspection.reason });
     } else if (inspection.sizeBytes > MAX_FILE_SIZE_BYTES) {
-      exclusions.push({
-        path: filePath,
-        reason: isDiscoverableSourceFile(filePath)
-          ? "source-file-over-discovery-size-limit"
-          : "tracked-file-over-size-limit",
-      });
+      if (isDiscoverableSourceFile(filePath) && !isSnapshotPath(filePath)) {
+        oversizedSourceFiles.push({
+          path: filePath,
+          sizeBytes: inspection.sizeBytes,
+        });
+      } else {
+        exclusions.push({
+          path: filePath,
+          reason: isDiscoverableSourceFile(filePath)
+            ? "source-file-over-discovery-size-limit"
+            : "tracked-file-over-size-limit",
+        });
+      }
     } else {
       safePathCount++;
     }
   }
-  return { trackedPathCount: trackedPaths.length, safePathCount, exclusions };
+  return {
+    trackedPathCount: trackedPaths.length,
+    safePathCount,
+    oversizedSourceFiles,
+    exclusions,
+  };
 }
 
 /** Checks size before reading; never follows a tracked symlink or escapes the fresh snapshot. */

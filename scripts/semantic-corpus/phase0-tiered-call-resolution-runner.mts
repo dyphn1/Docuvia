@@ -108,10 +108,12 @@ const MEASUREMENT_SOURCE_FILES = [
   "lib/core/src/semantic/collection/semantic-snapshot-hash.ts",
   "lib/core/src/semantic/system1/system1-state-builder.ts",
   "lib/core/src/graph/node-key.ts",
+  "lib/core/src/discovery/file-discovery.service.ts",
   "lib/contracts/src/constants/source-files.ts",
   "lib/contracts/src/constants/paths.ts",
   "lib/contracts/src/interfaces/ast.interfaces.ts",
   "lib/core/src/utils/language-detection.ts",
+  "pnpm-lock.yaml",
 ].sort();
 
 interface CorpusSnapshotSpec {
@@ -336,7 +338,10 @@ interface SnapshotRunSummary {
   readonly expectedSnapshotHash: string;
   readonly measuredSnapshotHash: string | null;
   readonly trackedSourceFiles: number;
-  readonly oversizedSourceFiles: number | null;
+  readonly oversizedSourceFiles: readonly {
+    readonly path: string;
+    readonly sizeBytes: number;
+  }[];
   readonly parsedFiles: number;
   readonly parseFailures: number;
   readonly corpusRows: number;
@@ -626,7 +631,6 @@ function sourceFilesForSnapshot(
   readonly sourceFiles: ReadonlyMap<string, SourceFileContent>;
   readonly sourceCodeByFile: ReadonlyMap<string, string>;
   readonly trackedSourceFileCount: number;
-  readonly oversizedSourceFileCount: number;
 } {
   const samplePaths = new Set(
     samples.map((sample) => readCallSiteId(sample.source.callSiteId).filePath),
@@ -635,7 +639,6 @@ function sourceFilesForSnapshot(
   const sourceFiles = new Map<string, SourceFileContent>();
   const sourceCodeByFile = new Map<string, string>();
   let trackedSourceFileCount = 0;
-  let oversizedSourceFileCount = 0;
   const trackedFiles = git(snapshotRoot, ["ls-files", "-z"])
     .split("\0")
     .filter(Boolean)
@@ -651,8 +654,6 @@ function sourceFilesForSnapshot(
       MAX_FILE_SIZE_BYTES,
     );
     if (inspected.status === "excluded") {
-      if (inspected.reason === "source-file-over-discovery-size-limit")
-        oversizedSourceFileCount++;
       if (samplePaths.has(file))
         sourceFiles.set(file, {
           hash: pinnedHash ?? "",
@@ -682,7 +683,6 @@ function sourceFilesForSnapshot(
     sourceFiles,
     sourceCodeByFile,
     trackedSourceFileCount,
-    oversizedSourceFileCount,
   };
 }
 
@@ -1598,7 +1598,7 @@ async function run(options: RunOptions): Promise<void> {
           expectedSnapshotHash: snapshot.snapshotHash,
           measuredSnapshotHash: null,
           trackedSourceFiles,
-          oversizedSourceFiles: null,
+          oversizedSourceFiles: preflight.oversizedSourceFiles,
           parsedFiles: 0,
           parseFailures: 0,
           corpusRows: samples.length,
@@ -1659,7 +1659,6 @@ async function run(options: RunOptions): Promise<void> {
         sourceFiles,
         sourceCodeByFile,
         trackedSourceFileCount,
-        oversizedSourceFileCount,
       } = sourceFilesForSnapshot(snapshotRoot, samples, measuredHash.files);
       const parseStarted = performance.now();
       const parsed = await processor.processFiles(snapshotRoot, discovered);
@@ -1809,7 +1808,7 @@ async function run(options: RunOptions): Promise<void> {
         expectedSnapshotHash: snapshot.snapshotHash,
         measuredSnapshotHash: measuredHash.hash,
         trackedSourceFiles: trackedSourceFileCount,
-        oversizedSourceFiles: oversizedSourceFileCount,
+        oversizedSourceFiles: preflight.oversizedSourceFiles,
         parsedFiles: parsed.parsed.length,
         parseFailures: parsed.failures.length,
         corpusRows: samples.length,
@@ -2143,6 +2142,12 @@ async function run(options: RunOptions): Promise<void> {
           row.snapshotIntegrityExclusions.map((exclusion) => ({
             snapshotId: row.snapshotId,
             ...exclusion,
+          })),
+        ),
+        oversizedSourceFiles: snapshotSummaries.flatMap((row) =>
+          row.oversizedSourceFiles.map((sourceFile) => ({
+            snapshotId: row.snapshotId,
+            ...sourceFile,
           })),
         ),
         snapshotsExcluded: snapshotSummaries.filter(

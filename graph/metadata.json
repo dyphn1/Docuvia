@@ -1710,15 +1710,15 @@
     },
     {
       "filePath": "lib/core/src/ast/tier-a-declaration-index.ts",
-      "contentHash": "e55cb4be0a5969e97c9464ec1bcfdce5f46a0457",
-      "lastTierBProcessedAt": "2026-10-02 10:19:34",
-      "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
+      "contentHash": "ec7ddfa13752b16542ce0b5f1d1f1bc06b3b9123",
+      "lastTierBProcessedAt": "2026-10-02 13:33:26",
+      "lastTierBCommitSha": "0bdf7cfa9b43d2f6f183e34c2a357175435aadaa"
     },
     {
       "filePath": "lib/core/src/ast/tier-a-declaration-index.unit.test.ts",
-      "contentHash": "2e8b32be70466c031fc64f85450fe26715793b0e",
-      "lastTierBProcessedAt": "2026-10-02 10:57:09",
-      "lastTierBCommitSha": "78402e1ccd6e6c785285452d03847a5d16253223"
+      "contentHash": "8ba34ed9b36d4f198d452c03fe3e430a3dd8cfea",
+      "lastTierBProcessedAt": "2026-10-02 13:33:26",
+      "lastTierBCommitSha": "0bdf7cfa9b43d2f6f183e34c2a357175435aadaa"
     },
     {
       "filePath": "lib/core/src/constants/node-ids.ts",
@@ -1920,9 +1920,9 @@
     },
     {
       "filePath": "lib/core/src/graph/persist-ast-graph.unit.test.ts",
-      "contentHash": "5f08b6e7bdceaf9462f163b466adacd842c10d34",
-      "lastTierBProcessedAt": "2026-10-02 10:19:34",
-      "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
+      "contentHash": "9fd76bb5eb221c78ab900451bfc554e5fc39d053",
+      "lastTierBProcessedAt": "2026-10-02 13:33:26",
+      "lastTierBCommitSha": "0bdf7cfa9b43d2f6f183e34c2a357175435aadaa"
     },
     {
       "filePath": "lib/core/src/graph/phase393-graph-persister.ts",
@@ -4793,7 +4793,7 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     }
   ],
-  "lastIngestedSourceSha": "57488afbff1e4db5f860d09cc59c8bc98df4997b",
+  "lastIngestedSourceSha": "0bdf7cfa9b43d2f6f183e34c2a357175435aadaa",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/oracle.mts#oracleIdentity
+id: scripts/semantic-corpus/oracle.mts#OracleIdentity
 type: symbol
-name: oracleIdentity
+name: OracleIdentity
 filePath: scripts/semantic-corpus/oracle.mts
 ---
-# Symbol: oracleIdentity
+# Symbol: OracleIdentity
 
 File: `scripts/semantic-corpus/oracle.mts`

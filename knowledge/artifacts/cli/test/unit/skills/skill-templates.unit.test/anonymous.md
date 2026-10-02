@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/skills/skill-templates.unit.test.ts#anonymous@L7
+id: artifacts/cli/test/unit/skills/skill-templates.unit.test.ts#anonymous@L81
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/skills/skill-templates.unit.test.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/unit/skills/skill-templates.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/skills/skill-templates.unit.test.ts`
-

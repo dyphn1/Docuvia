@@ -4463,6 +4463,12 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts",
+      "contentHash": "5961c7bc88a165ae266e270498283cf5d1e3a082",
+      "lastTierBProcessedAt": "2026-10-02 13:54:49",
+      "lastTierBCommitSha": "042c68a9c7c92f1ad27bbe98daa807adc8251ebe"
+    },
+    {
       "filePath": "scripts/semantic-corpus/replay.mts",
       "contentHash": "ec270296067411318d56c4934f511e67c0021b9f",
       "lastTierBProcessedAt": "2026-10-02 10:19:34",
@@ -4638,9 +4644,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/system1-query-routing-rules.mts",
-      "contentHash": "1352d90a33d7bc5ffd7adb2dcec17dcb4109787c",
-      "lastTierBProcessedAt": "2026-10-02 10:19:34",
-      "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
+      "contentHash": "dd17424fdb2908e7eee66545e8d4ceeb423e8a73",
+      "lastTierBProcessedAt": "2026-10-02 13:54:49",
+      "lastTierBCommitSha": "042c68a9c7c92f1ad27bbe98daa807adc8251ebe"
     },
     {
       "filePath": "scripts/semantic-corpus/system1-query-routing.mts",
@@ -4757,10 +4763,16 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     },
     {
+      "filePath": "test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts",
+      "contentHash": "a1b2e8eb5526a8ad285fb0b5491568dfa4ec547c",
+      "lastTierBProcessedAt": "2026-10-02 13:54:49",
+      "lastTierBCommitSha": "042c68a9c7c92f1ad27bbe98daa807adc8251ebe"
+    },
+    {
       "filePath": "test/system1-query-routing-rules.test.ts",
-      "contentHash": "54d10b05f5c7aeb937867aecb46bea4ef7acdf90",
-      "lastTierBProcessedAt": "2026-10-02 10:19:34",
-      "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
+      "contentHash": "5dc7630b584564e4c75c15ac7a61773071144e26",
+      "lastTierBProcessedAt": "2026-10-02 13:54:49",
+      "lastTierBCommitSha": "042c68a9c7c92f1ad27bbe98daa807adc8251ebe"
     },
     {
       "filePath": "test/tdd-quality-score.test.ts",
@@ -4793,7 +4805,7 @@
       "lastTierBCommitSha": "fa790e74baa9e50f0dc7067b68d7c7f3ee9658c7"
     }
   ],
-  "lastIngestedSourceSha": "0bdf7cfa9b43d2f6f183e34c2a357175435aadaa",
+  "lastIngestedSourceSha": "1c24d4df075008dbc1f575493d772ff1d972d764",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

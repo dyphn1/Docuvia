@@ -62,7 +62,7 @@ function run(
 }
 
 describe("System-1 deterministic query routing", () => {
-  it("Q1 commits only the candidate declared by the direct import source", () => {
+  it("[happy] Q1 commits only the candidate declared by the direct import source", () => {
     const { source } = fixture({
       "caller.ts": "import { wanted } from './direct'; wanted();",
       "direct.ts": "export function wanted() {}",
@@ -116,7 +116,32 @@ describe("System-1 deterministic query routing", () => {
     expect(results.cascade).toMatchObject({ status: "abstain" });
   });
 
-  it("Q1 abstains when the request call does not invoke its import binding", () => {
+  it("[error-handling] every query abstains when the caller file is missing from the snapshot", () => {
+    const { source } = fixture({
+      "direct.ts": "export function wanted() {}",
+      "tsconfig.json": "{}",
+    });
+
+    const results = run(source, ["direct.ts#wanted", "decoy.ts#wanted"], {
+      caller: { filePath: "missing-caller.ts", symbol: "caller" },
+      call: { kind: "bare", calleeName: "wanted", expression: "wanted()" },
+      importBinding: {
+        kind: "named",
+        local: "wanted",
+        imported: "wanted",
+        sourceSpecifier: "./direct",
+        pathAlias: false,
+      },
+    });
+
+    expect(results.q1).toMatchObject({
+      status: "abstain",
+      reason: "caller-file-unparseable",
+    });
+    expect(results.cascade).toMatchObject({ status: "abstain" });
+  });
+
+  it("[invalid-input] Q1 abstains when the request call does not invoke its import binding", () => {
     const { source } = fixture({
       "caller.ts": "import { wanted } from './direct'; unrelated();",
       "direct.ts": "export function wanted() {}",

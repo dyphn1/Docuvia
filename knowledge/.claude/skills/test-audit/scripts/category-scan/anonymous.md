@@ -1,5 +1,5 @@
 ---
-id: .claude/skills/test-audit/scripts/category-scan.mjs#anonymous@L122
+id: .claude/skills/test-audit/scripts/category-scan.mjs#anonymous@L112
 type: symbol
 name: anonymous
 filePath: .claude/skills/test-audit/scripts/category-scan.mjs

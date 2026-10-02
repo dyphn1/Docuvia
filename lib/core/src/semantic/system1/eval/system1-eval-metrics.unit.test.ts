@@ -3,12 +3,16 @@ import {
   SYSTEM1_AMBIGUITY_CLASSES,
   SYSTEM1_EVAL_ACTIONS,
   SYSTEM1_EVAL_CALIBRATION_METHOD,
+  SYSTEM1_EVAL_CERTIFICATION_MODES,
   SYSTEM1_EVAL_PRECISION_TARGETS,
   SYSTEM1_EVAL_SCORER_STATUSES,
   SYSTEM1_EVAL_SCORE_KIND,
   SYSTEM1_EVAL_PROTOCOL_VERSION,
 } from "./system1-eval-constants.js";
-import { computeSystem1SplitMetrics } from "./system1-eval-metrics.js";
+import {
+  computeSystem1SplitMetrics,
+  system1CalibratorForExample,
+} from "./system1-eval-metrics.js";
 import {
   fitSystem1IsotonicCalibrator,
   minimumIndependentCommitsForZeroErrorPrecision,
@@ -118,7 +122,7 @@ function example(
 }
 
 describe("System-1 evaluation metrics", () => {
-  it("keeps repository families at owner/repository granularity", () => {
+  it("[happy] keeps repository families at owner/repository granularity", () => {
     const first = example(
       "repo-one",
       [{ optionId: "a", targetId: "src/a.ts#call", rank: 0 }],
@@ -160,6 +164,24 @@ describe("System-1 evaluation metrics", () => {
       .map(({ key }) => key);
 
     expect(families).toEqual(["acme/one", "acme/two"]);
+  });
+
+  it("[invalid-input] [error-handling] rejects a fitting row without its OOF calibrator", () => {
+    const trainExample = {
+      ...example("missing-fold", [], []),
+      split: "train" as const,
+    };
+    const policy = {
+      certificationMode: SYSTEM1_EVAL_CERTIFICATION_MODES.LEAVE_ONE_FAMILY_OUT,
+      foldCalibrationSummaries: [],
+      calibrator: fitSystem1IsotonicCalibrator([]),
+    } as unknown as System1EvaluationPolicy;
+
+    expect(() =>
+      system1CalibratorForExample(trainExample, policy),
+    ).toThrowError(
+      new Error("Missing OOF calibrator for repository family example/repo."),
+    );
   });
 
   it("uses negative Tier A candidates as the false-positive-rate denominator", () => {

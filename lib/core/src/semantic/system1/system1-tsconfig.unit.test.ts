@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseSystem1ProjectOptions } from "./system1-tsconfig.js";
 
 describe("System-1 snapshot tsconfig parsing", () => {
-  it("parses JSONC, extends, and paths without baseUrl from tracked files", () => {
+  it("[happy] parses JSONC, extends, and paths without baseUrl from tracked files", () => {
     const snapshotRoot = "/snapshot";
     const files = new Map([
       [
@@ -26,7 +26,7 @@ describe("System-1 snapshot tsconfig parsing", () => {
     expect(result.options.pathsBasePath).toBe(snapshotRoot);
   });
 
-  it("does not read an extends file outside the tracked snapshot", () => {
+  it("[invalid-input] [error-handling] does not read an extends file outside the tracked snapshot", () => {
     const snapshotRoot = "/snapshot";
     const files = new Map([
       ["tsconfig.json", `{"extends":"../outside/base.json"}`],

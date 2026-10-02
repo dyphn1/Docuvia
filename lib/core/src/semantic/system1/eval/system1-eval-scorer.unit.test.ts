@@ -54,7 +54,7 @@ function stateRecord(): System1DatasetRecord {
 }
 
 describe("System-1 evaluator scorer protocol", () => {
-  it("accepts independent raw probabilities without requiring a softmax sum", () => {
+  it("[happy] accepts independent raw probabilities without requiring a softmax sum", () => {
     const state = stateRecord();
     const value = {
       requestId: "request-1",
@@ -114,20 +114,23 @@ describe("System-1 evaluator scorer protocol", () => {
         VERIFY_WITH_LSP: 0.1,
       },
     ],
-  ])("turns %s into an error response", (_description, scores) => {
-    const state = stateRecord();
-    const response = validateSystem1ScorerResponse(state, {
-      requestId: state.request.requestId,
-      status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
-      scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
-      scores,
-    });
+  ])(
+    "[invalid-input] [error-handling] turns %s into an error response",
+    (_description, scores) => {
+      const state = stateRecord();
+      const response = validateSystem1ScorerResponse(state, {
+        requestId: state.request.requestId,
+        status: SYSTEM1_EVAL_SCORER_STATUSES.OK,
+        scoreKind: SYSTEM1_EVAL_SCORE_KIND.RAW,
+        scores,
+      });
 
-    expect(response.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
-    expect(response.scores).toEqual({});
-  });
+      expect(response.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
+      expect(response.scores).toEqual({});
+    },
+  );
 
-  it("rejects non-finite scores and a mismatched request ID", () => {
+  it("[invalid-input] [error-handling] rejects non-finite scores and a mismatched request ID", () => {
     const state = stateRecord();
     const invalidScore = validateSystem1ScorerResponse(state, {
       requestId: "request-1",
@@ -243,7 +246,7 @@ describe("System-1 evaluator scorer protocol", () => {
     expect(observedInput).not.toHaveProperty("labels");
   });
 
-  it("preserves timeout and OOD as non-ok statuses with no scores", () => {
+  it("[error-handling] preserves timeout and OOD as non-ok statuses with no scores", () => {
     const state = stateRecord();
     const timeout = validateSystem1ScorerResponse(state, {
       requestId: "request-1",

@@ -5,7 +5,7 @@ import {
 } from "./system1-exclusions.js";
 
 describe("System-1 exclusion records", () => {
-  it("records and serializes every excluded sample deterministically", () => {
+  it("[happy] [invalid-input] [error-handling] records and serializes every excluded sample deterministically", () => {
     const records = [
       createSystem1ExclusionRecord(
         "owner/repo@revision::src/z.ts:3:4",

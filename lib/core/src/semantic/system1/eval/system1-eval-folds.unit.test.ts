@@ -25,7 +25,7 @@ function response(requestId: string, foldFamily: string) {
 }
 
 describe("System-1 repository-family folds", () => {
-  it("constructs deterministic disjoint folds for each family", () => {
+  it("[happy] constructs deterministic disjoint folds for each family", () => {
     const families = ["z/repo", "a/repo", "m/repo", "a/repo"];
     const folds = buildSystem1RepoFamilyFolds(families);
     expect(folds).toEqual(buildSystem1RepoFamilyFolds([...families].reverse()));
@@ -46,7 +46,7 @@ describe("System-1 repository-family folds", () => {
     );
   });
 
-  it("rejects an out-of-fold row when its family was in fold training", () => {
+  it("[invalid-input] [error-handling] rejects an out-of-fold row when its family was in fold training", () => {
     const folds = buildSystem1RepoFamilyFolds(["acme/a", "acme/b"]);
     expect(() =>
       validateSystem1OutOfFoldAssignments(
@@ -65,7 +65,7 @@ describe("System-1 repository-family folds", () => {
     ).toThrow(/trained on its own family/i);
   });
 
-  it("rejects missing, duplicated, or wrong fold assignments", () => {
+  it("[invalid-input] [error-handling] rejects missing, duplicated, or wrong fold assignments", () => {
     const folds = buildSystem1RepoFamilyFolds(["acme/a", "acme/b"]);
     const declaration = {
       mode: "no-training" as const,

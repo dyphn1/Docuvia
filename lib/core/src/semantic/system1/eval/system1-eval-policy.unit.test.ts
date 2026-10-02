@@ -108,7 +108,7 @@ function example(
 }
 
 describe("System-1 calibration policy", () => {
-  it("rejects train and held-out records from the fit entry point", () => {
+  it("[invalid-input] [error-handling] rejects train and held-out records from the fit entry point", () => {
     for (const split of ["train", "temporal", "test"]) {
       expect(() =>
         fitSystem1EvaluationPolicy(
@@ -119,7 +119,7 @@ describe("System-1 calibration policy", () => {
     }
   });
 
-  it("selects the least-strict certified threshold and records uncertifiable targets", () => {
+  it("[happy] selects the least-strict certified threshold and records uncertifiable targets", () => {
     const examples = Array.from({ length: 300 }, (_, index) =>
       example(`calibration-${index}`, "calibration"),
     );
@@ -432,7 +432,7 @@ describe("System-1 calibration policy", () => {
     );
   });
 
-  it("rejects a fitting-pool family that has no OOF fold", () => {
+  it("[invalid-input] [error-handling] rejects a fitting-pool family that has no OOF fold", () => {
     const pool = [
       example("family-a", "train", "github.com/family/a"),
       example("family-b", "calibration", "github.com/family/b"),
@@ -588,7 +588,7 @@ describe("System-1 calibration policy", () => {
     expect(family).toMatchObject({ commits: 1, usedForFamilyGate: false });
   });
 
-  it("rejects held-out records from the LOFO fit entry point", () => {
+  it("[invalid-input] [error-handling] rejects held-out records from the LOFO fit entry point", () => {
     const train = example("pool-a", "train", "github.com/family/a");
     const calibration = example("pool-b", "calibration", "github.com/family/b");
     const folds = buildSystem1RepoFamilyFolds(["family/a", "family/b"]);

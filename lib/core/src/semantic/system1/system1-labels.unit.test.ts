@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { ErrorCodes } from "@workspace/contracts";
 import { buildSystem1Labels } from "./system1-labels.js";
 import { assertSystem1SplitLicense } from "./system1-split-policy.js";
+import { SYSTEM1_LICENSE_LEAKAGE_ERROR_MESSAGE } from "./system1-constants.js";
 
 describe("System-1 labels and split policy", () => {
   it("[happy] keeps review and oracle labels separate and records Tier A misses", () => {
@@ -37,11 +39,16 @@ describe("System-1 labels and split policy", () => {
   });
 
   it.each(["train", "calibration"] as const)(
-    "[leakage] rejects evaluation-only samples in %s",
+    "[invalid-input] [error-handling] [leakage] rejects evaluation-only samples in %s",
     (split) => {
-      expect(() =>
+      const error = captureError(() =>
         assertSystem1SplitLicense(split, "evaluation-only"),
-      ).toThrow();
+      );
+
+      expect(error).toMatchObject({
+        code: ErrorCodes.SEMANTIC_CORPUS_LEAKAGE,
+        message: SYSTEM1_LICENSE_LEAKAGE_ERROR_MESSAGE,
+      });
     },
   );
 
@@ -54,3 +61,12 @@ describe("System-1 labels and split policy", () => {
     },
   );
 });
+
+function captureError(action: () => void): unknown {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  return null;
+}

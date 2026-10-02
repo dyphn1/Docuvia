@@ -6,7 +6,7 @@ import {
 import { isSupportedSystem1DatasetSealSchemaVersion } from "./system1-eval-seals.js";
 
 describe("System-1 dataset seal schema versions", () => {
-  it("accepts both emitted dataset export schemas", () => {
+  it("[happy] accepts both emitted dataset export schemas", () => {
     expect(
       isSupportedSystem1DatasetSealSchemaVersion(
         SYSTEM1_PREVIOUS_EXPORT_SCHEMA_VERSION,
@@ -17,7 +17,7 @@ describe("System-1 dataset seal schema versions", () => {
     ).toBe(true);
   });
 
-  it("rejects unsupported and malformed schema versions", () => {
+  it("[invalid-input] [error-handling] rejects unsupported and malformed schema versions", () => {
     expect(isSupportedSystem1DatasetSealSchemaVersion(0)).toBe(false);
     expect(
       isSupportedSystem1DatasetSealSchemaVersion(

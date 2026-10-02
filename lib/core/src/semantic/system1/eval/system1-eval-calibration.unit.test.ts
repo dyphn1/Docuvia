@@ -15,7 +15,7 @@ describe("System-1 calibration and confidence bounds", () => {
     ).toEqual([299, 598, 2995]);
   });
 
-  it("fits a deterministic monotone isotonic map with pooled adjacent violators", () => {
+  it("[happy] fits a deterministic monotone isotonic map with pooled adjacent violators", () => {
     const calibrator = fitSystem1IsotonicCalibrator([
       { score: 0.1, positive: false },
       { score: 0.2, positive: true },
@@ -68,11 +68,13 @@ describe("System-1 calibration and confidence bounds", () => {
     expect(calibrateSystem1Score(calibrator, 0.1656)).toBe(0.8);
   });
 
-  it("computes exact one-sided Clopper-Pearson lower bounds", () => {
+  it("[invalid-input] [error-handling] computes exact one-sided Clopper-Pearson lower bounds", () => {
     expect(clopperPearsonLowerBound(0, 5)).toBe(0);
     expect(clopperPearsonLowerBound(5, 5)).toBeCloseTo(0.5492802717, 8);
     expect(clopperPearsonLowerBound(1, 1)).toBeCloseTo(0.05, 8);
     expect(clopperPearsonLowerBound(1, 2)).toBeCloseTo(0.0253205655, 8);
-    expect(() => clopperPearsonLowerBound(2, 1)).toThrow();
+    expect(() => clopperPearsonLowerBound(2, 1)).toThrowError(
+      new RangeError("Invalid binomial confidence-bound inputs."),
+    );
   });
 });

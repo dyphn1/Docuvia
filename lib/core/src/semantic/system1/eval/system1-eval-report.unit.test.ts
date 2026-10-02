@@ -119,7 +119,7 @@ function splitMetrics(
 }
 
 describe("System-1 evaluation report", () => {
-  it("marks held-out misses and labels LOFO pool metrics out-of-fold", () => {
+  it("[happy] marks held-out misses and labels LOFO pool metrics out-of-fold", () => {
     const report = renderSystem1EvalReport({
       scorerId: "test-scorer",
       policyHash: "a".repeat(64),
@@ -233,5 +233,31 @@ describe("System-1 evaluation report", () => {
     expect(report).toContain("train | 0.990 | certified | n/a");
     expect(report).toContain("| calibration | 0.990 | certified | in-sample |");
     expect(report).toContain(`${SYSTEM1_EVAL_REPORT_TEXT.IN_SAMPLE})`);
+  });
+
+  it("[invalid-input] [error-handling] renders a split with no scored candidates as n/a instead of NaN", () => {
+    const empty = splitMetrics("test", 0.995, 0.985);
+    const report = renderSystem1EvalReport({
+      scorerId: "test-scorer",
+      policyHash: "a".repeat(64),
+      selectedCertificationMode:
+        SYSTEM1_EVAL_CERTIFICATION_MODES.CALIBRATION_ONLY,
+      splitMetrics: [
+        {
+          ...empty,
+          calibration: { ...empty.calibration, ece: null, brierScore: null },
+        },
+      ],
+      sealedInputs: {},
+      certificationModes: [],
+    } as unknown as Parameters<typeof renderSystem1EvalReport>[0]);
+
+    const testRow = report
+      .split("\n")
+      .find((line) => line.startsWith("| test | 0.990 |"));
+    expect(testRow).toBe(
+      "| test | 0.990 | certified | NO | uncertifiable | 50.00% | 50.00% | 99.50% [98.50%, 100.00%] | 99.50% [98.50%, 100.00%] | 50.00% | 1.00% | 50/299 (insufficient) | n/a | n/a | 25.00% | 25.00% |",
+    );
+    expect(report).not.toContain("NaN");
   });
 });

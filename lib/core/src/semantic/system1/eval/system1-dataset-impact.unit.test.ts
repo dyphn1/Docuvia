@@ -32,7 +32,7 @@ function state(
 }
 
 describe("System-1 dataset evidence impact", () => {
-  it("counts changed samples, candidates, fields, and repository families", () => {
+  it("[happy] counts changed samples, candidates, fields, and repository families", () => {
     const before = [
       state("request-a", "github.com/acme/alpha", [
         {
@@ -156,7 +156,7 @@ describe("System-1 dataset evidence impact", () => {
     });
   });
 
-  it("rejects candidate identity changes instead of counting them as evidence deltas", () => {
+  it("[invalid-input] [error-handling] rejects candidate identity changes instead of counting them as evidence deltas", () => {
     const before = state("request-a", "github.com/acme/alpha", [
       {
         id: "candidate-a",

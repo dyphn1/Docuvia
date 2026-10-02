@@ -155,7 +155,7 @@ describe("System-1 ambiguity class detectors", () => {
     expect(result.notDetected).toEqual([]);
   });
 
-  it("[boundary] reports unresolved barrel evidence as not-detected, not as a guessed class", () => {
+  it("[error-handling] [boundary] reports unresolved barrel evidence as not-detected, not as a guessed class", () => {
     const result = classifySystem1Ambiguities({
       ...evidence,
       importBinding: {
@@ -172,5 +172,17 @@ describe("System-1 ambiguity class detectors", () => {
     expect(result.notDetected).toEqual([
       SYSTEM1_AMBIGUITY_CLASSES.BARREL_REEXPORT,
     ]);
+  });
+
+  it("[invalid-input] keeps a class unknown instead of tagging other/plain when its evidence is missing", () => {
+    const result = classifySystem1Ambiguities({
+      ...evidence,
+      call: { ...evidence.call, fluentChain: null },
+    });
+
+    expect(result).toEqual({
+      tags: [],
+      notDetected: [SYSTEM1_AMBIGUITY_CLASSES.FLUENT_CHAINED_CALL],
+    });
   });
 });

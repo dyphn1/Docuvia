@@ -110,7 +110,7 @@ function run(
 }
 
 describe("System-1 external JSONL scorer", () => {
-  it("accepts valid JSONL responses in request order", async () => {
+  it("[happy] accepts valid JSONL responses in request order", async () => {
     const states = [stateRecord("external-1"), stateRecord("external-2")];
     const responses = await run(states, VALID_SCORER_SCRIPT);
 
@@ -126,7 +126,7 @@ describe("System-1 external JSONL scorer", () => {
     });
   });
 
-  it("returns timeout rows and routes them to VERIFY_WITH_LSP", async () => {
+  it("[error-handling] returns timeout rows and routes them to VERIFY_WITH_LSP", async () => {
     const states = [stateRecord("external-timeout")];
     const responses = await run(
       states,
@@ -138,7 +138,7 @@ describe("System-1 external JSONL scorer", () => {
     expectVerifyForNonOk(states, responses);
   });
 
-  it("turns malformed JSONL into batch errors and routes them to VERIFY", async () => {
+  it("[invalid-input] [error-handling] turns malformed JSONL into batch errors and routes them to VERIFY", async () => {
     const states = [stateRecord("external-malformed")];
     const responses = await run(states, "process.stdout.write('not-json\\n')");
 
@@ -184,7 +184,7 @@ describe("System-1 external JSONL scorer", () => {
     expectVerifyForNonOk(states, responses);
   });
 
-  it("turns a nonzero process exit into errors and routes them to VERIFY", async () => {
+  it("[error-handling] turns a nonzero process exit into errors and routes them to VERIFY", async () => {
     const states = [stateRecord("external-exit")];
     const responses = await run(states, "process.exit(7)");
 

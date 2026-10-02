@@ -19,6 +19,9 @@ export function aggregateCommittedDuplicateGroups<T>(
   for (const row of rows) {
     if (!selectors.committed(row)) continue;
     const group = selectors.duplicateGroup(row);
+    // An empty id would silently pool unrelated rows into one "independent" group.
+    if (group === "")
+      throw new Error("Every committed row must have a duplicate group.");
     const members = groups.get(group) ?? [];
     members.push(row);
     groups.set(group, members);

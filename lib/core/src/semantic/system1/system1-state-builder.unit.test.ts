@@ -113,7 +113,7 @@ describe("System-1 option encoding", () => {
     expect(state.evidence.truncated).toBe(true);
   });
 
-  it("[leakage] emits no label, oracle, review or checker fields from contaminated input", () => {
+  it("[invalid-input] [error-handling] [leakage] emits no label, oracle, review or checker fields from contaminated input", () => {
     const contaminated = {
       ...input,
       oracle: { status: "secret-oracle-status" },

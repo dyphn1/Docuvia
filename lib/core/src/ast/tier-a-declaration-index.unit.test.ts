@@ -100,7 +100,7 @@ describe("Tier A TypeScript declaration index", () => {
   });
 
   it.each(FIXTURES)(
-    "uses Tier A's exact node key for $file",
+    "[happy] uses Tier A's exact node key for $file",
     ({ file, source, nodeKey, expectedText }) => {
       const tree = parser.parse(source);
       expect(tree).not.toBeNull();
@@ -207,5 +207,16 @@ describe("Tier A TypeScript declaration index", () => {
         (declaration) => declaration.nodeKey === "src/logger.ts#Logger.warn@L3",
       )?.sourceText,
     ).toContain("warn(message: string)");
+  });
+
+  it("[invalid-input] [error-handling] returns no declarations for malformed TypeScript", () => {
+    const tree = parser.parse("export const =;");
+    if (tree === null) throw new Error("Tree-sitter returned no parse tree.");
+
+    expect(tree.rootNode.hasError).toBe(true);
+    expect(
+      extractTierAIndexedDeclarations("src/malformed.ts", tree, provider),
+    ).toEqual([]);
+    tree.delete();
   });
 });

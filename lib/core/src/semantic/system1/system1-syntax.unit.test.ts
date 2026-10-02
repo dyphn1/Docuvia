@@ -45,7 +45,7 @@ afterAll(() => {
 });
 
 describe("System-1 syntax projection", () => {
-  it("keeps unreadable Tier A candidates in order with explicit missing evidence", () => {
+  it("[invalid-input] [error-handling] keeps unreadable Tier A candidates in order with explicit missing evidence", () => {
     const result = buildSyntax({
       caller: "function caller() { run(); }",
       calleeName: "run",
@@ -125,7 +125,7 @@ describe("System-1 syntax projection", () => {
     ).not.toContain(SYSTEM1_AMBIGUITY_CLASSES.FRAMEWORK_CONVENTION);
   });
 
-  it("tags calls on injected members of decorated classes", () => {
+  it("[happy] tags calls on injected members of decorated classes", () => {
     const result = buildSyntax({
       caller: `import { Injectable } from "@nestjs/common";\n@Injectable()\nclass Worker { constructor(private readonly service: Service) {} call() { return this.service.run(); } }`,
       calleeName: "run",

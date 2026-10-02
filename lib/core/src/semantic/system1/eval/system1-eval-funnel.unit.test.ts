@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeSystem1AccountingFunnel } from "./system1-eval-funnel.js";
 
 describe("System-1 accounting funnel", () => {
-  it("keeps row and duplicate-group counts monotone across every stage", () => {
+  it("[happy] keeps row and duplicate-group counts monotone across every stage", () => {
     const result = computeSystem1AccountingFunnel("test", [
       {
         duplicateGroup: "group-a",
@@ -101,5 +101,21 @@ describe("System-1 accounting funnel", () => {
         stages[index - 1].duplicateGroups,
       );
     }
+  });
+
+  it("[invalid-input] [error-handling] rejects accounting rows without a duplicate group", () => {
+    const sample = {
+      duplicateGroup: "",
+      exportExclusionReason: null,
+      labelExclusionReason: null,
+      hasCandidates: true,
+      candidateMiss: false,
+      committed: true,
+      exact: true,
+    };
+
+    expect(() => computeSystem1AccountingFunnel("test", [sample])).toThrowError(
+      new Error("Every accounting row must have a duplicate group."),
+    );
   });
 });

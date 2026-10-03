@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts#CallSiteResolutionsRepo.anonymous@L455
+id: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts#CallSiteResolutionsRepo.anonymous@L206
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts

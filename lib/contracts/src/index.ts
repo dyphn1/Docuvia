@@ -183,6 +183,14 @@ export type {
   AstCallSiteRow,
   SnapshotCallSiteRow,
   ICallSitesRepo,
+  CallSiteResolutionClass,
+  CallSiteVerificationStatus,
+  CallSiteResolutionObservationSource,
+  CallSiteResolutionCandidate,
+  CallSiteResolutionRecord,
+  CallSiteResolutionObservationInput,
+  CallSiteResolutionObservation,
+  ICallSiteResolutionsRepo,
   L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
 export {
@@ -192,6 +200,9 @@ export {
   L3NodeTypes,
   ValidityStatuses,
   L3DecisionSources,
+  CallSiteResolutionClasses,
+  CallSiteVerificationStatuses,
+  CallSiteResolutionObservationSources,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   ExtractedDecision,

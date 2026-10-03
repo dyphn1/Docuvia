@@ -77,6 +77,12 @@ export function makeMockStore(
       getForFiles: vi.fn().mockReturnValue(new Map()),
       getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
+    callSiteResolutions: {
+      replaceForFile: vi.fn(),
+      getForFile: vi.fn().mockReturnValue([]),
+      appendObservation: vi.fn(),
+      getObservations: vi.fn().mockReturnValue([]),
+    },
     withWriteLock: async (fn: any) => fn(),
     withTransaction: (fn: any) => fn(),
     withReadLock: async (fn: any) => fn(),

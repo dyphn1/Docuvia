@@ -643,6 +643,101 @@ export interface ICallSitesRepo {
   replaceForProject?(projectId: number, callSites: SnapshotCallSiteRow[]): void;
 }
 
+export const CallSiteResolutionClasses = {
+  PROVEN: "proven",
+  LIKELY: "likely",
+  AMBIGUOUS: "ambiguous",
+  UNRESOLVED: "unresolved",
+  EXTERNAL: "external",
+  UNSUPPORTED: "unsupported",
+} as const;
+export type CallSiteResolutionClass =
+  (typeof CallSiteResolutionClasses)[keyof typeof CallSiteResolutionClasses];
+
+export const CallSiteVerificationStatuses = {
+  UNVERIFIED: "unverified",
+  VERIFIED: "verified",
+  CONTRADICTED: "contradicted",
+} as const;
+export type CallSiteVerificationStatus =
+  (typeof CallSiteVerificationStatuses)[keyof typeof CallSiteVerificationStatuses];
+
+export const CallSiteResolutionObservationSources = {
+  SCOPE_RESOLVER: "scope-resolver",
+  STRICT_PROOF: "strict-proof",
+  HYPOTHESIS: "hypothesis",
+  TIER_B: "tier-b",
+} as const;
+export type CallSiteResolutionObservationSource =
+  (typeof CallSiteResolutionObservationSources)[keyof typeof CallSiteResolutionObservationSources];
+
+export interface CallSiteResolutionCandidate {
+  targetNodeKey: string;
+  ordinal: number;
+  evidenceJson: string;
+}
+
+/** Current content-scoped resolution for one call site. Candidates are normalized separately. */
+export interface CallSiteResolutionRecord {
+  callSiteKey: string;
+  identityVersion: 1;
+  filePath: string;
+  sourceContentHash: string;
+  startLine: number;
+  startColumn: number;
+  calleeKind: string;
+  calleeName: string;
+  callerNodeKey: string;
+  resolutionClass: CallSiteResolutionClass;
+  selectedTargetNodeKey: string | null;
+  confidence: number | null;
+  resolver: string;
+  ruleSignature: string;
+  dependencyFingerprint: string;
+  verificationStatus: CallSiteVerificationStatus;
+  verifiedTargetNodeKey: string | null;
+  isStale: boolean;
+  candidates: CallSiteResolutionCandidate[];
+}
+
+export interface CallSiteResolutionObservationInput {
+  callSiteKey: string;
+  filePath: string;
+  sourceContentHash: string;
+  source: CallSiteResolutionObservationSource;
+  targetNodeKey: string | null;
+  evidenceJson: string;
+  resolutionClass?: CallSiteResolutionClass | null;
+  resolver?: string | null;
+  ruleSignature?: string | null;
+}
+
+export interface CallSiteResolutionObservation extends CallSiteResolutionObservationInput {
+  id: number;
+  createdAt: string;
+}
+
+export interface ICallSiteResolutionsRepo {
+  /** Atomically replaces current resolutions and candidates for one caller file. */
+  replaceForFile(
+    projectId: number,
+    filePath: string,
+    resolutions: CallSiteResolutionRecord[],
+  ): void;
+  /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
+  getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
+  appendObservation(
+    projectId: number,
+    observation: CallSiteResolutionObservationInput,
+  ): void;
+  /** Returns all history for the caller file, including observations for prior source versions. */
+  getObservations(
+    projectId: number,
+    filePath: string,
+  ): CallSiteResolutionObservation[];
+}
+
 /**
  * The shared memory/state layer surface — implemented by `lib/schema`'s `GraphStore`. One
  * instance per `dbPath` per process, opened and closed exclusively by the Orchestration layer
@@ -657,6 +752,8 @@ export interface IGraphStore {
   readonly fts: IFtsRepo;
   readonly meta: IMetaRepo;
   readonly callSites: ICallSitesRepo;
+  /** Optional while alternate GraphStore providers migrate to per-call-site resolution storage. */
+  readonly callSiteResolutions?: ICallSiteResolutionsRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
   /**

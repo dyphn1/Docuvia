@@ -283,6 +283,7 @@ describe("applyMigrations", () => {
       "0010_l3_anchor_ranges.sql",
       "0011_ast_call_sites_target_idx.sql",
       "0012_ast_call_sites_callee_fields.sql",
+      "0013_call_site_resolutions.sql",
     ]);
   });
 
@@ -345,7 +346,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(12);
+    expect(migrationRows).toHaveLength(13);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

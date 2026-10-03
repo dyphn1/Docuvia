@@ -349,6 +349,44 @@ describe("call-resolution hypothesis service", () => {
     expect(result.strictProof.targetKey).toBe(result.candidates[0]?.targetKey);
   });
 
+  it("[negative] abstains when overload declarations share one candidate target key", async () => {
+    const code = [
+      "class Service {",
+      "  close(value: string): void;",
+      "  close(value: number): void {}",
+      '  call(): void { this.close("x"); }',
+      "}",
+    ].join("\n");
+    const callerFile = await parseFile("src/service.ts", code);
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "close",
+    );
+    if (!callSite) throw new Error("worker omitted the overloaded this call");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "9".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        sourceContentHash: createSha256(code),
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callerSourceContentHash: createSha256(code),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "ambiguous-owner-declaration",
+    });
+  });
+
   it("[error-handling] abstains for this calls inside static methods", async () => {
     const code =
       "class Service { close(): void {} static call(): void { this.close(); } }";

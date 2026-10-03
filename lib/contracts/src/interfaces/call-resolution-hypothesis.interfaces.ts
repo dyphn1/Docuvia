@@ -105,6 +105,7 @@ export type CallResolutionStrictProofReason =
   | "source-snapshot-mismatch"
   | "call-site-not-in-indexed-source"
   | "no-unique-owner-candidate"
+  | "ambiguous-owner-declaration"
   | "unresolved-call-binding"
   | "unresolved-type-binding";
 

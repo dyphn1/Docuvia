@@ -99,7 +99,13 @@ export function registerCoreProviders(
     return new AstProcessingService(sharedAstWorkerPool, params?.logger);
   });
 
-  factory.register(TOKENS.GraphPersister, () => new GraphPersisterService());
+  factory.register(
+    TOKENS.GraphPersister,
+    (f) =>
+      new GraphPersisterService(
+        f.resolve(TOKENS.CallResolutionHypothesisService),
+      ),
+  );
 
   factory.register(
     TOKENS.TempFileManager,

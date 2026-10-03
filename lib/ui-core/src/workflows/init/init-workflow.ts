@@ -166,6 +166,7 @@ export class InitWorkflow {
           workspaceRoot,
           projectId: project.id,
           filesToParse: discoveryResult.filesToParse,
+          candidateFileCount: discoveryResult.candidateFileCount,
           skippedOversized: discoveryResult.skippedOversized,
           tags: discoveryResult.tags,
           appendLogLine: appendInitLogLine,

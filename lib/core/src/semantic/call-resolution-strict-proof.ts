@@ -101,6 +101,23 @@ function isExactOwnerCandidate(
   );
 }
 
+function hasOneConcreteOwnerMethod(
+  candidate: CallResolutionHypothesisCandidate,
+  callerType: CallResolutionHypothesisRequest["callSite"]["callerType"],
+): boolean {
+  const [declaration] = candidate.declarations;
+  return Boolean(
+    candidate.declarations.length === 1 &&
+    declaration &&
+    callerType &&
+    declaration.kind === "method" &&
+    !declaration.isStatic &&
+    declaration.owner.kind === "class" &&
+    declaration.owner.name === callerType.name &&
+    sameSpan(declaration.owner.span, callerType.span),
+  );
+}
+
 function abstainForUnresolvedTypeBinding(
   request: CallResolutionHypothesisRequest,
   workspace: IndexedWorkspace,
@@ -148,6 +165,25 @@ function proveUnsupportedCallShape(
   );
 }
 
+function thisMemberPreconditionAbstention(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+  truncated: boolean,
+): CallResolutionStrictProof | null {
+  if (!hasSupportedThisShape(request.callSite))
+    return proveUnsupportedCallShape(request, workspace);
+  if (!hasInstanceMethodCaller(request, workspace))
+    return abstain("unsupported-call-shape");
+  if (!workspace.complete) return abstain("incomplete-inventory");
+  if (truncated) return abstain("candidate-list-truncated");
+
+  const sourceReason = sourceSnapshotAbstentionReason(request, workspace);
+  if (sourceReason) return abstain(sourceReason);
+  if (!hasOneIndexedCallSite(request, workspace))
+    return abstain("call-site-not-in-indexed-source");
+  return null;
+}
+
 /**
  * Proves the narrow Q3 case where `this.member()` names one complete, non-static member
  * declared directly on the exact enclosing class. Every other call shape abstains until its
@@ -159,25 +195,23 @@ export function proveUniqueThisMember(
   workspace: IndexedWorkspace,
   truncated: boolean,
 ): CallResolutionStrictProof {
-  if (!hasSupportedThisShape(request.callSite))
-    return proveUnsupportedCallShape(request, workspace);
-  if (!hasInstanceMethodCaller(request, workspace))
-    return abstain("unsupported-call-shape");
-  if (!workspace.complete) return abstain("incomplete-inventory");
-  if (truncated) return abstain("candidate-list-truncated");
-  const sourceReason = sourceSnapshotAbstentionReason(request, workspace);
-  if (sourceReason) return abstain(sourceReason);
-  if (!hasOneIndexedCallSite(request, workspace))
-    return abstain("call-site-not-in-indexed-source");
+  const preconditionAbstention = thisMemberPreconditionAbstention(
+    request,
+    workspace,
+    truncated,
+  );
+  if (preconditionAbstention) return preconditionAbstention;
 
   const ownerCandidates = candidates.filter((candidate) =>
     isExactOwnerCandidate(candidate, request),
   );
-  if (ownerCandidates.length !== 1) {
-    return abstain("no-unique-owner-candidate");
-  }
+  if (ownerCandidates.length !== 1) return abstain("no-unique-owner-candidate");
 
   const [candidate] = ownerCandidates;
+  if (!candidate) return abstain("no-unique-owner-candidate");
+  if (!hasOneConcreteOwnerMethod(candidate, request.callSite.callerType)) {
+    return abstain("ambiguous-owner-declaration");
+  }
   if (!candidate?.inventoryComplete) return abstain("incomplete-inventory");
   return {
     status: "proven",

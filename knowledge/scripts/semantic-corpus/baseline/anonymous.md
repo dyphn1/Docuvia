@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/baseline.mts#anonymous@L80
+id: scripts/semantic-corpus/baseline.mts#anonymous@L87
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/baseline.mts

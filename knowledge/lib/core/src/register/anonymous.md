@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/register.ts#anonymous@L85
+id: lib/core/src/register.ts#anonymous@L80
 type: symbol
 name: anonymous
 filePath: lib/core/src/register.ts

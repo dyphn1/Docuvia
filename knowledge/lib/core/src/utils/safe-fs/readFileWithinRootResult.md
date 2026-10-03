@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/utils/safe-fs.ts#ReadFileWithinRootResult
+id: lib/core/src/utils/safe-fs.ts#readFileWithinRootResult
 type: symbol
-name: ReadFileWithinRootResult
+name: readFileWithinRootResult
 filePath: lib/core/src/utils/safe-fs.ts
 ---
-# Symbol: ReadFileWithinRootResult
+# Symbol: readFileWithinRootResult
 
 File: `lib/core/src/utils/safe-fs.ts`

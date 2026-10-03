@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/system1-syntax.unit.test.ts#anonymous@L69
+id: lib/core/src/semantic/system1/system1-syntax.unit.test.ts#anonymous@L990
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/system1/system1-syntax.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/system1/system1-syntax.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/system1/system1-syntax.unit.test.ts`
-

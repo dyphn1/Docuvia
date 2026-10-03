@@ -22,6 +22,37 @@ const CLASS_TYPES = new Set([
   "abstract_class_declaration",
   "class",
 ]);
+const NAMED_SHADOW_DECLARATION_TYPES = new Set([
+  "class",
+  "class_declaration",
+  "abstract_class_declaration",
+  "function_expression",
+  "function_declaration",
+  "generator_function",
+  "generator_function_declaration",
+]);
+const TYPE_SIGNATURE_TYPES = new Set([
+  "function_type",
+  "constructor_type",
+  "call_signature",
+  "construct_signature",
+  "index_signature",
+  "object_type",
+]);
+const FOR_SCOPE_TYPES = new Set([
+  "for_statement",
+  "for_in_statement",
+  "for_of_statement",
+  "for_await_statement",
+]);
+const BINDING_PATTERN_TYPES = new Set([
+  "object_pattern",
+  "array_pattern",
+  "pair_pattern",
+  "assignment_pattern",
+  "object_assignment_pattern",
+  "rest_pattern",
+]);
 const SIMPLE_IDENTIFIER = /^[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*$/u;
 
 interface WorkerCallSite {
@@ -42,6 +73,25 @@ interface PendingFact {
   readonly peerKey: string | null;
 }
 
+interface IndexedBinding {
+  readonly name: string;
+  readonly declarationSpan: AstUtf16Span;
+  readonly scopeSpan: AstUtf16Span;
+  readonly kind: AstCallReceiverBinding["kind"] | "unsupported";
+}
+
+interface ShapeIndexes {
+  readonly callExpressions: ReadonlyMap<string, readonly Node[]>;
+  readonly bindingsByScope: ReadonlyMap<
+    string,
+    ReadonlyMap<string, IndexedBinding>
+  >;
+  readonly propertiesByClassAndName: ReadonlyMap<
+    string,
+    AstCallReceiverBinding | null
+  >;
+}
+
 function span(node: Node): AstUtf16Span {
   return { start: node.startIndex, end: node.endIndex };
 }
@@ -50,6 +100,15 @@ function namedChildren(node: Node): Node[] {
   const result: Node[] = [];
   for (let index = 0; index < node.namedChildCount; index += 1) {
     const child = node.namedChild(index);
+    if (child) result.push(child);
+  }
+  return result;
+}
+
+function allChildren(node: Node): Node[] {
+  const result: Node[] = [];
+  for (let index = 0; index < node.childCount; index += 1) {
+    const child = node.child(index);
     if (child) result.push(child);
   }
   return result;
@@ -80,30 +139,40 @@ function bindingName(node: Node): string | null {
   return name?.type === "identifier" ? name.text : null;
 }
 
+function nearestScope(
+  node: Node,
+  accepts: (current: Node) => boolean,
+  root: Node,
+): Node {
+  return ancestor(node.parent, accepts) ?? root;
+}
+
+function declarationKind(node: Node): string | undefined {
+  return node.parent?.text.trimStart().match(/^(var|let|const)\b/)?.[1];
+}
+
 function bindingScope(node: Node, root: Node): Node {
-  if (
-    node.type === "required_parameter" ||
-    node.type === "optional_parameter"
-  ) {
-    return (
-      ancestor(node.parent, (current) =>
-        CALLABLE_SCOPE_TYPES.has(current.type),
-      ) ?? root
+  if (node.type === "required_parameter" || node.type === "optional_parameter")
+    return nearestScope(
+      node,
+      (current) => CALLABLE_SCOPE_TYPES.has(current.type),
+      root,
     );
-  }
-  const declaration = node.parent;
-  const declarationKind = declaration?.text
-    .trimStart()
-    .match(/^(var|let|const)\b/)?.[1];
-  if (declarationKind === "var")
-    return (
-      ancestor(node.parent, (current) =>
-        CALLABLE_SCOPE_TYPES.has(current.type),
-      ) ?? root
+  const kind = declarationKind(node);
+  if (kind === "var")
+    return nearestScope(
+      node,
+      (current) => CALLABLE_SCOPE_TYPES.has(current.type),
+      root,
     );
-  return (
-    ancestor(node.parent, (current) => current.type === "statement_block") ??
-    root
+  const forScope = ancestor(node.parent, (current) =>
+    FOR_SCOPE_TYPES.has(current.type),
+  );
+  if (forScope) return forScope;
+  return nearestScope(
+    node,
+    (current) => current.type === "statement_block",
+    root,
   );
 }
 
@@ -115,10 +184,29 @@ function lexicalScope(node: Node, root: Node): Node {
   );
 }
 
+function classThisOwner(node: Node): Node | null {
+  let current = node.parent;
+  while (current) {
+    if (CLASS_TYPES.has(current.type)) return current;
+    if (current.type === "arrow_function") {
+      current = current.parent;
+      continue;
+    }
+    if (
+      CALLABLE_SCOPE_TYPES.has(current.type) &&
+      !(
+        current.type === "method_definition" &&
+        current.parent?.type === "class_body"
+      )
+    )
+      return null;
+    current = current.parent;
+  }
+  return null;
+}
+
 function callerType(node: Node): AstCallSiteShapeFact["callerType"] {
-  const owner = ancestor(node.parent, (current) =>
-    CLASS_TYPES.has(current.type),
-  );
+  const owner = classThisOwner(node);
   const name = owner?.childForFieldName("name")?.text;
   return owner && name ? { name, span: span(owner) } : null;
 }
@@ -142,117 +230,334 @@ function fieldBinding(
   };
 }
 
-function parameterPropertyBinding(
-  propertyName: string,
+function patternNames(node: Node): string[] {
+  if (node.type === "identifier") return [node.text];
+  if (
+    node.type === "shorthand_property_identifier_pattern" ||
+    node.type === "shorthand_property_identifier"
+  )
+    return [node.text];
+  if (!BINDING_PATTERN_TYPES.has(node.type)) return [];
+  return namedChildren(node).flatMap(patternNames);
+}
+
+function addBinding(
+  index: Map<string, Map<string, IndexedBinding>>,
+  node: Node,
+  scope: Node,
+  kind: IndexedBinding["kind"],
+  names: readonly string[],
+): void {
+  const key = scopeIndexKey(scope);
+  const bindings = index.get(key) ?? new Map<string, IndexedBinding>();
+  for (const name of names) {
+    const existing = bindings.get(name);
+    if (existing) {
+      if (
+        existing.declarationSpan.start !== node.startIndex ||
+        existing.declarationSpan.end !== node.endIndex
+      )
+        bindings.set(name, { ...existing, kind: "unsupported" });
+      continue;
+    }
+    bindings.set(name, {
+      name,
+      declarationSpan: span(node),
+      scopeSpan: span(scope),
+      kind,
+    });
+  }
+  index.set(key, bindings);
+}
+
+function indexCallableBinding(
+  node: Node,
+  root: Node,
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  if (
+    ancestor(node.parent, (current) => TYPE_SIGNATURE_TYPES.has(current.type))
+  )
+    return;
+  const pattern =
+    node.childForFieldName("name") ??
+    node.childForFieldName("pattern") ??
+    node.childForFieldName("declarator");
+  if (!pattern) return;
+  const names = patternNames(pattern);
+  const simple = pattern.type === "identifier";
+  const loopBinding = ancestor(node.parent, (current) =>
+    FOR_SCOPE_TYPES.has(current.type),
+  );
+  const kind: IndexedBinding["kind"] =
+    simple &&
+    (node.type === "required_parameter" || node.type === "optional_parameter")
+      ? "parameter"
+      : loopBinding
+        ? "unsupported"
+        : simple
+          ? "local"
+          : "unsupported";
+  addBinding(index, node, bindingScope(node, root), kind, names);
+}
+
+function indexDirectCallableParameters(
+  node: Node,
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  if (!CALLABLE_SCOPE_TYPES.has(node.type)) return;
+  const parameters = node.childForFieldName("parameters");
+  const directParameter = node.childForFieldName("parameter");
+  const candidates = parameters
+    ? namedChildren(parameters)
+    : directParameter
+      ? [directParameter]
+      : [];
+  for (const parameter of candidates) {
+    if (
+      parameter.type === "required_parameter" ||
+      parameter.type === "optional_parameter"
+    )
+      continue;
+    const names = patternNames(parameter);
+    if (names.length === 0) continue;
+    const simple = parameter.type === "identifier";
+    addBinding(
+      index,
+      parameter,
+      node,
+      simple ? "parameter" : "unsupported",
+      names,
+    );
+  }
+}
+
+function indexNamedDeclarationShadow(
+  node: Node,
+  root: Node,
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  if (!NAMED_SHADOW_DECLARATION_TYPES.has(node.type)) return;
+  const name = node.childForFieldName("name");
+  if (name?.type !== "identifier" && name?.type !== "type_identifier") return;
+  const ownNameScope =
+    node.type === "class" ||
+    node.type === "function_expression" ||
+    node.type === "generator_function";
+  const scope = ownNameScope
+    ? node
+    : nearestScope(node, (current) => current.type === "statement_block", root);
+  addBinding(index, name, scope, "unsupported", [name.text]);
+}
+
+function indexCatchBinding(
+  node: Node,
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  if (node.type !== "catch_clause") return;
+  const parameter = node.childForFieldName("parameter");
+  if (!parameter) return;
+  const body = node.childForFieldName("body") ?? node;
+  addBinding(index, parameter, body, "unsupported", patternNames(parameter));
+}
+
+function indexLoopBinding(
+  node: Node,
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  if (!FOR_SCOPE_TYPES.has(node.type)) return;
+  const declaration =
+    node.childForFieldName("left") ?? node.childForFieldName("initializer");
+  if (!declaration) return;
+  const declarator =
+    declaration.type === "variable_declaration"
+      ? namedChildren(declaration).find(
+          (child) => child.type === "variable_declarator",
+        )
+      : declaration;
+  const pattern =
+    declarator?.type === "variable_declarator"
+      ? declarator.childForFieldName("name")
+      : declarator;
+  if (!pattern) return;
+  addBinding(index, pattern, node, "unsupported", patternNames(pattern));
+}
+
+function buildBindingIndex(
+  root: Node,
+): Map<string, Map<string, IndexedBinding>> {
+  const index = new Map<string, Map<string, IndexedBinding>>();
+  walk(root, (node) => {
+    if (
+      node.type === "required_parameter" ||
+      node.type === "optional_parameter" ||
+      node.type === "variable_declarator"
+    )
+      indexCallableBinding(node, root, index);
+    indexDirectCallableParameters(node, index);
+    indexNamedDeclarationShadow(node, root, index);
+    indexCatchBinding(node, index);
+    indexLoopBinding(node, index);
+  });
+  return index;
+}
+
+function propertyIndexKey(classNode: Node, name: string): string {
+  return `${classNode.startIndex}:${name}`;
+}
+
+function scopeIndexKey(node: Node): string {
+  return `${node.type}:${node.startIndex}:${node.endIndex}`;
+}
+
+function setPropertyBinding(
+  index: Map<string, AstCallReceiverBinding | null>,
+  key: string,
+  binding: AstCallReceiverBinding,
+): void {
+  index.set(key, index.has(key) ? null : binding);
+}
+
+function hasParameterPropertyModifier(node: Node): boolean {
+  return allChildren(node).some(
+    (child) =>
+      child.type === "accessibility_modifier" || child.text === "readonly",
+  );
+}
+
+function indexConstructorProperties(
   classNode: Node,
   member: Node,
-): AstCallReceiverBinding | null {
+  index: Map<string, AstCallReceiverBinding | null>,
+): void {
   if (
     member.type !== "method_definition" ||
     member.childForFieldName("name")?.text !== "constructor"
   )
-    return null;
+    return;
   const parameters = member.childForFieldName("parameters");
-  const parameter = (parameters ? namedChildren(parameters) : []).find(
-    (candidate) =>
-      bindingName(candidate) === propertyName &&
-      /\b(private|protected|public)\b/.test(candidate.text),
-  );
-  return parameter
-    ? {
-        kind: "parameter-property",
-        name: propertyName,
-        declarationSpan: span(parameter),
-        scopeSpan: span(classNode),
-      }
-    : null;
+  for (const parameter of parameters ? namedChildren(parameters) : []) {
+    const property = bindingName(parameter);
+    if (!property || !hasParameterPropertyModifier(parameter)) continue;
+    setPropertyBinding(index, propertyIndexKey(classNode, property), {
+      kind: "parameter-property",
+      name: property,
+      declarationSpan: span(parameter),
+      scopeSpan: span(classNode),
+    });
+  }
 }
 
-function propertyBinding(
-  propertyName: string,
+function indexClassProperties(
   classNode: Node,
-): AstCallReceiverBinding | null {
+  index: Map<string, AstCallReceiverBinding | null>,
+): void {
   const body = classNode.childForFieldName("body");
   for (const member of body ? namedChildren(body) : []) {
-    const binding =
-      fieldBinding(propertyName, classNode, member) ??
-      parameterPropertyBinding(propertyName, classNode, member);
-    if (binding) return binding;
+    const name = member.childForFieldName("name")?.text;
+    const field = name ? fieldBinding(name, classNode, member) : null;
+    if (field)
+      setPropertyBinding(index, propertyIndexKey(classNode, name!), field);
+    indexConstructorProperties(classNode, member, index);
   }
-  return null;
+}
+
+function buildPropertyIndex(
+  root: Node,
+): Map<string, AstCallReceiverBinding | null> {
+  const index = new Map<string, AstCallReceiverBinding | null>();
+  walk(root, (node) => {
+    if (CLASS_TYPES.has(node.type)) indexClassProperties(node, index);
+  });
+  return index;
+}
+
+function callSiteIndexKey(row: number, column: number, name: string): string {
+  return `${row}:${column}:${name}`;
+}
+
+function buildShapeIndexes(root: Node): ShapeIndexes {
+  const calls = new Map<string, Node[]>();
+  walk(root, (node) => {
+    if (node.type !== "call_expression") return;
+    const callee = node.childForFieldName("function");
+    if (!callee) return;
+    const position =
+      callee.childForFieldName("property") ??
+      callee.childForFieldName("name") ??
+      callee;
+    const name = callee.childForFieldName("property")?.text ?? callee.text;
+    const key = callSiteIndexKey(
+      position.startPosition.row,
+      position.startPosition.column,
+      name,
+    );
+    calls.set(key, [...(calls.get(key) ?? []), node]);
+  });
+  return {
+    callExpressions: calls,
+    bindingsByScope: buildBindingIndex(root),
+    propertiesByClassAndName: buildPropertyIndex(root),
+  };
+}
+
+function resolveThisReceiverBinding(
+  receiverText: string,
+  call: Node,
+  indexes: ShapeIndexes,
+): AstCallReceiverBinding | null | undefined {
+  const owner = classThisOwner(call);
+  if (receiverText === "this")
+    return owner
+      ? {
+          kind: "this",
+          name: "this",
+          declarationSpan: span(owner),
+          scopeSpan: span(owner),
+        }
+      : null;
+  const property = receiverText.match(
+    /^this\.([\p{ID_Start}_$][\p{ID_Continue}$]*)$/u,
+  );
+  if (!property) return undefined;
+  return owner
+    ? (indexes.propertiesByClassAndName.get(
+        propertyIndexKey(owner, property[1]),
+      ) ?? null)
+    : null;
 }
 
 function resolveReceiverBinding(
   receiverText: string | undefined,
   call: Node,
-  root: Node,
+  indexes: ShapeIndexes,
 ): AstCallReceiverBinding | null {
   if (!receiverText) return null;
-  if (receiverText === "this") {
-    const classNode = ancestor(call.parent, (current) =>
-      CLASS_TYPES.has(current.type),
-    );
-    return classNode
-      ? {
-          kind: "this",
-          name: "this",
-          declarationSpan: span(classNode),
-          scopeSpan: span(classNode),
-        }
-      : null;
-  }
-  if (receiverText.startsWith("this.")) {
-    const match = receiverText.match(
-      /^this\.([\p{ID_Start}_$][\p{ID_Continue}$]*)$/u,
-    );
-    const classNode = ancestor(call.parent, (current) =>
-      CLASS_TYPES.has(current.type),
-    );
-    return match && classNode ? propertyBinding(match[1], classNode) : null;
-  }
+  const thisBinding = resolveThisReceiverBinding(receiverText, call, indexes);
+  if (thisBinding !== undefined) return thisBinding;
   if (!SIMPLE_IDENTIFIER.test(receiverText)) return null;
+  let current: Node | null = call;
+  while (current) {
+    const binding = indexes.bindingsByScope
+      .get(scopeIndexKey(current))
+      ?.get(receiverText);
+    if (binding) return bindingResult(receiverText, binding);
+    current = current.parent;
+  }
+  return null;
+}
 
-  const callOffset = call.startIndex;
-  const matches: Array<{
-    readonly node: Node;
-    readonly scope: Node;
-    readonly kind: "parameter" | "local";
-  }> = [];
-  walk(root, (node) => {
-    if (
-      node.type !== "required_parameter" &&
-      node.type !== "optional_parameter" &&
-      node.type !== "variable_declarator"
-    )
-      return;
-    if (bindingName(node) !== receiverText) return;
-    const scope = bindingScope(node, root);
-    if (callOffset < scope.startIndex || callOffset > scope.endIndex) return;
-    matches.push({
-      node,
-      scope,
-      kind:
-        node.type === "required_parameter" || node.type === "optional_parameter"
-          ? "parameter"
-          : "local",
-    });
-  });
-  matches.sort((left, right) => {
-    const scopeWidth =
-      left.scope.endIndex -
-      left.scope.startIndex -
-      (right.scope.endIndex - right.scope.startIndex);
-    return scopeWidth || right.node.startIndex - left.node.startIndex;
-  });
-  const binding = matches[0];
-  return binding
-    ? {
-        kind: binding.kind,
-        name: receiverText,
-        declarationSpan: span(binding.node),
-        scopeSpan: span(binding.scope),
-      }
-    : null;
+function bindingResult(
+  name: string,
+  candidate: IndexedBinding | null,
+): AstCallReceiverBinding | null {
+  if (!candidate || candidate.kind === "unsupported") return null;
+  return {
+    kind: candidate.kind,
+    name,
+    declarationSpan: candidate.declarationSpan,
+    scopeSpan: candidate.scopeSpan,
+  };
 }
 
 function argumentKind(node: Node): AstCallArgumentKind {
@@ -294,32 +599,12 @@ function peerKey(
   ].join(":");
 }
 
-function callMatches(record: WorkerCallSite, call: Node): boolean {
-  const callee = call.childForFieldName("function");
-  if (!callee) return false;
-  const position =
-    callee.childForFieldName("property") ??
-    callee.childForFieldName("name") ??
-    callee;
-  const calleeName = callee.childForFieldName("property")?.text ?? callee.text;
-  return (
-    position.startPosition.row === record.startLine &&
-    position.startPosition.column === record.startColumn &&
-    calleeName === record.calleeName
-  );
-}
-
-function callExpressions(root: Node): Node[] {
-  const result: Node[] = [];
-  walk(root, (node) => {
-    if (node.type === "call_expression") result.push(node);
-  });
-  return result;
-}
-
-function findCall(record: WorkerCallSite, calls: readonly Node[]): Node | null {
+function findCall(record: WorkerCallSite, indexes: ShapeIndexes): Node | null {
   if (!record.calleeName || record.calleeKind === "computed") return null;
-  return calls.find((candidate) => callMatches(record, candidate)) ?? null;
+  const calls = indexes.callExpressions.get(
+    callSiteIndexKey(record.startLine, record.startColumn, record.calleeName),
+  );
+  return calls?.length === 1 ? (calls[0] ?? null) : null;
 }
 
 function isSupportedCall(
@@ -332,14 +617,17 @@ function pendingForCall(
   record: SupportedWorkerCallSite,
   call: Node,
   root: Node,
+  indexes: ShapeIndexes,
 ): PendingFact {
   const argsNode = call.childForFieldName("arguments");
-  const args = argsNode ? namedChildren(argsNode) : [];
+  const args = argsNode
+    ? namedChildren(argsNode).filter((argument) => argument.type !== "comment")
+    : [];
   const hasSpreadArgument = args.some(
     (argument) => argument.type === "spread_element",
   );
   const scope = lexicalScope(call, root);
-  const binding = resolveReceiverBinding(record.receiverText, call, root);
+  const binding = resolveReceiverBinding(record.receiverText, call, indexes);
   const fact: Omit<AstCallSiteShapeFact, "peerMemberNames"> = {
     startLine: record.startLine,
     startColumn: record.startColumn,
@@ -374,11 +662,11 @@ export function extractCallSiteShapeFacts(
   language: AstDeclaredTypeLanguage,
   calls: readonly WorkerCallSite[],
 ): AstCallSiteShapeFacts {
-  const expressions = callExpressions(root);
+  const indexes = buildShapeIndexes(root);
   const pending = calls.flatMap((record) => {
     if (!isSupportedCall(record)) return [];
-    const call = findCall(record, expressions);
-    return call ? [pendingForCall(record, call, root)] : [];
+    const call = findCall(record, indexes);
+    return call ? [pendingForCall(record, call, root, indexes)] : [];
   });
   const namesByPeer = new Map<string, Set<string>>();
   for (const { fact, peerKey: key } of pending) {

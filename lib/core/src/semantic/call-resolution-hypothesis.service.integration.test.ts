@@ -112,6 +112,45 @@ function createSha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
+async function hypothesizeCallFromSources(
+  files: readonly { filePath: string; code: string }[],
+  callerFilePath: string,
+  calleeName: string,
+): Promise<CallResolutionHypothesisResultLike> {
+  const parsedFiles = await Promise.all(
+    files.map(async (file) => ({
+      ...file,
+      data: await parseFile(file.filePath, file.code),
+    })),
+  );
+  const caller = parsedFiles.find(
+    ({ filePath }) => filePath === callerFilePath,
+  );
+  const callSite = caller?.data.callSiteShapeFacts?.callSites.find(
+    (call) => call.calleeName === calleeName,
+  );
+  if (!caller || !callSite)
+    throw new Error(`worker omitted ${calleeName} call in ${callerFilePath}`);
+
+  const service = new CallResolutionHypothesisService();
+  const workspaceIndex = indexWorkspace(
+    service,
+    "f".repeat(64),
+    parsedFiles.map(({ filePath, code, data }) => ({
+      filePath,
+      sourceContentHash: createSha256(code),
+      callSiteShapeFacts: data.callSiteShapeFacts,
+      declaredTypeFacts: data.declaredTypeFacts ?? null,
+    })),
+  );
+  return service.hypothesize({
+    callerFilePath,
+    callerSourceContentHash: createSha256(caller.code),
+    callSite,
+    workspaceIndex,
+  });
+}
+
 type CallResolutionHypothesisResultLike = ReturnType<
   CallResolutionHypothesisService["hypothesize"]
 >;
@@ -371,38 +410,37 @@ describe("call-resolution hypothesis service", () => {
   });
 
   it("[error-handling] abstains for member calls whose receiver binding is not direct this", async () => {
-    const serviceFile = await parseFile(
-      "src/service.ts",
-      "class Service { close(): void {} }",
-    );
-    const otherFile = await parseFile(
-      "src/other.ts",
-      "class Other { close(): void {} }",
-    );
-    const callerFile = await parseFile(
-      "src/caller.ts",
-      "function run(service: Service) { service.close(); }",
-    );
+    const serviceCode = "class Service { close(): void {} }";
+    const otherCode = "class Other { close(): void {} }";
+    const callerCode = "function run(service: Service) { service.close(); }";
+    const serviceFile = await parseFile("src/service.ts", serviceCode);
+    const otherFile = await parseFile("src/other.ts", otherCode);
+    const callerFile = await parseFile("src/caller.ts", callerCode);
     const callSite = callerFile.callSiteShapeFacts?.callSites[0];
     if (!callSite) throw new Error("worker omitted the member call shape");
     const service = new CallResolutionHypothesisService();
     const workspaceIndex = indexWorkspace(service, "3".repeat(64), [
       {
         filePath: "src/service.ts",
+        sourceContentHash: createSha256(serviceCode),
         declaredTypeFacts: serviceFile.declaredTypeFacts!,
       },
       {
         filePath: "src/other.ts",
+        sourceContentHash: createSha256(otherCode),
         declaredTypeFacts: otherFile.declaredTypeFacts!,
       },
       {
         filePath: "src/caller.ts",
+        sourceContentHash: createSha256(callerCode),
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
         declaredTypeFacts: callerFile.declaredTypeFacts!,
       },
     ]);
 
     const result = service.hypothesize({
       callerFilePath: "src/caller.ts",
+      callerSourceContentHash: createSha256(callerCode),
       callSite,
       workspaceIndex,
     });
@@ -411,8 +449,171 @@ describe("call-resolution hypothesis service", () => {
       status: "abstained",
       targetKey: null,
       ruleSignature: null,
-      reason: "unsupported-call-shape",
+      reason: "unresolved-type-binding",
     });
+  });
+
+  it("[invalid-input] does not prove a typed receiver from its type name alone", async () => {
+    const code =
+      "class Logger { close(): void {} } function run(logger: Logger): void { logger.close(); }";
+    const callerFile = await parseFile("src/caller.ts", code);
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "close",
+    );
+    if (!callSite)
+      throw new Error("worker omitted the typed member call shape");
+    const sourceContentHash = createSha256(code);
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "8".repeat(64), [
+      {
+        filePath: "src/caller.ts",
+        sourceContentHash,
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callerSourceContentHash: sourceContentHash,
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "unresolved-type-binding",
+    });
+  });
+
+  it("[invalid-input] abstains for aliases, collisions, imports, re-exports and inheritance", async () => {
+    const abstainedForUnresolvedType = {
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "unresolved-type-binding",
+    } as const;
+    const scenarios = [
+      {
+        name: "type alias",
+        files: [
+          {
+            filePath: "src/caller.ts",
+            code: "class Logger { close(): void {} } type LoggerAlias = Logger; function run(logger: LoggerAlias) { logger.close(); }",
+          },
+        ],
+      },
+      {
+        name: "same-name declaration collision",
+        files: [
+          {
+            filePath: "src/caller.ts",
+            code: "class Logger { close(): void {} } function outer() { class Logger { close(): void {} } function run(logger: Logger) { logger.close(); } }",
+          },
+        ],
+      },
+      {
+        name: "import alias across a re-export",
+        files: [
+          {
+            filePath: "src/service.ts",
+            code: "export class Logger { close(): void {} }",
+          },
+          {
+            filePath: "src/barrel.ts",
+            code: 'export { Logger as PublicLogger } from "./service";',
+          },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { PublicLogger as LocalLogger } from "./barrel"; function run(logger: LocalLogger) { logger.close(); }',
+          },
+        ],
+      },
+      {
+        name: "inherited receiver member",
+        files: [
+          {
+            filePath: "src/caller.ts",
+            code: "class Base { close(): void {} } class Logger extends Base {} function run(logger: Logger) { logger.close(); }",
+          },
+        ],
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const result = await hypothesizeCallFromSources(
+        scenario.files,
+        "src/caller.ts",
+        "close",
+      );
+      expect(result.strictProof, scenario.name).toEqual(
+        abstainedForUnresolvedType,
+      );
+    }
+  });
+
+  it("[invalid-input] abstains for bare calls whose import and re-export bindings are unavailable", async () => {
+    const serviceFile = {
+      filePath: "src/service.ts",
+      code: "export function shutdown(): void {}",
+    };
+    const serviceAndCaller = (callerCode: string) => [
+      serviceFile,
+      { filePath: "src/caller.ts", code: callerCode },
+    ];
+    const scenarios = [
+      {
+        name: "direct imported symbol",
+        files: serviceAndCaller(
+          'import { shutdown } from "./service"; function run() { shutdown(); }',
+        ),
+        calleeName: "shutdown",
+      },
+      {
+        name: "aliased imported symbol",
+        files: serviceAndCaller(
+          'import { shutdown as finish } from "./service"; function run() { finish(); }',
+        ),
+        calleeName: "finish",
+      },
+      {
+        name: "barrel re-export and import alias",
+        files: [
+          serviceFile,
+          {
+            filePath: "src/barrel.ts",
+            code: 'export { shutdown as stop } from "./service";',
+          },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { stop as finish } from "./barrel"; function run() { finish(); }',
+          },
+        ],
+        calleeName: "finish",
+      },
+      {
+        name: "namespace import member call",
+        files: serviceAndCaller(
+          'import * as service from "./service"; function run() { service.shutdown(); }',
+        ),
+        calleeName: "shutdown",
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const result = await hypothesizeCallFromSources(
+        scenario.files,
+        "src/caller.ts",
+        scenario.calleeName,
+      );
+      expect(result.strictProof.status, scenario.name).toBe("abstained");
+      expect(result.strictProof.targetKey, scenario.name).toBeNull();
+      expect(result.strictProof.reason, scenario.name).toBe(
+        "unresolved-call-binding",
+      );
+    }
   });
 
   it("[happy] indexes once and applies typed receiver, peer, and arity evidence in order", async () => {

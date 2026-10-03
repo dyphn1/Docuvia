@@ -3,7 +3,10 @@ import type {
   CallResolutionHypothesisRequest,
   CallResolutionStrictProof,
 } from "@workspace/contracts";
-import type { IndexedWorkspace } from "./call-resolution-hypothesis-index.js";
+import {
+  getReceiverTypeFact,
+  type IndexedWorkspace,
+} from "./call-resolution-hypothesis-index.js";
 import { hash } from "./call-resolution-hypothesis-internal.js";
 
 const SINGLE_CANDIDATE_THIS_RULE = "single-candidate-this-v1" as const;
@@ -98,6 +101,53 @@ function isExactOwnerCandidate(
   );
 }
 
+function abstainForUnresolvedTypeBinding(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+): CallResolutionStrictProof | null {
+  if (
+    request.callSite.calleeKind !== "member" ||
+    !request.callSite.receiverBinding ||
+    !getReceiverTypeFact(workspace, request)
+  )
+    return null;
+
+  const sourceReason = sourceSnapshotAbstentionReason(request, workspace);
+  if (sourceReason) return abstain(sourceReason);
+  if (!hasOneIndexedCallSite(request, workspace))
+    return abstain("call-site-not-in-indexed-source");
+  return abstain("unresolved-type-binding");
+}
+
+function abstainForUnresolvedCallBinding(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+): CallResolutionStrictProof | null {
+  const callSite = request.callSite;
+  if (
+    callSite.calleeKind !== "bare" &&
+    !(callSite.calleeKind === "member" && !callSite.receiverBinding)
+  )
+    return null;
+
+  const sourceReason = sourceSnapshotAbstentionReason(request, workspace);
+  if (sourceReason) return abstain(sourceReason);
+  if (!hasOneIndexedCallSite(request, workspace))
+    return abstain("call-site-not-in-indexed-source");
+  return abstain("unresolved-call-binding");
+}
+
+function proveUnsupportedCallShape(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+): CallResolutionStrictProof {
+  return (
+    abstainForUnresolvedTypeBinding(request, workspace) ??
+    abstainForUnresolvedCallBinding(request, workspace) ??
+    abstain("unsupported-call-shape")
+  );
+}
+
 /**
  * Proves the narrow Q3 case where `this.member()` names one complete, non-static member
  * declared directly on the exact enclosing class. Every other call shape abstains until its
@@ -110,7 +160,7 @@ export function proveUniqueThisMember(
   truncated: boolean,
 ): CallResolutionStrictProof {
   if (!hasSupportedThisShape(request.callSite))
-    return abstain("unsupported-call-shape");
+    return proveUnsupportedCallShape(request, workspace);
   if (!hasInstanceMethodCaller(request, workspace))
     return abstain("unsupported-call-shape");
   if (!workspace.complete) return abstain("incomplete-inventory");

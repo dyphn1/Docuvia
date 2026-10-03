@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts#anonymous@L90
+id: artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts#anonymous@L98
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/commands/l3-distribution.integration.te
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts`
-

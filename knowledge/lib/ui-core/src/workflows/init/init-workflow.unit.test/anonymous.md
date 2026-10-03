@@ -7,4 +7,3 @@ filePath: lib/ui-core/src/workflows/init/init-workflow.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/init/init-workflow.unit.test.ts`
-`

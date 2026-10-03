@@ -13,6 +13,7 @@ import {
   SUPPORTED_LANGUAGES,
   type AstDeclaredTypeLanguage,
   type AstExportKind,
+  type AstDeclaredTypeFacts,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
@@ -113,6 +114,8 @@ export interface AstParseResponse {
     }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
+    /** Optional explicit TypeScript/JavaScript syntax facts; not a resolution or proof. */
+    declaredTypeFacts?: AstDeclaredTypeFacts;
     /**
      * `new Worker(<path>)` spawn sites (TS/JS only — see `WORKER_SPAWN_LANGUAGES`), one per
      * resolved spawn call, attributing it to its enclosing function like `calls` does.

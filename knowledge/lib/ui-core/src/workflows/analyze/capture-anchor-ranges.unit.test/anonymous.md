@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/capture-anchor-ranges.unit.test.ts#anonymous@L59
+id: lib/ui-core/src/workflows/analyze/capture-anchor-ranges.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/capture-anchor-ranges.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/capture-anchor-ranges.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/capture-anchor-ranges.unit.test.ts`
+ts`

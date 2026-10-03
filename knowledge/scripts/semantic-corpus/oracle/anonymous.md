@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/oracle.mts#anonymous@L342
+id: scripts/semantic-corpus/oracle.mts#DeclarationLocator.anonymous
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/oracle.mts
@@ -7,4 +7,3 @@ filePath: scripts/semantic-corpus/oracle.mts
 # Symbol: anonymous
 
 File: `scripts/semantic-corpus/oracle.mts`
-s/oracle.mts`

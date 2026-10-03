@@ -13,3 +13,6 @@ test/phase5-prettier-dump.test.ts
 
 # Nested git worktrees used by local agents (also ignored by eslint).
 .claude/worktrees/
+
+# Keep this machine-readable OOF artifact byte-identical to the runner output/hash.
+docs/gitbook/analysis/tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence/system1-calibration-quality-oof.json

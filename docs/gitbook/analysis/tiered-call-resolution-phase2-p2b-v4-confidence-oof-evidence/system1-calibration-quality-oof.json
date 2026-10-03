@@ -1,0 +1,1550 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-system1-calibration-quality-oof-artifact/2",
+  "split": "calibration",
+  "generatedAt": "2026-10-03T23:35:46.810Z",
+  "provenance": {
+    "candidateGeneratorVersion": "declared-member-hypothesis-v4",
+    "rankingPolicyVersion": "ordered-evidence-v1",
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd",
+    "sourceFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "sourcePredictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+    "sourcePredictionManifestSha256": "de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e",
+    "sourceImplementationHash": "f51c86da6dc003082a3dc5e4015d45e60e25696fa694912e782d92b57b247182",
+    "systemOneImplementationHash": "6f9129c603dc0218ac04c70914658e5a8c7889cf2060c868967f92874b5c6527",
+    "sourceSplitAssignmentHash": "41c9c0649c6e68d2afc4c66c8978ea3dfacbfbd78a67760f1f167b4cabeda595",
+    "sourceSplitCounts": {
+      "train": 13496,
+      "calibration": 2966,
+      "test": 12422,
+      "temporal": 2694
+    },
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "snapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "snapshotScopedUniqueAliasCount": 119141
+  },
+  "calibrationLabelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+  "calibrationQualityInputFingerprint": "87f2b0ab52573ea8ff163994516e3c892bf5682669e35c0775ed9ca15e9a3499",
+  "labelSplitsRead": [
+    "calibration"
+  ],
+  "heldoutModeInvoked": false,
+  "quality": {
+    "schemaVersion": 2,
+    "measurement": "phase2-p2b-system1-calibration-quality-oof/2",
+    "split": "calibration",
+    "method": "equal-duplicate-group-weighted-beta-smoothed-isotonic-v1",
+    "probabilityMeaning": "Cross-fitted estimate of the probability that an accepted top-ranked target is correct; abstentions have no probability and are excluded from ECE/Brier but remain in all-site coverage denominators.",
+    "foldCount": 5,
+    "binCount": 10,
+    "targetAcceptedPrecision": 0.9,
+    "eligibleSiteCount": 2966,
+    "eligibleDuplicateGroupCount": 2739,
+    "scorableEligibleSiteCount": 2766,
+    "unscorableEligibleSiteCount": 200,
+    "conflictingDuplicateGroupCount": 15,
+    "selectedSiteCount": 2669,
+    "selectedScorableSiteCount": 2662,
+    "selectedUnscorableSiteCount": 7,
+    "selectedDuplicateGroupCount": 2446,
+    "correctSelectedDuplicateGroupCount": 2424,
+    "selectedDuplicateGroupPrecision": 0.9910057236304171,
+    "abstentionCount": 297,
+    "coverage": 0.8998651382333108,
+    "abstentionRate": 0.10013486176668915,
+    "siteWeighted": {
+      "siteCount": 2669,
+      "duplicateGroupCount": 2446,
+      "brierScore": 0.04879699330765023,
+      "expectedCalibrationError": 0.04044390122572323,
+      "bins": [
+        {
+          "binIndex": 0,
+          "lowerInclusive": 0,
+          "upperInclusive": 0.1,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 1,
+          "lowerInclusive": 0.1,
+          "upperInclusive": 0.2,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 2,
+          "lowerInclusive": 0.2,
+          "upperInclusive": 0.3,
+          "siteCount": 7,
+          "duplicateGroupCount": 7,
+          "predictedProbability": 0.23412698412698413,
+          "observedSuccessRate": 0,
+          "weightedSiteCount": 7
+        },
+        {
+          "binIndex": 3,
+          "lowerInclusive": 0.3,
+          "upperInclusive": 0.4,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 4,
+          "lowerInclusive": 0.4,
+          "upperInclusive": 0.5,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 5,
+          "lowerInclusive": 0.5,
+          "upperInclusive": 0.6,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 6,
+          "lowerInclusive": 0.6,
+          "upperInclusive": 0.7,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 7,
+          "lowerInclusive": 0.7,
+          "upperInclusive": 0.8,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 8,
+          "lowerInclusive": 0.8,
+          "upperInclusive": 0.9,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 9,
+          "lowerInclusive": 0.9,
+          "upperInclusive": 1,
+          "siteCount": 2662,
+          "duplicateGroupCount": 2439,
+          "predictedProbability": 0.9903478149821813,
+          "observedSuccessRate": 0.9504132231404959,
+          "weightedSiteCount": 2662
+        }
+      ]
+    },
+    "scorableOnlySiteWeighted": {
+      "siteCount": 2662,
+      "duplicateGroupCount": 2439,
+      "brierScore": 0.048780670275702834,
+      "expectedCalibrationError": 0.03993459184168535
+    },
+    "duplicateGroupWeighted": {
+      "siteCount": 2669,
+      "duplicateGroupCount": 2446,
+      "brierScore": 0.006271242095000871,
+      "expectedCalibrationError": 0.004184029431416047,
+      "bins": [
+        {
+          "binIndex": 0,
+          "lowerInclusive": 0,
+          "upperInclusive": 0.1,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 1,
+          "lowerInclusive": 0.1,
+          "upperInclusive": 0.2,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 2,
+          "lowerInclusive": 0.2,
+          "upperInclusive": 0.3,
+          "siteCount": 7,
+          "duplicateGroupCount": 7,
+          "predictedProbability": 0.23412698412698413,
+          "observedSuccessRate": 0,
+          "weightedSiteCount": 7
+        },
+        {
+          "binIndex": 3,
+          "lowerInclusive": 0.3,
+          "upperInclusive": 0.4,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 4,
+          "lowerInclusive": 0.4,
+          "upperInclusive": 0.5,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 5,
+          "lowerInclusive": 0.5,
+          "upperInclusive": 0.6,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 6,
+          "lowerInclusive": 0.6,
+          "upperInclusive": 0.7,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 7,
+          "lowerInclusive": 0.7,
+          "upperInclusive": 0.8,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 8,
+          "lowerInclusive": 0.8,
+          "upperInclusive": 0.9,
+          "siteCount": 0,
+          "duplicateGroupCount": 0,
+          "predictedProbability": null,
+          "observedSuccessRate": null,
+          "weightedSiteCount": 0
+        },
+        {
+          "binIndex": 9,
+          "lowerInclusive": 0.9,
+          "upperInclusive": 1,
+          "siteCount": 2662,
+          "duplicateGroupCount": 2439,
+          "predictedProbability": 0.9903258519473717,
+          "observedSuccessRate": 0.9938499384993826,
+          "weightedSiteCount": 2439.0000000000073
+        }
+      ]
+    },
+    "familyMacroSiteWeightedBrierScore": 0.045079031913766054,
+    "worstFamilySiteWeightedBrierScore": 0.07367626234683876,
+    "familyMacroSiteWeightedEce": 0.03672960628709174,
+    "worstFamilySiteWeightedEce": 0.0652986356567028,
+    "families": [
+      {
+        "name": "403errors/repomind",
+        "eligibleSiteCount": 1207,
+        "eligibleDuplicateGroupCount": 1129,
+        "selectedSiteCount": 1161,
+        "selectedDuplicateGroupCount": 1086,
+        "selectedScorableSiteCount": 1154,
+        "selectedUnscorableSiteCount": 7,
+        "coverage": 0.9618889809444905,
+        "siteWeightedBrierScore": 0.016481801480693354,
+        "siteWeightedExpectedCalibrationError": 0.00816057691748068,
+        "duplicateGroupWeightedBrierScore": 0.0031591476318591012,
+        "duplicateGroupWeightedExpectedCalibrationError": 0.008357530748779094
+      },
+      {
+        "name": "Egonex-AI/Understand-Anything",
+        "eligibleSiteCount": 1759,
+        "eligibleDuplicateGroupCount": 1610,
+        "selectedSiteCount": 1508,
+        "selectedDuplicateGroupCount": 1360,
+        "selectedScorableSiteCount": 1508,
+        "selectedUnscorableSiteCount": 0,
+        "coverage": 0.8573052870949404,
+        "siteWeightedBrierScore": 0.07367626234683876,
+        "siteWeightedExpectedCalibrationError": 0.0652986356567028,
+        "duplicateGroupWeightedBrierScore": 0.008756341056009472,
+        "duplicateGroupWeightedExpectedCalibrationError": 0.0008513658794545576
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "bare",
+        "eligibleSiteCount": 2222,
+        "eligibleDuplicateGroupCount": 2123,
+        "selectedSiteCount": 1995,
+        "selectedDuplicateGroupCount": 1900,
+        "selectedScorableSiteCount": 1988,
+        "selectedUnscorableSiteCount": 7,
+        "coverage": 0.8978397839783978,
+        "siteWeightedBrierScore": 0.009631192907580521,
+        "siteWeightedExpectedCalibrationError": 0.0009418817548538426,
+        "duplicateGroupWeightedBrierScore": 0.001846148163166777,
+        "duplicateGroupWeightedExpectedCalibrationError": 0.008922407270038745
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 744,
+        "eligibleDuplicateGroupCount": 616,
+        "selectedSiteCount": 674,
+        "selectedDuplicateGroupCount": 546,
+        "selectedScorableSiteCount": 674,
+        "selectedUnscorableSiteCount": 0,
+        "coverage": 0.9059139784946236,
+        "siteWeightedBrierScore": 0.16472543811200965,
+        "siteWeightedExpectedCalibrationError": 0.15808019094169146,
+        "duplicateGroupWeightedBrierScore": 0.021669920612371926,
+        "duplicateGroupWeightedExpectedCalibrationError": 0.01230483117924941
+      }
+    ],
+    "callShapeSensitivity": {
+      "method": "per-call-shape-isotonic-with-global-selection-and-group-cross-fit-v1",
+      "minimumTrainingDuplicateGroups": 50,
+      "minimumTrainingScoreLevels": 5,
+      "total": {
+        "name": "all-call-shapes",
+        "eligibleSiteCount": 2966,
+        "eligibleDuplicateGroupCount": 2739,
+        "selectedSiteCount": 2669,
+        "selectedDuplicateGroupCount": 2446,
+        "mappedSelectedSiteCount": 674,
+        "mappedSelectedDuplicateGroupCount": 546,
+        "unmappedSelectedSiteCount": 1995,
+        "selectionCoverage": 0.8998651382333108,
+        "mapCoverageOfSelected": 0.25252903709254404,
+        "siteWeighted": {
+          "siteCount": 674,
+          "duplicateGroupCount": 546,
+          "brierScore": 0.15572116838508368,
+          "expectedCalibrationError": 0.12992419317324688,
+          "bins": [
+            {
+              "binIndex": 0,
+              "lowerInclusive": 0,
+              "upperInclusive": 0.1,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 1,
+              "lowerInclusive": 0.1,
+              "upperInclusive": 0.2,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 2,
+              "lowerInclusive": 0.2,
+              "upperInclusive": 0.3,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 3,
+              "lowerInclusive": 0.3,
+              "upperInclusive": 0.4,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 4,
+              "lowerInclusive": 0.4,
+              "upperInclusive": 0.5,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 5,
+              "lowerInclusive": 0.5,
+              "upperInclusive": 0.6,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 6,
+              "lowerInclusive": 0.6,
+              "upperInclusive": 0.7,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 7,
+              "lowerInclusive": 0.7,
+              "upperInclusive": 0.8,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 8,
+              "lowerInclusive": 0.8,
+              "upperInclusive": 0.9,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 9,
+              "lowerInclusive": 0.9,
+              "upperInclusive": 1,
+              "siteCount": 674,
+              "duplicateGroupCount": 546,
+              "predictedProbability": 0.9622684068230986,
+              "observedSuccessRate": 0.8323442136498517,
+              "weightedSiteCount": 674
+            }
+          ]
+        },
+        "scorableOnlySiteWeighted": {
+          "siteCount": 674,
+          "duplicateGroupCount": 546,
+          "brierScore": 0.15572116838508368,
+          "expectedCalibrationError": 0.12992419317324688,
+          "bins": [
+            {
+              "binIndex": 0,
+              "lowerInclusive": 0,
+              "upperInclusive": 0.1,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 1,
+              "lowerInclusive": 0.1,
+              "upperInclusive": 0.2,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 2,
+              "lowerInclusive": 0.2,
+              "upperInclusive": 0.3,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 3,
+              "lowerInclusive": 0.3,
+              "upperInclusive": 0.4,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 4,
+              "lowerInclusive": 0.4,
+              "upperInclusive": 0.5,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 5,
+              "lowerInclusive": 0.5,
+              "upperInclusive": 0.6,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 6,
+              "lowerInclusive": 0.6,
+              "upperInclusive": 0.7,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 7,
+              "lowerInclusive": 0.7,
+              "upperInclusive": 0.8,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 8,
+              "lowerInclusive": 0.8,
+              "upperInclusive": 0.9,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 9,
+              "lowerInclusive": 0.9,
+              "upperInclusive": 1,
+              "siteCount": 674,
+              "duplicateGroupCount": 546,
+              "predictedProbability": 0.9622684068230986,
+              "observedSuccessRate": 0.8323442136498517,
+              "weightedSiteCount": 674
+            }
+          ]
+        },
+        "duplicateGroupWeighted": {
+          "siteCount": 674,
+          "duplicateGroupCount": 546,
+          "brierScore": 0.021795905132815548,
+          "expectedCalibrationError": 0.014842543542814335,
+          "bins": [
+            {
+              "binIndex": 0,
+              "lowerInclusive": 0,
+              "upperInclusive": 0.1,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 1,
+              "lowerInclusive": 0.1,
+              "upperInclusive": 0.2,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 2,
+              "lowerInclusive": 0.2,
+              "upperInclusive": 0.3,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 3,
+              "lowerInclusive": 0.3,
+              "upperInclusive": 0.4,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 4,
+              "lowerInclusive": 0.4,
+              "upperInclusive": 0.5,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 5,
+              "lowerInclusive": 0.5,
+              "upperInclusive": 0.6,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 6,
+              "lowerInclusive": 0.6,
+              "upperInclusive": 0.7,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 7,
+              "lowerInclusive": 0.7,
+              "upperInclusive": 0.8,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 8,
+              "lowerInclusive": 0.8,
+              "upperInclusive": 0.9,
+              "siteCount": 0,
+              "duplicateGroupCount": 0,
+              "predictedProbability": null,
+              "observedSuccessRate": null,
+              "weightedSiteCount": 0
+            },
+            {
+              "binIndex": 9,
+              "lowerInclusive": 0.9,
+              "upperInclusive": 1,
+              "siteCount": 674,
+              "duplicateGroupCount": 546,
+              "predictedProbability": 0.9631794344791633,
+              "observedSuccessRate": 0.9780219780219777,
+              "weightedSiteCount": 546.0000000000002
+            }
+          ]
+        }
+      },
+      "callShapes": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2222,
+          "eligibleDuplicateGroupCount": 2123,
+          "selectedSiteCount": 1995,
+          "selectedDuplicateGroupCount": 1900,
+          "mappedSelectedSiteCount": 0,
+          "mappedSelectedDuplicateGroupCount": 0,
+          "unmappedSelectedSiteCount": 1995,
+          "selectionCoverage": 0.8978397839783978,
+          "mapCoverageOfSelected": 0,
+          "siteWeighted": {
+            "siteCount": 0,
+            "duplicateGroupCount": 0,
+            "brierScore": null,
+            "expectedCalibrationError": null,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              }
+            ]
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 0,
+            "duplicateGroupCount": 0,
+            "brierScore": null,
+            "expectedCalibrationError": null,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              }
+            ]
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 0,
+            "duplicateGroupCount": 0,
+            "brierScore": null,
+            "expectedCalibrationError": null,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              }
+            ]
+          }
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 744,
+          "eligibleDuplicateGroupCount": 616,
+          "selectedSiteCount": 674,
+          "selectedDuplicateGroupCount": 546,
+          "mappedSelectedSiteCount": 674,
+          "mappedSelectedDuplicateGroupCount": 546,
+          "unmappedSelectedSiteCount": 0,
+          "selectionCoverage": 0.9059139784946236,
+          "mapCoverageOfSelected": 1,
+          "siteWeighted": {
+            "siteCount": 674,
+            "duplicateGroupCount": 546,
+            "brierScore": 0.15572116838508368,
+            "expectedCalibrationError": 0.12992419317324688,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 674,
+                "duplicateGroupCount": 546,
+                "predictedProbability": 0.9622684068230986,
+                "observedSuccessRate": 0.8323442136498517,
+                "weightedSiteCount": 674
+              }
+            ]
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 674,
+            "duplicateGroupCount": 546,
+            "brierScore": 0.15572116838508368,
+            "expectedCalibrationError": 0.12992419317324688,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 674,
+                "duplicateGroupCount": 546,
+                "predictedProbability": 0.9622684068230986,
+                "observedSuccessRate": 0.8323442136498517,
+                "weightedSiteCount": 674
+              }
+            ]
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 674,
+            "duplicateGroupCount": 546,
+            "brierScore": 0.021795905132815548,
+            "expectedCalibrationError": 0.014842543542814335,
+            "bins": [
+              {
+                "binIndex": 0,
+                "lowerInclusive": 0,
+                "upperInclusive": 0.1,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 1,
+                "lowerInclusive": 0.1,
+                "upperInclusive": 0.2,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 2,
+                "lowerInclusive": 0.2,
+                "upperInclusive": 0.3,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 3,
+                "lowerInclusive": 0.3,
+                "upperInclusive": 0.4,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 4,
+                "lowerInclusive": 0.4,
+                "upperInclusive": 0.5,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 5,
+                "lowerInclusive": 0.5,
+                "upperInclusive": 0.6,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 6,
+                "lowerInclusive": 0.6,
+                "upperInclusive": 0.7,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 7,
+                "lowerInclusive": 0.7,
+                "upperInclusive": 0.8,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 8,
+                "lowerInclusive": 0.8,
+                "upperInclusive": 0.9,
+                "siteCount": 0,
+                "duplicateGroupCount": 0,
+                "predictedProbability": null,
+                "observedSuccessRate": null,
+                "weightedSiteCount": 0
+              },
+              {
+                "binIndex": 9,
+                "lowerInclusive": 0.9,
+                "upperInclusive": 1,
+                "siteCount": 674,
+                "duplicateGroupCount": 546,
+                "predictedProbability": 0.9631794344791633,
+                "observedSuccessRate": 0.9780219780219777,
+                "weightedSiteCount": 546.0000000000002
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "folds": [
+      {
+        "foldIndex": 0,
+        "heldOutDuplicateGroupCount": 548,
+        "trainingDuplicateGroupCount": 2191,
+        "heldOutEligibleSiteCount": 568,
+        "heldOutSelectedSiteCount": 503,
+        "heldOutSelectedScorableSiteCount": 501,
+        "heldOutSelectedUnscorableSiteCount": 2,
+        "trainingSelectedSiteCount": 2166,
+        "trainingSelectedDuplicateGroupCount": 1963,
+        "thresholdScore": 0,
+        "thresholdSelectionReason": "selected-max-coverage",
+        "calibratorScoreLevelCount": 9,
+        "trainingLabelRowsHash": "1d98e62a6c55c7efa7e920fc4ccac85754c897f2405f360f7ce244ff7eaa207b",
+        "calibratorFitHash": "3c0ad35f666bc165532d4e0fddc0e4ba14a5efc8203ef170c5f5ca45bdb9a0b1",
+        "callShapeCalibrators": [
+          {
+            "callShape": "bare",
+            "trainingSelectedSiteCount": 1607,
+            "trainingSelectedDuplicateGroupCount": 1528,
+            "scoreLevelCount": 4,
+            "status": "unsupported",
+            "reason": "insufficient-score-level-support",
+            "fitHash": "96f3db88f29367b3b440a5745298003564ba1037779f4dc98601fc4a5ca05801"
+          },
+          {
+            "callShape": "member",
+            "trainingSelectedSiteCount": 559,
+            "trainingSelectedDuplicateGroupCount": 435,
+            "scoreLevelCount": 7,
+            "status": "fitted",
+            "reason": null,
+            "fitHash": "98ad179b68dc703ac3e561d3786de2c1f07dad3a14d69ae104c617ec7979a83b"
+          }
+        ]
+      },
+      {
+        "foldIndex": 1,
+        "heldOutDuplicateGroupCount": 548,
+        "trainingDuplicateGroupCount": 2191,
+        "heldOutEligibleSiteCount": 599,
+        "heldOutSelectedSiteCount": 543,
+        "heldOutSelectedScorableSiteCount": 543,
+        "heldOutSelectedUnscorableSiteCount": 0,
+        "trainingSelectedSiteCount": 2126,
+        "trainingSelectedDuplicateGroupCount": 1953,
+        "thresholdScore": 0,
+        "thresholdSelectionReason": "selected-max-coverage",
+        "calibratorScoreLevelCount": 9,
+        "trainingLabelRowsHash": "2d17b4e3189dde162a9af73227c7fb58f0dfa87fb50011698bba6a8364e0f953",
+        "calibratorFitHash": "0a12123e630cf34329f9c96aa89000cc8badbf5888a97a2c5313aab894571d35",
+        "callShapeCalibrators": [
+          {
+            "callShape": "bare",
+            "trainingSelectedSiteCount": 1598,
+            "trainingSelectedDuplicateGroupCount": 1521,
+            "scoreLevelCount": 4,
+            "status": "unsupported",
+            "reason": "insufficient-score-level-support",
+            "fitHash": "1095fd3a9ad9d87fc26dd9dd914e212403178095fb73c607dba7b78df915073f"
+          },
+          {
+            "callShape": "member",
+            "trainingSelectedSiteCount": 528,
+            "trainingSelectedDuplicateGroupCount": 432,
+            "scoreLevelCount": 7,
+            "status": "fitted",
+            "reason": null,
+            "fitHash": "277ba94fbf768233dc27b3e1e93e7d6bb2650d50f2c1b1a819cd788b64c77ace"
+          }
+        ]
+      },
+      {
+        "foldIndex": 2,
+        "heldOutDuplicateGroupCount": 548,
+        "trainingDuplicateGroupCount": 2191,
+        "heldOutEligibleSiteCount": 575,
+        "heldOutSelectedSiteCount": 514,
+        "heldOutSelectedScorableSiteCount": 514,
+        "heldOutSelectedUnscorableSiteCount": 0,
+        "trainingSelectedSiteCount": 2155,
+        "trainingSelectedDuplicateGroupCount": 1958,
+        "thresholdScore": 0,
+        "thresholdSelectionReason": "selected-max-coverage",
+        "calibratorScoreLevelCount": 9,
+        "trainingLabelRowsHash": "583327a541e03c8d03f0c7e9a7eb2da54e678357b38b0e36ca16ae9fc8e13b0b",
+        "calibratorFitHash": "0610b5c4f7e58d807d1580f91a6bc9e0b54dcdf777069b8358b5f728accc4d1c",
+        "callShapeCalibrators": [
+          {
+            "callShape": "bare",
+            "trainingSelectedSiteCount": 1598,
+            "trainingSelectedDuplicateGroupCount": 1521,
+            "scoreLevelCount": 4,
+            "status": "unsupported",
+            "reason": "insufficient-score-level-support",
+            "fitHash": "a6963652ddfe0121f39334edeffaee65d51b22040a7cf4fe42d32cd15181a19e"
+          },
+          {
+            "callShape": "member",
+            "trainingSelectedSiteCount": 557,
+            "trainingSelectedDuplicateGroupCount": 437,
+            "scoreLevelCount": 7,
+            "status": "fitted",
+            "reason": null,
+            "fitHash": "5540a77a33c8bb8ea77e7d0257f05998483bb55d70b23f611a6935cf75c122d8"
+          }
+        ]
+      },
+      {
+        "foldIndex": 3,
+        "heldOutDuplicateGroupCount": 548,
+        "trainingDuplicateGroupCount": 2191,
+        "heldOutEligibleSiteCount": 590,
+        "heldOutSelectedSiteCount": 540,
+        "heldOutSelectedScorableSiteCount": 538,
+        "heldOutSelectedUnscorableSiteCount": 2,
+        "trainingSelectedSiteCount": 2129,
+        "trainingSelectedDuplicateGroupCount": 1948,
+        "thresholdScore": 0,
+        "thresholdSelectionReason": "selected-max-coverage",
+        "calibratorScoreLevelCount": 9,
+        "trainingLabelRowsHash": "7759cfd181eb14212f13581e1272cf74f5a873da830b4519c695a5e2f0dd063d",
+        "calibratorFitHash": "e9b3b619e5a1b9fe96e5ceb91e3e3531f9838c62db8384476922da3aff56e965",
+        "callShapeCalibrators": [
+          {
+            "callShape": "bare",
+            "trainingSelectedSiteCount": 1572,
+            "trainingSelectedDuplicateGroupCount": 1508,
+            "scoreLevelCount": 4,
+            "status": "unsupported",
+            "reason": "insufficient-score-level-support",
+            "fitHash": "ab60d8805a8e4c455655b21dc014fe942f4dc5ac5fbcc3ae9cbd2628e6c0ffd8"
+          },
+          {
+            "callShape": "member",
+            "trainingSelectedSiteCount": 557,
+            "trainingSelectedDuplicateGroupCount": 440,
+            "scoreLevelCount": 7,
+            "status": "fitted",
+            "reason": null,
+            "fitHash": "2f5a364bd23f1b7e64fd26b81b46a4ec8a00adbd4257d4087bcff085796b13f2"
+          }
+        ]
+      },
+      {
+        "foldIndex": 4,
+        "heldOutDuplicateGroupCount": 547,
+        "trainingDuplicateGroupCount": 2192,
+        "heldOutEligibleSiteCount": 634,
+        "heldOutSelectedSiteCount": 569,
+        "heldOutSelectedScorableSiteCount": 566,
+        "heldOutSelectedUnscorableSiteCount": 3,
+        "trainingSelectedSiteCount": 2100,
+        "trainingSelectedDuplicateGroupCount": 1962,
+        "thresholdScore": 0,
+        "thresholdSelectionReason": "selected-max-coverage",
+        "calibratorScoreLevelCount": 9,
+        "trainingLabelRowsHash": "2ad64a6795fad6ba5d1ff9b2cf9f77cf7c4f34cf727e19637ff738abd22f38a9",
+        "calibratorFitHash": "6ce9b977ca5bce56a52faf9d700a39f84ef52cab1cd564849c97051b94086714",
+        "callShapeCalibrators": [
+          {
+            "callShape": "bare",
+            "trainingSelectedSiteCount": 1605,
+            "trainingSelectedDuplicateGroupCount": 1522,
+            "scoreLevelCount": 4,
+            "status": "unsupported",
+            "reason": "insufficient-score-level-support",
+            "fitHash": "90eac532584d9f8cfdcda9cfb63fbb00b25c990c2bd745f772d2cbbe220f0d96"
+          },
+          {
+            "callShape": "member",
+            "trainingSelectedSiteCount": 495,
+            "trainingSelectedDuplicateGroupCount": 440,
+            "scoreLevelCount": 7,
+            "status": "fitted",
+            "reason": null,
+            "fitHash": "e8aa846c3515adbe4d9acd6e511896cc925a969aeec35ce427508879d6b455c0"
+          }
+        ]
+      }
+    ],
+    "outOfFoldRowsHash": "f54f52c4c0d3a2f67e982eff86c9255b1c54d66b2bc4dc4356022a9239fcf5f4",
+    "limitations": [
+      "Calibration labels are reused only through deterministic duplicateGroup cross-fitting; each held group is excluded from its fold threshold and probability-map fit.",
+      "The outcome for accepted rows with unmappable positive labels or conflicting duplicate labels is conservatively counted as failure; a separate scorable-only metric is reported.",
+      "ECE/Brier cover accepted outputs only; abstentions receive no probability and are covered by the all-eligible coverage/abstention metrics.",
+      "The isotonic probabilities and all metrics are calibration-split, two-family descriptive estimates; they are not production confidence, a confidence bound, certification, or heldout generalization evidence."
+    ]
+  }
+}

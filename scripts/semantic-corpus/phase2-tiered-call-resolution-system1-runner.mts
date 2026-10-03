@@ -17,6 +17,7 @@ import {
   selectSystemOneThreshold,
   type SystemOneSplitMetrics,
 } from "./phase2-tiered-call-resolution-system1-evaluation.mjs";
+import { evaluateSystemOneCalibrationQualityOof } from "./phase2-tiered-call-resolution-system1-confidence-calibration.mjs";
 import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
@@ -37,6 +38,7 @@ const IMPLEMENTATION_FILES = [
   "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts",
 ] as const;
 const CORRECTED_FACTS_SHA256 =
   "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e";
@@ -44,7 +46,7 @@ const ACCEPTED_PRECISION_TARGET = 0.9;
 const FREEZE_NAME = "system1-calibration-threshold.json";
 const EXPOSURE_NAME = "system1-heldout-exposure.json";
 
-type Mode = "develop" | "calibrate" | "heldout";
+type Mode = "develop" | "calibrate" | "calibration-quality-oof" | "heldout";
 type Split = "train" | "calibration" | "test" | "temporal";
 
 interface Options {
@@ -128,7 +130,7 @@ function parseOptions(argv: readonly string[]): Options {
       value.startsWith("--")
     )
       throw new Error(
-        "Usage: ... --mode <develop|calibrate|heldout> --predictions <jsonl> --out <dir> [--freeze <artifact>]",
+        "Usage: ... --mode <develop|calibrate|calibration-quality-oof|heldout> --predictions <jsonl> --out <dir> [--freeze <artifact>]",
       );
     values.set(key!, value);
   }
@@ -137,7 +139,10 @@ function parseOptions(argv: readonly string[]): Options {
   const outputDirectory = values.get("--out");
   const freezePath = values.get("--freeze") ?? null;
   if (
-    (mode !== "develop" && mode !== "calibrate" && mode !== "heldout") ||
+    (mode !== "develop" &&
+      mode !== "calibrate" &&
+      mode !== "calibration-quality-oof" &&
+      mode !== "heldout") ||
     !predictionsPath ||
     !outputDirectory
   )
@@ -459,6 +464,48 @@ async function calibrate(bundle: Bundle, options: Options): Promise<void> {
   );
 }
 
+async function calibrateQualityOof(
+  bundle: Bundle,
+  options: Options,
+): Promise<void> {
+  const observations = rowsFor(bundle, "calibration");
+  const labels = await labelsFor("calibration", observations);
+  const quality = evaluateSystemOneCalibrationQualityOof(
+    observations,
+    labels,
+    bundle.oracleMapping,
+  );
+  const calibrationLabelRowsHash = labelsHash(labels);
+  const calibrationQualityInputFingerprint = canonicalHash({
+    measurement: quality.measurement,
+    provenance: commonProvenance(bundle),
+    calibrationLabelRowsHash,
+    foldCount: quality.foldCount,
+    binCount: quality.binCount,
+    targetAcceptedPrecision: quality.targetAcceptedPrecision,
+    method: quality.method,
+  });
+  const output = path.join(
+    options.outputDirectory,
+    "system1-calibration-quality-oof.json",
+  );
+  writeJson(output, {
+    schemaVersion: 2,
+    measurement: "phase2-p2b-system1-calibration-quality-oof-artifact/2",
+    split: "calibration",
+    generatedAt: new Date().toISOString(),
+    provenance: commonProvenance(bundle),
+    calibrationLabelRowsHash,
+    calibrationQualityInputFingerprint,
+    labelSplitsRead: ["calibration"],
+    heldoutModeInvoked: false,
+    quality,
+  });
+  console.info(
+    `[phase2-p2b] calibration OOF ECE=${quality.siteWeighted.expectedCalibrationError ?? "n/a"}; Brier=${quality.siteWeighted.brierScore ?? "n/a"}; selected=${quality.selectedSiteCount}/${quality.eligibleSiteCount}; wrote ${output}`,
+  );
+}
+
 function verifyFreeze(freezePath: string, bundle: Bundle): FreezeArtifact {
   const freeze = readJson<FreezeArtifact>(freezePath);
   const current = commonProvenance(bundle);
@@ -569,6 +616,8 @@ async function run(options: Options): Promise<void> {
   const bundle = loadBundle(options.predictionsPath);
   if (options.mode === "develop") return develop(bundle, options);
   if (options.mode === "calibrate") return calibrate(bundle, options);
+  if (options.mode === "calibration-quality-oof")
+    return calibrateQualityOof(bundle, options);
   return regressHeldout(bundle, options);
 }
 

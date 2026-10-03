@@ -1,6 +1,6 @@
 # GRPH-008 P2-B v4 — System One train/calibration evidence
 
-**Status:** The v4 ranking evaluation slice is complete for train and calibration. It uses the current v4 source-only candidate artifact and pins the calibration threshold to that generator, source, configuration, split assignment, and calibration labels. This is analysis-only: no production calibration record was added, no result became `proven`, and Tier B execution/skip behavior did not change. The v4 test/temporal ranking evaluator was not run; prior v3 heldout results remain exposed historical evidence and do not qualify as v4 results.
+**Status:** The v4 train/calibration ranking and calibration-quality measurements are complete as analysis, but the P2-B quality gate remains **partial**. The current score-0 threshold is bound to the v4 source candidate artifact and calibration labels. Five-fold duplicate-group OOF estimates show a weak member-call reliability lane, and per-shape calibration did not improve site- and group-weighted metrics consistently. No production calibration record was added, no result became `proven`, and Tier B execution/skip behavior did not change. No v4 test/temporal labels or System One heldout mode were run; prior v3 heldout results remain exposed historical evidence and do not qualify as v4 results.
 
 This follows [#559 comment 5969397300](https://github.com/dyphn1/Docuvia/issues/559#issuecomment-5969397300): cheap candidates come first, System One ranks only within that set, and hard or low-evidence calls abstain for LSP. `candidateSetComplete=false` does not block evaluation-only `likely` selections; it continues to block `proven` and does not grant authority to skip Tier B.
 
@@ -70,9 +70,63 @@ The `arg-chain` and `unmapped` train shapes abstain entirely. The ranker does no
 
 ## Calibration quality, costs, and limitations
 
-The rank score is an ordinal evidence score, not a probability estimate. **ECE and Brier score are unavailable and are not reported.** The runner does not emit per-call latency or incremental index-memory measurements. `/usr/bin/time -l` recorded whole-command wall time of 2.34 seconds for train development and 1.88 seconds for calibration, with process maximum RSS of 1,930,493,952 and 1,600,520,192 bytes respectively. These include process startup, artifact/facts loading, and evaluation; they are not per-query costs. No per-call rank latency or incremental memory figure is available.
+The rank score is ordinal, not a probability. A separate five-fold, duplicate-group-cross-fitted Beta-smoothed isotonic map estimates correctness probability for selected outputs; its OOF ECE/Brier results are in the [calibration-quality follow-up](#calibration-quality-follow-up). Abstentions receive no probability and remain in all-eligible coverage/abstention denominators. These estimates are calibration-split diagnostics, not production confidence or external validation. The runner does not emit per-call latency or incremental index-memory measurements.
 
-This is a fresh v4 calibration, not an inherited v3 threshold. Score 0 is pinned to `declared-member-hypothesis-v4`, `ordered-evidence-v1`, the current source/facts/configuration, split assignment, calibration labels, and the calibration rule-signature set. It remains an analysis artifact only. No v4 test/temporal ranking results are claimed, and no production calibration signatures are promoted. The older [P2-B v3 report](tiered-call-resolution-phase2-p2b-results.md) remains as historical exposed-data evidence; its test/temporal outcomes are not inputs to this v4 threshold and were not reopened.
+The initial train/calibration result above is a fresh v4 calibration, not an inherited v3 threshold. Its score-0 freeze is pinned to `declared-member-hypothesis-v4`, `ordered-evidence-v1`, source/facts/configuration, split assignment, calibration labels, and the calibration rule-signature set. The calibration-quality follow-up below reran train and calibration under its updated System One implementation hash and records a separate fresh score-0 freeze; it does not claim the earlier freeze is bound to that updated hash. Both freezes are analysis-only. No v4 test/temporal ranking results are claimed, and no production calibration signatures are promoted. The older [P2-B v3 report](tiered-call-resolution-phase2-p2b-results.md) remains as historical exposed-data evidence; its test/temporal outcomes are not inputs to either v4 freeze and were not reopened.
+
+### Calibration-quality follow-up
+
+The ordinal top-rank score is mapped to a probability estimate with pooled-adjacent-violators isotonic regression and a Beta(1,1) prior. Five deterministic folds are assigned by `duplicateGroup`; each held group is excluded from both that fold's threshold selection and probability-map fit. Each training example receives equal total weight per duplicate group. ECE uses ten fixed equal-width bins. Only selected outputs have probabilities; abstentions remain outside ECE/Brier and inside the coverage denominator. A selected row with an unscorable or conflicting positive label is conservatively counted as incorrect, with a scorable-only result shown separately.
+
+| Calibration OOF measure                                          |                 Result |
+| ---------------------------------------------------------------- | ---------------------: |
+| Eligible sites / duplicate groups                                |          2,966 / 2,739 |
+| Selected sites / coverage                                        | 2,669 / 2,966 (89.99%) |
+| Abstained sites                                                  |                    297 |
+| Selected scorable / unscorable sites                             |              2,662 / 7 |
+| Selected groups / fully correct groups / group precision         | 2,446 / 2,424 / 99.10% |
+| Site-weighted ECE / Brier (selected rows; unscorable is failure) |      0.04044 / 0.04880 |
+| Site-weighted ECE / Brier (scorable selected rows only; n=2,662) |      0.03993 / 0.04878 |
+| Duplicate-group-weighted ECE / Brier (n=2,446 groups)            |      0.00418 / 0.00627 |
+| Site-weighted family-macro ECE / worst-family ECE                |      0.03673 / 0.06530 |
+
+The group-weighted values differ substantially from the primary site-weighted values because they give each duplicate group equal weight. They do not replace site-weighted reporting. Only two repository families are present; these are descriptive in-split estimates, not broad-family reliability claims.
+
+| Family                          | Eligible sites / groups | Selected sites / groups | Coverage |  Site ECE / Brier | Group ECE / Brier |
+| ------------------------------- | ----------------------: | ----------------------: | -------: | ----------------: | ----------------: |
+| `403errors/repomind`            |           1,207 / 1,129 |           1,161 / 1,086 |   96.19% | 0.00816 / 0.01648 | 0.00836 / 0.00316 |
+| `Egonex-AI/Understand-Anything` |           1,759 / 1,610 |           1,508 / 1,360 |   85.73% | 0.06530 / 0.07368 | 0.00085 / 0.00876 |
+
+| Call shape | Eligible sites / groups | Selected sites / groups | Global-map site ECE / Brier | Global-map group ECE / Brier | Per-shape map site ECE / Brier | Per-shape map group ECE / Brier |
+| ---------- | ----------------------: | ----------------------: | --------------------------: | ---------------------------: | -----------------------------: | ------------------------------: |
+| `bare`     |           2,222 / 2,123 |           1,995 / 1,900 |           0.00094 / 0.00963 |            0.00892 / 0.00185 |                    unavailable |                     unavailable |
+| `member`   |               744 / 616 |               674 / 546 |           0.15808 / 0.16473 |            0.01230 / 0.02167 |              0.12992 / 0.15572 |               0.01484 / 0.02180 |
+
+The per-shape sensitivity uses the same five folds, global threshold, and accepted sites. A shape map is reported only when its complementary training fold has at least 50 accepted duplicate groups and five score levels. `member` met that support rule in all folds (432–440 training accepted groups and seven levels) but remains poorly calibrated by site weighting; its group-weighted ECE/Brier slightly worsened. `bare` had ample groups but only four score levels in each fold, so its map was withheld; 1,995 selected bare rows therefore have no per-shape sensitivity probability. The per-shape map covers only 674/2,669 selected sites (25.25%) and is not an overall improvement. Keep the global-map OOF estimates as the primary diagnostic and confidence calibration marked **partial**; do not tune further on these same labels.
+
+| Fold | Training / held duplicate groups | Held eligible / selected sites | Global threshold | Bare map support (groups / levels) | Member map support (groups / levels) |
+| ---: | -------------------------------: | -----------------------------: | ---------------: | ---------------------------------: | -----------------------------------: |
+|    0 |                      2,191 / 548 |                      568 / 503 |                0 |            1,528 / 4 (unsupported) |                     435 / 7 (fitted) |
+|    1 |                      2,191 / 548 |                      599 / 543 |                0 |            1,521 / 4 (unsupported) |                     432 / 7 (fitted) |
+|    2 |                      2,191 / 548 |                      575 / 514 |                0 |            1,521 / 4 (unsupported) |                     437 / 7 (fitted) |
+|    3 |                      2,191 / 548 |                      590 / 540 |                0 |            1,508 / 4 (unsupported) |                     440 / 7 (fitted) |
+|    4 |                      2,192 / 547 |                      634 / 569 |                0 |            1,522 / 4 (unsupported) |                     440 / 7 (fitted) |
+
+The current train-development, calibration-threshold, and OOF commands took 2.32s, 1.65s, and 1.79s wall time with maximum RSS 1,528,758,272, 1,982,840,832, and 1,990,246,400 bytes respectively. These whole-command costs include startup, loading, and evaluation; per-call ranking latency and incremental index memory remain unmeasured.
+
+The OOF command read only calibration labels (`labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`). No heldout exposure marker exists in its output directory. The OOF result and all current train/calibration artifacts use System One implementation hash `6f9129c603dc0218ac04c70914658e5a8c7889cf2060c868967f92874b5c6527`; they are distinct from the earlier follow-up attempt under `17fa7ff1…` and from the older f7 evidence. Full OOF fold hashes and reliability bins are retained in the machine-readable artifact directory below.
+
+| Current follow-up artifact        |                                                            SHA-256 |
+| --------------------------------- | -----------------------------------------------------------------: |
+| Train development JSON            | `a69b6050746fb86313f5b43d167b43518379641520b954362c745e43d897e306` |
+| Calibration metrics JSON          | `6053bc40cc63ca6e0bbe9cb154a6f737a35b7739c56c8d0acafdcf9e87907d24` |
+| Calibration threshold/freeze JSON | `62fdf95129aad69dcd894c17d8634780a4a3ac8f2b602fff1fb39fcf3d6b5f9d` |
+| Calibration-quality OOF JSON      | `3c3ec7d54652a5c696da544321bd1ffe4456556b846227720089ba0f2a8dae68` |
+| OOF row content hash              | `f54f52c4c0d3a2f67e982eff86c9255b1c54d66b2bc4dc4356022a9239fcf5f4` |
+| Calibration labels hash           | `5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426` |
+| OOF input fingerprint             | `87f2b0ab52573ea8ff163994516e3c892bf5682669e35c0775ed9ca15e9a3499` |
+
+These four current JSON outputs are tracked in [`tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence`](tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence/). The earlier [v4 train/calibration evidence directory](tiered-call-resolution-phase2-p2b-v4-evidence/) is preserved and remains bound to its earlier implementation hash.
 
 ## Provenance
 
@@ -109,15 +163,17 @@ Run under Node `v24.14.1` from the repository root. The first command evaluates 
 PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode develop --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4
 
 PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibrate --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4
+
+PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibration-quality-oof --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4-confidence-oof-shape-sensitivity-followup
 ```
 
-The source candidate-population summary is a label-free aggregation of only train/calibration rows from the pinned source prediction JSONL. It counts `generatedCandidateCount`, `candidateTargetIds.length`, and `proposedCandidateCount` separately; percentiles use nearest-rank `ceil(p*n)-1`. Candidate recall itself is in the linked P2-A train/calibration evaluator artifacts. No source generation, label, ranking, or threshold command for test/temporal was run here.
+The source candidate-population summary is a label-free aggregation of only train/calibration rows from the pinned source prediction JSONL. It counts `generatedCandidateCount`, `candidateTargetIds.length`, and `proposedCandidateCount` separately; percentiles use nearest-rank `ceil(p*n)-1`. Candidate recall itself is in the linked P2-A train/calibration evaluator artifacts. The OOF mode reads only calibration labels and does not invoke heldout mode. No source generation, label, ranking, or threshold command for test/temporal was run here.
 
 ## Validation
 
-- Focused evaluator/candidate audit suites: 3 files, 26/26 passed under Node `v24.14.1` (`system1-evaluation`, `candidate-audit`, and candidate `evaluation`).
+- Focused evaluator/candidate-audit/confidence-calibration suites: 4 files, 31/31 passed under Node `v24.14.1`.
 - `pnpm run typecheck`, `pnpm run lint`, and `pnpm run build` passed under Node `v24.14.1`; scoped Prettier and `git diff --check` passed.
-- `pnpm run test`: 3,207 passed, 7 skipped across 330 passed files and 1 skipped file; command exited 0.
-- `bash scripts/test-quality-gate.sh`: exit 0; weak assertions 215/7,159, below the 220 ceiling. Category ratchet stayed at 234, matching base `78cf0e23bc87972955d79814b4964ce62f45ba2b`; this slice adds no test files or category debt.
-- `docuvia review origin/main` reports PR-wide CRITICAL impact from earlier branch changes (top impacted files include graph-store contracts and LSP provider code). This P2-B v4 slice changes only analysis docs and evidence, and does not touch those runtime files; the review remains an existing PR-wide review finding, not a new v4 evaluator finding.
-- Both v4 runner commands above completed with the pinned hashes. The heldout exposure marker was absent afterward. Validation did not read corpus test/temporal labels or run System One heldout mode.
+- `CATEGORY_HEAD_REF=HEAD CATEGORY_BASE_REF=origin/main bash scripts/test-quality-gate.sh`: exit 0. Weak assertions are `215 / 7,179` (ceiling 220); category ratchet scans 332 files and improves from base 235 failures to head 234. The new tests add no weak-assertion count over the prior tracked baseline.
+- The current remote workflow has previously counted 19 additional weak assertions under `node_modules/zod`, producing 234 against the 220 ceiling. This is a quality-gate scan-scope issue outside this calibration slice and remains visible for a separate CI fix; the local tracked-tree result above is not presented as a remote pass.
+- `docuvia review origin/main` reports a PR-wide CRITICAL impact over 144 changed files / 582 impacted nodes, with leading findings in earlier graph-store contract and LSP-provider changes. This follow-up changes analysis code/docs and does not touch those findings. `docuvia impact` is based on a stale graph (`fffc91f` against code HEAD `f7a8176b`) and reports incomplete processing (22/854 tracked files not Tier B processed), so it is not fresh impact evidence for this follow-up.
+- The required full pre-push on the resulting commit runs repository formatting, lint, typecheck, build, full tests and the quality gate; its terminal totals will be recorded in the PR update. The train/calibration/OOF reproduction commands above completed with the pinned hashes. The OOF output records `labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`; no test/temporal labels were read and no System One heldout mode ran.

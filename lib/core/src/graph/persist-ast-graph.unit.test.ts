@@ -6,7 +6,10 @@ import DatabaseCtor from "better-sqlite3";
 import { DefaultProvider, typescriptConfig } from "@workspace/ast-core";
 import { Language, Parser } from "web-tree-sitter";
 import { GraphStore } from "@workspace/schema";
-import type { ParsedAstFileResult } from "@workspace/contracts";
+import type {
+  CallSiteResolutionRecord,
+  ParsedAstFileResult,
+} from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
@@ -459,6 +462,89 @@ describe("GraphPersisterService.persist()", () => {
     ]);
   });
 
+  it("[state-diff] clears current call resolutions on same-path reparse but retains history and other callers", async () => {
+    const callerFile = "src/caller.ts";
+    const otherFile = "src/other.ts";
+    const targetFile = "src/target.ts";
+    const makeParsedFile = (
+      file: string,
+      hash: string,
+      functionName: string,
+    ): ParsedAstFileResult => ({
+      file,
+      hash,
+      data: {
+        imports: [],
+        exports: [],
+        functions: [{ name: functionName, startLine: 0, endLine: 1 }],
+        classes: [],
+        calls: [],
+      },
+    });
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        makeParsedFile(callerFile, "caller-before", "caller"),
+        makeParsedFile(otherFile, "other-before", "otherCaller"),
+        makeParsedFile(targetFile, "target-before", "target"),
+      ],
+      tags: [],
+    });
+
+    const callerResolution = callResolution(
+      "call-site:v1:" + "a".repeat(64),
+      callerFile,
+      `${callerFile}#caller`,
+    );
+    const otherResolution = callResolution(
+      "call-site:v1:" + "b".repeat(64),
+      otherFile,
+      `${otherFile}#otherCaller`,
+    );
+    store.callSiteResolutions.replaceForFile(projectId, callerFile, [
+      callerResolution,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, otherFile, [
+      otherResolution,
+    ]);
+    store.callSiteResolutions.appendObservation(projectId, {
+      callSiteKey: callerResolution.callSiteKey,
+      filePath: callerFile,
+      sourceContentHash: callerResolution.sourceContentHash,
+      source: "strict-proof",
+      targetNodeKey: callerResolution.selectedTargetNodeKey,
+      resolutionClass: "proven",
+      resolver: callerResolution.resolver,
+      ruleSignature: callerResolution.ruleSignature,
+      evidenceJson: "{}",
+    });
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        makeParsedFile(callerFile, "caller-after", "renamedCaller"),
+      ],
+      tags: [],
+    });
+
+    expect(store.callSiteResolutions.getForFile(projectId, callerFile)).toEqual(
+      [],
+    );
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, otherFile)
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([otherResolution.callSiteKey]);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, callerFile),
+    ).toMatchObject([{ callSiteKey: callerResolution.callSiteKey }]);
+  });
+
   it("re-persisting a real parsed file deletes stale nodes and produces correct call-resolution counters", async () => {
     const code =
       "function foo() { return bar(); }\nfunction bar() { return 1; }\nfoo();\n";
@@ -840,6 +926,42 @@ describe("GraphPersisterService.persist()", () => {
     });
   });
 });
+
+function callResolution(
+  callSiteKey: string,
+  filePath: string,
+  callerNodeKey: string,
+): CallSiteResolutionRecord {
+  const sourceContentHash = "a".repeat(64);
+  const selectedTargetNodeKey = "src/target.ts#target";
+  return {
+    callSiteKey,
+    identityVersion: 1,
+    filePath,
+    sourceContentHash,
+    startLine: 0,
+    startColumn: 0,
+    calleeKind: "bare",
+    calleeName: "target",
+    callerNodeKey,
+    resolutionClass: "proven",
+    selectedTargetNodeKey,
+    confidence: null,
+    resolver: "persist-reparse-test",
+    ruleSignature: "direct-test/v1",
+    dependencyFingerprint: "c".repeat(64),
+    dependencies: [
+      { filePath, contentHash: sourceContentHash },
+      { filePath: "src/target.ts", contentHash: "d".repeat(64) },
+    ],
+    verificationStatus: "unverified",
+    verifiedTargetNodeKey: null,
+    isStale: false,
+    candidates: [
+      { targetNodeKey: selectedTargetNodeKey, ordinal: 0, evidenceJson: "{}" },
+    ],
+  };
+}
 
 // ── Honest self-analysis: parse real Docuvia source files and verify edges ─────────────
 // These tests feed REAL source code through the FULL pipeline (parse → persist → resolve)

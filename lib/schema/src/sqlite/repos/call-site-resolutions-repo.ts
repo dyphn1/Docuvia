@@ -25,6 +25,8 @@ const CALL_SITE_RESOLUTIONS_ERRORS = {
     `Failed to read call-site resolutions for ${filePath} in project ${projectId}`,
   REPLACE_FILE_FAILED: (projectId: number, filePath: string) =>
     `Failed to replace call-site resolutions for ${filePath} in project ${projectId}`,
+  DELETE_FILE_FAILED: (projectId: number, filePath: string) =>
+    `Failed to delete current call-site resolutions for ${filePath} in project ${projectId}`,
   APPEND_OBSERVATION_FAILED: (projectId: number, callSiteKey: string) =>
     `Failed to append call-site observation ${callSiteKey} in project ${projectId}`,
   READ_OBSERVATIONS_FAILED: (projectId: number, filePath: string) =>
@@ -192,6 +194,49 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.REPLACE_FILE_FAILED(projectId, filePath),
+        err,
+      );
+    }
+  }
+
+  deleteForFile(projectId: number, filePath: string): void {
+    assertProjectId(projectId);
+    assertWorkspacePath(filePath);
+    try {
+      this.db
+        .transaction(() => {
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES}
+               WHERE project_id = ? AND call_site_key IN (
+                 SELECT call_site_key FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+                 WHERE project_id = ? AND file_path = ?
+               )`,
+            )
+            .run(projectId, projectId, filePath);
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES}
+               WHERE project_id = ? AND call_site_key IN (
+                 SELECT call_site_key FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+                 WHERE project_id = ? AND file_path = ?
+               )`,
+            )
+            .run(projectId, projectId, filePath);
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+               WHERE project_id = ? AND file_path = ?`,
+            )
+            .run(projectId, filePath);
+
+          rebuildCallsProjection(this.db, projectId, filePath);
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.DELETE_FILE_FAILED(projectId, filePath),
         err,
       );
     }

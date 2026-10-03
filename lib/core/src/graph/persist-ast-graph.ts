@@ -222,6 +222,10 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
   ): void {
     for (const result of parsedResults) {
+      // Current per-site decisions are file-version scoped: retire them with the old symbols
+      // before inserting the freshly parsed graph. Append-only observations remain available.
+      store.callSiteResolutions?.deleteForFile(projectId, result.file);
+
       // Delete any stale nodes (and their links, both directions, and tag-links) for this path
       // so a re-parsed file's old graph state doesn't linger. External incoming edges were
       // captured by node_key in persistLocked and are re-attached after linking (#508 D9).

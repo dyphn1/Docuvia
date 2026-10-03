@@ -6,7 +6,10 @@ export function retirePath(
   projectId: number,
   file: string,
 ): void {
-  store.graph.deleteNodesForPath(file);
-  store.callSites.deleteForFile(projectId, file);
-  store.files.deleteFile(projectId, file);
+  store.withTransaction(() => {
+    store.callSiteResolutions?.deleteForFile(projectId, file);
+    store.graph.deleteNodesForPath(file);
+    store.callSites.deleteForFile(projectId, file);
+    store.files.deleteFile(projectId, file);
+  });
 }

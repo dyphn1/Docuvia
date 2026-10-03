@@ -731,6 +731,8 @@ export interface ICallSiteResolutionsRepo {
     filePath: string,
     resolutions: CallSiteResolutionRecord[],
   ): void;
+  /** Deletes current per-site resolutions and derived candidates for one file, retaining history. */
+  deleteForFile(projectId: number, filePath: string): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
   /** Marks current resolutions stale when a dependency's observed hash differs from current content. */

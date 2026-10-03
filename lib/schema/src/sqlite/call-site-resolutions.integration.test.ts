@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import DatabaseConstructor from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GraphStore } from "./graph-store.js";
 
@@ -110,6 +111,30 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
         throw new Error("force outer rollback");
       }),
     ).toThrow(/force outer rollback/);
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([portableKey("c")]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: originalTargetId,
+        name: "original",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+
+    expect(() =>
+      store.withTransaction(() => {
+        store.callSiteResolutions.deleteForFile(projectId, "src/caller.ts");
+        throw new Error("force resolution deletion rollback");
+      }),
+    ).toThrow(/force resolution deletion rollback/);
     expect(
       store.callSiteResolutions
         .getForFile(projectId, "src/caller.ts")
@@ -301,6 +326,143 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
         linkType: "calls",
       },
     ]);
+  });
+
+  it("[state-diff] deletes current file state and call projection while retaining append-only observations", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const otherCallerId = store.graph.insertNode({
+      projectId,
+      name: "other caller",
+      pathPatterns: ["src/other-caller.ts"],
+      nodeKey: "src/other-caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: targetId,
+      linkType: "imports",
+    });
+    const callerKey = portableKey("a");
+    const otherCallerKey = portableKey("b");
+    const callerResolution = {
+      ...resolution(callerKey, [
+        {
+          targetNodeKey: "src/target.ts#run",
+          ordinal: 0,
+          evidenceJson: "{}",
+        },
+      ]),
+      selectedTargetNodeKey: "src/target.ts#run",
+    };
+    const otherResolution = {
+      ...resolution(
+        otherCallerKey,
+        [
+          {
+            targetNodeKey: "src/target.ts#run",
+            ordinal: 0,
+            evidenceJson: "{}",
+          },
+        ],
+        {
+          filePath: "src/other-caller.ts",
+          dependencies: [
+            {
+              filePath: "src/other-caller.ts",
+              contentHash: "d".repeat(64),
+            },
+          ],
+        },
+      ),
+      callerNodeKey: "src/other-caller.ts#caller",
+      selectedTargetNodeKey: "src/target.ts#run",
+    };
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      callerResolution,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, "src/other-caller.ts", [
+      otherResolution,
+    ]);
+    store.callSiteResolutions.appendObservation(projectId, {
+      callSiteKey: callerKey,
+      filePath: "src/caller.ts",
+      sourceContentHash: "d".repeat(64),
+      source: "strict-proof",
+      resolutionClass: "proven",
+      targetNodeKey: "src/target.ts#run",
+      evidenceJson: "{}",
+    });
+
+    store.callSiteResolutions.deleteForFile(projectId, "src/caller.ts");
+
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts"),
+    ).toEqual([]);
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/other-caller.ts")
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([otherCallerKey]);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
+    ).toMatchObject([{ callSiteKey: callerKey }]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+    expect(store.graph.getOutgoingRelations(callerId)).toContainEqual({
+      id: targetId,
+      name: "target",
+      type: "module",
+      linkType: "imports",
+    });
+    expect(
+      store.graph
+        .getOutgoingRelations(otherCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+
+    const raw = new DatabaseConstructor(
+      path.join(tmpDir, ".docuvia", "local.db"),
+      { readonly: true },
+    );
+    try {
+      for (const table of [
+        "call_site_resolutions",
+        "call_site_resolution_candidates",
+        "call_site_resolution_dependencies",
+      ]) {
+        const row = raw
+          .prepare(
+            `SELECT COUNT(*) AS count FROM ${table}
+             WHERE project_id = ? AND call_site_key = ?`,
+          )
+          .get(projectId, callerKey) as { count: number };
+        expect(row.count).toBe(0);
+      }
+      const observations = raw
+        .prepare(
+          `SELECT COUNT(*) AS count FROM call_site_resolution_observations
+           WHERE project_id = ? AND call_site_key = ?`,
+        )
+        .get(projectId, callerKey) as { count: number };
+      expect(observations.count).toBe(1);
+    } finally {
+      raw.close();
+    }
   });
 
   it("[state-diff] marks only sites that consulted a changed dependency stale", () => {

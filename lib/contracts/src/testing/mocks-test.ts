@@ -79,6 +79,7 @@ export function makeMockStore(
     },
     callSiteResolutions: {
       replaceForFile: vi.fn(),
+      deleteForFile: vi.fn(),
       getForFile: vi.fn().mockReturnValue([]),
       invalidateChangedDependencies: vi.fn().mockReturnValue(0),
       appendObservation: vi.fn(),

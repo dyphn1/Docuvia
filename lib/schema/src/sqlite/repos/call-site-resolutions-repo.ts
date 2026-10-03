@@ -5,6 +5,7 @@ import {
   CallSiteVerificationStatuses,
   DocuviaError,
   ErrorCodes,
+  LinkTypes,
 } from "@workspace/contracts";
 import type {
   CallSiteResolutionCandidate,
@@ -17,7 +18,7 @@ import type {
   CallSiteVerificationStatus,
   ICallSiteResolutionsRepo,
 } from "@workspace/contracts";
-import { SchemaTables } from "../constants.js";
+import { SchemaColumns, SchemaTables } from "../constants.js";
 
 const CALL_SITE_RESOLUTIONS_ERRORS = {
   READ_FILE_FAILED: (projectId: number, filePath: string) =>
@@ -183,6 +184,8 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
               );
             }
           }
+
+          rebuildCallsProjection(this.db, projectId, filePath);
         })
         .immediate();
     } catch (err) {
@@ -307,13 +310,37 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
                    AND d.content_hash IS NOT ?
                )`,
           );
+          const findAffectedFiles = this.db.prepare(
+            `SELECT DISTINCT r.file_path
+             FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+             WHERE r.project_id = ? AND r.is_stale = 0
+               AND EXISTS (
+                 SELECT 1
+                 FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                 WHERE d.project_id = r.project_id
+                   AND d.call_site_key = r.call_site_key
+                   AND d.dependency_path = ?
+                   AND d.content_hash IS NOT ?
+               )`,
+          );
           let newlyStale = 0;
+          const affectedFiles = new Set<string>();
           for (const dependency of dependencies) {
+            for (const { file_path: filePath } of findAffectedFiles.all(
+              projectId,
+              dependency.filePath,
+              dependency.contentHash,
+            ) as Array<{ file_path: string }>) {
+              affectedFiles.add(filePath);
+            }
             newlyStale += markStale.run(
               projectId,
               dependency.filePath,
               dependency.contentHash,
             ).changes;
+          }
+          for (const filePath of affectedFiles) {
+            rebuildCallsProjection(this.db, projectId, filePath);
           }
           return newlyStale;
         })
@@ -474,6 +501,41 @@ function normalizeChangedDependencies(
   return [...byPath]
     .sort(([left], [right]) => comparePaths(left, right))
     .map(([filePath, contentHash]) => ({ filePath, contentHash }));
+}
+
+/** Rebuilds the collapsed `calls` edge projection from current per-site selections. */
+function rebuildCallsProjection(
+  db: Database.Database,
+  projectId: number,
+  filePath: string,
+): void {
+  const callerPaths = JSON.stringify([filePath]);
+  db.prepare(
+    `DELETE FROM ${SchemaTables.NODE_LINKS}
+     WHERE ${SchemaColumns.LINK_TYPE} = ?
+       AND ${SchemaColumns.SOURCE_NODE_ID} IN (
+         SELECT id FROM ${SchemaTables.L2_NODES}
+         WHERE ${SchemaColumns.PROJECT_ID} = ?
+           AND ${SchemaColumns.PATH_PATTERNS} = ?
+       )`,
+  ).run(LinkTypes.CALLS, projectId, callerPaths);
+
+  db.prepare(
+    `INSERT INTO ${SchemaTables.NODE_LINKS} (
+       ${SchemaColumns.SOURCE_NODE_ID}, ${SchemaColumns.TARGET_NODE_ID}, ${SchemaColumns.LINK_TYPE}
+     )
+     SELECT DISTINCT caller.id, target.id, ?
+     FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+     JOIN ${SchemaTables.L2_NODES} caller
+       ON caller.${SchemaColumns.PROJECT_ID} = r.project_id
+       AND caller.${SchemaColumns.NODE_KEY} = r.caller_node_key
+       AND caller.${SchemaColumns.PATH_PATTERNS} = ?
+     JOIN ${SchemaTables.L2_NODES} target
+       ON target.${SchemaColumns.PROJECT_ID} = r.project_id
+       AND target.${SchemaColumns.NODE_KEY} = r.selected_target_node_key
+     WHERE r.project_id = ? AND r.file_path = ?
+       AND r.is_stale = 0 AND r.selected_target_node_key IS NOT NULL`,
+  ).run(LinkTypes.CALLS, callerPaths, projectId, filePath);
 }
 
 function validateResolutionIdentity(

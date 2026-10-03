@@ -71,14 +71,41 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
   });
 
   it("[error-handling] rolls back a partial call-site replacement", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const originalTargetId = store.graph.insertNode({
+      projectId,
+      name: "original",
+      pathPatterns: ["src/original.ts"],
+      nodeKey: "src/original.ts#run",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "replacement",
+      pathPatterns: ["src/replacement.ts"],
+      nodeKey: "src/replacement.ts#run",
+    });
+    const original = {
+      ...resolution(portableKey("c"), []),
+      callerNodeKey: "src/caller.ts#caller",
+      selectedTargetNodeKey: "src/original.ts#run",
+    };
     store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
-      resolution(portableKey("c"), []),
+      original,
     ]);
 
     expect(() =>
       store.withTransaction(() => {
         store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
-          resolution(portableKey("d"), []),
+          {
+            ...original,
+            callSiteKey: portableKey("d"),
+            selectedTargetNodeKey: "src/replacement.ts#run",
+          },
         ]);
         throw new Error("force outer rollback");
       }),
@@ -88,6 +115,18 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
         .getForFile(projectId, "src/caller.ts")
         .map(({ callSiteKey }) => callSiteKey),
     ).toEqual([portableKey("c")]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: originalTargetId,
+        name: "original",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
   });
 
   it("[stress] retains every appended observation while replacing current state", () => {
@@ -140,7 +179,143 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toMatchObject([{ callSiteKey: portableKey("f") }]);
   });
 
+  it("[state-diff] projects current selected calls per caller file and removes them on replacement or deletion", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const firstTargetId = store.graph.insertNode({
+      projectId,
+      name: "first",
+      pathPatterns: ["src/first.ts"],
+      nodeKey: "src/first.ts#run",
+    });
+    const secondTargetId = store.graph.insertNode({
+      projectId,
+      name: "second",
+      pathPatterns: ["src/second.ts"],
+      nodeKey: "src/second.ts#run",
+    });
+    const otherCallerId = store.graph.insertNode({
+      projectId,
+      name: "other caller",
+      pathPatterns: ["src/other-caller.ts"],
+      nodeKey: "src/other-caller.ts#caller",
+    });
+    const otherTargetId = store.graph.insertNode({
+      projectId,
+      name: "other target",
+      pathPatterns: ["src/other-target.ts"],
+      nodeKey: "src/other-target.ts#run",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: firstTargetId,
+      linkType: "imports",
+    });
+    store.callSiteResolutions.replaceForFile(projectId, "src/other-caller.ts", [
+      {
+        ...resolution(portableKey("9"), [], {
+          filePath: "src/other-caller.ts",
+          dependencies: [
+            {
+              filePath: "src/other-caller.ts",
+              contentHash: "d".repeat(64),
+            },
+          ],
+        }),
+        callerNodeKey: "src/other-caller.ts#caller",
+        selectedTargetNodeKey: "src/other-target.ts#run",
+      },
+    ]);
+
+    const first = {
+      ...resolution(portableKey("7"), []),
+      callerNodeKey: "src/caller.ts#caller",
+      selectedTargetNodeKey: "src/first.ts#run",
+    };
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      first,
+      { ...first, callSiteKey: portableKey("8") },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: firstTargetId, name: "first", type: "module", linkType: "calls" },
+    ]);
+
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      first,
+      {
+        ...first,
+        callSiteKey: portableKey("8"),
+        selectedTargetNodeKey: "src/first.ts#run",
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toHaveLength(1);
+
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      {
+        ...first,
+        callSiteKey: portableKey("8"),
+        selectedTargetNodeKey: "src/second.ts#run",
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: secondTargetId, name: "second", type: "module", linkType: "calls" },
+    ]);
+
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", []);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+    expect(store.graph.getOutgoingRelations(callerId)).toContainEqual({
+      id: firstTargetId,
+      name: "first",
+      type: "module",
+      linkType: "imports",
+    });
+    expect(
+      store.graph
+        .getOutgoingRelations(otherCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: otherTargetId,
+        name: "other target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+  });
+
   it("[state-diff] marks only sites that consulted a changed dependency stale", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
     const staleKey = portableKey("1");
     const freshKey = portableKey("2");
     store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
@@ -167,6 +342,14 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ]);
 
     expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+
+    expect(
       store.callSiteResolutions.invalidateChangedDependencies(projectId, [
         { filePath: "src/dependency.ts", contentHash: "f".repeat(64) },
       ]),
@@ -182,6 +365,24 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     expect(
       store.callSiteResolutions.getForFile(projectId, "src/other-caller.ts"),
     ).toMatchObject([{ callSiteKey: portableKey("3"), isStale: false }]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        { filePath: "src/dependency.ts", contentHash: "a".repeat(64) },
+      ]),
+    ).toBe(1);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
   });
 });
 

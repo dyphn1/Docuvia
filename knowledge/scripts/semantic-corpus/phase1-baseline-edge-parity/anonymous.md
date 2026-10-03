@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase1-baseline-edge-parity.mts#anonymous@L602
+id: scripts/semantic-corpus/phase1-baseline-edge-parity.mts#anonymous@L577
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase1-baseline-edge-parity.mts

@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/replay.mts#anonymous@L32
+id: scripts/semantic-corpus/replay.mts#anonymous
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/replay.mts

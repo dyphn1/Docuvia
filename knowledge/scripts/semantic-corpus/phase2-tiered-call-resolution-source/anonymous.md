@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts#anonymous@L367
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts#anonymous@L433
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts

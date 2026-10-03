@@ -104,7 +104,7 @@ function memberNameIndexKey(
   return ownerMembersKey(filePath, declaration.owner, declaration.isStatic);
 }
 
-function targetForDeclaration(
+export function candidateTargetKeyForDeclaration(
   filePath: string,
   declaration: AstDeclaredDeclaration,
 ): string | undefined {
@@ -144,7 +144,7 @@ function addCandidate(
   facts: AstDeclaredTypeFacts,
   declaration: AstDeclaredDeclaration,
 ): void {
-  const key = targetForDeclaration(sourceFilePath, declaration);
+  const key = candidateTargetKeyForDeclaration(sourceFilePath, declaration);
   if (!key || !declaration.name) return;
   const isMember = supportedDeclaration(declaration);
   const inventoryComplete =

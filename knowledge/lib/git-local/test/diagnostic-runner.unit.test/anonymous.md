@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/test/diagnostic-runner.unit.test.ts#anonymous
+id: lib/git-local/test/diagnostic-runner.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: lib/git-local/test/diagnostic-runner.unit.test.ts

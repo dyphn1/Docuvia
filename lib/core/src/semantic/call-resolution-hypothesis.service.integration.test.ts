@@ -903,7 +903,7 @@ describe("call-resolution hypothesis service", () => {
     expect(result.candidateSetComplete).toBe(false);
     expect(result.status).toBe("ambiguous");
     expect(result.selected).toBeNull();
-    expect(result.reason).toBe("incomplete-inventory");
+    expect(result.reason).toBe("uncalibrated-signature");
   });
 
   it("[error-handling] rejects private members outside their declaring type", async () => {
@@ -1139,6 +1139,68 @@ describe("call-resolution hypothesis service", () => {
     expect(result.reason).toBe("calibrated-likely");
   });
 
+  it("[positive] allows calibrated likely selection with an incomplete inventory while strict proof abstains", async () => {
+    const targetFile = await parseFile(
+      "src/target.ts",
+      "export class Target { open(): void {} }",
+    );
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      "function run(target: Target) { target.open(); }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+    expect(callSite).toBeDefined();
+    if (!callSite) throw new Error("worker omitted the call shape");
+    const files = [
+      {
+        filePath: "src/target.ts",
+        declaredTypeFacts: targetFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/caller.ts",
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ];
+    const calibrationBuilder = new CallResolutionHypothesisService();
+    const builderIndex = indexWorkspace(
+      calibrationBuilder,
+      "6".repeat(64),
+      files,
+      false,
+    );
+    const baseline = calibrationBuilder.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callSite,
+      workspaceIndex: builderIndex,
+    });
+    expect(baseline.candidateSetComplete).toBe(false);
+    const record = makeCalibrationRecord(baseline);
+    const service = new CallResolutionHypothesisService({
+      calibrationRecords: [record],
+    });
+    const workspaceIndex = indexWorkspace(
+      service,
+      "6".repeat(64),
+      files,
+      false,
+    );
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.candidateSetComplete).toBe(false);
+    expect(result.status).toBe("likely");
+    expect(result.selected?.owner.name).toBe("Target");
+    expect(result.confidence).toBe(record.confidenceLowerBound);
+    expect(result.reason).toBe("calibrated-likely");
+    expect(result.strictProof).toMatchObject({
+      status: "abstained",
+      targetKey: null,
+    });
+  });
+
   it("[negative] rejects bad calibration hash, support, macro, ties, truncation, and incomplete input", async () => {
     const targetFile = await parseFile(
       "src/target.ts",
@@ -1314,7 +1376,7 @@ describe("call-resolution hypothesis service", () => {
     });
     expect(incomplete.status).toBe("ambiguous");
     expect(incomplete.confidence).toBeNull();
-    expect(incomplete.reason).toBe("incomplete-inventory");
+    expect(incomplete.reason).toBe("uncalibrated-signature");
   });
 
   it("[identity] keeps static, instance, and same-name bare declarations distinct", async () => {

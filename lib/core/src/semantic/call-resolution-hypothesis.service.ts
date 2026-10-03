@@ -110,7 +110,6 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
     );
     const decision = decideResolution(
       proposals,
-      workspace.complete,
       truncated,
       filtered.unsupportedCallShape,
       matchingRecords.length > 0,

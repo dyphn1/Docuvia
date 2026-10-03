@@ -289,7 +289,6 @@ function ambiguous(
 
 export function decideResolution(
   proposals: readonly CallResolutionHypothesisCandidate[],
-  complete: boolean,
   truncated: boolean,
   unsupportedCallShape: boolean,
   hasMatchingCalibrationRecord: boolean,
@@ -297,7 +296,6 @@ export function decideResolution(
 ): ResolutionDecision {
   if (proposals.length === 0) return ambiguous("no-supported-candidates");
   if (unsupportedCallShape) return ambiguous("unsupported-call-shape");
-  if (!complete) return ambiguous("incomplete-inventory");
   if (truncated) return ambiguous("candidate-list-truncated");
   if (!record)
     return ambiguous(

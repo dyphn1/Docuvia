@@ -1,5 +1,7 @@
 # Tiered call resolution P2-B: System One ranking evaluation
 
+> **Historical v3 evaluation.** This page records the prior P2-B run on `declared-member-hypothesis-v3`, including already-exposed test/temporal outcomes. It is not current v4 calibration or validation. The fresh v4 train/calibration-only results are in [the P2-B v4 report](tiered-call-resolution-phase2-p2b-v4.md); no v4 test/temporal labels were opened.
+
 ## Snapshot-scoped evaluator follow-up
 
 Train and calibration were re-evaluated using the corrected `(snapshotId, repoId)` oracle mapping and schema-v2 source predictions. The recorded ranker metrics and calibration threshold are unchanged. This follow-up did not read test/temporal labels or rerun their evaluator; the earlier held-out results below remain frozen under the v1 unscoped mapping, and their corrected impact is unknown. Read [the scope correction report](tiered-call-resolution-phase2-snapshot-scope-correction.md) for the new train/calibration evidence and provenance. The old held-out artifacts remain historical exposed-data regressions, not confirmation under the corrected mapper.

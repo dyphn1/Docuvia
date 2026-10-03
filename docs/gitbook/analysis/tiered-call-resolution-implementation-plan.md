@@ -68,6 +68,8 @@ The cheap first stage should return useful `likely` results for common cases and
 
 **Exit gate:** Candidate-generation and ranking artifacts are reproducible and source-only. Calibration is isolated from train/test/temporal labels; every eligible site remains in reported denominators; unsupported, tied or under-supported cases abstain and continue to Tier B. No Phase 2 result enables a Tier B skip.
 
+**Current P2-B evidence status:** The current v4 System One evaluation has fresh train-only descriptive metrics and a calibration-only score-0 freeze, bound to the `declared-member-hypothesis-v4` source artifact. It reports all eligible sites, scorable/unscorable labels, accepted-site and conservative duplicate-group precision, end-to-end/family/call-shape metrics, and distinct generated/mapped/ranker candidate sizes. The prior v3 test/temporal outcomes are exposed historical evidence and are not v4 results. No v4 test/temporal labels have been opened; cross-split v4 ranking behavior remains unmeasured under the current boundary. The freeze is analysis-only and does not populate production calibration or permit Tier B skip. See [P2-B v4 results](./tiered-call-resolution-phase2-p2b-v4.md) and the [historical v3 report](./tiered-call-resolution-phase2-p2b-results.md).
+
 ## Phase 3 — Strict proof and per-call-site source of truth
 
 **Purpose:** Add proven rules and persist selected resolution per call site without changing ScopeResolver.

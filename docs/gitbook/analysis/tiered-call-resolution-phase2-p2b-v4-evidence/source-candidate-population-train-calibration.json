@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2b-source-candidate-population/1",
+  "purpose": "Source-only field summary; no labels are read. Includes only train and calibration rows.",
+  "candidateGeneratorVersion": "declared-member-hypothesis-v4",
+  "sourcePredictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+  "sourcePredictionManifestSha256": "de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e",
+  "sourceFields": {
+    "generatedCandidateCount": "raw generated candidate keys from the v4 source index",
+    "candidateTargetIdsLength": "oracle-mappable candidate target IDs carried into evaluation",
+    "proposedCandidateCount": "ranker-eligible proposals after ordered evidence filtering"
+  },
+  "rowCounts": {
+    "train": 13496,
+    "calibration": 2966
+  },
+  "percentileMethod": "nearest-rank; sorted values indexed at ceil(p*n)-1",
+  "splits": {
+    "train": {
+      "all": {
+        "siteCount": 13496,
+        "generatedKeyZeroCount": 468,
+        "mappedTargetIdZeroCount": 833,
+        "rankerProposalZeroCount": 468,
+        "generatedKeyCount": {
+          "p50": 1,
+          "p95": 64,
+          "max": 118
+        },
+        "mappedTargetIdCount": {
+          "p50": 1,
+          "p95": 35,
+          "max": 96
+        },
+        "rankerProposalCount": {
+          "p50": 1,
+          "p95": 25,
+          "max": 25
+        }
+      },
+      "families": {
+        "dyphn1/Docuvia": {
+          "siteCount": 3610,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 11,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 3,
+            "p95": 44,
+            "max": 98
+          },
+          "mappedTargetIdCount": {
+            "p50": 2,
+            "p95": 21,
+            "max": 36
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 25,
+            "max": 25
+          }
+        },
+        "nestjs/nest": {
+          "siteCount": 8000,
+          "generatedKeyZeroCount": 463,
+          "mappedTargetIdZeroCount": 795,
+          "rankerProposalZeroCount": 463,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 70,
+            "max": 118
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 42,
+            "max": 96
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 10,
+            "max": 25
+          }
+        },
+        "tirth8205/code-review-graph": {
+          "siteCount": 77,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 0,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 3,
+            "max": 6
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 3,
+            "max": 6
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 2,
+            "max": 5
+          }
+        },
+        "trailhq/Graft": {
+          "siteCount": 888,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 1,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 2,
+            "max": 28
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 2,
+            "max": 15
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 1,
+            "max": 21
+          }
+        },
+        "typescript-language-server/typescript-language-server": {
+          "siteCount": 921,
+          "generatedKeyZeroCount": 5,
+          "mappedTargetIdZeroCount": 26,
+          "rankerProposalZeroCount": 5,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 97,
+            "max": 97
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 8,
+            "max": 9
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 25,
+            "max": 25
+          }
+        }
+      },
+      "callShapes": {
+        "member": {
+          "siteCount": 7087,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 253,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 3,
+            "p95": 73,
+            "max": 118
+          },
+          "mappedTargetIdCount": {
+            "p50": 2,
+            "p95": 42,
+            "max": 96
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 25,
+            "max": 25
+          }
+        },
+        "bare": {
+          "siteCount": 5684,
+          "generatedKeyZeroCount": 461,
+          "mappedTargetIdZeroCount": 462,
+          "rankerProposalZeroCount": 461,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 8,
+            "max": 97
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 4,
+            "max": 16
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 8,
+            "max": 25
+          }
+        },
+        "arg-chain": {
+          "siteCount": 517,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 28,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 2,
+            "p95": 15,
+            "max": 78
+          },
+          "mappedTargetIdCount": {
+            "p50": 2,
+            "p95": 15,
+            "max": 26
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 12,
+            "max": 25
+          }
+        },
+        "this": {
+          "siteCount": 201,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 83,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 2,
+            "p95": 10,
+            "max": 31
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 7,
+            "max": 27
+          },
+          "rankerProposalCount": {
+            "p50": 2,
+            "p95": 7,
+            "max": 25
+          }
+        },
+        "unmapped": {
+          "siteCount": 7,
+          "generatedKeyZeroCount": 7,
+          "mappedTargetIdZeroCount": 7,
+          "rankerProposalZeroCount": 7,
+          "generatedKeyCount": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "mappedTargetIdCount": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "rankerProposalCount": {
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          }
+        }
+      }
+    },
+    "calibration": {
+      "all": {
+        "siteCount": 2966,
+        "generatedKeyZeroCount": 193,
+        "mappedTargetIdZeroCount": 193,
+        "rankerProposalZeroCount": 193,
+        "generatedKeyCount": {
+          "p50": 1,
+          "p95": 23,
+          "max": 35
+        },
+        "mappedTargetIdCount": {
+          "p50": 1,
+          "p95": 14,
+          "max": 17
+        },
+        "rankerProposalCount": {
+          "p50": 1,
+          "p95": 3,
+          "max": 25
+        }
+      },
+      "families": {
+        "403errors/repomind": {
+          "siteCount": 1207,
+          "generatedKeyZeroCount": 17,
+          "mappedTargetIdZeroCount": 17,
+          "rankerProposalZeroCount": 17,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 5,
+            "max": 32
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 5,
+            "max": 12
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 5,
+            "max": 25
+          }
+        },
+        "Egonex-AI/Understand-Anything": {
+          "siteCount": 1759,
+          "generatedKeyZeroCount": 176,
+          "mappedTargetIdZeroCount": 176,
+          "rankerProposalZeroCount": 176,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 23,
+            "max": 35
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 15,
+            "max": 17
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 2,
+            "max": 23
+          }
+        }
+      },
+      "callShapes": {
+        "bare": {
+          "siteCount": 2222,
+          "generatedKeyZeroCount": 193,
+          "mappedTargetIdZeroCount": 193,
+          "rankerProposalZeroCount": 193,
+          "generatedKeyCount": {
+            "p50": 1,
+            "p95": 4,
+            "max": 32
+          },
+          "mappedTargetIdCount": {
+            "p50": 1,
+            "p95": 3,
+            "max": 12
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 4,
+            "max": 25
+          }
+        },
+        "member": {
+          "siteCount": 744,
+          "generatedKeyZeroCount": 0,
+          "mappedTargetIdZeroCount": 0,
+          "rankerProposalZeroCount": 0,
+          "generatedKeyCount": {
+            "p50": 14,
+            "p95": 35,
+            "max": 35
+          },
+          "mappedTargetIdCount": {
+            "p50": 14,
+            "p95": 17,
+            "max": 17
+          },
+          "rankerProposalCount": {
+            "p50": 1,
+            "p95": 2,
+            "max": 3
+          }
+        }
+      }
+    }
+  }
+}

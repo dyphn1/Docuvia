@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/eval/system1-eval-folds.ts#anonymous@L82
+id: lib/core/src/semantic/system1/eval/system1-eval-folds.ts#anonymous@L44
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/system1/eval/system1-eval-folds.ts

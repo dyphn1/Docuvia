@@ -1,4 +1,5 @@
 import type { DiscoveredFile } from "./discovery.interfaces.js";
+import type { AstDeclaredTypeFacts } from "./declared-type-facts.interfaces.js";
 
 export const AstExportKinds = {
   FUNCTION: "function",
@@ -71,6 +72,8 @@ export interface ParsedAstFileData {
   }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;
+  /** Optional source-only TypeScript/JavaScript syntax facts; older producers omit this versioned payload. */
+  declaredTypeFacts?: AstDeclaredTypeFacts;
   /** `new Worker(<path>)` spawn sites (TS/JS only) — see `ast-worker.ts`'s `collectWorkerSpawns`. */
   workerSpawns?: Array<{ sourceFunction: string; targetPath: string }>;
   decisions?: string[];

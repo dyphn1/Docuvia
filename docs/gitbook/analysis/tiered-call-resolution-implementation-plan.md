@@ -45,6 +45,8 @@ This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) i
 
 **Exit gate:** Every supported shape has a fixture. The new index is deterministic on the fixed corpus, records its inputs, and leaves existing graph edges byte-for-byte equivalent.
 
+**Status: Complete.** The fixed corpus emitted versioned facts with per-file content hashes, two corrected full-corpus extractions were byte-identical, and the pre-facts HEAD worker, current parser, and persisted graph matched all 58,338 call edges. See the [Phase 1 results](./tiered-call-resolution-phase1-results.md). No signatures were certified or promoted.
+
 ## Phase 2 — Multi-hypothesis filtering
 
 **Purpose:** Produce calibrated likely answers where syntax facts narrow a complete candidate set, and ambiguous answers elsewhere.

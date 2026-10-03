@@ -79,6 +79,7 @@
 
 - [Tiered Call Resolution Implementation Plan](analysis/tiered-call-resolution-implementation-plan.md)
 - [GRPH-008 Phase 0 — Measurement Gate](analysis/tiered-call-resolution-phase0-results.md)
+- [GRPH-008 Phase 1 — Declared Type Facts](analysis/tiered-call-resolution-phase1-results.md)
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
 - [Roadmap & Open Items](analysis/roadmap-and-open-items.md)
 - [Impact benchmark honesty — Phase 0 metric contract](analysis/impact-benchmark-honesty-phase0.md)

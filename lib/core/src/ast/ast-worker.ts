@@ -11,10 +11,12 @@ import {
 import {
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
+  type AstDeclaredTypeLanguage,
   type AstExportKind,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
+import { extractDeclaredTypeFacts } from "./declared-type-facts.js";
 import {
   collectClassNodes,
   collectFunctionNodes,
@@ -591,6 +593,7 @@ function parseAndExtract(
   provider: LanguageProvider,
   langInstance: Language,
   language: SupportedLanguage,
+  filePath: string,
 ): AstExtractionResult {
   const parser = new Parser();
   parser.setLanguage(langInstance);
@@ -605,11 +608,34 @@ function parseAndExtract(
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider, language);
+  const declaredTypeLanguage = getDeclaredTypeLanguage(language, filePath);
+  const result =
+    tree && declaredTypeLanguage
+      ? {
+          ...data,
+          declaredTypeFacts: extractDeclaredTypeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+          ),
+        }
+      : data;
 
   if (tree) tree.delete();
   parser.delete();
 
-  return data;
+  return result;
+}
+
+function getDeclaredTypeLanguage(
+  language: SupportedLanguage,
+  filePath: string,
+): AstDeclaredTypeLanguage | undefined {
+  if (language === SUPPORTED_LANGUAGES.TYPESCRIPT)
+    return path.extname(filePath).toLowerCase() === ".tsx"
+      ? "tsx"
+      : "typescript";
+  if (language === SUPPORTED_LANGUAGES.JAVASCRIPT) return "javascript";
+  return undefined;
 }
 
 /**
@@ -670,6 +696,7 @@ export async function buildParseResponse(
     provider,
     langInstance,
     request.language,
+    request.filePath,
   );
 
   return {

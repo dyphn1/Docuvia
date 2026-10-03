@@ -17,6 +17,7 @@ import ts from "typescript";
 import {
   MAX_FILE_SIZE_BYTES,
   isDiscoverableSourceFile,
+  type AstDeclaredTypeFacts,
   type ParsedAstFileResult,
 } from "../../lib/contracts/src/index.js";
 import { isSnapshotPath } from "../../lib/core/src/semantic/collection/semantic-snapshot-hash.js";
@@ -103,6 +104,7 @@ const MEASUREMENT_SOURCE_FILES = [
   "lib/core/src/ast/ast-processing.service.ts",
   "lib/core/src/ast/ast-worker-pool.ts",
   "lib/core/src/ast/ast-worker.ts",
+  "lib/core/src/ast/declared-type-facts.ts",
   "lib/core/src/graph/scope-resolver.ts",
   "lib/core/src/graph/persist-ast-graph.ts",
   "lib/core/src/semantic/collection/semantic-snapshot-hash.ts",
@@ -111,7 +113,9 @@ const MEASUREMENT_SOURCE_FILES = [
   "lib/core/src/discovery/file-discovery.service.ts",
   "lib/contracts/src/constants/source-files.ts",
   "lib/contracts/src/constants/paths.ts",
+  "lib/contracts/src/index.ts",
   "lib/contracts/src/interfaces/ast.interfaces.ts",
+  "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts",
   "lib/core/src/utils/language-detection.ts",
   "pnpm-lock.yaml",
 ].sort();
@@ -321,6 +325,22 @@ interface SourceFileContent {
   readonly exclusionReason?: string;
 }
 
+interface DeclaredTypeFactsRow {
+  readonly snapshotId: string;
+  readonly repoId: string;
+  readonly revision: string;
+  readonly snapshotHash: string;
+  readonly filePath: string;
+  readonly fileContentSha256: string;
+  readonly declaredTypeFacts: AstDeclaredTypeFacts;
+}
+
+interface CallEdgeProjectionRow {
+  readonly snapshotId: string;
+  readonly projection: "parsed" | "persisted";
+  readonly edgeKey: string;
+}
+
 interface SnapshotIntegrityExclusion {
   readonly path: string;
   readonly reason: string;
@@ -364,6 +384,8 @@ interface SnapshotRunSummary {
     readonly matchingCallEdges: number;
     readonly predictedOnly: number;
     readonly persistedOnly: number;
+    readonly predictedEdgesSha256: string;
+    readonly persistedEdgesSha256: string;
     readonly exactMatch: boolean;
   } | null;
   readonly partialSemanticWallMs: number | null;
@@ -1470,6 +1492,8 @@ async function run(options: RunOptions): Promise<void> {
 
   const allSourceRows: SourceCallSiteRow[] = [];
   const allBaselineRows: ScopeResolverBaselineRow[] = [];
+  const allDeclaredTypeFactsRows: DeclaredTypeFactsRow[] = [];
+  const allCallEdgeProjectionRows: CallEdgeProjectionRow[] = [];
   const allThisRows: ThisMemberBaselineRow[] = [];
   const allDeterministicRows: DeterministicQueryBaselineRow[] = [];
   const allDeterministicLatencies: number[] = [];
@@ -1666,6 +1690,24 @@ async function run(options: RunOptions): Promise<void> {
       const parsedByFile = new Map(
         parsed.parsed.map((result) => [result.file, result] as const),
       );
+      appendRows(
+        allDeclaredTypeFactsRows,
+        parsed.parsed.flatMap((result): DeclaredTypeFactsRow[] => {
+          const declaredTypeFacts = result.data.declaredTypeFacts;
+          if (!declaredTypeFacts) return [];
+          return [
+            {
+              snapshotId: snapshot.snapshotId,
+              repoId: snapshot.repoId,
+              revision: snapshot.revision,
+              snapshotHash: snapshot.snapshotHash,
+              filePath: result.file,
+              fileContentSha256: result.hash,
+              declaredTypeFacts,
+            },
+          ];
+        }),
+      );
       const resolver = new ScopeResolver(snapshotRoot);
       registerScopeResolverFiles(resolver, parsed.parsed);
       const nodeKeyIndex = buildParsedSymbolNodeKeyIndex(parsed.parsed);
@@ -1741,10 +1783,32 @@ async function run(options: RunOptions): Promise<void> {
         persistedOnly: [...persistedCallEdgeSet].filter(
           (edge) => !allCalls.predictedCallEdges.has(edge),
         ).length,
+        predictedEdgesSha256: sha256(
+          [...allCalls.predictedCallEdges].sort().join("\n") + "\n",
+        ),
+        persistedEdgesSha256: sha256(
+          [...persistedCallEdgeSet].sort().join("\n") + "\n",
+        ),
         exactMatch:
           allCalls.predictedCallEdges.size === persistedCallEdgeSet.size &&
           matchingCallEdges === persistedCallEdgeSet.size,
       };
+      appendRows(
+        allCallEdgeProjectionRows,
+        [...allCalls.predictedCallEdges].map((edgeKey) => ({
+          snapshotId: snapshot.snapshotId,
+          projection: "parsed" as const,
+          edgeKey,
+        })),
+      );
+      appendRows(
+        allCallEdgeProjectionRows,
+        [...persistedCallEdgeSet].map((edgeKey) => ({
+          snapshotId: snapshot.snapshotId,
+          projection: "persisted" as const,
+          edgeKey,
+        })),
+      );
       const replayWallMs = performance.now() - replayStarted;
       appendRows(allSourceRows, mapped.sourceRows);
       appendRows(allBaselineRows, mapped.baselineRows);
@@ -2102,6 +2166,17 @@ async function run(options: RunOptions): Promise<void> {
       0,
     ),
   };
+  allDeclaredTypeFactsRows.sort(
+    (a, b) =>
+      a.snapshotId.localeCompare(b.snapshotId) ||
+      a.filePath.localeCompare(b.filePath),
+  );
+  allCallEdgeProjectionRows.sort(
+    (a, b) =>
+      a.snapshotId.localeCompare(b.snapshotId) ||
+      a.projection.localeCompare(b.projection) ||
+      a.edgeKey.localeCompare(b.edgeKey),
+  );
   const endImplementationFingerprint = measurementImplementationFingerprint();
   if (endImplementationFingerprint !== implementationFingerprint)
     throw new Error(
@@ -2156,6 +2231,21 @@ async function run(options: RunOptions): Promise<void> {
         corpusRowsInExcludedSnapshots: snapshotSummaries
           .filter((row) => row.snapshotStatus === "excluded")
           .reduce((sum, row) => sum + row.corpusRows, 0),
+      },
+      declaredTypeFacts: {
+        files: allDeclaredTypeFactsRows.length,
+        facts: allDeclaredTypeFactsRows.reduce(
+          (sum, row) => sum + row.declaredTypeFacts.facts.length,
+          0,
+        ),
+        declarations: allDeclaredTypeFactsRows.reduce(
+          (sum, row) => sum + row.declaredTypeFacts.declarations.length,
+          0,
+        ),
+        ownerInventories: allDeclaredTypeFactsRows.reduce(
+          (sum, row) => sum + row.declaredTypeFacts.ownerInventories.length,
+          0,
+        ),
       },
       existingSystem1StateRows: statesByRequestId.size,
       corpusRowsFoundInSystem1State: stateIntersectionRows,
@@ -2338,6 +2428,14 @@ async function run(options: RunOptions): Promise<void> {
     path.join(options.outputDirectory, "scope-resolver-baseline.jsonl"),
     allBaselineRows,
   );
+  writeJsonLines(
+    path.join(options.outputDirectory, "declared-type-facts.jsonl"),
+    allDeclaredTypeFactsRows,
+  );
+  writeJsonLines(
+    path.join(options.outputDirectory, "call-edge-projections.jsonl"),
+    allCallEdgeProjectionRows,
+  );
   writeJsonLines(path.join(options.outputDirectory, "labels.jsonl"), labels);
   writeJsonLines(
     path.join(options.outputDirectory, "this-member-baseline.jsonl"),
@@ -2360,6 +2458,8 @@ async function run(options: RunOptions): Promise<void> {
     [
       "callsites.jsonl",
       "scope-resolver-baseline.jsonl",
+      "declared-type-facts.jsonl",
+      "call-edge-projections.jsonl",
       "labels.jsonl",
       "this-member-baseline.jsonl",
       "deterministic-query-baseline.jsonl",

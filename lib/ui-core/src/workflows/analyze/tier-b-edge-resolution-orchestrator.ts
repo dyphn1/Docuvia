@@ -9,9 +9,12 @@ import {
   HASH_ALGO_SHA256,
   ENCODING_HEX,
   type EdgeResolutionCallSite,
+  type CallResolutionCanaryRequestMetadata,
+  createPortableCallSiteKey,
   type EdgeResolutionFileFailure,
   type EdgeResolutionOutcome,
   type EdgeResolutionProviderConfig,
+  type CallSiteResolutionRecord,
   type IGitProvider,
   type IGraphStore,
   type ILogger,
@@ -21,6 +24,14 @@ import {
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import type { TierBQueueEntry } from "./tier-b-queue.js";
+import {
+  CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
+  isCallResolutionTierBCanary,
+  isCertifiedNonCanaryCallSite,
+  isCertifiedProvenCallSite,
+  resolveCanaryRate,
+  type CallResolutionTierBCanaryPolicy,
+} from "./call-resolution-tier-b-canary.js";
 
 /** Per-language honest-degradation fidelity (multi-language-lsp-support plan, Finding F) --
  *  additive alongside the aggregate `unavailableReason` below. */
@@ -76,6 +87,7 @@ export interface ResolveEdgesForLanguageBucketsDeps {
    *  `buildCallsByFileForTypescript`'s own doc comment for why a plain sha256-of-disk comparison
    *  would silently report every clean, unmodified file "stale" and defeat the whole flip. */
   git: IGitProvider;
+  callResolutionCanary?: CallResolutionTierBCanaryPolicy;
 }
 
 /** Merges one provider's outcome into the batch accumulators with bounded loops instead of
@@ -154,7 +166,14 @@ export async function resolveEdgesForLanguageBuckets(
   buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
   deps: ResolveEdgesForLanguageBucketsDeps,
 ): Promise<MergedEdgeResolutionOutcome> {
-  const { workspaceRoot, logger, providerConfig, store, git } = deps;
+  const {
+    workspaceRoot,
+    logger,
+    providerConfig,
+    store,
+    git,
+    callResolutionCanary,
+  } = deps;
   const registry = docuviaFactory.resolve(TOKENS.EdgeResolutionProviders, {
     logger,
   });
@@ -168,6 +187,32 @@ export async function resolveEdgesForLanguageBuckets(
     const entries = buckets[languageId];
     if (!entries || entries.length === 0) continue;
 
+    // TS-only producer wiring (Finding A/D2's own note: even though the provider config is the
+    // real safety gate, querying ast_call_sites for 8 languages whose provider will always
+    // discard the answer costs nothing to skip -- defense-in-depth, not a duplicate authority).
+    const selected =
+      languageId === TIER_B_LANGUAGE_IDS.TYPESCRIPT
+        ? await buildCallsByFileForTypescript(
+            store,
+            git,
+            workspaceRoot,
+            entries,
+            logger,
+            callResolutionCanary,
+          )
+        : {
+            callsByFile: undefined,
+            skippedFiles: [],
+            canaryMetadata: undefined,
+          };
+
+    const skippedFileSet = new Set(selected.skippedFiles);
+    for (const file of selected.skippedFiles) filesProcessed.push(file);
+    const requestEntries = entries.filter(
+      (entry) => !skippedFileSet.has(entry.file),
+    );
+    if (requestEntries.length === 0) continue;
+
     const buildProvider = registry[languageId];
     if (!buildProvider) {
       degradedLanguages.push({
@@ -180,24 +225,11 @@ export async function resolveEdgesForLanguageBuckets(
     const provider = buildProvider();
     if (providerConfig) provider.configure(providerConfig);
 
-    // TS-only producer wiring (Finding A/D2's own note: even though the provider config is the
-    // real safety gate, querying ast_call_sites for 8 languages whose provider will always
-    // discard the answer costs nothing to skip -- defense-in-depth, not a duplicate authority).
-    const callsByFile =
-      languageId === TIER_B_LANGUAGE_IDS.TYPESCRIPT
-        ? await buildCallsByFileForTypescript(
-            store,
-            git,
-            workspaceRoot,
-            entries,
-            logger,
-          )
-        : undefined;
-
     const outcome = await provider.resolveEdges({
       workspaceRoot,
-      files: entries.map((e) => e.file),
-      callsByFile,
+      files: requestEntries.map((e) => e.file),
+      callsByFile: selected.callsByFile,
+      callResolutionCanary: selected.canaryMetadata,
     });
 
     mergeOutcomeInto(outcome, edges, filesProcessed, filesFailed);
@@ -305,9 +337,19 @@ async function buildCallsByFileForTypescript(
   workspaceRoot: string,
   entries: TierBQueueEntry[],
   logger: ILogger,
-): Promise<Record<string, EdgeResolutionCallSite[]> | undefined> {
+  canaryPolicy?: CallResolutionTierBCanaryPolicy,
+): Promise<{
+  callsByFile: Record<string, EdgeResolutionCallSite[]> | undefined;
+  skippedFiles: string[];
+  canaryMetadata?: CallResolutionCanaryRequestMetadata;
+}> {
   const project = store.projects.getFirst();
-  if (!project) return undefined;
+  if (!project)
+    return {
+      callsByFile: undefined,
+      skippedFiles: [],
+      canaryMetadata: undefined,
+    };
 
   const files = entries.map((e) => e.file);
   const callSitesByFile = store.callSites.getForFiles(project.id, files);
@@ -329,57 +371,446 @@ async function buildCallsByFileForTypescript(
       total,
       staleSkipped: 0,
     });
-    return undefined;
+    return {
+      callsByFile: undefined,
+      skippedFiles: [],
+      canaryMetadata: undefined,
+    };
   }
 
-  const storedHashes = new Map(
-    store.files.getAllHashes().map((h) => [h.filePath, h.contentHash]),
-  );
-  const { dirtyFiles, blobHashes } = await resolveGitHashInputs(
+  const sampleRate = canaryPolicy ? resolveCanaryRate(canaryPolicy) : undefined;
+  const selection = await selectTypeScriptCallsForFiles({
+    files,
+    projectId: project.id,
+    callSitesByFile,
+    store,
     git,
     workspaceRoot,
-  );
-
-  const callsByFile: Record<string, EdgeResolutionCallSite[]> = {};
-  let seeded = 0;
-  let staleSkipped = 0;
-
-  for (const file of files) {
-    const callSites = callSitesByFile.get(file);
-    if (!callSites || callSites.length === 0) continue;
-
-    const storedHash = storedHashes.get(file);
-    const liveHash = await resolveLiveContentHash(
-      workspaceRoot,
-      file,
-      dirtyFiles,
-      blobHashes,
-    );
-
-    if (!storedHash || !liveHash || storedHash !== liveHash) {
-      staleSkipped++;
-      continue;
-    }
-
-    callsByFile[file] = callSites;
-    seeded++;
-  }
+    canaryPolicy,
+    sampleRate,
+  });
 
   logger.info(
     ANALYZE_MESSAGES.TIER_B_FORWARD_SEEDED(
       TIER_B_LANGUAGE_IDS.TYPESCRIPT,
-      seeded,
+      selection.seeded,
       total,
-      staleSkipped,
+      selection.staleSkipped,
     ),
   );
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.TIER_B_FORWARD_SEEDED,
     languageId: TIER_B_LANGUAGE_IDS.TYPESCRIPT,
-    seeded,
+    seeded: selection.seeded,
     total,
-    staleSkipped,
+    staleSkipped: selection.staleSkipped,
   });
 
-  return seeded > 0 ? callsByFile : undefined;
+  const canaryMetadata = canaryPolicy
+    ? makeCanaryMetadata(
+        sampleRate ?? resolveCanaryRate(canaryPolicy),
+        selection.selectedKeysBySignature,
+        selection.overriddenKeysBySignature,
+      )
+    : undefined;
+  if (canaryMetadata) {
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.TIER_B_CALL_RESOLUTION_CANARY,
+      ...canaryMetadata,
+      skippedFiles: [...selection.skippedFiles].sort(),
+    });
+  }
+
+  return {
+    callsByFile: selection.seeded > 0 ? selection.callsByFile : undefined,
+    skippedFiles: selection.skippedFiles,
+    canaryMetadata,
+  };
+}
+
+interface TypeScriptCallSelectionResult {
+  callsByFile: Record<string, EdgeResolutionCallSite[]>;
+  skippedFiles: string[];
+  selectedKeysBySignature: Map<string, string[]>;
+  overriddenKeysBySignature: Map<string, string[]>;
+  seeded: number;
+  staleSkipped: number;
+}
+
+async function selectTypeScriptCallsForFiles(input: {
+  files: string[];
+  projectId: number;
+  callSitesByFile: Map<string, EdgeResolutionCallSite[]>;
+  store: IGraphStore;
+  git: IGitProvider;
+  workspaceRoot: string;
+  canaryPolicy?: CallResolutionTierBCanaryPolicy;
+  sampleRate: number | undefined;
+}): Promise<TypeScriptCallSelectionResult> {
+  const storedHashes = new Map(
+    input.store.files
+      .getAllHashes()
+      .map((hash) => [hash.filePath, hash.contentHash]),
+  );
+  const { dirtyFiles, blobHashes } = await resolveGitHashInputs(
+    input.git,
+    input.workspaceRoot,
+  );
+  const result: TypeScriptCallSelectionResult = {
+    callsByFile: {},
+    skippedFiles: [],
+    selectedKeysBySignature: new Map(),
+    overriddenKeysBySignature: new Map(),
+    seeded: 0,
+    staleSkipped: 0,
+  };
+
+  for (const file of input.files) {
+    const fileSelection = await selectTypeScriptCallsForFile(
+      input,
+      file,
+      storedHashes,
+      dirtyFiles,
+      blobHashes,
+    );
+    if (!fileSelection) continue;
+    if (fileSelection.stale) {
+      result.staleSkipped++;
+      continue;
+    }
+
+    const { selection } = fileSelection;
+    mergeSignatureKeyGroups(
+      result.selectedKeysBySignature,
+      selection.selectedKeysBySignature,
+    );
+    mergeSignatureKeyGroups(
+      result.overriddenKeysBySignature,
+      selection.overriddenKeysBySignature,
+    );
+    if (selection.allSitesOverridden) {
+      result.skippedFiles.push(file);
+    } else {
+      result.callsByFile[file] = selection.forwarded;
+    }
+    result.seeded++;
+  }
+
+  return result;
+}
+
+type TypeScriptCallFileSelection =
+  { stale: true } | { stale: false; selection: FileCallSiteSelection };
+
+async function selectTypeScriptCallsForFile(
+  input: Parameters<typeof selectTypeScriptCallsForFiles>[0],
+  file: string,
+  storedHashes: Map<string, string | null>,
+  dirtyFiles: ReadonlySet<string>,
+  blobHashes: ReadonlyMap<string, string>,
+): Promise<TypeScriptCallFileSelection | undefined> {
+  const callSites = input.callSitesByFile.get(file);
+  if (!callSites || callSites.length === 0) return undefined;
+
+  const storedHash = storedHashes.get(file);
+  const liveHash = await resolveLiveContentHash(
+    input.workspaceRoot,
+    file,
+    dirtyFiles,
+    blobHashes,
+  );
+  if (!storedHash || !liveHash || storedHash !== liveHash)
+    return { stale: true };
+
+  const resolutions = input.canaryPolicy
+    ? (input.store.callSiteResolutions?.getForFile(input.projectId, file) ?? [])
+    : [];
+  return {
+    stale: false,
+    selection: selectFileCallSites(
+      file,
+      callSites,
+      storedHash,
+      liveHash,
+      resolutions,
+      input.canaryPolicy,
+      input.sampleRate,
+    ),
+  };
+}
+
+function callSitePositionKey(startLine: number, startColumn: number): string {
+  return `${startLine}\u0000${startColumn}`;
+}
+
+/** The stored key must match every portable identity component on the same current source hash.
+ *  Malformed or legacy rows simply stay on Tier B. */
+function isPortableIdentityBound(
+  resolution: CallSiteResolutionRecord,
+): boolean {
+  try {
+    return (
+      createPortableCallSiteKey({
+        filePath: resolution.filePath,
+        sourceContentHash: resolution.sourceContentHash,
+        startLine: resolution.startLine,
+        startColumn: resolution.startColumn,
+        calleeKind: resolution.calleeKind,
+        calleeName: resolution.calleeName,
+      }) === resolution.callSiteKey
+    );
+  } catch {
+    return false;
+  }
+}
+
+function countCallSitesByPosition(
+  callSites: EdgeResolutionCallSite[],
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const callSite of callSites) {
+    const position = callSitePositionKey(
+      callSite.startLine,
+      callSite.startColumn,
+    );
+    counts.set(position, (counts.get(position) ?? 0) + 1);
+  }
+  return counts;
+}
+
+interface FileCallSiteSelection {
+  forwarded: EdgeResolutionCallSite[];
+  allSitesOverridden: boolean;
+  selectedKeysBySignature: Map<string, string[]>;
+  overriddenKeysBySignature: Map<string, string[]>;
+}
+
+function selectFileCallSites(
+  file: string,
+  callSites: EdgeResolutionCallSite[],
+  storedHash: string,
+  liveHash: string,
+  resolutions: CallSiteResolutionRecord[],
+  policy: CallResolutionTierBCanaryPolicy | undefined,
+  sampleRate: number | undefined,
+): FileCallSiteSelection {
+  if (!hasCompleteResolutionCoverage(callSites, resolutions)) {
+    return {
+      forwarded: callSites.map((callSite) =>
+        policy ? { ...callSite, verificationMode: "tier-b" } : callSite,
+      ),
+      allSitesOverridden: false,
+      selectedKeysBySignature: new Map(),
+      overriddenKeysBySignature: new Map(),
+    };
+  }
+
+  const counts = countCallSitesByPosition(callSites);
+  const indexedResolutions = indexResolutionsByPosition(resolutions);
+  const selectedKeysBySignature = new Map<string, string[]>();
+  const overriddenKeysBySignature = new Map<string, string[]>();
+  const forwarded: EdgeResolutionCallSite[] = [];
+  let allSitesOverridden = policy !== undefined && callSites.length > 0;
+
+  for (const callSite of callSites) {
+    const resolution = findCurrentResolutionForCallSite(
+      callSite,
+      file,
+      storedHash,
+      liveHash,
+      counts,
+      indexedResolutions,
+    );
+    const selection = selectCallSite(
+      callSite,
+      resolution,
+      liveHash,
+      policy,
+      sampleRate,
+    );
+    if (selection.overriddenKey) {
+      pushSignatureKey(
+        overriddenKeysBySignature,
+        selection.overriddenKey.ruleSignature,
+        selection.overriddenKey.callSiteKey,
+      );
+      continue;
+    }
+
+    allSitesOverridden = false;
+    forwarded.push(selection.callSite);
+    if (selection.canaryKey) {
+      pushSignatureKey(
+        selectedKeysBySignature,
+        selection.canaryKey.ruleSignature,
+        selection.canaryKey.callSiteKey,
+      );
+    }
+  }
+
+  return {
+    forwarded,
+    allSitesOverridden,
+    selectedKeysBySignature,
+    overriddenKeysBySignature,
+  };
+}
+
+function hasCompleteResolutionCoverage(
+  callSites: EdgeResolutionCallSite[],
+  resolutions: CallSiteResolutionRecord[],
+): boolean {
+  if (callSites.length !== resolutions.length) return false;
+
+  const callSitePositions = new Set<string>();
+  for (const callSite of callSites) {
+    const position = callSitePositionKey(
+      callSite.startLine,
+      callSite.startColumn,
+    );
+    if (callSitePositions.has(position)) return false;
+    callSitePositions.add(position);
+  }
+
+  const resolutionPositions = new Set<string>();
+  for (const resolution of resolutions) {
+    const position = callSitePositionKey(
+      resolution.startLine,
+      resolution.startColumn,
+    );
+    if (resolutionPositions.has(position) || !callSitePositions.has(position))
+      return false;
+    resolutionPositions.add(position);
+  }
+
+  return true;
+}
+
+function indexResolutionsByPosition(
+  resolutions: CallSiteResolutionRecord[],
+): Map<string, CallSiteResolutionRecord[]> {
+  const indexed = new Map<string, CallSiteResolutionRecord[]>();
+  for (const resolution of resolutions) {
+    const position = callSitePositionKey(
+      resolution.startLine,
+      resolution.startColumn,
+    );
+    const rows = indexed.get(position) ?? [];
+    rows.push(resolution);
+    indexed.set(position, rows);
+  }
+  return indexed;
+}
+
+function findCurrentResolutionForCallSite(
+  callSite: EdgeResolutionCallSite,
+  file: string,
+  storedHash: string,
+  liveHash: string,
+  callSiteCounts: Map<string, number>,
+  indexedResolutions: Map<string, CallSiteResolutionRecord[]>,
+): CallSiteResolutionRecord | undefined {
+  const position = callSitePositionKey(
+    callSite.startLine,
+    callSite.startColumn,
+  );
+  const candidates = indexedResolutions.get(position) ?? [];
+  if (callSiteCounts.get(position) !== 1 || candidates.length !== 1)
+    return undefined;
+
+  const resolution = candidates[0];
+  if (resolution.filePath !== file) return undefined;
+  if (resolution.sourceContentHash !== storedHash) return undefined;
+  if (resolution.sourceContentHash !== liveHash || resolution.isStale)
+    return undefined;
+  if (!resolution.ruleSignature.trim()) return undefined;
+  return isPortableIdentityBound(resolution) ? resolution : undefined;
+}
+
+interface CallSiteSelection {
+  callSite: EdgeResolutionCallSite;
+  canaryKey?: Pick<CallSiteResolutionRecord, "callSiteKey" | "ruleSignature">;
+  overriddenKey?: Pick<
+    CallSiteResolutionRecord,
+    "callSiteKey" | "ruleSignature"
+  >;
+}
+
+function selectCallSite(
+  callSite: EdgeResolutionCallSite,
+  resolution: CallSiteResolutionRecord | undefined,
+  sourceContentHash: string,
+  policy: CallResolutionTierBCanaryPolicy | undefined,
+  sampleRate: number | undefined,
+): CallSiteSelection {
+  if (
+    resolution &&
+    isCertifiedNonCanaryCallSite(resolution, sourceContentHash, policy)
+  ) {
+    return { callSite, overriddenKey: resolution };
+  }
+  if (!resolution || !policy || sampleRate === undefined) {
+    return {
+      callSite: policy ? { ...callSite, verificationMode: "tier-b" } : callSite,
+    };
+  }
+
+  const isCanary =
+    isCertifiedProvenCallSite(resolution, sourceContentHash, policy) &&
+    isCallResolutionTierBCanary(
+      resolution.callSiteKey,
+      resolution.ruleSignature,
+      resolution.resolutionClass,
+      sampleRate,
+    );
+  return {
+    callSite: {
+      ...callSite,
+      callSiteKey: resolution.callSiteKey,
+      ruleSignature: resolution.ruleSignature,
+      resolutionClass: resolution.resolutionClass,
+      verificationMode: isCanary ? "canary" : "tier-b",
+    },
+    ...(isCanary ? { canaryKey: resolution } : {}),
+  };
+}
+
+function mergeSignatureKeyGroups(
+  target: Map<string, string[]>,
+  incoming: Map<string, string[]>,
+): void {
+  for (const [signature, keys] of incoming) {
+    for (const key of keys) pushSignatureKey(target, signature, key);
+  }
+}
+
+function pushSignatureKey(
+  grouped: Map<string, string[]>,
+  signature: string,
+  callSiteKey: string,
+): void {
+  const keys = grouped.get(signature) ?? [];
+  keys.push(callSiteKey);
+  grouped.set(signature, keys);
+}
+
+function makeCanaryMetadata(
+  sampleRate: number,
+  selected: Map<string, string[]>,
+  overridden: Map<string, string[]>,
+): CallResolutionCanaryRequestMetadata {
+  const toRecord = (groups: Map<string, string[]>): Record<string, string[]> =>
+    Object.fromEntries(
+      [...groups.entries()]
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([signature, keys]) => [signature, [...keys].sort()]),
+    );
+  return {
+    policyVersion: CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
+    sampleRate,
+    stratification: "rule-signature",
+    hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"],
+    selectedCallSiteKeysByRuleSignature: toRecord(selected),
+    ruleOverriddenCallSiteKeysByRuleSignature: toRecord(overridden),
+  };
 }

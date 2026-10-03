@@ -47,6 +47,7 @@ export type {
 export type {
   EdgeResolutionAvailability,
   EdgeResolutionCallSite,
+  CallResolutionCanaryRequestMetadata,
   EdgeResolutionFileFailure,
   EdgeResolutionOutcome,
   EdgeResolutionProviderConfig,
@@ -135,6 +136,10 @@ export type {
   AstCallSiteShapeFacts,
 } from "./interfaces/call-site-shape-facts.interfaces.js";
 export { AST_CALL_SITE_SHAPE_SCHEMA_VERSION } from "./interfaces/call-site-shape-facts.interfaces.js";
+export {
+  createPortableCallSiteKey,
+  type PortableCallSiteKeyInput,
+} from "./graph/call-site-identity.js";
 export type {
   CallResolutionCalibrationFamilyMetric,
   CallResolutionCalibrationRecord,

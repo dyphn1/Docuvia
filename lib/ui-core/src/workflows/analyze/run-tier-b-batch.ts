@@ -23,6 +23,7 @@ import { queueFullTierBResync } from "./queue-full-tier-b-resync.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import { runTierCDrain } from "./run-tier-c-drain.js";
+import type { CallResolutionTierBCanaryPolicy } from "./call-resolution-tier-b-canary.js";
 import {
   resolveEdgesForLanguageBuckets,
   type MergedEdgeResolutionOutcome,
@@ -78,6 +79,9 @@ export interface TierBBatchDeps {
   /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) --
    *  pre-populates `tierBQueue` with every currently-tracked file before the batch drains it. */
   full?: boolean;
+  /** Unseen-certified signatures may keep non-canary sites on their strict result; all other
+   *  sites remain on Tier B. Omit to preserve the legacy all-sites Tier B behavior. */
+  callResolutionCanary?: CallResolutionTierBCanaryPolicy;
 }
 
 /**
@@ -500,13 +504,21 @@ async function resolveEdgesForQueue(
   deps: TierBBatchDeps,
   buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
 ): Promise<MergedEdgeResolutionOutcome> {
-  const { workspaceRoot, logger, providerConfig, store, git } = deps;
+  const {
+    workspaceRoot,
+    logger,
+    providerConfig,
+    store,
+    git,
+    callResolutionCanary,
+  } = deps;
   return resolveEdgesForLanguageBuckets(buckets, {
     workspaceRoot,
     logger,
     providerConfig,
     store,
     git,
+    callResolutionCanary,
   });
 }
 

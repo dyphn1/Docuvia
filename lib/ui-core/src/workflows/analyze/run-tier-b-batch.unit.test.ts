@@ -4,12 +4,15 @@ import {
   TOKENS,
   resetFactoryForTests,
   createMockLogger,
+  createPortableCallSiteKey,
   type IGitProvider,
   type IGraphStore,
   type IKnowledgeGitService,
   type IEdgeResolutionProvider,
   type EdgeResolutionOutcome,
+  type EdgeResolutionRequest,
   type NodeLinkRow,
+  type CallSiteResolutionRecord,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
   ANALYZE_LOG_FILE_NAME,
@@ -292,6 +295,409 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         "proven.ts",
         "likely.ts",
       ]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("[happy][invalid-input][state-diff] runs only hash-selected certified call sites plus every uncertified site, and completes fully certified non-canary files without LSP", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-callsite-canary-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "mixed.ts"),
+      "export function caller() {\n  sampled();\n  ruleOnly();\n  uncertified();\n}\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "rule-only.ts"),
+      "export function caller() {\n  ruleOnly();\n}\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "invalid-evidence.ts"),
+      "missingKey();\nsourceMismatch();\nmissingSignature();\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "coverage-mismatch.ts"),
+      "known();\n",
+    );
+
+    const mixedSourceHash = "c".repeat(64);
+    const ruleOnlySourceHash = "a".repeat(64);
+    const invalidEvidenceSourceHash = "d".repeat(64);
+    const mismatchedSourceHash = "e".repeat(64);
+    const coverageSourceHash = "f".repeat(64);
+    const sourceHashes = [
+      { filePath: "mixed.ts", contentHash: mixedSourceHash },
+      { filePath: "rule-only.ts", contentHash: ruleOnlySourceHash },
+      {
+        filePath: "invalid-evidence.ts",
+        contentHash: invalidEvidenceSourceHash,
+      },
+      { filePath: "coverage-mismatch.ts", contentHash: coverageSourceHash },
+    ];
+    const { store, fake } = makeStore([], sourceHashes);
+    store.callSites.getForFiles = vi.fn(
+      () =>
+        new Map([
+          [
+            "mixed.ts",
+            [
+              { targetFunction: "sampled", startLine: 1, startColumn: 2 },
+              { targetFunction: "ruleOnly", startLine: 2, startColumn: 2 },
+              { targetFunction: "uncertified", startLine: 3, startColumn: 2 },
+            ],
+          ],
+          [
+            "rule-only.ts",
+            [{ targetFunction: "ruleOnly", startLine: 1, startColumn: 2 }],
+          ],
+          [
+            "invalid-evidence.ts",
+            [
+              { targetFunction: "missingKey", startLine: 0, startColumn: 0 },
+              {
+                targetFunction: "sourceMismatch",
+                startLine: 1,
+                startColumn: 0,
+              },
+              {
+                targetFunction: "missingSignature",
+                startLine: 2,
+                startColumn: 0,
+              },
+            ],
+          ],
+          [
+            "coverage-mismatch.ts",
+            [{ targetFunction: "known", startLine: 0, startColumn: 0 }],
+          ],
+        ]),
+    );
+
+    const makeResolution = (
+      filePath: string,
+      sourceContentHash: string,
+      startLine: number,
+      calleeName: string,
+      ruleSignature: string,
+      startColumn = 2,
+    ): CallSiteResolutionRecord => ({
+      callSiteKey: createPortableCallSiteKey({
+        filePath,
+        sourceContentHash,
+        startLine,
+        startColumn,
+        calleeKind: "bare",
+        calleeName,
+      }),
+      identityVersion: 1,
+      filePath,
+      sourceContentHash,
+      startLine,
+      startColumn,
+      calleeKind: "bare",
+      calleeName,
+      callerNodeKey: `${filePath}#caller`,
+      resolutionClass: "proven",
+      selectedTargetNodeKey: `targets.ts#${calleeName}`,
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature,
+      dependencyFingerprint: "source-only",
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    });
+    const resolutionsByFile = new Map<string, CallSiteResolutionRecord[]>([
+      [
+        "mixed.ts",
+        [
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            1,
+            "sampled",
+            "cert-rule-v1",
+          ),
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            2,
+            "ruleOnly",
+            "cert-rule-v1",
+          ),
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            3,
+            "uncertified",
+            "unseen-rule-v1",
+          ),
+        ],
+      ],
+      [
+        "rule-only.ts",
+        [
+          makeResolution(
+            "rule-only.ts",
+            ruleOnlySourceHash,
+            1,
+            "ruleOnly",
+            "cert-rule-v1",
+          ),
+        ],
+      ],
+      [
+        "invalid-evidence.ts",
+        [
+          {
+            ...makeResolution(
+              "invalid-evidence.ts",
+              invalidEvidenceSourceHash,
+              0,
+              "missingKey",
+              "cert-rule-v1",
+              0,
+            ),
+            callSiteKey: "",
+          },
+          makeResolution(
+            "invalid-evidence.ts",
+            mismatchedSourceHash,
+            1,
+            "sourceMismatch",
+            "cert-rule-v1",
+            0,
+          ),
+          makeResolution(
+            "invalid-evidence.ts",
+            invalidEvidenceSourceHash,
+            2,
+            "missingSignature",
+            "",
+            0,
+          ),
+        ],
+      ],
+      [
+        "coverage-mismatch.ts",
+        [
+          makeResolution(
+            "coverage-mismatch.ts",
+            coverageSourceHash,
+            0,
+            "known",
+            "cert-rule-v1",
+            0,
+          ),
+          makeResolution(
+            "coverage-mismatch.ts",
+            coverageSourceHash,
+            1,
+            "extra",
+            "cert-rule-v1",
+            0,
+          ),
+        ],
+      ],
+    ]);
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(
+          (_projectId: number, file: string) =>
+            resolutionsByFile.get(file) ?? [],
+        ),
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "mixed.ts", commitSha: HEAD_SHA },
+      { file: "rule-only.ts", commitSha: HEAD_SHA },
+      { file: "invalid-evidence.ts", commitSha: HEAD_SHA },
+      { file: "coverage-mismatch.ts", commitSha: HEAD_SHA },
+    ]);
+
+    let request: EdgeResolutionRequest | undefined;
+    const provider: IEdgeResolutionProvider = {
+      name: "canary-test-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (value) => {
+        request = value;
+        return {
+          edges: [],
+          filesProcessed: value.files,
+          filesFailed: [],
+        };
+      }),
+    };
+    registerProvider(provider);
+
+    try {
+      const result = await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () =>
+              new Map([
+                ["mixed.ts", mixedSourceHash],
+                ["rule-only.ts", ruleOnlySourceHash],
+                ["invalid-evidence.ts", invalidEvidenceSourceHash],
+                ["coverage-mismatch.ts", coverageSourceHash],
+              ]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+        callResolutionCanary: {
+          certifiedRuleSignatures: new Set(["cert-rule-v1"]),
+          canaryRate: 0.5,
+        },
+      });
+
+      expect(request).toBeDefined();
+      const receivedRequest = request!;
+      expect(receivedRequest.files).toEqual(
+        expect.arrayContaining([
+          "mixed.ts",
+          "invalid-evidence.ts",
+          "coverage-mismatch.ts",
+        ]),
+      );
+      expect(receivedRequest.files).toHaveLength(3);
+      expect(receivedRequest.files).not.toContain("rule-only.ts");
+      expect(receivedRequest.callsByFile).toMatchObject({
+        "mixed.ts": [
+          {
+            targetFunction: "sampled",
+            startLine: 1,
+            startColumn: 2,
+            callSiteKey: createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "sampled",
+            }),
+            ruleSignature: "cert-rule-v1",
+            resolutionClass: "proven",
+            verificationMode: "canary",
+          },
+          {
+            targetFunction: "uncertified",
+            startLine: 3,
+            startColumn: 2,
+            callSiteKey: createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 3,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "uncertified",
+            }),
+            ruleSignature: "unseen-rule-v1",
+            resolutionClass: "proven",
+            verificationMode: "tier-b",
+          },
+        ],
+      });
+      expect(receivedRequest.callResolutionCanary).toMatchObject({
+        policyVersion: "sha256-callsite-rule-class-v1",
+        sampleRate: 0.5,
+        stratification: "rule-signature",
+        hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"],
+        selectedCallSiteKeysByRuleSignature: {
+          "cert-rule-v1": [
+            createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "sampled",
+            }),
+          ],
+        },
+        ruleOverriddenCallSiteKeysByRuleSignature: {
+          "cert-rule-v1": [
+            createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 2,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
+            createPortableCallSiteKey({
+              filePath: "rule-only.ts",
+              sourceContentHash: ruleOnlySourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
+          ],
+        },
+      });
+      expect(receivedRequest.callsByFile?.["invalid-evidence.ts"]).toEqual([
+        {
+          targetFunction: "missingKey",
+          startLine: 0,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+        {
+          targetFunction: "sourceMismatch",
+          startLine: 1,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+        {
+          targetFunction: "missingSignature",
+          startLine: 2,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+      ]);
+      expect(receivedRequest.callsByFile?.["coverage-mismatch.ts"]).toEqual([
+        {
+          targetFunction: "known",
+          startLine: 0,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+      ]);
+      expect(result.filesProcessed).toBe(4);
+      expect(result.filesFailed).toBe(0);
+      expect(fake.tierBProcessed).toEqual(
+        expect.arrayContaining([
+          { projectId: 1, filePath: "rule-only.ts", commitSha: HEAD_SHA },
+          { projectId: 1, filePath: "mixed.ts", commitSha: HEAD_SHA },
+          {
+            projectId: 1,
+            filePath: "invalid-evidence.ts",
+            commitSha: HEAD_SHA,
+          },
+          {
+            projectId: 1,
+            filePath: "coverage-mismatch.ts",
+            commitSha: HEAD_SHA,
+          },
+        ]),
+      );
+      expect(
+        JSON.parse(
+          fake.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING) ?? "{}",
+        ),
+      ).toMatchObject({ headSha: HEAD_SHA, remainingQueue: [] });
     } finally {
       fs.rmSync(workspaceRoot, { recursive: true, force: true });
     }

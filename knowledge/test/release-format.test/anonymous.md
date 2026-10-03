@@ -7,4 +7,3 @@ filePath: test/release-format.test.ts
 # Symbol: anonymous
 
 File: `test/release-format.test.ts`
-

@@ -7,4 +7,3 @@ filePath: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/call-site-resolutions.integration.test.ts`
-

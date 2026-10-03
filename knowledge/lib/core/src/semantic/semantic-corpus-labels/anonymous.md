@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-corpus-labels.ts#anonymous@L77
+id: lib/core/src/semantic/semantic-corpus-labels.ts#anonymous@L71
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-corpus-labels.ts

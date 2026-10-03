@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#makeWorkspace@L1396
+id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#makeWorkspace@L1913
 type: symbol
 name: makeWorkspace
 filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts

@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts`
+.ts`

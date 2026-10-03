@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/system1-syntax.ts#visit@L1414
+id: lib/core/src/semantic/system1/system1-syntax.ts#visit@L1773
 type: symbol
 name: visit
 filePath: lib/core/src/semantic/system1/system1-syntax.ts

@@ -1302,15 +1302,15 @@
     },
     {
       "filePath": "lib/contracts/src/factory/tokens.ts",
-      "contentHash": "0147f2f706968961296ad5d07085d0105e244e58",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "f90315d2b3760cf56b57ebc361447b7cd3fdde53",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "542cbcaec6a2de8cec66fd453423ddfdb9640e9f",
-      "lastTierBProcessedAt": "2026-10-03 03:26:28",
-      "lastTierBCommitSha": "cb40ddf6332bcb9cd7e47f563007ae58287b61e7"
+      "contentHash": "3714074d4e1cff3aa439796d50e9dc9bc0816f3b",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -1320,9 +1320,21 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/ast.interfaces.ts",
-      "contentHash": "aa19ccfbe66c484cc27afc90ba1724eeff8ba629",
+      "contentHash": "23c7d3b353aab13d91858dc434e3d4d18791cf90",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+    },
+    {
+      "filePath": "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts",
+      "contentHash": "f8a0e38edeb904c4d2fe82d7821dcd9bc771f710",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts",
+      "contentHash": "0e38ef814b889b0451ddea1e40feb1c21a069bfe",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
     },
     {
       "filePath": "lib/contracts/src/interfaces/change-detection.interfaces.ts",
@@ -1673,6 +1685,12 @@
       "lastTierBCommitSha": "cb40ddf6332bcb9cd7e47f563007ae58287b61e7"
     },
     {
+      "filePath": "lib/core/src/ast/ast-worker.call-shape.integration.test.ts",
+      "contentHash": "f718b1c309320f45437d38511235288b0443dc91",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
       "filePath": "lib/core/src/ast/ast-worker.declared-type-facts.integration.test.ts",
       "contentHash": "52cd8beabb9725f83ffd752e75a7fa6c7f50bbf2",
       "lastTierBProcessedAt": "2026-10-03 03:26:28",
@@ -1710,9 +1728,15 @@
     },
     {
       "filePath": "lib/core/src/ast/ast-worker.ts",
-      "contentHash": "3494de1361cceae3ae35a4c2b2cc07bc9b9ecc81",
-      "lastTierBProcessedAt": "2026-10-03 03:26:28",
-      "lastTierBCommitSha": "cb40ddf6332bcb9cd7e47f563007ae58287b61e7"
+      "contentHash": "68150a77f49f6cdf2ccea5901f37163d272de0e6",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/ast/call-site-shape-facts.ts",
+      "contentHash": "a88fb5f963bf62402f6f9711c40028ec4e70766e",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
     },
     {
       "filePath": "lib/core/src/ast/core-pipeline.honest.unit.test.ts",
@@ -2556,15 +2580,51 @@
     },
     {
       "filePath": "lib/core/src/register.ts",
-      "contentHash": "e9371c0d170a36a88b253ba74768d63a74cc0aa7",
+      "contentHash": "2383cf3b5aca173ab0e61079c0dbdc12baa56006",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     },
     {
       "filePath": "lib/core/src/register.unit.test.ts",
-      "contentHash": "e2b8ea40a752e765f351c0ba9ff4ec7499bcd9c5",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "1016a7b300fb53112e53109935005c2cc45d485b",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis-calibration.ts",
+      "contentHash": "b26b94270bd953f54fed0184ad3d88347fa3a640",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
+      "contentHash": "b1232a375015b44ea363593af226c337ad3fd19b",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis-internal.ts",
+      "contentHash": "eb83702a360383937a7095efb1fbd851fb0c4e23",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts",
+      "contentHash": "8224a25a4c848e5b6cbb28caad6c48487796ced9",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts",
+      "contentHash": "4ae28d8c0a238d626659eac5b82f2aba362705a5",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.ts",
+      "contentHash": "fd6610de327d2a2dcf9e23ea557a4c12bb09f3da",
+      "lastTierBProcessedAt": "2026-10-03 04:57:04",
+      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.ts",
@@ -4919,7 +4979,7 @@
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     }
   ],
-  "lastIngestedSourceSha": "cb40ddf6332bcb9cd7e47f563007ae58287b61e7",
+  "lastIngestedSourceSha": "4cb49986755accc142edc43f52e01185b061d12d",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

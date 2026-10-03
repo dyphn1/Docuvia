@@ -1,5 +1,5 @@
 ---
-id: test/phase7-provider-enrichment-tdd-quality.test.ts#anonymous@L379
+id: test/phase7-provider-enrichment-tdd-quality.test.ts#anonymous@L378
 type: symbol
 name: anonymous
 filePath: test/phase7-provider-enrichment-tdd-quality.test.ts

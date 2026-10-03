@@ -116,6 +116,17 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "dependency_path",
     "content_hash",
   ],
+  call_site_rule_quarantines: [
+    "project_id",
+    "rule_signature",
+    "policy_version",
+    "reason",
+    "call_site_key",
+    "source_content_hash",
+    "expected_target_node_key",
+    "observed_target_node_key",
+    "created_at",
+  ],
 };
 
 const EXPECTED_FTS_TABLES = ["l2_nodes_fts", "l3_nodes_fts"];
@@ -297,6 +308,7 @@ describe("applyMigrations", () => {
       "0012_ast_call_sites_callee_fields.sql",
       "0013_call_site_resolutions.sql",
       "0014_call_site_resolution_dependencies.sql",
+      "0015_call_site_rule_quarantines.sql",
     ]);
   });
 
@@ -359,7 +371,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(14);
+    expect(migrationRows).toHaveLength(15);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

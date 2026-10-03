@@ -13,6 +13,7 @@ import {
   type EdgeResolutionRequest,
   type NodeLinkRow,
   type CallSiteResolutionRecord,
+  type CallSiteLspResolutionResult,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
   ANALYZE_LOG_FILE_NAME,
@@ -741,6 +742,153 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     expect(providerFactory).not.toHaveBeenCalled();
 
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[state-diff][error-handling] forwards site-bound LSP outcomes through the batch without deriving evidence from aggregate edges", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-site-evidence-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "caller.ts"),
+      "export function caller() {\n  oldTarget();\n  noAnswer();\n}\n",
+    );
+
+    const sourceContentHash = "7".repeat(64);
+    const callSites = [
+      { targetFunction: "oldTarget", startLine: 1, startColumn: 2 },
+      { targetFunction: "noAnswer", startLine: 2, startColumn: 2 },
+    ];
+    const makeRecord = (
+      startLine: number,
+      calleeName: string,
+    ): CallSiteResolutionRecord => ({
+      callSiteKey: createPortableCallSiteKey({
+        filePath: "caller.ts",
+        sourceContentHash,
+        startLine,
+        startColumn: 2,
+        calleeKind: "bare",
+        calleeName,
+      }),
+      identityVersion: 1,
+      filePath: "caller.ts",
+      sourceContentHash,
+      startLine,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName,
+      callerNodeKey: "caller.ts#caller",
+      resolutionClass: "proven",
+      selectedTargetNodeKey: "targets.ts#oldTarget",
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature: "certified-rule-v1",
+      dependencyFingerprint: "source-only",
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    });
+    const records = [makeRecord(1, "oldTarget"), makeRecord(2, "noAnswer")];
+    const { store } = makeStore(
+      ["caller.ts#caller", "targets.ts#oldTarget", "targets.ts#newTarget"],
+      [{ filePath: "caller.ts", contentHash: sourceContentHash }],
+    );
+    store.callSites.getForFiles = vi.fn(
+      () => new Map([["caller.ts", callSites]]),
+    );
+    const applyTierBVerificationResults = vi.fn();
+    let transactionDepth = 0;
+    Object.defineProperty(store, "withTransaction", {
+      value: (fn: () => unknown) => {
+        transactionDepth++;
+        try {
+          return fn();
+        } finally {
+          transactionDepth--;
+        }
+      },
+    });
+    applyTierBVerificationResults.mockImplementation(() => {
+      expect(transactionDepth).toBe(1);
+    });
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(() => records),
+        applyTierBVerificationResults,
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "caller.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const expectedResults: CallSiteLspResolutionResult[] = [
+      {
+        callSiteKey: records[0].callSiteKey,
+        sourceContentHash,
+        ruleSignature: records[0].ruleSignature,
+        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        expectedTargetNodeKey: records[0].selectedTargetNodeKey!,
+        resolutionClass: "proven",
+        verificationMode: "canary",
+        outcome: "unique-local",
+        targetNodeKey: "targets.ts#newTarget",
+      },
+      {
+        callSiteKey: records[1].callSiteKey,
+        sourceContentHash,
+        ruleSignature: records[1].ruleSignature,
+        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        expectedTargetNodeKey: records[1].selectedTargetNodeKey!,
+        resolutionClass: "proven",
+        verificationMode: "canary",
+        outcome: "no-result",
+      },
+    ];
+    const provider: IEdgeResolutionProvider = {
+      name: "site-evidence-test-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (request) => ({
+        edges: [],
+        filesProcessed: request.files,
+        filesFailed: [],
+        callSiteResults: expectedResults,
+      })),
+    };
+    registerProvider(provider);
+
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () => new Map([["caller.ts", sourceContentHash]]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+        callResolutionCanary: {
+          certifiedRuleSignatures: new Set(["certified-rule-v1"]),
+          canaryRate: 1,
+        },
+      });
+
+      expect(applyTierBVerificationResults).toHaveBeenCalledTimes(1);
+      expect(applyTierBVerificationResults).toHaveBeenCalledWith(
+        1,
+        expectedResults,
+      );
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
 

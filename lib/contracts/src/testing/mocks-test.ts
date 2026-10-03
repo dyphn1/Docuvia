@@ -81,6 +81,13 @@ export function makeMockStore(
       replaceForFile: vi.fn(),
       deleteForFile: vi.fn(),
       getForFile: vi.fn().mockReturnValue([]),
+      applyTierBVerificationResults: vi.fn().mockReturnValue({
+        updatedCallSiteKeys: [],
+        affectedFilePaths: [],
+        quarantinedRuleSignatures: [],
+      }),
+      getQuarantinedRuleSignatures: vi.fn().mockReturnValue([]),
+      getRuleQuarantines: vi.fn().mockReturnValue([]),
       invalidateChangedDependencies: vi.fn().mockReturnValue(0),
       appendObservation: vi.fn(),
       getObservations: vi.fn().mockReturnValue([]),

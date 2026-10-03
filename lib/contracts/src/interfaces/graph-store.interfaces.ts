@@ -654,6 +654,52 @@ export const CallSiteResolutionClasses = {
 export type CallSiteResolutionClass =
   (typeof CallSiteResolutionClasses)[keyof typeof CallSiteResolutionClasses];
 
+/** Tier B response tied to an exact stored site, source snapshot and selected target. Results that
+ *  do not name exactly one local definition never carry a target node key. */
+export type CallSiteLspResolutionResult =
+  | {
+      callSiteKey: string;
+      sourceContentHash: string;
+      ruleSignature: string;
+      verificationPolicyVersion: string;
+      expectedTargetNodeKey: string;
+      resolutionClass: CallSiteResolutionClass;
+      verificationMode: "tier-b" | "canary";
+      outcome: "unique-local";
+      targetNodeKey: string;
+    }
+  | {
+      callSiteKey: string;
+      sourceContentHash: string;
+      ruleSignature: string;
+      verificationPolicyVersion: string;
+      expectedTargetNodeKey: string;
+      resolutionClass: CallSiteResolutionClass;
+      verificationMode: "tier-b" | "canary";
+      outcome: "no-result" | "timeout" | "external" | "multi-location";
+    };
+
+export const CallSiteRuleQuarantineReasons = {
+  TIER_B_TARGET_MISMATCH: "tier-b-target-mismatch",
+} as const;
+
+export interface CallSiteRuleQuarantine {
+  ruleSignature: string;
+  policyVersion: string;
+  reason: (typeof CallSiteRuleQuarantineReasons)[keyof typeof CallSiteRuleQuarantineReasons];
+  callSiteKey: string;
+  sourceContentHash: string;
+  expectedTargetNodeKey: string;
+  observedTargetNodeKey: string;
+  createdAt: string;
+}
+
+export interface CallSiteVerificationApplyResult {
+  updatedCallSiteKeys: string[];
+  affectedFilePaths: string[];
+  quarantinedRuleSignatures: string[];
+}
+
 export const CallSiteVerificationStatuses = {
   UNVERIFIED: "unverified",
   VERIFIED: "verified",
@@ -661,6 +707,9 @@ export const CallSiteVerificationStatuses = {
 } as const;
 export type CallSiteVerificationStatus =
   (typeof CallSiteVerificationStatuses)[keyof typeof CallSiteVerificationStatuses];
+
+export const CALL_SITE_VERIFICATION_POLICY_VERSION =
+  "sha256-callsite-rule-class-v1" as const;
 
 export const CallSiteResolutionObservationSources = {
   SCOPE_RESOLVER: "scope-resolver",
@@ -702,6 +751,7 @@ export interface CallSiteResolutionRecord {
   dependencyFingerprint: string;
   dependencies: CallSiteResolutionDependency[];
   verificationStatus: CallSiteVerificationStatus;
+  /** Unique local target observed by Tier B when status is verified or contradicted. */
   verifiedTargetNodeKey: string | null;
   isStale: boolean;
   candidates: CallSiteResolutionCandidate[];
@@ -735,6 +785,15 @@ export interface ICallSiteResolutionsRepo {
   deleteForFile(projectId: number, filePath: string): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Applies site-bound Tier B responses and atomically rebuilds affected calls projections. */
+  applyTierBVerificationResults(
+    projectId: number,
+    results: CallSiteLspResolutionResult[],
+  ): CallSiteVerificationApplyResult;
+  /** Locally quarantined signatures survive batches and force future replacement rows to Tier B. */
+  getQuarantinedRuleSignatures(projectId: number): string[];
+  /** Local-only quarantine evidence; excluded from portable snapshots. */
+  getRuleQuarantines(projectId: number): CallSiteRuleQuarantine[];
   /** Marks current resolutions stale when a dependency's observed hash differs from current content. */
   invalidateChangedDependencies(
     projectId: number,

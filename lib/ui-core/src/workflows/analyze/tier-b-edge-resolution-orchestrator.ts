@@ -10,6 +10,7 @@ import {
   ENCODING_HEX,
   type EdgeResolutionCallSite,
   type CallResolutionCanaryRequestMetadata,
+  type CallSiteLspResolutionResult,
   createPortableCallSiteKey,
   type EdgeResolutionFileFailure,
   type EdgeResolutionOutcome,
@@ -46,6 +47,8 @@ export interface DegradedLanguage {
  *  `unavailableReason` keep working unmodified. */
 export interface MergedEdgeResolutionOutcome {
   edges: ResolvedCallEdge[];
+  /** Exact source-bound LSP outcomes, kept separate from compatibility edge aggregation. */
+  callSiteResults?: CallSiteLspResolutionResult[];
   filesProcessed: string[];
   filesFailed: EdgeResolutionFileFailure[];
   /** Set when at least one queued language's provider could not run at all -- every degraded
@@ -99,10 +102,13 @@ function mergeOutcomeInto(
   edges: ResolvedCallEdge[],
   filesProcessed: string[],
   filesFailed: EdgeResolutionFileFailure[],
+  callSiteResults: CallSiteLspResolutionResult[],
 ): void {
   for (const edge of outcome.edges) edges.push(edge);
   for (const file of outcome.filesProcessed) filesProcessed.push(file);
   for (const failure of outcome.filesFailed) filesFailed.push(failure);
+  for (const result of outcome.callSiteResults ?? [])
+    callSiteResults.push(result);
 }
 
 /** Issue #33: classify the batch's degradation shape and derive its aggregate `unavailableReason`.
@@ -182,6 +188,7 @@ export async function resolveEdgesForLanguageBuckets(
   const filesProcessed: string[] = [];
   const filesFailed: EdgeResolutionFileFailure[] = [];
   const degradedLanguages: DegradedLanguage[] = [];
+  const callSiteResults: CallSiteLspResolutionResult[] = [];
 
   for (const languageId of Object.keys(buckets) as TierBLanguageId[]) {
     const entries = buckets[languageId];
@@ -232,7 +239,13 @@ export async function resolveEdgesForLanguageBuckets(
       callResolutionCanary: selected.canaryMetadata,
     });
 
-    mergeOutcomeInto(outcome, edges, filesProcessed, filesFailed);
+    mergeOutcomeInto(
+      outcome,
+      edges,
+      filesProcessed,
+      filesFailed,
+      callSiteResults,
+    );
     if (outcome.unavailableReason) {
       degradedLanguages.push({
         languageId,
@@ -245,15 +258,26 @@ export async function resolveEdgesForLanguageBuckets(
   const { unavailableReason, fullyDegraded, strayLanguageDegraded } =
     classifyDegradation(buckets, degradedLanguages);
 
-  return {
-    edges,
-    filesProcessed,
-    filesFailed,
-    unavailableReason,
-    degradedLanguages,
-    fullyDegraded,
-    strayLanguageDegraded,
-  };
+  return withCallSiteResults(
+    {
+      edges,
+      filesProcessed,
+      filesFailed,
+      unavailableReason,
+      degradedLanguages,
+      fullyDegraded,
+      strayLanguageDegraded,
+    },
+    callSiteResults,
+  );
+}
+
+function withCallSiteResults(
+  outcome: Omit<MergedEdgeResolutionOutcome, "callSiteResults">,
+  callSiteResults: CallSiteLspResolutionResult[],
+): MergedEdgeResolutionOutcome {
+  if (callSiteResults.length === 0) return outcome;
+  return { ...outcome, callSiteResults };
 }
 
 /** Normalizes a path to forward slashes for comparison against `IGitProvider`'s posix-keyed maps
@@ -743,18 +767,56 @@ function selectCallSite(
   policy: CallResolutionTierBCanaryPolicy | undefined,
   sampleRate: number | undefined,
 ): CallSiteSelection {
-  if (
-    resolution &&
-    isCertifiedNonCanaryCallSite(resolution, sourceContentHash, policy)
-  ) {
-    return { callSite, overriddenKey: resolution };
-  }
+  const nonCanarySelection = selectCertifiedNonCanary(
+    callSite,
+    resolution,
+    sourceContentHash,
+    policy,
+  );
+  if (nonCanarySelection) return nonCanarySelection;
   if (!resolution || !policy || sampleRate === undefined) {
-    return {
-      callSite: policy ? { ...callSite, verificationMode: "tier-b" } : callSite,
-    };
+    return selectTierBOnlyCallSite(callSite, policy);
   }
+  return selectPotentialCanaryCallSite(
+    callSite,
+    resolution,
+    sourceContentHash,
+    policy,
+    sampleRate,
+  );
+}
 
+function selectCertifiedNonCanary(
+  callSite: EdgeResolutionCallSite,
+  resolution: CallSiteResolutionRecord | undefined,
+  sourceContentHash: string,
+  policy: CallResolutionTierBCanaryPolicy | undefined,
+): CallSiteSelection | undefined {
+  if (
+    !resolution ||
+    !isCertifiedNonCanaryCallSite(resolution, sourceContentHash, policy)
+  ) {
+    return undefined;
+  }
+  return { callSite, overriddenKey: resolution };
+}
+
+function selectTierBOnlyCallSite(
+  callSite: EdgeResolutionCallSite,
+  policy: CallResolutionTierBCanaryPolicy | undefined,
+): CallSiteSelection {
+  return {
+    callSite: policy ? { ...callSite, verificationMode: "tier-b" } : callSite,
+  };
+}
+
+function selectPotentialCanaryCallSite(
+  callSite: EdgeResolutionCallSite,
+  resolution: CallSiteResolutionRecord,
+  sourceContentHash: string,
+  policy: CallResolutionTierBCanaryPolicy,
+  sampleRate: number,
+): CallSiteSelection {
   const isCanary =
     isCertifiedProvenCallSite(resolution, sourceContentHash, policy) &&
     isCallResolutionTierBCanary(
@@ -769,6 +831,11 @@ function selectCallSite(
       callSiteKey: resolution.callSiteKey,
       ruleSignature: resolution.ruleSignature,
       resolutionClass: resolution.resolutionClass,
+      verificationPolicyVersion: CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
+      sourceContentHash: resolution.sourceContentHash,
+      ...(resolution.selectedTargetNodeKey
+        ? { expectedTargetNodeKey: resolution.selectedTargetNodeKey }
+        : {}),
       verificationMode: isCanary ? "canary" : "tier-b",
     },
     ...(isCanary ? { canaryKey: resolution } : {}),

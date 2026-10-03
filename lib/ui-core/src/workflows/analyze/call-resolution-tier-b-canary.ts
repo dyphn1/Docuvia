@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
-import type { CallSiteResolutionRecord } from "@workspace/contracts";
+import {
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
+  type CallSiteResolutionRecord,
+} from "@workspace/contracts";
 
 export const CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION =
-  "sha256-callsite-rule-class-v1" as const;
+  CALL_SITE_VERIFICATION_POLICY_VERSION;
 export const DEFAULT_CALL_RESOLUTION_TIER_B_CANARY_RATE = 0.1;
 
 export interface CallResolutionTierBCanaryPolicy {

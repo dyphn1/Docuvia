@@ -3,6 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import DatabaseConstructor from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type {
+  CallSiteLspResolutionResult,
+  CallSiteResolutionRecord,
+} from "@workspace/contracts";
+import { createPortableCallSiteKey } from "@workspace/contracts";
 import { GraphStore } from "./graph-store.js";
 
 describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
@@ -69,6 +74,451 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
         }),
       ]),
     ).toThrow(/likely class requires confidence/);
+  });
+
+  it("[state-diff][error-handling] quarantines a contradicted signature and makes future rows ambiguous", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const otherCallerId = store.graph.insertNode({
+      projectId,
+      name: "other caller",
+      pathPatterns: ["src/other.ts"],
+      nodeKey: "src/other.ts#caller",
+    });
+    const futureCallerId = store.graph.insertNode({
+      projectId,
+      name: "future caller",
+      pathPatterns: ["src/future.ts"],
+      nodeKey: "src/future.ts#caller",
+    });
+    const expectedTargetId = store.graph.insertNode({
+      projectId,
+      name: "expected",
+      pathPatterns: ["src/expected.ts"],
+      nodeKey: "src/expected.ts#run",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "observed",
+      pathPatterns: ["src/observed.ts"],
+      nodeKey: "src/observed.ts#run",
+    });
+    const unrelatedTargetId = store.graph.insertNode({
+      projectId,
+      name: "unrelated target",
+      pathPatterns: ["src/unrelated-target.ts"],
+      nodeKey: "src/unrelated-target.ts#run",
+    });
+    const unrelatedCallerId = store.graph.insertNode({
+      projectId,
+      name: "unrelated caller",
+      pathPatterns: ["src/unrelated-caller.ts"],
+      nodeKey: "src/unrelated-caller.ts#caller",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: expectedTargetId,
+      linkType: "imports",
+    });
+
+    const signature = "strict-proof-v1";
+    const callerKey = siteKey("src/caller.ts");
+    const otherKey = siteKey("src/other.ts");
+    const futureKey = siteKey("src/future.ts");
+    const callerResolution = {
+      ...resolution(callerKey, [], {
+        filePath: "src/caller.ts",
+        callerNodeKey: "src/caller.ts#caller",
+        ruleSignature: signature,
+        selectedTargetNodeKey: "src/expected.ts#run",
+      }),
+    };
+    const otherResolution = {
+      ...resolution(otherKey, [], {
+        filePath: "src/other.ts",
+        callerNodeKey: "src/other.ts#caller",
+        ruleSignature: signature,
+        selectedTargetNodeKey: "src/expected.ts#run",
+      }),
+    };
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      callerResolution,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, "src/other.ts", [
+      otherResolution,
+    ]);
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/unrelated-caller.ts",
+      [
+        resolution(siteKey("src/unrelated-caller.ts", "c".repeat(64)), [], {
+          filePath: "src/unrelated-caller.ts",
+          callerNodeKey: "src/unrelated-caller.ts#caller",
+          sourceContentHash: "c".repeat(64),
+          dependencies: [
+            {
+              filePath: "src/unrelated-caller.ts",
+              contentHash: "c".repeat(64),
+            },
+          ],
+          ruleSignature: "different-rule-v1",
+          selectedTargetNodeKey: "src/unrelated-target.ts#run",
+        }),
+      ],
+    );
+    const otherProjectId = store.projects.insert({
+      name: "call-resolution-other-project",
+      repoUrl: `${tmpDir}-other`,
+    }).id;
+    const otherProjectCallerId = store.graph.insertNode({
+      projectId: otherProjectId,
+      name: "other project caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const otherProjectTargetId = store.graph.insertNode({
+      projectId: otherProjectId,
+      name: "other project target",
+      pathPatterns: ["src/expected.ts"],
+      nodeKey: "src/expected.ts#run",
+    });
+    store.callSiteResolutions.replaceForFile(otherProjectId, "src/caller.ts", [
+      resolution(siteKey("src/caller.ts"), [], {
+        ruleSignature: signature,
+        selectedTargetNodeKey: "src/expected.ts#run",
+      }),
+    ]);
+    store.callSiteResolutions.appendObservation(projectId, {
+      callSiteKey: callerKey,
+      filePath: "src/caller.ts",
+      sourceContentHash: "d".repeat(64),
+      source: "strict-proof",
+      resolutionClass: "proven",
+      targetNodeKey: "src/expected.ts#run",
+      ruleSignature: signature,
+      evidenceJson: "{}",
+    });
+
+    const result: CallSiteLspResolutionResult = {
+      callSiteKey: callerKey,
+      sourceContentHash: "d".repeat(64),
+      ruleSignature: signature,
+      verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+      expectedTargetNodeKey: "src/expected.ts#run",
+      resolutionClass: "proven",
+      verificationMode: "tier-b",
+      outcome: "unique-local",
+      targetNodeKey: "src/observed.ts#run",
+    };
+    const applied = store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      [result],
+    );
+    store.callSiteResolutions.replaceForFile(projectId, "src/future.ts", [
+      resolution(futureKey, [], {
+        filePath: "src/future.ts",
+        callerNodeKey: "src/future.ts#caller",
+        ruleSignature: signature,
+        selectedTargetNodeKey: "src/expected.ts#run",
+      }),
+    ]);
+
+    expect({
+      applied,
+      futureResolution: store.callSiteResolutions.getForFile(
+        projectId,
+        "src/future.ts",
+      )[0],
+    }).toMatchObject({
+      applied: {
+        updatedCallSiteKeys: [callerKey, otherKey],
+        affectedFilePaths: ["src/caller.ts", "src/other.ts"],
+        quarantinedRuleSignatures: [signature],
+      },
+      futureResolution: {
+        resolutionClass: "ambiguous",
+        selectedTargetNodeKey: null,
+        verificationStatus: "unverified",
+        verifiedTargetNodeKey: null,
+      },
+    });
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([signature]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantines(projectId),
+    ).toMatchObject([
+      {
+        ruleSignature: signature,
+        policyVersion: "sha256-callsite-rule-class-v1",
+        reason: "tier-b-target-mismatch",
+        callSiteKey: callerKey,
+        expectedTargetNodeKey: "src/expected.ts#run",
+        observedTargetNodeKey: "src/observed.ts#run",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts"),
+    ).toMatchObject([
+      {
+        resolutionClass: "ambiguous",
+        selectedTargetNodeKey: null,
+        verificationStatus: "contradicted",
+        verifiedTargetNodeKey: "src/observed.ts#run",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/other.ts"),
+    ).toMatchObject([
+      {
+        resolutionClass: "ambiguous",
+        selectedTargetNodeKey: null,
+        verificationStatus: "unverified",
+        verifiedTargetNodeKey: null,
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
+    ).toHaveLength(2);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+    expect(
+      store.graph
+        .getOutgoingRelations(otherCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+    expect(store.graph.getOutgoingRelations(callerId)).toContainEqual({
+      id: expectedTargetId,
+      name: "expected",
+      type: "module",
+      linkType: "imports",
+    });
+    expect(
+      store.callSiteResolutions.getForFile(
+        projectId,
+        "src/unrelated-caller.ts",
+      ),
+    ).toMatchObject([
+      {
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/unrelated-target.ts#run",
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(unrelatedCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: unrelatedTargetId,
+        name: "unrelated target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(otherProjectId),
+    ).toEqual([]);
+    expect(
+      store.callSiteResolutions.getForFile(otherProjectId, "src/caller.ts"),
+    ).toMatchObject([
+      {
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/expected.ts#run",
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(otherProjectCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: otherProjectTargetId,
+        name: "other project target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+
+    expect(
+      store.graph
+        .getOutgoingRelations(futureCallerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
+  it("[error-handling] rolls back signature quarantine, observations and projection together", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const expectedTargetId = store.graph.insertNode({
+      projectId,
+      name: "expected",
+      pathPatterns: ["src/expected.ts"],
+      nodeKey: "src/expected.ts#run",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "observed",
+      pathPatterns: ["src/observed.ts"],
+      nodeKey: "src/observed.ts#run",
+    });
+    const callSiteKey = siteKey("src/caller.ts");
+    const signature = "rollback-rule-v1";
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], {
+        ruleSignature: signature,
+        selectedTargetNodeKey: "src/expected.ts#run",
+      }),
+    ]);
+    const observationsBefore = store.callSiteResolutions.getObservations(
+      projectId,
+      "src/caller.ts",
+    );
+    const mismatch: CallSiteLspResolutionResult = {
+      callSiteKey,
+      sourceContentHash: "d".repeat(64),
+      ruleSignature: signature,
+      verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+      expectedTargetNodeKey: "src/expected.ts#run",
+      resolutionClass: "proven",
+      verificationMode: "canary",
+      outcome: "unique-local",
+      targetNodeKey: "src/observed.ts#run",
+    };
+
+    expect(() =>
+      store.withTransaction(() => {
+        store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+          mismatch,
+        ]);
+        throw new Error("force quarantine rollback");
+      }),
+    ).toThrow(/force quarantine rollback/);
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([]);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts"),
+    ).toMatchObject([
+      {
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/expected.ts#run",
+        verificationStatus: "unverified",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
+    ).toEqual(observationsBefore);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: expectedTargetId,
+        name: "expected",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+  });
+
+  it("[state-diff] treats non-unique responses as observations and verifies an equal target", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const outcomes = [
+      "no-result",
+      "timeout",
+      "external",
+      "multi-location",
+      "unique-local",
+    ] as const;
+    const records = outcomes.map((_, index) => {
+      const targetNodeKey = `src/target-${index}.ts#run`;
+      store.graph.insertNode({
+        projectId,
+        name: `target-${index}`,
+        pathPatterns: [`src/target-${index}.ts`],
+        nodeKey: targetNodeKey,
+      });
+      return resolution(
+        siteKey("src/caller.ts", "d".repeat(64), 7 + index),
+        [],
+        {
+          startColumn: 7 + index,
+          ruleSignature: `non-contradiction-${index}`,
+          selectedTargetNodeKey: targetNodeKey,
+        },
+      );
+    });
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      records,
+    );
+
+    const results: CallSiteLspResolutionResult[] = outcomes.map(
+      (outcome, index) => {
+        const common = {
+          callSiteKey: records[index].callSiteKey,
+          sourceContentHash: records[index].sourceContentHash,
+          ruleSignature: records[index].ruleSignature,
+          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          expectedTargetNodeKey: records[index].selectedTargetNodeKey!,
+          resolutionClass: "proven" as const,
+          verificationMode: "canary" as const,
+        };
+        if (outcome === "unique-local") {
+          return {
+            ...common,
+            outcome,
+            targetNodeKey: records[index].selectedTargetNodeKey!,
+          };
+        }
+        return { ...common, outcome };
+      },
+    );
+
+    store.callSiteResolutions.applyTierBVerificationResults(projectId, results);
+
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([]);
+    const updatedRecords = new Map(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map((record) => [record.callSiteKey, record]),
+    );
+    for (const [index, outcome] of outcomes.entries()) {
+      expect(updatedRecords.get(records[index].callSiteKey)).toMatchObject({
+        resolutionClass: "proven",
+        verificationStatus:
+          outcome === "unique-local" ? "verified" : "unverified",
+      });
+    }
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toHaveLength(5);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
+    ).toHaveLength(5);
   });
 
   it("[error-handling] rolls back a partial call-site replacement", () => {
@@ -555,18 +1005,7 @@ function resolution(
     ordinal: number;
     evidenceJson: string;
   }>,
-  overrides: Partial<{
-    filePath: string;
-    resolutionClass:
-      | "proven"
-      | "likely"
-      | "ambiguous"
-      | "unresolved"
-      | "external"
-      | "unsupported";
-    confidence: number | null;
-    dependencies: Array<{ filePath: string; contentHash: string | null }>;
-  }> = {},
+  overrides: Partial<CallSiteResolutionRecord> = {},
 ) {
   return {
     callSiteKey,
@@ -597,4 +1036,19 @@ function resolution(
 
 function portableKey(digit: string): string {
   return `call-site:v1:${digit.repeat(64)}`;
+}
+
+function siteKey(
+  filePath: string,
+  sourceContentHash = "d".repeat(64),
+  startColumn = 7,
+): string {
+  return createPortableCallSiteKey({
+    filePath,
+    sourceContentHash,
+    startLine: 2,
+    startColumn,
+    calleeKind: "bare",
+    calleeName: "run",
+  });
 }

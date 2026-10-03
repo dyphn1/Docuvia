@@ -1,4 +1,7 @@
-import type { CallSiteResolutionClass } from "./graph-store.interfaces.js";
+import type {
+  CallSiteLspResolutionResult,
+  CallSiteResolutionClass,
+} from "./graph-store.interfaces.js";
 
 /**
  * D1 edge-resolution provider seam (phase1-decision-integration.md §8b; PLAT-007 Tier B) —
@@ -74,6 +77,8 @@ export interface EdgeResolutionOutcome {
   edges: ResolvedCallEdge[];
   filesProcessed: string[];
   filesFailed: EdgeResolutionFileFailure[];
+  /** Optional additive evidence channel. Legacy providers continue to report aggregate edges. */
+  callSiteResults?: CallSiteLspResolutionResult[];
   unavailableReason?: string;
 }
 
@@ -95,6 +100,11 @@ export interface EdgeResolutionCallSite {
   /** Resolution evidence paired with `callSiteKey`; never inferred from receiver/callee text. */
   ruleSignature?: string;
   resolutionClass?: CallSiteResolutionClass;
+  verificationPolicyVersion?: string;
+  /** The exact source bytes whose portable identity was checked by the caller. */
+  sourceContentHash?: string;
+  /** Current selected target at the same call-site key and source hash. */
+  expectedTargetNodeKey?: string;
   /** `canary` is a deterministic sample of an already-certified proven signature. */
   verificationMode?: "tier-b" | "canary";
 }

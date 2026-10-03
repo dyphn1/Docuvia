@@ -198,6 +198,9 @@ export type {
   CallSiteResolutionRecord,
   CallSiteResolutionObservationInput,
   CallSiteResolutionObservation,
+  CallSiteLspResolutionResult,
+  CallSiteRuleQuarantine,
+  CallSiteVerificationApplyResult,
   ICallSiteResolutionsRepo,
   L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
@@ -211,6 +214,8 @@ export {
   CallSiteResolutionClasses,
   CallSiteVerificationStatuses,
   CallSiteResolutionObservationSources,
+  CallSiteRuleQuarantineReasons,
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   ExtractedDecision,

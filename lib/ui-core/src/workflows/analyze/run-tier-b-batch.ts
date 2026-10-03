@@ -550,55 +550,13 @@ async function applyResolvedEdges(
 
   await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
     await store.withWriteLock(() => {
-      currentBatchEntries = retainEntriesStillInTierBQueue(batchEntries, store);
-      const currentBatchFiles = new Set(
-        currentBatchEntries.map((entry) => entry.file),
+      const applied = store.withTransaction(() =>
+        applyTierBBatchWrites(store, outcome, headSha, batchEntries),
       );
-      processedFiles = outcome.filesProcessed.filter((file) =>
-        currentBatchFiles.has(file),
-      );
-
-      const existingLinks = new Set(
-        store.graph
-          .getAllLinks()
-          .map(
-            (l) => `${l.source_node_id}->${l.target_node_id}->${l.link_type}`,
-          ),
-      );
-
-      for (const edge of outcome.edges) {
-        if (!isNodeKeyInFiles(edge.sourceNodeKey, currentBatchFiles)) {
-          continue;
-        }
-
-        const sourceId = store.graph.findNodeIdByNodeKey(edge.sourceNodeKey);
-        const targetId = store.graph.findNodeIdByNodeKey(edge.targetNodeKey);
-        if (sourceId === undefined || targetId === undefined) continue;
-
-        const linkKey = `${sourceId}->${targetId}->${LinkTypes.CALLS}`;
-        if (existingLinks.has(linkKey)) continue;
-        existingLinks.add(linkKey);
-
-        store.graph.insertLink({
-          sourceNodeId: sourceId,
-          targetNodeId: targetId,
-          linkType: LinkTypes.CALLS,
-        });
-        edgesApplied++;
-      }
-
-      edgesPruned = store.graph.pruneOrphanedLinks();
-
-      const project = store.projects.getFirst();
-      if (project) {
-        for (const file of processedFiles) {
-          store.files.markTierBProcessed({
-            projectId: project.id,
-            filePath: file,
-            commitSha: headSha,
-          });
-        }
-      }
+      edgesApplied = applied.edgesApplied;
+      edgesPruned = applied.edgesPruned;
+      currentBatchEntries = applied.currentBatchEntries;
+      processedFiles = applied.processedFiles;
     });
   });
 
@@ -608,6 +566,86 @@ async function applyResolvedEdges(
     currentBatchEntries,
     processedFiles,
   };
+}
+
+function applyTierBBatchWrites(
+  store: IGraphStore,
+  outcome: MergedEdgeResolutionOutcome,
+  headSha: string | null,
+  batchEntries: TierBQueueEntry[],
+): {
+  edgesApplied: number;
+  edgesPruned: number;
+  currentBatchEntries: TierBQueueEntry[];
+  processedFiles: string[];
+} {
+  const currentBatchEntries = retainEntriesStillInTierBQueue(
+    batchEntries,
+    store,
+  );
+  const currentBatchFiles = new Set(
+    currentBatchEntries.map((entry) => entry.file),
+  );
+  const processedFiles = outcome.filesProcessed.filter((file) =>
+    currentBatchFiles.has(file),
+  );
+  const edgesApplied = applyAggregateCallEdges(
+    store,
+    outcome.edges,
+    currentBatchFiles,
+  );
+
+  const project = store.projects.getFirst();
+  if (project && outcome.callSiteResults?.length) {
+    store.callSiteResolutions?.applyTierBVerificationResults(
+      project.id,
+      outcome.callSiteResults,
+    );
+  }
+  const edgesPruned = store.graph.pruneOrphanedLinks();
+
+  if (project) {
+    for (const file of processedFiles) {
+      store.files.markTierBProcessed({
+        projectId: project.id,
+        filePath: file,
+        commitSha: headSha,
+      });
+    }
+  }
+  return { edgesApplied, edgesPruned, currentBatchEntries, processedFiles };
+}
+
+function applyAggregateCallEdges(
+  store: IGraphStore,
+  edges: MergedEdgeResolutionOutcome["edges"],
+  currentBatchFiles: ReadonlySet<string>,
+): number {
+  let edgesApplied = 0;
+  const existingLinks = new Set(
+    store.graph
+      .getAllLinks()
+      .map(
+        (link) =>
+          `${link.source_node_id}->${link.target_node_id}->${link.link_type}`,
+      ),
+  );
+  for (const edge of edges) {
+    if (!isNodeKeyInFiles(edge.sourceNodeKey, currentBatchFiles)) continue;
+    const sourceId = store.graph.findNodeIdByNodeKey(edge.sourceNodeKey);
+    const targetId = store.graph.findNodeIdByNodeKey(edge.targetNodeKey);
+    if (sourceId === undefined || targetId === undefined) continue;
+    const linkKey = `${sourceId}->${targetId}->${LinkTypes.CALLS}`;
+    if (existingLinks.has(linkKey)) continue;
+    existingLinks.add(linkKey);
+    store.graph.insertLink({
+      sourceNodeId: sourceId,
+      targetNodeId: targetId,
+      linkType: LinkTypes.CALLS,
+    });
+    edgesApplied++;
+  }
+  return edgesApplied;
 }
 
 /** Symbol node keys use `<file>#<symbol>`; file-level keys are the file path alone. Git paths may

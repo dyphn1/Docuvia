@@ -9,6 +9,7 @@ import type {
   EdgeResolutionProviderConfig,
   EdgeResolutionRequest,
   IEdgeResolutionProvider,
+  CallSiteLspResolutionResult,
   ResolvedCallEdge,
   ILogger,
 } from "@workspace/contracts";
@@ -115,6 +116,63 @@ function normalizeDocumentSymbols(
         }
       : symbol,
   );
+}
+
+type VerifiedCallSiteRequest = EdgeResolutionCallSite & {
+  callSiteKey: string;
+  sourceContentHash: string;
+  ruleSignature: string;
+  resolutionClass: NonNullable<EdgeResolutionCallSite["resolutionClass"]>;
+  verificationPolicyVersion: string;
+  verificationMode: "tier-b" | "canary";
+  expectedTargetNodeKey: string;
+};
+
+type ForwardDefinitionResponse =
+  | {
+      result:
+        | { uri: string; range: LspRange }[]
+        | { uri: string; range: LspRange }
+        | null;
+    }
+  | { timedOut: true };
+
+function hasCallSiteVerificationIdentity(
+  callSite: EdgeResolutionCallSite,
+): callSite is VerifiedCallSiteRequest {
+  const requiredStrings = [
+    callSite.callSiteKey,
+    callSite.ruleSignature,
+    callSite.verificationPolicyVersion,
+    callSite.expectedTargetNodeKey,
+  ];
+  const hasRequiredStrings = requiredStrings.every(isNonEmptyString);
+  const hasResolutionShape = Boolean(
+    callSite.resolutionClass && callSite.verificationMode,
+  );
+  return (
+    hasRequiredStrings &&
+    /^[\da-f]{64}$/i.test(callSite.sourceContentHash ?? "") &&
+    hasResolutionShape
+  );
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function callSiteVerificationBase(
+  callSite: VerifiedCallSiteRequest,
+): Omit<CallSiteLspResolutionResult, "outcome" | "targetNodeKey"> {
+  return {
+    callSiteKey: callSite.callSiteKey,
+    sourceContentHash: callSite.sourceContentHash,
+    ruleSignature: callSite.ruleSignature,
+    verificationPolicyVersion: callSite.verificationPolicyVersion,
+    expectedTargetNodeKey: callSite.expectedTargetNodeKey,
+    resolutionClass: callSite.resolutionClass,
+    verificationMode: callSite.verificationMode,
+  };
 }
 
 /** Applies `LspLanguageConfig.normalizeSymbolName` (when configured) to a symbol name before it
@@ -233,6 +291,7 @@ interface SharedBatchState {
    *  Phase 4+. */
   pinnedPaths: Set<string>;
   usedNodeKeysByFile: UsedNodeKeysByFile;
+  callSiteResults: CallSiteLspResolutionResult[];
 }
 
 /** One file's outcome from `runOneSlot`, written into `processAllFiles`'s index-ordered `slots`
@@ -676,6 +735,15 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       edges,
       filesProcessed,
       filesFailed,
+      ...(outcomes.some((outcome) => outcome.callSiteResults)
+        ? {
+            callSiteResults: outcomes
+              .flatMap((outcome) => outcome.callSiteResults ?? [])
+              .sort((left, right) =>
+                left.callSiteKey.localeCompare(right.callSiteKey),
+              ),
+          }
+        : {}),
     };
     if (unavailableReasons === outcomes.length && outcomes.length > 0)
       merged.unavailableReason = outcomes.find(
@@ -902,6 +970,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       inFlightOpens: new Map(),
       pinnedPaths: new Set(),
       usedNodeKeysByFile: new Map(),
+      callSiteResults: [],
     };
     // This probe's `state` is throwaway -- discarded the moment this function returns. Every file
     // it opens must get an explicit `didClose` before that happens, or the next poll (fresh
@@ -1028,6 +1097,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       inFlightOpens: new Map(),
       pinnedPaths: new Set(),
       usedNodeKeysByFile: new Map(),
+      callSiteResults: [],
     };
 
     const slots: (RunOneSlotResult | undefined)[] = new Array(files.length);
@@ -1123,6 +1193,13 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       edges,
       filesProcessed,
       filesFailed,
+      ...(state.callSiteResults.length > 0
+        ? {
+            callSiteResults: state.callSiteResults.sort((left, right) =>
+              left.callSiteKey.localeCompare(right.callSiteKey),
+            ),
+          }
+        : {}),
       ...(deadlineExceeded
         ? { unavailableReason: LSP_MESSAGES.batchTimedOut(timeoutMs) }
         : {}),
@@ -1527,29 +1604,65 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // round-trips overlap instead of serializing. The client correlates by id, so each result stays
     // zipped to its call site.
     const definitions = await Promise.all(
-      callSites.map(({ startLine, startColumn }) =>
-        client.request<
-          | { uri: string; range: LspRange }[]
-          | { uri: string; range: LspRange }
-          | null
-        >(
-          LspMethods.DEFINITION,
-          {
-            textDocument: { uri: caller.uri },
-            position: { line: startLine, character: startColumn },
-          },
-          this.requestTimeoutMs,
-        ),
-      ),
+      callSites.map(async (callSite) => {
+        try {
+          const result = await client.request<
+            | { uri: string; range: LspRange }[]
+            | { uri: string; range: LspRange }
+            | null
+          >(
+            LspMethods.DEFINITION,
+            {
+              textDocument: { uri: caller.uri },
+              position: {
+                line: callSite.startLine,
+                character: callSite.startColumn,
+              },
+            },
+            this.requestTimeoutMs,
+          );
+          return { result } as const;
+        } catch (error) {
+          if (
+            hasCallSiteVerificationIdentity(callSite) &&
+            error instanceof Error &&
+            error.message ===
+              LSP_MESSAGES.requestTimedOut(
+                LspMethods.DEFINITION,
+                this.requestTimeoutMs,
+              )
+          ) {
+            return { timedOut: true } as const;
+          }
+          throw error;
+        }
+      }),
     );
 
     for (let i = 0; i < callSites.length; i++) {
-      const { startLine, startColumn } = callSites[i];
-      const targetNodeKey = await this.resolveFirstDefinitionTarget(
+      const callSite = callSites[i];
+      const { startLine, startColumn } = callSite;
+      const response = definitions[i];
+      let targetNodeKey: string | undefined;
+      if (hasCallSiteVerificationIdentity(callSite)) {
+        await this.applySiteBoundDefinitionResult(
+          client,
+          workspaceRoot,
+          relativePath,
+          callSite,
+          response,
+          state,
+        );
+        continue;
+      }
+      if ("timedOut" in response) {
+        continue;
+      }
+      targetNodeKey = await this.resolveFirstDefinitionTarget(
         client,
         workspaceRoot,
         relativePath,
-        definitions[i],
+        response.result,
         state,
       );
       if (targetNodeKey === undefined) continue;
@@ -1585,6 +1698,65 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       }
     }
     return edges;
+  }
+
+  private async applySiteBoundDefinitionResult(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    relativePath: string,
+    callSite: VerifiedCallSiteRequest,
+    response: ForwardDefinitionResponse,
+    state: SharedBatchState,
+  ): Promise<void> {
+    const evidence = callSiteVerificationBase(callSite);
+    if ("timedOut" in response) {
+      state.callSiteResults.push({ ...evidence, outcome: "timeout" });
+      return;
+    }
+    const locations = response.result
+      ? Array.isArray(response.result)
+        ? response.result
+        : [response.result]
+      : [];
+    if (locations.length !== 1) {
+      state.callSiteResults.push({
+        ...evidence,
+        outcome: locations.length === 0 ? "no-result" : "multi-location",
+      });
+      return;
+    }
+    const [location] = locations;
+    if (this.isExternalDefinition(workspaceRoot, location.uri)) {
+      state.callSiteResults.push({ ...evidence, outcome: "external" });
+      return;
+    }
+    const targetNodeKey = await this.resolveTargetNodeKey(
+      client,
+      workspaceRoot,
+      relativePath,
+      location,
+      state,
+    );
+    if (targetNodeKey === undefined) {
+      state.callSiteResults.push({ ...evidence, outcome: "no-result" });
+      return;
+    }
+    state.callSiteResults.push({
+      ...evidence,
+      outcome: "unique-local",
+      targetNodeKey,
+    });
+    // Site-bound evidence uses the transactional resolution projection. Do not also emit a
+    // site-specific edge through the aggregate channel: it cannot encode signature quarantine.
+  }
+
+  private isExternalDefinition(workspaceRoot: string, uri: string): boolean {
+    try {
+      const relativePath = path.relative(workspaceRoot, fileURLToPath(uri));
+      return path.isAbsolute(relativePath) || relativePath.startsWith("..");
+    } catch {
+      return false;
+    }
   }
 
   /** Normalizes a `textDocument/definition` answer (null, a single Location, or a Location[] — e.g.

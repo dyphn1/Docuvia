@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts#anonymous@L254
+id: test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts#anonymous@L62
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts
@@ -7,3 +7,4 @@ filePath: test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts
 # Symbol: anonymous
 
 File: `test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts`
+

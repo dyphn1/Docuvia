@@ -677,6 +677,12 @@ export interface CallSiteResolutionCandidate {
   evidenceJson: string;
 }
 
+/** File inputs whose hashes contributed to the current resolution's dependency fingerprint. */
+export interface CallSiteResolutionDependency {
+  filePath: string;
+  contentHash: string | null;
+}
+
 /** Current content-scoped resolution for one call site. Candidates are normalized separately. */
 export interface CallSiteResolutionRecord {
   callSiteKey: string;
@@ -694,6 +700,7 @@ export interface CallSiteResolutionRecord {
   resolver: string;
   ruleSignature: string;
   dependencyFingerprint: string;
+  dependencies: CallSiteResolutionDependency[];
   verificationStatus: CallSiteVerificationStatus;
   verifiedTargetNodeKey: string | null;
   isStale: boolean;
@@ -726,6 +733,11 @@ export interface ICallSiteResolutionsRepo {
   ): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Marks current resolutions stale when a dependency's observed hash differs from current content. */
+  invalidateChangedDependencies(
+    projectId: number,
+    changedDependencies: CallSiteResolutionDependency[],
+  ): number;
   /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
   appendObservation(
     projectId: number,

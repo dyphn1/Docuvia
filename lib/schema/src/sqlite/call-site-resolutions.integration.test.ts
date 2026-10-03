@@ -139,6 +139,50 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
     ).toMatchObject([{ callSiteKey: portableKey("f") }]);
   });
+
+  it("[state-diff] marks only sites that consulted a changed dependency stale", () => {
+    const staleKey = portableKey("1");
+    const freshKey = portableKey("2");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      {
+        ...resolution(staleKey, []),
+        dependencies: [
+          { filePath: "src/dependency.ts", contentHash: "e".repeat(64) },
+        ],
+      },
+      {
+        ...resolution(freshKey, []),
+        dependencies: [
+          { filePath: "src/dependency.ts", contentHash: "f".repeat(64) },
+        ],
+      },
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, "src/other-caller.ts", [
+      resolution(portableKey("3"), [], {
+        filePath: "src/other-caller.ts",
+        dependencies: [
+          { filePath: "src/unrelated.ts", contentHash: "a".repeat(64) },
+        ],
+      }),
+    ]);
+
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        { filePath: "src/dependency.ts", contentHash: "f".repeat(64) },
+      ]),
+    ).toBe(1);
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ callSiteKey, isStale }) => ({ callSiteKey, isStale })),
+    ).toEqual([
+      { callSiteKey: staleKey, isStale: true },
+      { callSiteKey: freshKey, isStale: false },
+    ]);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/other-caller.ts"),
+    ).toMatchObject([{ callSiteKey: portableKey("3"), isStale: false }]);
+  });
 });
 
 function resolution(
@@ -149,6 +193,7 @@ function resolution(
     evidenceJson: string;
   }>,
   overrides: Partial<{
+    filePath: string;
     resolutionClass:
       | "proven"
       | "likely"
@@ -157,12 +202,13 @@ function resolution(
       | "external"
       | "unsupported";
     confidence: number | null;
+    dependencies: Array<{ filePath: string; contentHash: string | null }>;
   }> = {},
 ) {
   return {
     callSiteKey,
     identityVersion: 1 as const,
-    filePath: "src/caller.ts",
+    filePath: overrides.filePath ?? "src/caller.ts",
     sourceContentHash: "d".repeat(64),
     startLine: 2,
     startColumn: 7,
@@ -175,6 +221,9 @@ function resolution(
     resolver: "phase3-test",
     ruleSignature: "rule-v1",
     dependencyFingerprint: "e".repeat(64),
+    dependencies: overrides.dependencies ?? [
+      { filePath: "src/caller.ts", contentHash: "d".repeat(64) },
+    ],
     verificationStatus: "unverified" as const,
     verifiedTargetNodeKey: null,
     isStale: false,

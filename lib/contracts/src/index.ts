@@ -187,6 +187,7 @@ export type {
   CallSiteVerificationStatus,
   CallSiteResolutionObservationSource,
   CallSiteResolutionCandidate,
+  CallSiteResolutionDependency,
   CallSiteResolutionRecord,
   CallSiteResolutionObservationInput,
   CallSiteResolutionObservation,

@@ -36,6 +36,7 @@ export const SchemaTables = {
   AST_CALL_SITES: "ast_call_sites",
   CALL_SITE_RESOLUTIONS: "call_site_resolutions",
   CALL_SITE_RESOLUTION_CANDIDATES: "call_site_resolution_candidates",
+  CALL_SITE_RESOLUTION_DEPENDENCIES: "call_site_resolution_dependencies",
   CALL_SITE_RESOLUTION_OBSERVATIONS: "call_site_resolution_observations",
 } as const;
 

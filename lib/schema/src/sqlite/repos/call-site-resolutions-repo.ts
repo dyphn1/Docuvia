@@ -9,6 +9,7 @@ import {
 import type {
   CallSiteResolutionCandidate,
   CallSiteResolutionClass,
+  CallSiteResolutionDependency,
   CallSiteResolutionObservation,
   CallSiteResolutionObservationInput,
   CallSiteResolutionRecord,
@@ -27,6 +28,8 @@ const CALL_SITE_RESOLUTIONS_ERRORS = {
     `Failed to append call-site observation ${callSiteKey} in project ${projectId}`,
   READ_OBSERVATIONS_FAILED: (projectId: number, filePath: string) =>
     `Failed to read call-site observations for ${filePath} in project ${projectId}`,
+  INVALIDATE_DEPENDENCIES_FAILED: (projectId: number) =>
+    `Failed to invalidate call-site resolutions for changed dependencies in project ${projectId}`,
 } as const;
 
 interface ResolutionDbRow {
@@ -67,6 +70,12 @@ interface ObservationDbRow {
   created_at: string;
 }
 
+interface DependencyDbRow {
+  call_site_key: string;
+  dependency_path: string;
+  content_hash: string | null;
+}
+
 /** Current per-site resolution, normalized alternatives, and append-only evidence history. */
 export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
   constructor(private readonly db: Database.Database) {}
@@ -99,6 +108,15 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
             .run(projectId, projectId, filePath);
           this.db
             .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES}
+               WHERE project_id = ? AND call_site_key IN (
+                 SELECT call_site_key FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+                 WHERE project_id = ? AND file_path = ?
+               )`,
+            )
+            .run(projectId, projectId, filePath);
+          this.db
+            .prepare(
               `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
                WHERE project_id = ? AND file_path = ?`,
             )
@@ -116,6 +134,11 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
             `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES} (
               project_id, call_site_key, ordinal, target_node_key, evidence_json
             ) VALUES (?, ?, ?, ?, ?)`,
+          );
+          const insertDependency = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} (
+              project_id, call_site_key, dependency_path, content_hash
+            ) VALUES (?, ?, ?, ?)`,
           );
 
           for (const resolution of resolutions) {
@@ -147,6 +170,16 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
                 candidate.ordinal,
                 candidate.targetNodeKey,
                 candidate.evidenceJson,
+              );
+            }
+            for (const dependency of normalizeResolutionDependencies(
+              resolution,
+            )) {
+              insertDependency.run(
+                projectId,
+                resolution.callSiteKey,
+                dependency.filePath,
+                dependency.contentHash,
               );
             }
           }
@@ -204,6 +237,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
             verificationStatus: row.verification_status,
             verifiedTargetNodeKey: row.verified_target_node_key,
             isStale: row.is_stale === 1,
+            dependencies: [],
             candidates: [],
           };
           result.push(current);
@@ -220,11 +254,74 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           });
         }
       }
+      const dependencyRows = this.db
+        .prepare(
+          `SELECT d.call_site_key, d.dependency_path, d.content_hash
+           FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+             ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+           WHERE r.project_id = ? AND r.file_path = ?
+           ORDER BY d.call_site_key COLLATE BINARY, d.dependency_path COLLATE BINARY`,
+        )
+        .all(projectId, filePath) as DependencyDbRow[];
+      const byKey = new Map(
+        result.map((resolution) => [resolution.callSiteKey, resolution]),
+      );
+      for (const row of dependencyRows) {
+        byKey.get(row.call_site_key)?.dependencies.push({
+          filePath: row.dependency_path,
+          contentHash: row.content_hash,
+        });
+      }
       return result;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.READ_FILE_FAILED(projectId, filePath),
+        err,
+      );
+    }
+  }
+
+  invalidateChangedDependencies(
+    projectId: number,
+    changedDependencies: CallSiteResolutionDependency[],
+  ): number {
+    assertProjectId(projectId);
+    const dependencies = normalizeChangedDependencies(changedDependencies);
+    if (dependencies.length === 0) return 0;
+
+    try {
+      return this.db
+        .transaction(() => {
+          const markStale = this.db.prepare(
+            `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
+             SET is_stale = 1
+             WHERE project_id = ? AND is_stale = 0
+               AND EXISTS (
+                 SELECT 1
+                 FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                 WHERE d.project_id = ${SchemaTables.CALL_SITE_RESOLUTIONS}.project_id
+                   AND d.call_site_key = ${SchemaTables.CALL_SITE_RESOLUTIONS}.call_site_key
+                   AND d.dependency_path = ?
+                   AND d.content_hash IS NOT ?
+               )`,
+          );
+          let newlyStale = 0;
+          for (const dependency of dependencies) {
+            newlyStale += markStale.run(
+              projectId,
+              dependency.filePath,
+              dependency.contentHash,
+            ).changes;
+          }
+          return newlyStale;
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_DEPENDENCIES_FAILED(projectId),
         err,
       );
     }
@@ -320,6 +417,63 @@ function validateResolution(
   validateSelectionAndConfidence(resolution);
   validateVerification(resolution);
   validateCandidates(resolution.candidates);
+  normalizeResolutionDependencies(resolution);
+}
+
+function normalizeResolutionDependencies(
+  resolution: CallSiteResolutionRecord,
+): CallSiteResolutionDependency[] {
+  if (!Array.isArray(resolution.dependencies)) {
+    throw invalidInput("Call-site dependencies must be an array");
+  }
+  const byPath = new Map<string, string | null>();
+  for (const dependency of resolution.dependencies) {
+    assertWorkspacePath(dependency?.filePath);
+    assertNullableHash(dependency.contentHash, "dependency content hash");
+    const priorHash = byPath.get(dependency.filePath);
+    if (
+      byPath.has(dependency.filePath) &&
+      priorHash !== dependency.contentHash
+    ) {
+      throw invalidInput("Duplicate dependency paths must have the same hash");
+    }
+    byPath.set(dependency.filePath, dependency.contentHash);
+  }
+
+  const callerHash = byPath.get(resolution.filePath);
+  if (
+    byPath.has(resolution.filePath) &&
+    callerHash !== resolution.sourceContentHash
+  ) {
+    throw invalidInput("Caller dependency hash must match source content hash");
+  }
+  byPath.set(resolution.filePath, resolution.sourceContentHash);
+  return [...byPath]
+    .sort(([left], [right]) => comparePaths(left, right))
+    .map(([filePath, contentHash]) => ({ filePath, contentHash }));
+}
+
+function normalizeChangedDependencies(
+  changedDependencies: CallSiteResolutionDependency[],
+): CallSiteResolutionDependency[] {
+  if (!Array.isArray(changedDependencies)) {
+    throw invalidInput("Changed dependencies must be an array");
+  }
+  const byPath = new Map<string, string | null>();
+  for (const dependency of changedDependencies) {
+    assertWorkspacePath(dependency?.filePath);
+    assertNullableHash(dependency.contentHash, "dependency content hash");
+    if (
+      byPath.has(dependency.filePath) &&
+      byPath.get(dependency.filePath) !== dependency.contentHash
+    ) {
+      throw invalidInput("Changed dependency paths must have one current hash");
+    }
+    byPath.set(dependency.filePath, dependency.contentHash);
+  }
+  return [...byPath]
+    .sort(([left], [right]) => comparePaths(left, right))
+    .map(([filePath, contentHash]) => ({ filePath, contentHash }));
 }
 
 function validateResolutionIdentity(
@@ -513,6 +667,10 @@ function assertHash(value: string, name: string): void {
   }
 }
 
+function assertNullableHash(value: string | null, name: string): void {
+  if (value !== null) assertHash(value, name);
+}
+
 function assertNonEmpty(value: string | null, name: string): void {
   if (
     typeof value !== "string" ||
@@ -535,6 +693,10 @@ function assertOneOf<T extends string>(
 
 function isZeroBasedInteger(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0;
+}
+
+function comparePaths(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function parseEvidence(evidenceJson: string): void {

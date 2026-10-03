@@ -110,6 +110,12 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "receiver_text",
     "callee_kind",
   ],
+  call_site_resolution_dependencies: [
+    "project_id",
+    "call_site_key",
+    "dependency_path",
+    "content_hash",
+  ],
 };
 
 const EXPECTED_FTS_TABLES = ["l2_nodes_fts", "l3_nodes_fts"];
@@ -166,6 +172,12 @@ const EXPECTED_COLUMN_TYPES: Record<string, Record<string, string>> = {
     callee_name: "TEXT",
     receiver_text: "TEXT",
     callee_kind: "TEXT",
+  },
+  call_site_resolution_dependencies: {
+    project_id: "INTEGER",
+    call_site_key: "TEXT",
+    dependency_path: "TEXT",
+    content_hash: "TEXT",
   },
 };
 
@@ -284,6 +296,7 @@ describe("applyMigrations", () => {
       "0011_ast_call_sites_target_idx.sql",
       "0012_ast_call_sites_callee_fields.sql",
       "0013_call_site_resolutions.sql",
+      "0014_call_site_resolution_dependencies.sql",
     ]);
   });
 
@@ -346,7 +359,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(13);
+    expect(migrationRows).toHaveLength(14);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

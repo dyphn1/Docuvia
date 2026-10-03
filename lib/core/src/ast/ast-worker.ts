@@ -14,10 +14,12 @@ import {
   type AstDeclaredTypeLanguage,
   type AstExportKind,
   type AstDeclaredTypeFacts,
+  type AstCallSiteShapeFacts,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
 import { extractDeclaredTypeFacts } from "./declared-type-facts.js";
+import { extractCallSiteShapeFacts } from "./call-site-shape-facts.js";
 import {
   collectClassNodes,
   collectFunctionNodes,
@@ -116,6 +118,8 @@ export interface AstParseResponse {
     extends?: Array<{ sourceClass: string; targetClass: string }>;
     /** Optional explicit TypeScript/JavaScript syntax facts; not a resolution or proof. */
     declaredTypeFacts?: AstDeclaredTypeFacts;
+    /** Optional binding-scoped, syntax-only call features; not a resolution or proof. */
+    callSiteShapeFacts?: AstCallSiteShapeFacts;
     /**
      * `new Worker(<path>)` spawn sites (TS/JS only — see `WORKER_SPAWN_LANGUAGES`), one per
      * resolved spawn call, attributing it to its enclosing function like `calls` does.
@@ -619,6 +623,11 @@ function parseAndExtract(
           declaredTypeFacts: extractDeclaredTypeFacts(
             tree.rootNode,
             declaredTypeLanguage,
+          ),
+          callSiteShapeFacts: extractCallSiteShapeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+            data.calls,
           ),
         }
       : data;

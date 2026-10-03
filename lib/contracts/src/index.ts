@@ -128,6 +128,14 @@ export type {
 } from "./interfaces/declared-type-facts.interfaces.js";
 export { AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
 export type {
+  AstCallArgumentKind,
+  AstCallReceiverBinding,
+  AstCallReceiverBindingKind,
+  AstCallSiteShapeFact,
+  AstCallSiteShapeFacts,
+} from "./interfaces/call-site-shape-facts.interfaces.js";
+export { AST_CALL_SITE_SHAPE_SCHEMA_VERSION } from "./interfaces/call-site-shape-facts.interfaces.js";
+export type {
   ProjectRow,
   ProjectFileRow,
   ProjectFileSnapshotMetadata,

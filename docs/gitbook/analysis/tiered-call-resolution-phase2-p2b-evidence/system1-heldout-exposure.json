@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2b-system1-heldout-exposure/1",
+  "openedAt": "2026-10-03T16:23:56.471Z",
+  "freezeArtifactSha256": "daa3b456d3032236b0e2c46f4fb376456befa5925a26c4acf90debf6eba9a740",
+  "splitsOpened": ["test", "temporal"]
+}

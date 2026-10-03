@@ -12,6 +12,10 @@ export interface Phase2EvaluationObservation {
   readonly split: string;
   readonly duplicateGroup: string;
   readonly repoFamily: string;
+  /** Present in snapshot-scoped candidate prediction artifacts (schema v2). */
+  readonly snapshotId?: string;
+  /** Repository identity from the pinned source sidecar, not the oracle label. */
+  readonly repoId?: string;
   readonly calleeKind?: AstCallSiteShapeFact["calleeKind"] | "unmapped";
   readonly ruleSignature: string | null;
   readonly candidateTargetIds: readonly string[];
@@ -73,6 +77,8 @@ export interface Phase2EvaluationLabel {
   readonly split: string;
   readonly duplicateGroup: string;
   readonly repoFamily: string;
+  /** Available in pinned Phase 1 corpus labels; optional for pure evaluator fixtures. */
+  readonly repoId?: string;
   readonly positiveTargetIds: readonly string[];
   readonly reviewStatus: string;
 }

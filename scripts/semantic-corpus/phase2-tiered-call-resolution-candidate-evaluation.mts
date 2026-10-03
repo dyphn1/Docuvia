@@ -6,6 +6,7 @@ import {
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
 import {
   applyCallShapesFromCurrentPredictions,
+  candidateOracleMappingProvenance,
   candidateOracleTargetMapping,
   compareGeneratedCandidateCounts,
   compareCandidateSets,
@@ -23,12 +24,33 @@ import {
   writeJson,
 } from "./phase2-tiered-call-resolution-support.mjs";
 
+const MAPPING_IMPLEMENTATION_FILES = [
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-evaluation.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
+].sort();
+
+function mappingImplementationProvenance(): {
+  readonly hash: string;
+  readonly files: Readonly<Record<string, string>>;
+} {
+  const root = path.resolve(import.meta.dirname, "../..");
+  const files = Object.fromEntries(
+    MAPPING_IMPLEMENTATION_FILES.map((file) => [
+      file,
+      sha256(readFileSync(path.join(root, file))),
+    ]),
+  );
+  return { hash: canonicalHash(files), files };
+}
+
 const ALLOWED_SPLITS = ["train", "calibration", "test", "temporal"] as const;
 type EvaluationSplit = (typeof ALLOWED_SPLITS)[number];
 
 interface CandidatePredictionManifest {
-  readonly schemaVersion: 1;
-  readonly measurement: "phase2-p2a-candidate-predictions/1";
+  readonly schemaVersion: 2;
+  readonly measurement: "phase2-p2a-candidate-predictions/2";
+  readonly candidateOracleMappingScope: "snapshotId+repoId";
   readonly predictionRows: number;
   readonly predictionSha256: string;
   readonly correctedFactsSha256: string;
@@ -87,8 +109,9 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   );
   const manifest = readJson<CandidatePredictionManifest>(manifestPath);
   if (
-    manifest.schemaVersion !== 1 ||
-    manifest.measurement !== "phase2-p2a-candidate-predictions/1"
+    manifest.schemaVersion !== 2 ||
+    manifest.measurement !== "phase2-p2a-candidate-predictions/2" ||
+    manifest.candidateOracleMappingScope !== "snapshotId+repoId"
   )
     throw new Error("Unsupported candidate prediction manifest.");
   const predictionsBytesHash = sha256(readFileSync(options.predictionsPath));
@@ -106,13 +129,22 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   if (sampleIds.size !== observations.length)
     throw new Error("Candidate prediction split has duplicate sample IDs.");
   const labels = await labelsForSplitIsolated(options.split, sampleIds);
+  if (
+    observations.some(
+      (row) => row.snapshotId === undefined || row.repoId === undefined,
+    )
+  )
+    throw new Error("Snapshot-scoped predictions require source identities.");
   const verifiedSourceHashes = verifyPhase1SourceSidecars();
   for (const [name, hash] of Object.entries(manifest.sourceInputHashes))
     if (verifiedSourceHashes[name] !== hash)
       throw new Error(`Candidate source input hash changed for ${name}.`);
   const oracleMapping = candidateOracleTargetMapping(allFactRows());
+  const oracleMappingProvenance =
+    candidateOracleMappingProvenance(oracleMapping);
+  const mappingImplementation = mappingImplementationProvenance();
   const uniqueOracleAliasHash = canonicalHash(
-    [...oracleMapping.uniquelyMappedAliases].sort(),
+    oracleMappingProvenance.hashInput,
   );
   const currentUniqueInputs = filterInputsToUniqueOracleTargets(
     observations,
@@ -208,8 +240,10 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       commonSourceInputs: manifest.sourceInputHashes,
       commonCorrectedFactsSha256: manifest.correctedFactsSha256,
       commonLabelRowsHash: labelRowsHash,
-      commonOracleAliasAllowlistHash: uniqueOracleAliasHash,
-      commonUniqueOracleAliasCount: oracleMapping.uniquelyMappedAliases.size,
+      commonSnapshotScopedOracleMappingHash: uniqueOracleAliasHash,
+      commonUniqueOracleAliasCount: oracleMappingProvenance.uniqueAliasCount,
+      commonCandidateOracleMappingImplementationHash:
+        mappingImplementation.hash,
       callShapeGrouping:
         "current source-only prediction rows, joined by sampleId for both versions",
       baselineMetrics,
@@ -282,12 +316,12 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       baselineCandidateSetDistribution: baselineDistribution,
       currentCandidateSetDistribution: candidateSetDistribution,
       interpretation:
-        "Both versions are re-evaluated with the same current unique candidate-alias allowlist built from the pinned corrected facts. The unique-oracle denominator excludes positive aliases that are ambiguous or absent in those facts. Candidate-set sizes use raw generatedCandidateCount and include every confirmed site. Test and temporal splits are not part of this train/calibration comparison.",
+        "Both versions are re-evaluated with the same snapshotId+repoId-scoped unique candidate-alias mapping built from the pinned corrected facts. The unique-oracle denominator excludes positive aliases that are ambiguous or absent within that source snapshot. Candidate-set sizes use raw generatedCandidateCount and include every confirmed site. Test and temporal splits are not part of this train/calibration comparison.",
     };
   }
   const result = {
-    schemaVersion: 1,
-    measurement: "phase2-p2a-candidate-recall/1",
+    schemaVersion: 2,
+    measurement: "phase2-p2a-candidate-recall/2",
     evaluatedAt: new Date().toISOString(),
     split: options.split,
     provenance: {
@@ -297,8 +331,14 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       sourceInputHashes: manifest.sourceInputHashes,
       implementationHash: manifest.implementationHash,
       candidateGeneratorVersion: manifest.candidateGeneratorVersion,
-      uniqueOracleAliasAllowlistHash: uniqueOracleAliasHash,
-      uniqueOracleAliasCount: oracleMapping.uniquelyMappedAliases.size,
+      snapshotScopedOracleMappingHash: uniqueOracleAliasHash,
+      uniqueOracleAliasCount: oracleMappingProvenance.uniqueAliasCount,
+      candidateOracleMappingScope: oracleMappingProvenance.scope,
+      candidateOracleMappingScopeCount:
+        oracleMappingProvenance.hashInput.length,
+      allOracleAliasCount: oracleMappingProvenance.allAliasCount,
+      candidateOracleMappingImplementationHash: mappingImplementation.hash,
+      candidateOracleMappingImplementationFiles: mappingImplementation.files,
     },
     candidateRecallDomain: {
       totalConfirmedPositiveSiteCount: labels.filter(

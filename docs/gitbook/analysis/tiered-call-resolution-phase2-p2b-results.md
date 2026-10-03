@@ -1,5 +1,9 @@
 # Tiered call resolution P2-B: System One ranking evaluation
 
+## Snapshot-scoped evaluator follow-up
+
+Train and calibration were re-evaluated using the corrected `(snapshotId, repoId)` oracle mapping and schema-v2 source predictions. The recorded ranker metrics and calibration threshold are unchanged. This follow-up did not read test/temporal labels or rerun their evaluator; the earlier held-out results below remain frozen under the v1 unscoped mapping, and their corrected impact is unknown. Read [the scope correction report](tiered-call-resolution-phase2-snapshot-scope-correction.md) for the new train/calibration evidence and provenance. The old held-out artifacts remain historical exposed-data regressions, not confirmation under the corrected mapper.
+
 ## Scope and decision
 
 This slice evaluates the existing deterministic `ordered-evidence-v1` ranker over the source-only candidate sets produced by candidate generator `declared-member-hypothesis-v3`. A score threshold selects an evaluation-only `likely` result or abstains as `ambiguous`. Incomplete candidate inventories are included; this evaluation does not establish `proven`, change the production proof/completeness gate, modify Tier B scheduling or `node_links(calls)`, or authorize skipping Tier B.

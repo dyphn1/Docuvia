@@ -2,6 +2,13 @@ import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
+import {
+  candidateOracleMappingForSource,
+  type CandidateOracleTargetMapping,
+} from "./phase2-tiered-call-resolution-candidate-audit.mjs";
+
+export type SystemOneOracleAliases =
+  ReadonlySet<string> | CandidateOracleTargetMapping;
 
 export interface SystemOneSelectionDecision {
   readonly status: "likely" | "ambiguous";
@@ -85,6 +92,18 @@ interface GroupedRows {
   readonly labelsConflict: boolean;
 }
 
+function oracleAliasesForObservation(
+  mapping: SystemOneOracleAliases,
+  observation: Phase2EvaluationObservation,
+): ReadonlySet<string> {
+  if ("bySnapshotAndRepo" in mapping)
+    return (
+      candidateOracleMappingForSource(mapping, observation)
+        ?.uniquelyMappedAliases ?? new Set<string>()
+    );
+  return mapping;
+}
+
 function canonicalTarget(targetId: string): string {
   return targetId.replace(/@L\d+(?:#\d+)?$/, "");
 }
@@ -127,7 +146,8 @@ function validateSplitInputs(
       throw new Error(`System One label missing for ${observation.sampleId}.`);
     if (
       label.duplicateGroup !== observation.duplicateGroup ||
-      label.repoFamily !== observation.repoFamily
+      label.repoFamily !== observation.repoFamily ||
+      (label.repoId !== undefined && label.repoId !== observation.repoId)
     )
       throw new Error(
         `System One grouping mismatch for ${observation.sampleId}.`,
@@ -143,7 +163,7 @@ function validateSplitInputs(
 function eligibleSystemOneRows(
   observations: readonly Phase2EvaluationObservation[],
   labelsBySample: ReadonlyMap<string, Phase2EvaluationLabel>,
-  uniqueAliases: ReadonlySet<string>,
+  oracleAliases: SystemOneOracleAliases,
 ): {
   readonly rows: readonly ScoredSystemOneRow[];
   readonly eligibleSiteCount: number;
@@ -158,6 +178,10 @@ function eligibleSystemOneRows(
     )
       continue;
     eligibleSiteCount++;
+    const uniqueAliases = oracleAliasesForObservation(
+      oracleAliases,
+      observation,
+    );
     const uniquePositiveTargetIds = [
       ...new Set(
         label.positiveTargetIds
@@ -274,7 +298,7 @@ function groupMetrics(rows: readonly ScoredSystemOneRow[]): {
 export function selectSystemOne(
   observation: Phase2EvaluationObservation,
   thresholdScore: number | null,
-  uniqueAliases: ReadonlySet<string>,
+  oracleAliases: SystemOneOracleAliases,
 ): SystemOneSelectionDecision {
   if (thresholdScore === null)
     return {
@@ -305,6 +329,7 @@ export function selectSystemOne(
     };
   if (observation.tied)
     return { status: "ambiguous", selectedTargetId: null, reason: "rank-tie" };
+  const uniqueAliases = oracleAliasesForObservation(oracleAliases, observation);
   if (!uniqueAliases.has(canonicalTarget(observation.topTargetId)))
     return {
       status: "ambiguous",
@@ -329,7 +354,7 @@ export function selectSystemOne(
 export function evaluateSystemOneSplit(
   observations: readonly Phase2EvaluationObservation[],
   labels: readonly Phase2EvaluationLabel[],
-  uniqueAliases: ReadonlySet<string>,
+  oracleAliases: SystemOneOracleAliases,
   thresholdScore: number | null,
   split = observations[0]?.split ?? "unknown",
 ): SystemOneSplitMetrics {
@@ -337,13 +362,13 @@ export function evaluateSystemOneSplit(
   const built = eligibleSystemOneRows(
     observations,
     labelsBySample,
-    uniqueAliases,
+    oracleAliases,
   );
   const rows = built.rows.map((row) => {
     const selection = selectSystemOne(
       row.observation,
       thresholdScore,
-      uniqueAliases,
+      oracleAliases,
     );
     const selected = selection.status === "likely";
     return {
@@ -441,7 +466,7 @@ export function evaluateSystemOneSplit(
 export function selectSystemOneThreshold(
   observations: readonly Phase2EvaluationObservation[],
   labels: readonly Phase2EvaluationLabel[],
-  uniqueAliases: ReadonlySet<string>,
+  oracleAliases: SystemOneOracleAliases,
   targetAcceptedPrecision = 0.9,
 ): SystemOneThresholdSelection {
   if (
@@ -458,7 +483,7 @@ export function selectSystemOneThreshold(
   const eligibleRows = eligibleSystemOneRows(
     observations,
     labelsBySample,
-    uniqueAliases,
+    oracleAliases,
   ).rows;
   const scores = [
     ...new Set(
@@ -466,7 +491,7 @@ export function selectSystemOneThreshold(
         selectSystemOne(
           row.observation,
           Number.NEGATIVE_INFINITY,
-          uniqueAliases,
+          oracleAliases,
         ).status === "likely" && row.observation.topRankScore !== null
           ? [row.observation.topRankScore]
           : [],
@@ -478,7 +503,7 @@ export function selectSystemOneThreshold(
     metrics: evaluateSystemOneSplit(
       observations,
       labels,
-      uniqueAliases,
+      oracleAliases,
       thresholdScore,
       "calibration",
     ),

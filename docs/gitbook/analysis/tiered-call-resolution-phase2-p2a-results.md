@@ -6,6 +6,10 @@ Scope follows [#559 comment 5969397300](https://github.com/dyphn1/Docuvia/issues
 
 The prior ranking/calibration measurements in [the Phase 2 results](tiered-call-resolution-phase2-results.md) are historical P2-B diagnostics. No ranking thresholds were selected or changed for this candidate-only comparison.
 
+## Snapshot-scoped evaluator correction
+
+The P2-A evaluation originally pooled oracle aliases from all snapshots. A follow-up changed only the post-hoc mapping to scope aliases by `(snapshotId, repoId)`; source candidate generation was already snapshot-local. Train and calibration candidate metrics, candidate-set distributions, labels, and raw predictions are unchanged under the corrected mapping. The old allowlist had 72,676 globally unique alias entries; the corrected mapping has 119,141 uniquely mapped entries across ten scopes. Use [the correction report](tiered-call-resolution-phase2-snapshot-scope-correction.md) and its schema-v2 artifacts for future comparisons. Test and temporal labels were not re-read; the correction's effect on those historical results is unknown.
+
 ## Bounded source rule
 
 Candidate generator version `declared-member-hypothesis-v3` adds only named `owner.kind=program`, `kind=arrow` declarations with supported TS/TSX/JS facts. Candidate identity uses the declaration span. Same-file duplicate names stay distinct candidate keys; if the source alias does not identify one declaration, the alias is excluded from oracle coverage. Function-local, anonymous, and returned arrows remain out of this slice. Added candidates remain ambiguous, with `candidateSetComplete=false`.

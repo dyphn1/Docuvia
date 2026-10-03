@@ -8,6 +8,10 @@ import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mjs";
+import {
+  candidateOracleScopeKey,
+  type CandidateOracleTargetMapping,
+} from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mjs";
 
 function observation(
   sampleId: string,
@@ -51,6 +55,47 @@ function label(
 const aliases = new Set(["src/target.ts#run", "src/wrong.ts#run"]);
 
 describe("P2-B System One selection evaluation", () => {
+  it("[state-diff][error-handling] resolves each observation only against its source snapshot mapping", () => {
+    const target = "src/target.ts#run";
+    const scope = (snapshotId: string, aliases: readonly string[]) => ({
+      snapshotId,
+      repoId: "owner/repo",
+      uniquelyMappedAliases: new Set(aliases),
+      allAliases: new Set(aliases),
+    });
+    const mapping: CandidateOracleTargetMapping = {
+      bySnapshotAndRepo: new Map([
+        [
+          candidateOracleScopeKey("snapshot-a", "owner/repo"),
+          scope("snapshot-a", [target]),
+        ],
+        [
+          candidateOracleScopeKey("snapshot-b", "owner/repo"),
+          scope("snapshot-b", [target]),
+        ],
+      ]),
+    };
+    const fromA = observation("a", "group-a", {
+      snapshotId: "snapshot-a",
+      repoId: "owner/repo",
+    });
+    const fromB = observation("b", "group-b", {
+      snapshotId: "snapshot-b",
+      repoId: "owner/repo",
+    });
+    const missingScope = observation("missing", "group-missing", {
+      snapshotId: "snapshot-c",
+      repoId: "owner/repo",
+    });
+
+    expect(selectSystemOne(fromA, 10, mapping).status).toBe("likely");
+    expect(selectSystemOne(fromB, 10, mapping).status).toBe("likely");
+    expect(selectSystemOne(missingScope, 10, mapping)).toMatchObject({
+      status: "ambiguous",
+      reason: "unmapped-target",
+    });
+  });
+
   it("[happy] allows calibrated likely selection while inventory completeness stays false", () => {
     const row = observation("one", "group-one", {
       candidateSetComplete: false,

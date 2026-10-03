@@ -9,6 +9,15 @@ import { mapCandidateKeysToUnambiguousAliases } from "./phase2-tiered-call-resol
 import type { Phase2FactFile } from "./phase2-tiered-call-resolution-support.mjs";
 
 export interface CandidateOracleTargetMapping {
+  readonly bySnapshotAndRepo: ReadonlyMap<
+    string,
+    CandidateOracleSnapshotMapping
+  >;
+}
+
+export interface CandidateOracleSnapshotMapping {
+  readonly snapshotId: string;
+  readonly repoId: string;
   readonly uniquelyMappedAliases: ReadonlySet<string>;
   readonly allAliases: ReadonlySet<string>;
 }
@@ -93,24 +102,101 @@ function candidateTargetAlias(
 export function candidateOracleTargetMapping(
   factRows: readonly Phase2FactFile[],
 ): CandidateOracleTargetMapping {
-  const candidateKeys: string[] = [];
-  const allAliases = new Set<string>();
+  const rowsByScope = new Map<string, Phase2FactFile[]>();
   for (const row of factRows) {
-    for (const declaration of row.declaredTypeFacts.declarations) {
-      const candidateKey = candidateTargetKeyForDeclaration(
-        row.filePath,
-        declaration,
-      );
-      const alias = candidateTargetAlias(row.filePath, declaration);
-      if (!candidateKey || !alias) continue;
-      candidateKeys.push(candidateKey);
-      allAliases.add(alias);
-    }
+    const key = candidateOracleScopeKey(row.snapshotId, row.repoId);
+    const rows = rowsByScope.get(key) ?? [];
+    rows.push(row);
+    rowsByScope.set(key, rows);
   }
-  const unique = mapCandidateKeysToUnambiguousAliases(candidateKeys, factRows);
+
+  const bySnapshotAndRepo = new Map<string, CandidateOracleSnapshotMapping>();
+  for (const [scopeKey, scopeRows] of rowsByScope) {
+    const candidateKeys: string[] = [];
+    const allAliases = new Set<string>();
+    for (const row of scopeRows) {
+      for (const declaration of row.declaredTypeFacts.declarations) {
+        const candidateKey = candidateTargetKeyForDeclaration(
+          row.filePath,
+          declaration,
+        );
+        const alias = candidateTargetAlias(row.filePath, declaration);
+        if (!candidateKey || !alias) continue;
+        candidateKeys.push(candidateKey);
+        allAliases.add(alias);
+      }
+    }
+    const unique = mapCandidateKeysToUnambiguousAliases(
+      candidateKeys,
+      scopeRows,
+    );
+    const first = scopeRows[0];
+    if (!first) continue;
+    bySnapshotAndRepo.set(scopeKey, {
+      snapshotId: first.snapshotId,
+      repoId: first.repoId,
+      uniquelyMappedAliases: new Set(unique.aliases),
+      allAliases,
+    });
+  }
   return {
-    uniquelyMappedAliases: new Set(unique.aliases),
-    allAliases,
+    bySnapshotAndRepo,
+  };
+}
+
+export function candidateOracleScopeKey(
+  snapshotId: string,
+  repoId: string,
+): string {
+  return JSON.stringify([snapshotId, repoId]);
+}
+
+export function candidateOracleMappingForSource(
+  mapping: CandidateOracleTargetMapping,
+  source: Pick<Phase2EvaluationObservation, "snapshotId" | "repoId">,
+): CandidateOracleSnapshotMapping | undefined {
+  if (!source.snapshotId || !source.repoId) return undefined;
+  return mapping.bySnapshotAndRepo.get(
+    candidateOracleScopeKey(source.snapshotId, source.repoId),
+  );
+}
+
+export function candidateOracleMappingProvenance(
+  mapping: CandidateOracleTargetMapping,
+): {
+  readonly scope: "snapshotId+repoId";
+  readonly hashInput: readonly {
+    readonly snapshotId: string;
+    readonly repoId: string;
+    readonly uniquelyMappedAliases: readonly string[];
+    readonly allAliases: readonly string[];
+  }[];
+  readonly uniqueAliasCount: number;
+  readonly allAliasCount: number;
+} {
+  const hashInput = [...mapping.bySnapshotAndRepo.values()]
+    .map((scope) => ({
+      snapshotId: scope.snapshotId,
+      repoId: scope.repoId,
+      uniquelyMappedAliases: [...scope.uniquelyMappedAliases].sort(),
+      allAliases: [...scope.allAliases].sort(),
+    }))
+    .sort(
+      (left, right) =>
+        left.snapshotId.localeCompare(right.snapshotId) ||
+        left.repoId.localeCompare(right.repoId),
+    );
+  return {
+    scope: "snapshotId+repoId",
+    hashInput,
+    uniqueAliasCount: hashInput.reduce(
+      (count, scope) => count + scope.uniquelyMappedAliases.length,
+      0,
+    ),
+    allAliasCount: hashInput.reduce(
+      (count, scope) => count + scope.allAliases.length,
+      0,
+    ),
   };
 }
 
@@ -124,6 +210,9 @@ export function filterInputsToUniqueOracleTargets(
   mapping: CandidateOracleTargetMapping,
 ): UniqueOracleEvaluationInputs {
   const labelsById = new Map(labels.map((label) => [label.sampleId, label]));
+  const observationsById = new Map(
+    observations.map((observation) => [observation.sampleId, observation]),
+  );
   if (labelsById.size !== labels.length)
     throw new Error("Evaluation labels contain duplicate sample IDs.");
   if (
@@ -135,7 +224,8 @@ export function filterInputsToUniqueOracleTargets(
       return (
         !label ||
         label.split !== observation.split ||
-        label.repoFamily !== observation.repoFamily
+        label.repoFamily !== observation.repoFamily ||
+        (label.repoId !== undefined && label.repoId !== observation.repoId)
       );
     })
   )
@@ -162,13 +252,19 @@ export function filterInputsToUniqueOracleTargets(
       label.positiveTargetIds.length === 0
     )
       return label;
+    const observation = observationsById.get(label.sampleId);
+    const scope = observation
+      ? candidateOracleMappingForSource(mapping, observation)
+      : undefined;
+    const uniqueAliases = scope?.uniquelyMappedAliases ?? new Set<string>();
+    const allAliases = scope?.allAliases ?? new Set<string>();
     const uniqueTargets: string[] = [];
     for (const targetId of label.positiveTargetIds) {
       const canonical = canonicalTargetId(targetId);
-      if (mapping.uniquelyMappedAliases.has(canonical)) {
+      if (uniqueAliases.has(canonical)) {
         uniqueTargets.push(canonical);
         uniqueMappedPositiveTargetOccurrenceCount++;
-      } else if (mapping.allAliases.has(canonical)) {
+      } else if (allAliases.has(canonical)) {
         ambiguousPositiveTargetOccurrenceCount++;
       } else {
         unmappedPositiveTargetOccurrenceCount++;
@@ -181,13 +277,15 @@ export function filterInputsToUniqueOracleTargets(
 
   const filteredObservations = observations.map((observation) => {
     const uniqueCandidates: string[] = [];
+    const scope = candidateOracleMappingForSource(mapping, observation);
+    const uniqueAliases = scope?.uniquelyMappedAliases ?? new Set<string>();
+    const allAliases = scope?.allAliases ?? new Set<string>();
     candidateAliasMembershipCountBeforeFiltering +=
       observation.candidateTargetIds.length;
     if (generatedCandidateCount(observation) > 0) rawCandidateSiteCount++;
     for (const targetId of observation.candidateTargetIds) {
-      if (mapping.uniquelyMappedAliases.has(targetId))
-        uniqueCandidates.push(targetId);
-      else if (mapping.allAliases.has(targetId))
+      if (uniqueAliases.has(targetId)) uniqueCandidates.push(targetId);
+      else if (allAliases.has(targetId))
         droppedAmbiguousCandidateMembershipCount++;
       else droppedUnmappedCandidateMembershipCount++;
     }
@@ -239,6 +337,8 @@ export function applyCallShapesFromCurrentPredictions(
       return (
         !currentRow ||
         currentRow.split !== row.split ||
+        currentRow.snapshotId === undefined ||
+        currentRow.repoId === undefined ||
         currentRow.calleeKind === undefined
       );
     })
@@ -250,6 +350,8 @@ export function applyCallShapesFromCurrentPredictions(
   return baseline.map((row) => ({
     ...row,
     calleeKind: currentById.get(row.sampleId)!.calleeKind,
+    snapshotId: currentById.get(row.sampleId)!.snapshotId,
+    repoId: currentById.get(row.sampleId)!.repoId,
   }));
 }
 

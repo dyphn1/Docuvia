@@ -451,8 +451,9 @@ async function run(options: Phase2RunOptions): Promise<void> {
     writeJson(
       path.join(options.outputDirectory, "candidate-prediction-manifest.json"),
       {
-        schemaVersion: 1,
-        measurement: "phase2-p2a-candidate-predictions/1",
+        schemaVersion: 2,
+        measurement: "phase2-p2a-candidate-predictions/2",
+        candidateOracleMappingScope: "snapshotId+repoId",
         generatedAt: new Date().toISOString(),
         node: codeVersion().node,
         typescript: codeVersion().typescript,

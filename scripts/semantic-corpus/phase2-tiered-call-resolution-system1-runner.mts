@@ -6,7 +6,11 @@ import {
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   CALL_RESOLUTION_RANKING_POLICY_VERSION,
 } from "../../lib/contracts/src/index.js";
-import { candidateOracleTargetMapping } from "./phase2-tiered-call-resolution-candidate-audit.mjs";
+import {
+  candidateOracleMappingProvenance,
+  candidateOracleTargetMapping,
+  type CandidateOracleTargetMapping,
+} from "./phase2-tiered-call-resolution-candidate-audit.mjs";
 import {
   evaluateSystemOneSplit,
   selectSystemOne,
@@ -31,6 +35,8 @@ import {
 const IMPLEMENTATION_FILES = [
   "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-evaluation.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
 ] as const;
 const CORRECTED_FACTS_SHA256 =
   "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e";
@@ -49,8 +55,9 @@ interface Options {
 }
 
 interface PredictionManifest {
-  readonly schemaVersion: 1;
-  readonly measurement: "phase2-p2a-candidate-predictions/1";
+  readonly schemaVersion: 2;
+  readonly measurement: "phase2-p2a-candidate-predictions/2";
+  readonly candidateOracleMappingScope: "snapshotId+repoId";
   readonly predictionRows: number;
   readonly predictionSha256: string;
   readonly correctedFactsSha256: string;
@@ -68,7 +75,8 @@ interface Bundle {
   readonly manifestHash: string;
   readonly predictionHash: string;
   readonly observations: readonly Phase2EvaluationObservation[];
-  readonly uniqueAliases: ReadonlySet<string>;
+  readonly oracleMapping: CandidateOracleTargetMapping;
+  readonly uniqueAliasCount: number;
   readonly aliasHash: string;
   readonly splitAssignmentHash: string;
   readonly sourceHashes: Readonly<Record<string, string>>;
@@ -76,8 +84,8 @@ interface Bundle {
 }
 
 interface FreezeArtifact {
-  readonly schemaVersion: 1;
-  readonly measurement: "phase2-p2b-system1-selection/1";
+  readonly schemaVersion: 2;
+  readonly measurement: "phase2-p2b-system1-selection/2";
   readonly split: "calibration";
   readonly frozenAt: string;
   readonly candidateGeneratorVersion: string;
@@ -93,8 +101,8 @@ interface FreezeArtifact {
   readonly sourceSplitCounts: Readonly<Record<Split, number>>;
   readonly calibrationLabelRowsHash: string;
   readonly calibrationInputFingerprint: string;
-  readonly uniqueOracleAliasAllowlistHash: string;
-  readonly uniqueOracleAliasAllowlistCount: number;
+  readonly snapshotScopedOracleMappingHash: string;
+  readonly snapshotScopedUniqueAliasCount: number;
   readonly calibrationRuleSignatureSetHash: string;
   readonly calibrationRuleSignatureCount: number;
   readonly rankerDevelopmentPolicy: string;
@@ -176,8 +184,9 @@ function loadBundle(predictionsPath: string): Bundle {
   );
   const manifest = readJson<PredictionManifest>(manifestPath);
   if (
-    manifest.schemaVersion !== 1 ||
-    manifest.measurement !== "phase2-p2a-candidate-predictions/1" ||
+    manifest.schemaVersion !== 2 ||
+    manifest.measurement !== "phase2-p2a-candidate-predictions/2" ||
+    manifest.candidateOracleMappingScope !== "snapshotId+repoId" ||
     manifest.labelsRead !== false
   )
     throw new Error("P2-B requires a label-free P2-A prediction manifest.");
@@ -195,6 +204,12 @@ function loadBundle(predictionsPath: string): Bundle {
   const observations = readJsonl<Phase2EvaluationObservation>(predictionsPath);
   if (observations.length !== manifest.predictionRows)
     throw new Error("Source prediction row count differs from manifest.");
+  if (
+    observations.some(
+      (row) => row.snapshotId === undefined || row.repoId === undefined,
+    )
+  )
+    throw new Error("P2-B requires snapshot-scoped source predictions.");
   const sampleIds = new Set(observations.map(({ sampleId }) => sampleId));
   if (sampleIds.size !== observations.length)
     throw new Error("Source predictions contain duplicate sample IDs.");
@@ -212,8 +227,9 @@ function loadBundle(predictionsPath: string): Bundle {
     if (sourceHashes[name] !== expected)
       throw new Error(`Pinned source sidecar changed: ${name}.`);
   verifyOriginalImplementation(manifest);
-  const uniqueAliases =
-    candidateOracleTargetMapping(allFactRows()).uniquelyMappedAliases;
+  const oracleMapping = candidateOracleTargetMapping(allFactRows());
+  const oracleMappingProvenance =
+    candidateOracleMappingProvenance(oracleMapping);
   const splitAssignmentHash = canonicalHash(
     observations
       .map(({ sampleId, split }) => ({ sampleId, split }))
@@ -225,8 +241,9 @@ function loadBundle(predictionsPath: string): Bundle {
     manifestHash: sha256(readFileSync(manifestPath)),
     predictionHash,
     observations,
-    uniqueAliases,
-    aliasHash: canonicalHash([...uniqueAliases].sort()),
+    oracleMapping,
+    uniqueAliasCount: oracleMappingProvenance.uniqueAliasCount,
+    aliasHash: canonicalHash(oracleMappingProvenance.hashInput),
     splitAssignmentHash,
     sourceHashes,
     systemOneHash,
@@ -246,8 +263,9 @@ function commonProvenance(bundle: Bundle) {
     systemOneImplementationHash: bundle.systemOneHash,
     sourceSplitAssignmentHash: bundle.splitAssignmentHash,
     sourceSplitCounts: bundle.manifest.splitCounts,
-    uniqueOracleAliasAllowlistHash: bundle.aliasHash,
-    uniqueOracleAliasAllowlistCount: bundle.uniqueAliases.size,
+    candidateOracleMappingScope: "snapshotId+repoId",
+    snapshotScopedOracleMappingHash: bundle.aliasHash,
+    snapshotScopedUniqueAliasCount: bundle.uniqueAliasCount,
   };
 }
 
@@ -278,8 +296,8 @@ function reportRawMetrics(
   labels: readonly Phase2EvaluationLabel[],
 ) {
   return {
-    schemaVersion: 1,
-    measurement: "phase2-p2b-system1-development/1",
+    schemaVersion: 2,
+    measurement: "phase2-p2b-system1-development/2",
     split,
     generatedAt: new Date().toISOString(),
     provenance: commonProvenance(bundle),
@@ -295,14 +313,14 @@ async function develop(bundle: Bundle, options: Options): Promise<void> {
   const metrics = evaluateSystemOneSplit(
     observations,
     labels,
-    bundle.uniqueAliases,
+    bundle.oracleMapping,
     null,
     "train",
   );
   const candidateScores = [
     ...new Set(
       observations.flatMap((row) =>
-        selectSystemOne(row, Number.NEGATIVE_INFINITY, bundle.uniqueAliases)
+        selectSystemOne(row, Number.NEGATIVE_INFINITY, bundle.oracleMapping)
           .status === "likely" && row.topRankScore !== null
           ? [row.topRankScore]
           : [],
@@ -314,7 +332,7 @@ async function develop(bundle: Bundle, options: Options): Promise<void> {
     metrics: evaluateSystemOneSplit(
       observations,
       labels,
-      bundle.uniqueAliases,
+      bundle.oracleMapping,
       thresholdScore,
       "train",
     ),
@@ -355,8 +373,8 @@ async function calibrate(bundle: Bundle, options: Options): Promise<void> {
     readonly provenance: unknown;
   }>(developmentPath);
   if (
-    development.schemaVersion !== 1 ||
-    development.measurement !== "phase2-p2b-system1-development/1" ||
+    development.schemaVersion !== 2 ||
+    development.measurement !== "phase2-p2b-system1-development/2" ||
     development.split !== "train" ||
     canonicalHash(development.provenance) !==
       canonicalHash(commonProvenance(bundle))
@@ -369,7 +387,7 @@ async function calibrate(bundle: Bundle, options: Options): Promise<void> {
   const result = selectSystemOneThreshold(
     observations,
     labels,
-    bundle.uniqueAliases,
+    bundle.oracleMapping,
     ACCEPTED_PRECISION_TARGET,
   );
   const labelRowsHash = labelsHash(labels);
@@ -397,8 +415,8 @@ async function calibrate(bundle: Bundle, options: Options): Promise<void> {
     })),
   });
   const freeze: FreezeArtifact = {
-    schemaVersion: 1,
-    measurement: "phase2-p2b-system1-selection/1",
+    schemaVersion: 2,
+    measurement: "phase2-p2b-system1-selection/2",
     split: "calibration",
     frozenAt: new Date().toISOString(),
     ...commonProvenance(bundle),
@@ -424,8 +442,8 @@ async function calibrate(bundle: Bundle, options: Options): Promise<void> {
   writeJson(
     path.join(options.outputDirectory, "system1-calibration-metrics.json"),
     {
-      schemaVersion: 1,
-      measurement: "phase2-p2b-system1-calibration/1",
+      schemaVersion: 2,
+      measurement: "phase2-p2b-system1-calibration/2",
       split: "calibration",
       generatedAt: new Date().toISOString(),
       provenance: commonProvenance(bundle),
@@ -445,8 +463,8 @@ function verifyFreeze(freezePath: string, bundle: Bundle): FreezeArtifact {
   const freeze = readJson<FreezeArtifact>(freezePath);
   const current = commonProvenance(bundle);
   if (
-    freeze.schemaVersion !== 1 ||
-    freeze.measurement !== "phase2-p2b-system1-selection/1" ||
+    freeze.schemaVersion !== 2 ||
+    freeze.measurement !== "phase2-p2b-system1-selection/2" ||
     freeze.split !== "calibration" ||
     freeze.candidateGeneratorVersion !== current.candidateGeneratorVersion ||
     freeze.rankingPolicyVersion !== current.rankingPolicyVersion ||
@@ -463,10 +481,10 @@ function verifyFreeze(freezePath: string, bundle: Bundle): FreezeArtifact {
     freeze.sourceSplitAssignmentHash !== current.sourceSplitAssignmentHash ||
     canonicalHash(freeze.sourceSplitCounts) !==
       canonicalHash(current.sourceSplitCounts) ||
-    freeze.uniqueOracleAliasAllowlistHash !==
-      current.uniqueOracleAliasAllowlistHash ||
-    freeze.uniqueOracleAliasAllowlistCount !==
-      current.uniqueOracleAliasAllowlistCount
+    freeze.snapshotScopedOracleMappingHash !==
+      current.snapshotScopedOracleMappingHash ||
+    freeze.snapshotScopedUniqueAliasCount !==
+      current.snapshotScopedUniqueAliasCount
   )
     throw new Error(
       "Frozen P2-B threshold does not match current rules or source inputs.",
@@ -503,8 +521,8 @@ async function regressHeldout(bundle: Bundle, options: Options): Promise<void> {
     exposurePath,
     `${JSON.stringify(
       {
-        schemaVersion: 1,
-        measurement: "phase2-p2b-system1-heldout-exposure/1",
+        schemaVersion: 2,
+        measurement: "phase2-p2b-system1-heldout-exposure/2",
         openedAt: new Date().toISOString(),
         freezeArtifactSha256: sha256(readFileSync(options.freezePath!)),
         splitsOpened: ["test", "temporal"],
@@ -520,15 +538,15 @@ async function regressHeldout(bundle: Bundle, options: Options): Promise<void> {
     const metrics = evaluateSystemOneSplit(
       observations,
       labels,
-      bundle.uniqueAliases,
+      bundle.oracleMapping,
       freeze.thresholdScore,
       split,
     );
     writeJson(
       path.join(options.outputDirectory, `system1-${split}-regression.json`),
       {
-        schemaVersion: 1,
-        measurement: "phase2-p2b-system1-heldout-regression/1",
+        schemaVersion: 2,
+        measurement: "phase2-p2b-system1-heldout-regression/2",
         split,
         evaluatedAt: new Date().toISOString(),
         calibrationFreezeArtifactSha256: sha256(

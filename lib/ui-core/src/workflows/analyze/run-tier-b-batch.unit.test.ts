@@ -186,6 +186,117 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
 });
 
 describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g)", () => {
+  it("[happy] schedules ambiguous, unresolved and unsupported call sites before proven and likely by stable signature groups, while uncertified proven still reaches Tier B", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-resolution-priority-"),
+    );
+    for (const file of [
+      "likely.ts",
+      "proven.ts",
+      "unresolved.ts",
+      "ambiguous-z.ts",
+      "ambiguous-a-1.ts",
+      "ambiguous-a-2.ts",
+      "unsupported.ts",
+    ])
+      fs.writeFileSync(path.join(workspaceRoot, file), "export {}\n");
+
+    const { store } = makeStore();
+    const recordsByFile = new Map([
+      [
+        "likely.ts",
+        [{ resolutionClass: "likely", ruleSignature: "heuristic-v1" }],
+      ],
+      [
+        "proven.ts",
+        [
+          {
+            resolutionClass: "proven",
+            ruleSignature: "single-candidate-this-v1",
+          },
+        ],
+      ],
+      [
+        "unresolved.ts",
+        [
+          { resolutionClass: "likely", ruleSignature: "aaa-likely-v1" },
+          { resolutionClass: "unresolved", ruleSignature: "needs-binding-v1" },
+        ],
+      ],
+      [
+        "ambiguous-z.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "z-rule-v1" }],
+      ],
+      [
+        "ambiguous-a-1.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "a-rule-v1" }],
+      ],
+      [
+        "ambiguous-a-2.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "a-rule-v1" }],
+      ],
+      [
+        "unsupported.ts",
+        [{ resolutionClass: "unsupported", ruleSignature: "unsupported-v1" }],
+      ],
+    ]);
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn((_projectId: number, file: string) =>
+          (recordsByFile.get(file) ?? []).map((record, index) => ({
+            callSiteKey: `${file}:call-${index}`,
+            ...record,
+          })),
+        ),
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "likely.ts", commitSha: HEAD_SHA },
+      { file: "proven.ts", commitSha: HEAD_SHA },
+      { file: "unresolved.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-z.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-a-2.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-a-1.ts", commitSha: HEAD_SHA },
+      { file: "unsupported.ts", commitSha: HEAD_SHA },
+    ]);
+
+    let requestedFiles: string[] = [];
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async (files) => {
+          requestedFiles = files;
+          return { edges: [], filesProcessed: files, filesFailed: [] };
+        },
+      ),
+    );
+
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit(),
+        knowledgeGit: makeKnowledgeGit(),
+      });
+
+      expect(requestedFiles).toEqual([
+        "ambiguous-a-1.ts",
+        "ambiguous-a-2.ts",
+        "unresolved.ts",
+        "unsupported.ts",
+        "ambiguous-z.ts",
+        "proven.ts",
+        "likely.ts",
+      ]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("drops a deleted-at-HEAD entry and skips an unsupported-language entry, both logged, leaving nothing to process", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");

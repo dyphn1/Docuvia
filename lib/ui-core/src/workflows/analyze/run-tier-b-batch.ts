@@ -14,7 +14,11 @@ import { GitConstants } from "@workspace/contracts";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type TierBBatchResult } from "./analyze-result.js";
-import { readTierBQueue, type TierBQueueEntry } from "./tier-b-queue.js";
+import {
+  prioritizeTierBQueueByCallResolution,
+  readTierBQueue,
+  type TierBQueueEntry,
+} from "./tier-b-queue.js";
 import { queueFullTierBResync } from "./queue-full-tier-b-resync.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
@@ -393,7 +397,7 @@ async function dispatchQueue(
   droppedDeleted: TierBQueueEntry[];
   skippedLanguage: TierBQueueEntry[];
 }> {
-  const { workspaceRoot } = deps;
+  const { workspaceRoot, store } = deps;
   const existing: TierBQueueEntry[] = [];
   const droppedDeleted: TierBQueueEntry[] = [];
 
@@ -404,6 +408,17 @@ async function dispatchQueue(
   }
 
   const { buckets, unsupported } = partitionQueueByLanguage(existing);
+  // Preserve the language bucket insertion order from the original queue; prioritize only files
+  // within each bucket so this policy cannot change which provider runs first.
+  for (const languageId of Object.keys(buckets) as TierBLanguageId[]) {
+    const entries = buckets[languageId];
+    if (entries) {
+      buckets[languageId] = prioritizeTierBQueueByCallResolution(
+        store,
+        entries,
+      );
+    }
+  }
   return {
     buckets,
     toProcess: Object.values(buckets).flatMap((entries) => entries ?? []),

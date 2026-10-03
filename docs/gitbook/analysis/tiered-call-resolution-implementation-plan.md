@@ -2,6 +2,12 @@
 
 This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) in ordered, reviewable phases. The ADR accepts the architecture and engineering defaults; it does not certify any rule or authorize skipping Tier B. Each phase has an exit gate. Start the next phase only after its predecessor's code, evidence and review are complete.
 
+## Product priority clarified by #559
+
+The latest direction in [#559 comment 5969397300](https://github.com/dyphn1/Docuvia/issues/559#issuecomment-5969397300) sets the implementation priority: **P1 cheap semantic facts → P2-A candidate recall/set quality → P2-B System One ranking and abstention → P3 strict proof/completeness → P4 Tier B skip/canary → P5 unseen certification.** The snapshot/output capability below remains required product work before certification, but it does not gate P2-A or P2-B.
+
+The cheap first stage should return useful `likely` results for common cases and leave hard or uncertain cases to LSP. The practical target is useful quality around 90% for ordinary cases; this is not a certification threshold. Candidate recall and candidate-set quality come before ranking. `candidateSetComplete` limits `proven` claims and any later Tier B skip authority; it is not a prerequisite for a calibrated `likely` result. Do not grow Tier A into a second TypeScript checker. Keep LSP as fallback and preserve every eligible site in coverage and abstention denominators.
+
 ## Delivery rules
 
 - Fix #561 first. It can proceed independently, but Phase 3 proof work and any certification depend on its verified fix being present on the implementation branch with regression coverage; it does not need to merge.
@@ -47,19 +53,20 @@ This plan executes [GRPH-008](../adr/graph/GRPH-008-tiered-call-resolution.md) i
 
 **Status: Complete.** The fixed corpus emitted versioned facts with per-file content hashes, two corrected full-corpus extractions were byte-identical, and the pre-facts HEAD worker, current parser, and persisted graph matched all 58,338 call edges. See the [Phase 1 results](./tiered-call-resolution-phase1-results.md). No signatures were certified or promoted.
 
-## Phase 2 — Multi-hypothesis filtering
+## Phase 2 — Candidate recall, then multi-hypothesis ranking
 
-**Purpose:** Produce calibrated likely answers where syntax facts narrow a complete candidate set, and ambiguous answers elsewhere.
+**Purpose:** First measure and improve candidate recall/set quality from cheap source facts. Then let System One rank within the available candidate set and emit a calibrated `likely` result or abstain. Incomplete candidate inventory does not by itself prevent a `likely` result; it still prevents strict `proven` status and does not authorize skipping Tier B.
 
 **Work:**
 
-- Generate candidates from types that declare the called member. Apply filters in order: visibility from the caller, explicit declaration or flow facts, other receiver members used in the same scope, parameter count/shape, then weak naming/package/DI signals.
-- Preserve candidate recall as a separate metric. Report end-to-end top-1 over every eligible site so a missing true target cannot disappear from the denominator.
+- **P2-A:** Generate candidates only from pinned source/facts/shape evidence. Report candidate recall over uniquely mapped positive targets, while separately reporting all eligible sites, ambiguous/unmapped positives, zero-candidate rate and candidate-set size. Keep unsupported shapes and missing evidence visible as abstentions; do not require globally complete candidate sets to study recall.
+- **P2-B:** Rank only within the existing candidate set. Apply filters in order: visibility from the caller, explicit declaration or flow facts, other receiver members used in the same scope, parameter count/shape, then weak naming/package/DI signals. Use calibration labels only to choose the `likely`/abstention threshold; report accepted precision separately from raw top-1, end-to-end accuracy, coverage and abstention.
+- Preserve every eligible site in site-level coverage and end-to-end denominators. Report duplicate-group and family/call-shape metrics so a narrow high-precision subset cannot stand in for ordinary-case usefulness.
 - Version each rule signature and its feature/calibration inputs. Confidence is the one-sided 95% Clopper–Pearson lower bound on duplicate-group precision, not a raw hit rate.
-- Choose thresholds only on the calibration split. Use 100 independent duplicate groups as the provisional configurable minimum, then validate and record the chosen support threshold before promotion. A signature below that threshold, or whose calibrated threshold does not meet the 90% family-macro top-1 target, emits ambiguous and goes to Tier B. A new or changed signature has no inherited calibration.
+- Choose `likely`/abstention thresholds only on the calibration split and bind them to the ranking rule, candidate-generator version, source facts/configuration and split hashes. Strict proof support and unseen-certification requirements remain later gates; they do not block useful `likely` output. A new or changed signature has no inherited calibration.
 - Report coverage, abstention, ECE, Brier score, family macro, worst-family and temporal results with every threshold.
 
-**Exit gate:** Frozen calibration produces deterministic confidence and candidate ordering. Every eligible site remains in the end-to-end denominator; unsupported or under-supported signatures abstain.
+**Exit gate:** Candidate-generation and ranking artifacts are reproducible and source-only. Calibration is isolated from train/test/temporal labels; every eligible site remains in reported denominators; unsupported, tied or under-supported cases abstain and continue to Tier B. No Phase 2 result enables a Tier B skip.
 
 ## Phase 3 — Strict proof and per-call-site source of truth
 

@@ -1,0 +1,778 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2a-candidate-miss-source-audit/1",
+  "split": "train",
+  "labelScope": "train/calibration only; heldout labels are never read by this tool",
+  "provenance": {
+    "predictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v3",
+    "correctedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "labelRowsHash": "4983b8bd52ca2c8048fd5fc9a5f4b8efdb6f7d48843740044e097e7901f9f62a",
+    "uniqueOracleSnapshotScope": "snapshotId+repoId"
+  },
+  "counts": {
+    "allPredictionSites": 13496,
+    "confirmedPositiveSites": 13496,
+    "uniqueMappablePositiveSites": 12177,
+    "uniqueMappablePositiveTargetOccurrences": 12177,
+    "missSites": 10,
+    "missedPositiveTargetOccurrences": 10,
+    "zeroCandidateMissSites": 10,
+    "candidateButMissSites": 0
+  },
+  "byReasonFamilyAndShape": [
+    {
+      "family": "dyphn1/Docuvia",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "reasonClass": "no-supported-candidates",
+      "siteCount": 2,
+      "missedTargetCount": 2,
+      "zeroCandidateSiteCount": 2
+    },
+    {
+      "family": "nestjs/nest",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "reasonClass": "no-supported-candidates",
+      "siteCount": 1,
+      "missedTargetCount": 1,
+      "zeroCandidateSiteCount": 1
+    },
+    {
+      "family": "nestjs/nest",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "reasonClass": "call-shape-unmapped",
+      "siteCount": 7,
+      "missedTargetCount": 7,
+      "zeroCandidateSiteCount": 7
+    }
+  ],
+  "rows": [
+    {
+      "sampleId": "github.com/dyphn1/Docuvia@204c40fb7080::lib/ui-core/src/docuvia-api.ts:448:11",
+      "snapshotId": "docuvia",
+      "repoId": "github.com/dyphn1/Docuvia",
+      "revision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+      "repoFamily": "dyphn1/Docuvia",
+      "duplicateGroup": "72f9957ff89556bcfc57f8bc857534114c71c2df9ed61b23cee5fedc5f9d383b",
+      "callSiteKey": "v1:566b95e3e1909295878246be0a80dab49fd809437737c934252d72772904dd02",
+      "filePath": "lib/ui-core/src/docuvia-api.ts",
+      "line": 448,
+      "columnUtf16": 11,
+      "calleeName": "listHooksWorkflow",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "eaa538aa652603f705c61aa8a87428499ad9f4523277e6af16e30ced5248d9ba",
+        "language": "typescript",
+        "declarationFactCount": 49
+      },
+      "missedTargets": [
+        {
+          "targetId": "lib/ui-core/src/workflows/hooks/hooks-workflow.ts#listHooks",
+          "factFileFound": true,
+          "factFileContentSha256": "7d7c50c2fdcc5f91b1a57f29255f9bb4429c6154b07f4bf02c5ca0b460f4a802",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "listHooks",
+              "declarationSpan": {
+                "start": 433,
+                "end": 579
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1056
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 527,
+                "end": 579
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/dyphn1/Docuvia@204c40fb7080::lib/ui-core/src/docuvia-api.ts:460:11",
+      "snapshotId": "docuvia",
+      "repoId": "github.com/dyphn1/Docuvia",
+      "revision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+      "repoFamily": "dyphn1/Docuvia",
+      "duplicateGroup": "92b5746179a13accaf1c2af392edc5f6ed1180ce0423ac68cac4902659999ed7",
+      "callSiteKey": "v1:9f0640b0806f92b2184ba70f02443ce8ad8df46dbc76fb96de02df74c16ab345",
+      "filePath": "lib/ui-core/src/docuvia-api.ts",
+      "line": 460,
+      "columnUtf16": 11,
+      "calleeName": "setHookEnabledWorkflow",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "eaa538aa652603f705c61aa8a87428499ad9f4523277e6af16e30ced5248d9ba",
+        "language": "typescript",
+        "declarationFactCount": 49
+      },
+      "missedTargets": [
+        {
+          "targetId": "lib/ui-core/src/workflows/hooks/hooks-workflow.ts#setHookEnabled",
+          "factFileFound": true,
+          "factFileContentSha256": "7d7c50c2fdcc5f91b1a57f29255f9bb4429c6154b07f4bf02c5ca0b460f4a802",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "setHookEnabled",
+              "declarationSpan": {
+                "start": 794,
+                "end": 1055
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1056
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 935,
+                "end": 1055
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 4,
+                "maxParameterCount": 4
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/core/errors/exceptions/invalid-class-scope.exception.ts:12:10",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "6c2a38d5e871c2529303e1b5948ba9f9e9e1258d5f70d0ae5232f9a7cab138de",
+      "callSiteKey": "v1:43b274ad010b89e08797268f7e6a605ed329ff3782762e2a0bc1d4fdba3d1a4d",
+      "filePath": "packages/core/errors/exceptions/invalid-class-scope.exception.ts",
+      "line": 12,
+      "columnUtf16": null,
+      "calleeName": "INVALID_CLASS_SCOPE_MESSAGE",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "ea6b34802f1e2a84b2772cbcfda47e9642fae25f3f6983da02d41e1e6f5f6cc9",
+        "language": "typescript",
+        "declarationFactCount": 1
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/core/errors/messages.ts#INVALID_CLASS_SCOPE_MESSAGE",
+          "factFileFound": true,
+          "factFileContentSha256": "2d99bc16964089ae686f76cb18cc43738c0c6461cf4855c14945c85a4c91b5a0",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "INVALID_CLASS_SCOPE_MESSAGE",
+              "declarationSpan": {
+                "start": 9472,
+                "end": 9726
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 11554
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 9539,
+                "end": 9726
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/core/errors/exceptions/invalid-class.exception.ts:5:10",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "d6136b43dd679de88e1d3cd419d7e28e2d226391bf5cf89375989a5527749442",
+      "callSiteKey": "v1:d37f760d11da8a4bec10ae255985110004167d551d28acb096e1cdd9411d08ab",
+      "filePath": "packages/core/errors/exceptions/invalid-class.exception.ts",
+      "line": 5,
+      "columnUtf16": null,
+      "calleeName": "INVALID_CLASS_MESSAGE",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "93148edff6b1e6f30278ad7ad123ca32a0e128be0f126b476b48517c944f2656",
+        "language": "typescript",
+        "declarationFactCount": 1
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/core/errors/messages.ts#INVALID_CLASS_MESSAGE",
+          "factFileFound": true,
+          "factFileContentSha256": "2d99bc16964089ae686f76cb18cc43738c0c6461cf4855c14945c85a4c91b5a0",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "INVALID_CLASS_MESSAGE",
+              "declarationSpan": {
+                "start": 9311,
+                "end": 9426
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 11554
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 9357,
+                "end": 9426
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/core/injector/instance-loader.ts:56:26",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "aa598f1228e1bec22c8253ab3b90e1e9a1af6a1475574db205b47e839cf63334",
+      "callSiteKey": "v1:836f411190a6f34a8ae9b6f8013552efe569f35c36a7ed13d90eece9b5743782",
+      "filePath": "packages/core/injector/instance-loader.ts",
+      "line": 56,
+      "columnUtf16": null,
+      "calleeName": "MODULE_INIT_MESSAGE",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "927b75fef5d1c38ed6a6244dc6969a205715596a4a0ef0e86b9fd40dfd865660",
+        "language": "typescript",
+        "declarationFactCount": 25
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/core/helpers/messages.ts#MODULE_INIT_MESSAGE",
+          "factFileFound": true,
+          "factFileContentSha256": "26c5764c7d342f73b18ab5ecc4fe29e06decc97c08336bd4c6f9be30d45677ac",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "MODULE_INIT_MESSAGE",
+              "declarationSpan": {
+                "start": 162,
+                "end": 253
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1492
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 217,
+                "end": 253
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/core/test/injector/module.spec.ts:17:3",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "36996e9b50b85e1e5e88a9bc8f48a7d3bb3d197cdadea88943c997adbc1ba296",
+      "callSiteKey": "v1:7d2f37fd766113f5bb4e2c109b36a5dca38ee4cef993af97ec2fcd78df1adfc5",
+      "filePath": "packages/core/test/injector/module.spec.ts",
+      "line": 17,
+      "columnUtf16": 3,
+      "calleeName": "ModuleDecorator",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "a35e4fc66db0bdbfd72256ff9f22570229923361646de24b3252303a4580a5e2",
+        "language": "typescript",
+        "declarationFactCount": 169
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/common/decorators/modules/module.decorator.ts#Module",
+          "factFileFound": true,
+          "factFileContentSha256": "f992ac97aa9204dc87b1b9bfa0ba53cb691bf59789bce9bc79beed186cba933b",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "Module",
+              "declarationSpan": {
+                "start": 736,
+                "end": 1091
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1092
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 794,
+                "end": 1091
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/microservices/server/server-kafka.ts:450:31",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "29b7559cdd49e4b2237c9d7ec2c27d42ae931007b6821981de976b6e46beb99d",
+      "callSiteKey": "v1:a579b79fff9e27c960f68c061a11c242c8c5c393eafd81bdc1a95f914dd9984d",
+      "filePath": "packages/microservices/server/server-kafka.ts",
+      "line": 450,
+      "columnUtf16": null,
+      "calleeName": "NO_EVENT_HANDLER",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "d6b9834e284445aa94e25d3e0d252c2512b6a773cda54defd0ae6140747c058d",
+        "language": "typescript",
+        "declarationFactCount": 71
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/microservices/constants.ts#NO_EVENT_HANDLER",
+          "factFileFound": true,
+          "factFileContentSha256": "954464d59345a04990aa3ecf2f1ec2249a237a9d1495f4edfc8537ac810f48c7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "NO_EVENT_HANDLER",
+              "declarationSpan": {
+                "start": 2440,
+                "end": 2584
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 3207
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 2491,
+                "end": 2584
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/microservices/server/server-rmq.ts:319:25",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "17487994ba6e0ca1a04b6ecf6d79936e6d6807dcaf96ed3ac5ca292d789edab6",
+      "callSiteKey": "v1:9e4ce19e559163cbe913d7621e1e56ae79163b34a621eb9853bf58c608900aa9",
+      "filePath": "packages/microservices/server/server-rmq.ts",
+      "line": 319,
+      "columnUtf16": null,
+      "calleeName": "RMQ_NO_MESSAGE_HANDLER",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "bcbc0b40d3463c29f044cf0340680fa7c5b4e496f2712eebe65481ac7faf4c6a",
+        "language": "typescript",
+        "declarationFactCount": 63
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/microservices/constants.ts#RMQ_NO_MESSAGE_HANDLER",
+          "factFileFound": true,
+          "factFileContentSha256": "954464d59345a04990aa3ecf2f1ec2249a237a9d1495f4edfc8537ac810f48c7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "RMQ_NO_MESSAGE_HANDLER",
+              "declarationSpan": {
+                "start": 2159,
+                "end": 2342
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 3207
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 2217,
+                "end": 2342
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/microservices/server/server-rmq.ts:359:30",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "e6ff2d8cd44b08c8f731e89f3a9373e2e684665727786136107ab57af52bd272",
+      "callSiteKey": "v1:25913d05b4ac2a7bd9d4be5c60aa304b7115e5a364ce16587397cb78e2f7d374",
+      "filePath": "packages/microservices/server/server-rmq.ts",
+      "line": 359,
+      "columnUtf16": null,
+      "calleeName": "RMQ_NO_EVENT_HANDLER",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "bcbc0b40d3463c29f044cf0340680fa7c5b4e496f2712eebe65481ac7faf4c6a",
+        "language": "typescript",
+        "declarationFactCount": 63
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/microservices/constants.ts#RMQ_NO_EVENT_HANDLER",
+          "factFileFound": true,
+          "factFileContentSha256": "954464d59345a04990aa3ecf2f1ec2249a237a9d1495f4edfc8537ac810f48c7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "RMQ_NO_EVENT_HANDLER",
+              "declarationSpan": {
+                "start": 1938,
+                "end": 2119
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 3207
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1996,
+                "end": 2119
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/microservices/server/server.ts:232:31",
+      "snapshotId": "nest",
+      "repoId": "github.com/nestjs/nest",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repoFamily": "nestjs/nest",
+      "duplicateGroup": "08a420000c88e843b16bd9e245919d575559f956970e818599bc7fe56315059c",
+      "callSiteKey": "v1:b872641c4a0b32a25eea38c85939c3ecb6994cda49493653f1813dbf1de256c4",
+      "filePath": "packages/microservices/server/server.ts",
+      "line": 232,
+      "columnUtf16": null,
+      "calleeName": "NO_EVENT_HANDLER",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "excluded",
+      "observationReason": null,
+      "reasonClass": "call-shape-unmapped",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "unmapped",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": true,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "0e9b308777431e0e468ed4799c659cfe285f57398c2ce2d139a378cdcd3438e5",
+        "language": "typescript",
+        "declarationFactCount": 55
+      },
+      "missedTargets": [
+        {
+          "targetId": "packages/microservices/constants.ts#NO_EVENT_HANDLER",
+          "factFileFound": true,
+          "factFileContentSha256": "954464d59345a04990aa3ecf2f1ec2249a237a9d1495f4edfc8537ac810f48c7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "arrow",
+              "name": "NO_EVENT_HANDLER",
+              "declarationSpan": {
+                "start": 2440,
+                "end": 2584
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 3207
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 2491,
+                "end": 2584
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 2,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

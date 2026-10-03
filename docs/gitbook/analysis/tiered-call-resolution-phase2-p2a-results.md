@@ -8,7 +8,7 @@ The prior ranking/calibration measurements in [the Phase 2 results](tiered-call-
 
 ## Snapshot-scoped evaluator correction
 
-The P2-A evaluation originally pooled oracle aliases from all snapshots. A follow-up changed only the post-hoc mapping to scope aliases by `(snapshotId, repoId)`; source candidate generation was already snapshot-local. Train and calibration candidate metrics, candidate-set distributions, labels, and raw predictions are unchanged under the corrected mapping. The old allowlist had 72,676 globally unique alias entries; the corrected mapping has 119,141 uniquely mapped entries across ten scopes. Use [the correction report](tiered-call-resolution-phase2-snapshot-scope-correction.md) and its schema-v2 artifacts for future comparisons. Test and temporal labels were not re-read; the correction's effect on those historical results is unknown.
+The P2-A evaluation originally pooled oracle aliases from all snapshots. A follow-up changed only the post-hoc mapping to scope aliases by `(snapshotId, repoId)`; source candidate generation was already snapshot-local. Train and calibration candidate metrics, candidate-set distributions, labels, and raw predictions are unchanged under the corrected mapping. The old allowlist had 72,676 globally unique alias entries; the corrected mapping has 119,141 uniquely mapped entries across ten scopes. Use [the correction report](tiered-call-resolution-phase2-snapshot-scope-correction.md) and its schema-v2 artifacts for future comparisons. That report records one corrected-scope candidate-only test/temporal regression over already-exposed labels; it did not run System One or choose rules from those results.
 
 ## Bounded source rule
 
@@ -66,7 +66,7 @@ After the slice, 10 train and 17 calibration unique-mappable positive sites stil
 
 ## Frozen holdout and cost notes
 
-Attempt-3 source rules were frozen before the one-time test/temporal regression. Those labels had already been exposed by earlier Phase 2 work and are not certification data. The preserved attempt-3 regression files used the then-current all-positive-label denominator; this follow-up changes only the train/calibration evaluator domain to exclude ambiguous/unmapped target aliases. Test and temporal labels were not re-read or re-scored here, and no rule was chosen from their results.
+Attempt-3 source rules were frozen before heldout regression. Those labels had already been exposed by earlier Phase 2 work and are not certification data. The preserved attempt-3 regression files use the then-current all-positive-label denominator; the correction report adds one fixed v2/v3 candidate-only comparison with the corrected unique-mappable-target domain. It excludes ambiguous/unmapped target aliases and reports them separately. This locked comparison did not evaluate System One or choose rules from heldout results; it is descriptive regression evidence, not certification.
 
 The source-only attempt-3 runner processed all 10 pinned snapshots and 31,578 rows in 55.9 seconds, parsing 3,426 call-site files with zero failures. Recorded parser time was 10.65 seconds; hypothesis time was 1.61 seconds; measured hypothesis-call latency was p50 0.0136 ms and p95 0.2147 ms. These are the runner’s hypothesis-call timings, not end-to-end request latency. Peak RSS and end-to-end per-call latency were not recorded.
 

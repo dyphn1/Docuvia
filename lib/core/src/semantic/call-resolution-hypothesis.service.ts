@@ -1,4 +1,5 @@
 import type {
+  AstCallSiteShapeFact,
   CallResolutionHypothesisRequest,
   CallResolutionHypothesisResult,
   CallResolutionHypothesisServiceOptions,
@@ -16,6 +17,7 @@ import {
   selectValidCalibrationRecord,
 } from "./call-resolution-hypothesis-calibration.js";
 import {
+  CandidateWithoutRank,
   NormalizedServiceOptions,
   createConfigurationHash,
   normalizeServiceOptions,
@@ -35,6 +37,22 @@ import {
   rankCandidates,
 } from "./call-resolution-hypothesis-ranking.js";
 import { proveUniqueThisMember } from "./call-resolution-strict-proof.js";
+
+function sameCalleeBinding(
+  left: AstCallSiteShapeFact["calleeBinding"],
+  right: AstCallSiteShapeFact["calleeBinding"],
+): boolean {
+  if (!left || !right) return left === right;
+  if (left.kind !== right.kind || left.name !== right.name) return false;
+  if (left.kind === "unbound" || right.kind === "unbound")
+    return left.kind === right.kind;
+  return (
+    left.declarationSpan.start === right.declarationSpan.start &&
+    left.declarationSpan.end === right.declarationSpan.end &&
+    left.scopeSpan.start === right.scopeSpan.start &&
+    left.scopeSpan.end === right.scopeSpan.end
+  );
+}
 
 export class CallResolutionHypothesisService implements ICallResolutionHypothesisService {
   private readonly options: NormalizedServiceOptions;
@@ -59,8 +77,13 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
   ): CallResolutionHypothesisResult {
     validateHypothesisRequest(request);
     const workspace = this.getWorkspace(request.workspaceIndex);
-    const indexedCandidates =
+    const baseIndexedCandidates =
       workspace.candidatesByMember.get(request.callSite.calleeName) ?? [];
+    const indexedCandidates = this.candidatesForRequest(
+      request,
+      workspace,
+      baseIndexedCandidates,
+    );
     const receiverFact = getReceiverTypeFact(workspace, request);
     const receiverTypeName = receiverFact?.typeName ?? null;
     const generated = rankCandidates(
@@ -151,6 +174,57 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
     return workspace;
   }
 
+  private candidatesForRequest(
+    request: CallResolutionHypothesisRequest,
+    workspace: IndexedWorkspace,
+    baseCandidates: readonly CandidateWithoutRank[],
+  ): readonly CandidateWithoutRank[] {
+    if (!this.canEnrichImportAlias(request, workspace)) return baseCandidates;
+    const aliases =
+      workspace.directImportAliasCandidatesByCallerFile
+        .get(request.callerFilePath)
+        ?.get(request.callSite.calleeName) ?? [];
+    return mergeCandidatesByTargetKey(baseCandidates, aliases);
+  }
+
+  private canEnrichImportAlias(
+    request: CallResolutionHypothesisRequest,
+    workspace: IndexedWorkspace,
+  ): boolean {
+    return (
+      request.callSite.calleeBinding?.kind !== "type-only-import" &&
+      request.callSite.calleeKind === "bare" &&
+      request.callSite.calleeBinding?.kind === "import" &&
+      !!request.callerSourceContentHash &&
+      workspace.sourceContentHashByFile.get(request.callerFilePath) ===
+        request.callerSourceContentHash &&
+      this.isCallSiteBoundToCaller(
+        request.callSite,
+        workspace,
+        request.callerFilePath,
+      )
+    );
+  }
+
+  private isCallSiteBoundToCaller(
+    callSite: AstCallSiteShapeFact,
+    workspace: IndexedWorkspace,
+    callerFilePath: string,
+  ): boolean {
+    const matches = (
+      workspace.callSiteShapesByFile.get(callerFilePath) ?? []
+    ).filter(
+      (shape) =>
+        shape.startLine === callSite.startLine &&
+        shape.startColumn === callSite.startColumn &&
+        shape.calleeName === callSite.calleeName &&
+        shape.calleeKind === callSite.calleeKind &&
+        shape.receiverText === callSite.receiverText &&
+        sameCalleeBinding(shape.calleeBinding, callSite.calleeBinding),
+    );
+    return matches.length === 1;
+  }
+
   private verifyDecisionConfidence(confidence: number | null): void {
     if (
       confidence !== null &&
@@ -161,4 +235,16 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
         "calibrated confidence must be finite and in [0, 1].",
       );
   }
+}
+
+function mergeCandidatesByTargetKey(
+  baseCandidates: readonly CandidateWithoutRank[],
+  aliases: readonly CandidateWithoutRank[],
+): readonly CandidateWithoutRank[] {
+  if (aliases.length === 0) return baseCandidates;
+  const combined = new Map(
+    baseCandidates.map((candidate) => [candidate.targetKey, candidate]),
+  );
+  for (const candidate of aliases) combined.set(candidate.targetKey, candidate);
+  return [...combined.values()];
 }

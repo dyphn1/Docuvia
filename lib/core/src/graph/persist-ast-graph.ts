@@ -542,6 +542,8 @@ export class GraphPersisterService implements IGraphPersister {
       sourceFiles: parsedResults.map((result) => ({
         filePath: result.file,
         sourceContentHash: result.hash,
+        imports: result.data.imports ?? [],
+        exports: result.data.exports ?? [],
         callSiteShapeFacts: result.data.callSiteShapeFacts ?? null,
         declaredTypeFacts: result.data.declaredTypeFacts ?? null,
       })),

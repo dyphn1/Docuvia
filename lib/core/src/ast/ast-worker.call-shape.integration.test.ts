@@ -47,7 +47,7 @@ describe("AST worker call-shape facts", () => {
         ["service.open", 5],
       ]);
       expect(shapes).toMatchObject({
-        schemaVersion: 1,
+        schemaVersion: 2,
         language: "typescript",
         callSites: expect.arrayContaining([
           expect.objectContaining({
@@ -80,6 +80,61 @@ describe("AST worker call-shape facts", () => {
       );
       expect(openCalls?.[0]?.peerMemberNames).toContain("close");
       expect(openCalls?.[1]?.peerMemberNames).not.toContain("close");
+    } finally {
+      await pool.terminate();
+    }
+  });
+
+  it("[invalid-input] distinguishes import aliases from type-only and lexical shadows", async () => {
+    const pool = new AstWorkerPool();
+    await pool.initialize(1);
+    try {
+      const response = await pool.parse({
+        filePath: "callee-bindings.ts",
+        language: SUPPORTED_LANGUAGES.TYPESCRIPT,
+        code: [
+          'import { close as finish } from "./service.js";',
+          'import type { close as TypeFinish } from "./types.js";',
+          'import { type close as InlineTypeFinish } from "./types.js";',
+          "finish();",
+          "TypeFinish();",
+          "InlineTypeFinish();",
+          "function withParameter(TypeFinish: () => void) { TypeFinish(); }",
+          "function withLocal() { const finish = () => {}; finish(); }",
+        ].join("\n"),
+      });
+
+      const data = parseData(response);
+      expect(data.imports).toEqual([
+        {
+          localName: "finish",
+          originalName: "close",
+          modulePath: "./service.js",
+        },
+        {
+          localName: "TypeFinish",
+          originalName: "close",
+          modulePath: "./types.js",
+          isTypeOnly: true,
+        },
+        {
+          localName: "InlineTypeFinish",
+          originalName: "close",
+          modulePath: "./types.js",
+          isTypeOnly: true,
+        },
+      ]);
+      expect(
+        data.callSiteShapeFacts?.callSites.map(
+          ({ calleeName, calleeBinding }) => [calleeName, calleeBinding?.kind],
+        ),
+      ).toEqual([
+        ["finish", "import"],
+        ["TypeFinish", "type-only-import"],
+        ["InlineTypeFinish", "type-only-import"],
+        ["TypeFinish", "parameter"],
+        ["finish", "local"],
+      ]);
     } finally {
       await pool.terminate();
     }

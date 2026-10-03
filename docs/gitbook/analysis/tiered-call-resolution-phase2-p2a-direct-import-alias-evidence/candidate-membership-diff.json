@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2a-candidate-membership-diff/1",
+  "generatorBaseline": "declared-member-hypothesis-v3",
+  "generatorCurrent": "declared-member-hypothesis-v4",
+  "baselinePredictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+  "currentPredictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+  "sourceInputHashes": {
+    "callsites": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+    "correctedDeclaredFacts": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+  },
+  "rowsCompared": 31578,
+  "baselineCandidateMemberships": 172442,
+  "currentCandidateMemberships": 172469,
+  "addedCandidateMemberships": 27,
+  "removedCandidateMemberships": 0,
+  "completeCandidateSiteCount": 0,
+  "additionsBySplit": {
+    "calibration": {
+      "rows": 2966,
+      "added": 1,
+      "removed": 0
+    },
+    "temporal": {
+      "rows": 2694,
+      "added": 7,
+      "removed": 0
+    },
+    "test": {
+      "rows": 12422,
+      "added": 16,
+      "removed": 0
+    },
+    "train": {
+      "rows": 13496,
+      "added": 3,
+      "removed": 0
+    }
+  },
+  "additionsByFamily": {
+    "403errors/repomind": {
+      "rows": 1207,
+      "added": 1,
+      "removed": 0
+    },
+    "abhigyanpatwari/GitNexus": {
+      "rows": 8943,
+      "added": 23,
+      "removed": 0
+    },
+    "dyphn1/Docuvia": {
+      "rows": 3610,
+      "added": 2,
+      "removed": 0
+    },
+    "Egonex-AI/Understand-Anything": {
+      "rows": 1759,
+      "added": 0,
+      "removed": 0
+    },
+    "nestjs/nest": {
+      "rows": 8000,
+      "added": 1,
+      "removed": 0
+    },
+    "onyx-dot-app/onyx": {
+      "rows": 6173,
+      "added": 0,
+      "removed": 0
+    },
+    "tirth8205/code-review-graph": {
+      "rows": 77,
+      "added": 0,
+      "removed": 0
+    },
+    "trailhq/Graft": {
+      "rows": 888,
+      "added": 0,
+      "removed": 0
+    },
+    "typescript-language-server/typescript-language-server": {
+      "rows": 921,
+      "added": 0,
+      "removed": 0
+    }
+  },
+  "additionsByCallShape": {
+    "bare": {
+      "rows": 19548,
+      "added": 27,
+      "removed": 0
+    },
+    "member": {
+      "rows": 11165,
+      "added": 0,
+      "removed": 0
+    },
+    "arg-chain": {
+      "rows": 560,
+      "added": 0,
+      "removed": 0
+    },
+    "this": {
+      "rows": 298,
+      "added": 0,
+      "removed": 0
+    },
+    "unmapped": {
+      "rows": 7,
+      "added": 0,
+      "removed": 0
+    }
+  },
+  "addedSites": [
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/public-pages.test.tsx:27:31",
+      "split": "calibration",
+      "repoFamily": "403errors/repomind",
+      "callShape": "bare",
+      "addedTargetKeys": ["src/app/coming-soon/page.tsx#generateMetadata"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus-web/src/hooks/useAppState.tsx:679:49",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#search"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus-web/src/hooks/useAppState.tsx:681:12",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#grep"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus-web/src/hooks/useAppState.tsx:683:12",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#readFile"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/cli/analyze-config.ts:171:11",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus/src/core/git-ref.ts#validateBranchName"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts:838:17",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts#resolveConstant"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts:901:15",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts#resolveConstant"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/core/ingestion/scope-extractor-bridge.ts:61:11",
+      "split": "temporal",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/scope-extractor.ts#extract"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:514:11",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#runQuery"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:532:30",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#startEmbeddings"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:591:11",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#search"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:596:13",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#search"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:62:20",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#repoIdentity"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:667:49",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#runQuery"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:672:49",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#search"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:673:53",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": ["gitnexus-web/src/services/backend-client.ts#grep"]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useAppState.tsx:675:12",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#readFile"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus-web/src/hooks/useBackend.ts:141:4",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus-web/src/services/backend-client.ts#setBackendUrl"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/ingestion/route-extractors/python-const-resolver.ts:120:9",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts#resolveConstant"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/ingestion/route-extractors/python-const-resolver.ts:133:9",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts#resolveOperands"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/ingestion/scope-extractor-bridge.ts:52:11",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/scope-extractor.ts#extract"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/ingestion/taint/propagate.ts:374:11",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/taint/source-sink-config.ts#sortSinkKinds"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/ingestion/taint/propagate.ts:910:55",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/ingestion/taint/source-sink-config.ts#sortSinkKinds"
+      ]
+    },
+    {
+      "sampleId": "github.com/abhigyanpatwari/GitNexus@d3d4fa31bb6b::gitnexus/src/core/run-analyze.ts:1177:6",
+      "split": "test",
+      "repoFamily": "abhigyanpatwari/GitNexus",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "gitnexus/src/core/embedding-mode.ts#deriveEmbeddingMode"
+      ]
+    },
+    {
+      "sampleId": "github.com/dyphn1/Docuvia@204c40fb7080::lib/ui-core/src/docuvia-api.ts:448:11",
+      "split": "train",
+      "repoFamily": "dyphn1/Docuvia",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "lib/ui-core/src/workflows/hooks/hooks-workflow.ts#listHooks"
+      ]
+    },
+    {
+      "sampleId": "github.com/dyphn1/Docuvia@204c40fb7080::lib/ui-core/src/docuvia-api.ts:460:11",
+      "split": "train",
+      "repoFamily": "dyphn1/Docuvia",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "lib/ui-core/src/workflows/hooks/hooks-workflow.ts#setHookEnabled"
+      ]
+    },
+    {
+      "sampleId": "github.com/nestjs/nest@b1014b6862c3::packages/core/test/injector/module.spec.ts:17:3",
+      "split": "train",
+      "repoFamily": "nestjs/nest",
+      "callShape": "bare",
+      "addedTargetKeys": [
+        "packages/common/decorators/modules/module.decorator.ts#Module"
+      ]
+    }
+  ]
+}

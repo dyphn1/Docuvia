@@ -51,6 +51,8 @@ export interface ParsedImportDescriptor {
   /** True for TS/JS barrel re-export descriptors (`export { X } from "./y"`) — see
    *  collectTsJsExportFromDescriptors. */
   viaReexport?: boolean;
+  /** True for TS `import type` and `import { type X }` bindings. */
+  isTypeOnly?: boolean;
 }
 
 /**
@@ -128,47 +130,87 @@ function collectTsJsImportDescriptors(
   if (!sourceNode) return;
   const srcText = sourceNode.text.replace(/['"]/g, "");
 
+  const statementIsTypeOnly = /^import\s+type\b/u.test(stmt.text.trimStart());
+  if (collectNamespaceImport(stmt, srcText, statementIsTypeOnly, descriptors))
+    return;
+  if (collectNamedImport(stmt, srcText, statementIsTypeOnly, descriptors))
+    return;
+  collectDefaultImport(stmt, srcText, statementIsTypeOnly, descriptors);
+}
+
+function collectNamespaceImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): boolean {
   const namespaceImport = stmt.descendantsOfType("namespace_import")[0];
-  if (namespaceImport) {
-    const nsId = namespaceImport.descendantsOfType("identifier")[0];
-    if (nsId) {
-      descriptors.push({
-        localName: nsId.text,
-        originalName: WILDCARD_IMPORT_MARKER,
-        modulePath: srcText,
-      });
-    }
-    return;
-  }
+  if (!namespaceImport) return false;
+  const namespaceName = namespaceImport.descendantsOfType("identifier")[0];
+  if (namespaceName)
+    descriptors.push({
+      localName: namespaceName.text,
+      originalName: WILDCARD_IMPORT_MARKER,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
+    });
+  return true;
+}
 
+function collectNamedImport(
+  stmt: Node,
+  modulePath: string,
+  statementIsTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): boolean {
   const namedImports = stmt.descendantsOfType("named_imports")[0];
-  if (namedImports) {
-    const specifiers = namedImports.descendantsOfType("import_specifier");
-    for (const spec of specifiers) {
-      if (!spec) continue;
-      const nameNode = spec.childForFieldName("name");
-      const aliasNode = spec.childForFieldName("alias");
-      if (nameNode) {
-        const importedName = nameNode.text;
-        const localName = aliasNode ? aliasNode.text : importedName;
-        descriptors.push({
-          localName,
-          originalName: importedName,
-          modulePath: srcText,
-        });
-      }
-    }
-    return;
+  if (!namedImports) return false;
+  for (const spec of namedImports.descendantsOfType("import_specifier")) {
+    if (!spec) continue;
+    collectNamedImportSpecifier(
+      spec,
+      modulePath,
+      statementIsTypeOnly,
+      descriptors,
+    );
   }
+  return true;
+}
 
+function collectNamedImportSpecifier(
+  spec: Node,
+  modulePath: string,
+  statementIsTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
+  const nameNode = spec.childForFieldName("name");
+  if (!nameNode) return;
+  const aliasNode = spec.childForFieldName("alias");
+  const importedName = nameNode.text;
+  descriptors.push({
+    localName: aliasNode ? aliasNode.text : importedName,
+    originalName: importedName,
+    modulePath,
+    ...(statementIsTypeOnly || /^type\s/u.test(spec.text.trimStart())
+      ? { isTypeOnly: true }
+      : {}),
+  });
+}
+
+function collectDefaultImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
   const defaultId = stmt.descendantsOfType("identifier")[0];
-  if (defaultId) {
+  if (defaultId)
     descriptors.push({
       localName: defaultId.text,
       originalName: WILDCARD_IMPORT_MARKER,
-      modulePath: srcText,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
     });
-  }
 }
 
 // ── Python ────────────────────────────────────────────────────────────

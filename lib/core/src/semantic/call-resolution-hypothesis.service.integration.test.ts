@@ -12,6 +12,7 @@ import { clopperPearsonLowerBound } from "./system1/eval/system1-eval-calibratio
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import type { AstParseResponse } from "../ast/ast-worker.js";
 import { registerCoreProviders } from "../register.js";
+import { candidateTargetKeyForDeclaration } from "./call-resolution-hypothesis-index.js";
 import { CallResolutionHypothesisService } from "./call-resolution-hypothesis.service.js";
 
 let pool: AstWorkerPool;
@@ -47,6 +48,8 @@ function indexWorkspace(
   sourceFiles: readonly {
     filePath: string;
     sourceContentHash?: string;
+    imports?: Awaited<ReturnType<typeof parseFile>>["imports"];
+    exports?: Awaited<ReturnType<typeof parseFile>>["exports"];
     callSiteShapeFacts?: NonNullable<
       Awaited<ReturnType<typeof parseFile>>["callSiteShapeFacts"]
     > | null;
@@ -139,6 +142,8 @@ async function hypothesizeCallFromSources(
     parsedFiles.map(({ filePath, code, data }) => ({
       filePath,
       sourceContentHash: createSha256(code),
+      imports: data.imports,
+      exports: data.exports,
       callSiteShapeFacts: data.callSiteShapeFacts,
       declaredTypeFacts: data.declaredTypeFacts ?? null,
     })),
@@ -151,11 +156,359 @@ async function hypothesizeCallFromSources(
   });
 }
 
+async function hypothesizeAllNamedCallsFromSources(
+  files: readonly { filePath: string; code: string }[],
+  callerFilePath: string,
+  calleeName: string,
+  callerHashOverride?: string,
+) {
+  const parsedFiles = await Promise.all(
+    files.map(async (file) => ({
+      ...file,
+      data: await parseFile(file.filePath, file.code),
+    })),
+  );
+  const caller = parsedFiles.find(
+    ({ filePath }) => filePath === callerFilePath,
+  );
+  const callSites = caller?.data.callSiteShapeFacts?.callSites.filter(
+    (call) => call.calleeName === calleeName,
+  );
+  if (!caller || !callSites?.length)
+    throw new Error(`worker omitted ${calleeName} call in ${callerFilePath}`);
+
+  const service = new CallResolutionHypothesisService();
+  const workspaceIndex = service.indexWorkspace({
+    sourceFingerprint: "e".repeat(64),
+    sourceIndexComplete: false,
+    sourceFiles: parsedFiles.map(({ filePath, code, data }) => ({
+      filePath,
+      sourceContentHash: createSha256(code),
+      imports: data.imports,
+      exports: data.exports,
+      callSiteShapeFacts: data.callSiteShapeFacts,
+      declaredTypeFacts: data.declaredTypeFacts ?? null,
+    })),
+  });
+  return callSites.map((callSite) => ({
+    callSite,
+    parsedFiles,
+    result: service.hypothesize({
+      callerFilePath,
+      callerSourceContentHash: callerHashOverride ?? createSha256(caller.code),
+      callSite,
+      workspaceIndex,
+    }),
+  }));
+}
+
+function parsedDeclarationKey(
+  parsedFiles: readonly {
+    readonly filePath: string;
+    readonly data: Awaited<ReturnType<typeof parseFile>>;
+  }[],
+  filePath: string,
+  name: string,
+): string {
+  const declaration = parsedFiles
+    .find((file) => file.filePath === filePath)
+    ?.data.declaredTypeFacts?.declarations.find(
+      ({ name: declarationName, owner }) =>
+        declarationName === name && owner.kind === "program",
+    );
+  if (!declaration) throw new Error(`parser omitted ${filePath}#${name}`);
+  const key = candidateTargetKeyForDeclaration(filePath, declaration);
+  if (!key) throw new Error(`target ${filePath}#${name} has no candidate key`);
+  return key;
+}
+
 type CallResolutionHypothesisResultLike = ReturnType<
   CallResolutionHypothesisService["hypothesize"]
 >;
 
+type ParsedAliasTestFile = {
+  readonly filePath: string;
+  readonly code: string;
+  readonly data: Awaited<ReturnType<typeof parseFile>>;
+};
+
+async function createUniqueDirectAliasOutcome(): Promise<{
+  readonly result: CallResolutionHypothesisResultLike;
+  readonly importDescriptor: ParsedAliasTestFile["data"]["imports"][number];
+  readonly callKind: string | undefined;
+  readonly targetKey: string;
+  readonly existingKey: string;
+}> {
+  const parsedFiles = await parseUniqueAliasTestSources();
+  const caller = parsedFiles.find(
+    ({ filePath }) => filePath === "src/caller.ts",
+  );
+  const callSite = caller?.data.callSiteShapeFacts?.callSites.find(
+    (call) => call.calleeName === "finish",
+  );
+  const importDescriptor = caller?.data.imports.find(
+    ({ localName }) => localName === "finish",
+  );
+  if (!caller || !callSite || !importDescriptor)
+    throw new Error("parser omitted the direct import alias call");
+
+  const service = new CallResolutionHypothesisService();
+  const workspaceIndex = service.indexWorkspace(
+    createAliasWorkspaceInput(parsedFiles),
+  );
+  const result = service.hypothesize({
+    callerFilePath: caller.filePath,
+    callerSourceContentHash: createSha256(caller.code),
+    callSite,
+    workspaceIndex,
+  });
+  return {
+    result,
+    importDescriptor,
+    callKind: callSite.calleeKind,
+    targetKey: parsedDeclarationKey(
+      parsedFiles,
+      "src/implementation.ts",
+      "shutdown",
+    ),
+    existingKey: parsedDeclarationKey(parsedFiles, "src/existing.ts", "finish"),
+  };
+}
+
+async function parseUniqueAliasTestSources(): Promise<
+  readonly ParsedAliasTestFile[]
+> {
+  const files = [
+    {
+      filePath: "src/implementation.ts",
+      code: "export function shutdown(): void {}",
+    },
+    {
+      filePath: "src/existing.ts",
+      code: "export function finish(): void {}",
+    },
+    {
+      filePath: "src/caller.ts",
+      code: [
+        'import { shutdown as finish } from "./implementation.js";',
+        "finish();",
+      ].join("\n"),
+    },
+  ];
+  return Promise.all(
+    files.map(async (file) => ({
+      ...file,
+      data: await parseFile(file.filePath, file.code),
+    })),
+  );
+}
+
+function createAliasWorkspaceInput(
+  parsedFiles: readonly ParsedAliasTestFile[],
+): Parameters<CallResolutionHypothesisService["indexWorkspace"]>[0] {
+  return {
+    sourceFingerprint: "a".repeat(64),
+    sourceIndexComplete: false,
+    sourceFiles: parsedFiles.map(({ filePath, code, data }) => ({
+      filePath,
+      sourceContentHash: createSha256(code),
+      imports: data.imports,
+      exports: data.exports,
+      callSiteShapeFacts: data.callSiteShapeFacts,
+      declaredTypeFacts: data.declaredTypeFacts ?? null,
+    })),
+  };
+}
+
 describe("call-resolution hypothesis service", () => {
+  it("[state-diff] adds a unique direct relative import alias without promoting it", async () => {
+    const outcome = await createUniqueDirectAliasOutcome();
+
+    expect(outcome.importDescriptor).toEqual({
+      localName: "finish",
+      originalName: "shutdown",
+      modulePath: "./implementation.js",
+    });
+    expect(outcome.callKind).toBe("bare");
+    expect(outcome.result.generatedCandidateKeys).toContain(outcome.targetKey);
+    expect(outcome.result.generatedCandidateKeys).toContain(
+      outcome.existingKey,
+    );
+    expect(outcome.result.candidateSetComplete).toBe(false);
+    expect(outcome.result.status).toBe("ambiguous");
+    expect(outcome.result.strictProof.status).toBe("abstained");
+  });
+
+  it("[invalid-input] does not enrich an imported alias shadowed by a parameter or local", async () => {
+    const implementationCode = "export function shutdown(): void {}";
+    const callerCode = [
+      'import { shutdown as finish } from "./implementation.js";',
+      "function byParameter(finish: () => void) { finish(); }",
+      "function byLocal() { const finish = () => {}; finish(); }",
+    ].join("\n");
+    const contexts = await hypothesizeAllNamedCallsFromSources(
+      [
+        { filePath: "src/implementation.ts", code: implementationCode },
+        { filePath: "src/caller.ts", code: callerCode },
+      ],
+      "src/caller.ts",
+      "finish",
+    );
+    const importedTargetKey = parsedDeclarationKey(
+      contexts[0]!.parsedFiles,
+      "src/implementation.ts",
+      "shutdown",
+    );
+
+    expect(
+      contexts.map(({ callSite }) => callSite.calleeBinding?.kind),
+    ).toEqual(["parameter", "local"]);
+    expect(
+      contexts.map(({ result }) => result.generatedCandidateKeys),
+    ).not.toContainEqual(expect.arrayContaining([importedTargetKey]));
+  });
+
+  it("[invalid-input] rejects ambiguous, indirect, path-aliased, default, type-only, and stale import evidence", async () => {
+    const implementation = "export function shutdown(): void {}";
+    const aliasCases = [
+      {
+        name: "duplicate local import name",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/other.ts",
+            code: "export function start(): void {}",
+          },
+          {
+            filePath: "src/caller.ts",
+            code: [
+              'import { shutdown as finish } from "./implementation.js";',
+              'import { start as finish } from "./other.js";',
+              "finish();",
+            ].join("\n"),
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "path alias",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { shutdown as finish } from "@/implementation"; finish();',
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "default import",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/caller.ts",
+            code: 'import finish from "./implementation.js"; finish();',
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "type-only import",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/existing.ts",
+            code: "export function finish(): void {}",
+          },
+          {
+            filePath: "src/caller.ts",
+            code: 'import type { shutdown as finish } from "./implementation.js"; finish();',
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "barrel re-export chain",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/barrel.ts",
+            code: 'export { shutdown as finish } from "./implementation.js";',
+          },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { finish } from "./barrel.js"; finish();',
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "ambiguous .js to .ts and .tsx destination",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          { filePath: "src/implementation.tsx", code: implementation },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { shutdown as finish } from "./implementation.js"; finish();',
+          },
+        ],
+        callerHash: undefined,
+      },
+      {
+        name: "stale caller source hash",
+        files: [
+          { filePath: "src/implementation.ts", code: implementation },
+          {
+            filePath: "src/caller.ts",
+            code: 'import { shutdown as finish } from "./implementation.js"; finish();',
+          },
+        ],
+        callerHash: "0".repeat(64),
+      },
+    ] as const;
+
+    for (const scenario of aliasCases) {
+      const contexts = await hypothesizeAllNamedCallsFromSources(
+        scenario.files,
+        "src/caller.ts",
+        "finish",
+        scenario.callerHash,
+      );
+      const importedTargetKey = parsedDeclarationKey(
+        contexts[0]!.parsedFiles,
+        "src/implementation.ts",
+        "shutdown",
+      );
+      expect(
+        contexts.flatMap(({ result }) => result.generatedCandidateKeys),
+        scenario.name,
+      ).not.toContain(importedTargetKey);
+      expect(
+        contexts.every(({ result }) => result.candidateSetComplete === false),
+        scenario.name,
+      ).toBe(true);
+      expect(
+        contexts.every(
+          ({ result }) => result.strictProof.status === "abstained",
+        ),
+        scenario.name,
+      ).toBe(true);
+      if (scenario.name === "type-only import") {
+        expect(contexts[0]?.callSite.calleeBinding?.kind).toBe(
+          "type-only-import",
+        );
+        const fallbackCandidateKey = parsedDeclarationKey(
+          contexts[0]!.parsedFiles,
+          "src/existing.ts",
+          "finish",
+        );
+        expect(contexts[0]?.result.generatedCandidateKeys).toContain(
+          fallbackCandidateKey,
+        );
+      }
+    }
+  });
+
   it("[state-diff] indexes named program arrows as distinct fail-closed candidates", async () => {
     const declarations = await parseFile(
       "src/declarations.ts",

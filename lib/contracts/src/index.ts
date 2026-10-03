@@ -129,6 +129,7 @@ export type {
 } from "./interfaces/declared-type-facts.interfaces.js";
 export { AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
 export type {
+  AstCallCalleeBinding,
   AstCallArgumentKind,
   AstCallReceiverBinding,
   AstCallReceiverBindingKind,

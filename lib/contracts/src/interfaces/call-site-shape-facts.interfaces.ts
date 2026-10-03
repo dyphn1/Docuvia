@@ -1,6 +1,6 @@
 import type { AstUtf16Span } from "./declared-type-facts.interfaces.js";
 
-export const AST_CALL_SITE_SHAPE_SCHEMA_VERSION = 1 as const;
+export const AST_CALL_SITE_SHAPE_SCHEMA_VERSION = 2 as const;
 
 export type AstCallArgumentKind =
   | "string"
@@ -23,6 +23,16 @@ export interface AstCallReceiverBinding {
   readonly scopeSpan: AstUtf16Span;
 }
 
+export type AstCallCalleeBinding =
+  | {
+      readonly kind:
+        "import" | "type-only-import" | "local" | "parameter" | "unsupported";
+      readonly name: string;
+      readonly declarationSpan: AstUtf16Span;
+      readonly scopeSpan: AstUtf16Span;
+    }
+  | { readonly kind: "unbound"; readonly name: string };
+
 export interface AstCallSiteShapeFact {
   readonly startLine: number;
   readonly startColumn: number;
@@ -30,6 +40,8 @@ export interface AstCallSiteShapeFact {
   readonly calleeKind: "bare" | "member" | "this" | "arg-chain";
   readonly receiverText: string | null;
   readonly receiverBinding: AstCallReceiverBinding | null;
+  /** Exact syntax-scope binding for bare calls; only `import` enables alias enrichment. */
+  readonly calleeBinding: AstCallCalleeBinding | null;
   readonly lexicalScopeSpan: AstUtf16Span;
   readonly callerType: {
     readonly name: string;

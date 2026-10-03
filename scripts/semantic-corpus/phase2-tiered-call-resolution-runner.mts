@@ -49,6 +49,8 @@ const SOURCE_FILES = [
   "scripts/semantic-corpus/phase0-snapshot-safety.mts",
   "lib/core/src/ast/ast-worker.ts",
   "lib/core/src/ast/call-site-shape-facts.ts",
+  "lib/ast-core/src/core/edge-computer.ts",
+  "lib/contracts/src/interfaces/ast.interfaces.ts",
   "lib/core/src/ast/declared-type-facts.ts",
   "lib/core/src/semantic/call-resolution-hypothesis.service.ts",
   "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
@@ -308,6 +310,7 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
       unmappedCandidateCount: result.unmappedCandidateCount,
       ambiguousCandidateMappingCount: result.ambiguousCandidateMappingCount,
       parsedCallFileCount: result.parsedCallFileCount,
+      parsedImportTargetFileCount: result.parsedImportTargetFileCount,
       parseFailureCount: result.parseFailureCount,
       parseWallMs: result.parseWallMs,
       hypothesisWallMs: result.hypothesisWallMs,
@@ -347,6 +350,10 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
     ),
     parsedCallFileCount: results.reduce(
       (sum, result) => sum + result.parsedCallFileCount,
+      0,
+    ),
+    parsedImportTargetFileCount: results.reduce(
+      (sum, result) => sum + result.parsedImportTargetFileCount,
       0,
     ),
     parseFailureCount: results.reduce(

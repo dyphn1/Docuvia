@@ -19,6 +19,8 @@ export interface AstImportDescriptor {
    *  persist-ast-graph links these as file-level `depends_on` edges (a barrel depends on its
    *  source even though it has no call sites). */
   viaReexport?: boolean;
+  /** True for TS `import type` and `import { type X }` bindings. */
+  isTypeOnly?: boolean;
 }
 
 export interface ParsedAstFileData {

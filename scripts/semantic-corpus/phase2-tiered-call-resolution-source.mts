@@ -4,15 +4,19 @@ import path from "node:path";
 import {
   MAX_FILE_SIZE_BYTES,
   isDiscoverableSourceFile,
+  type AstImportDescriptor,
   type AstCallSiteShapeFact,
-  type AstCallSiteShapeFacts,
   type AstDeclaredDeclaration,
   type CallResolutionHypothesisWorkspaceInput,
   type ICallResolutionHypothesisService,
+  type ParsedAstFileResult,
 } from "../../lib/contracts/src/index.js";
 import { AstProcessingService } from "../../lib/core/src/ast/ast-processing.service.js";
 import { AstWorkerPool } from "../../lib/core/src/ast/ast-worker-pool.js";
-import { candidateTargetKeyForDeclaration } from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
+import {
+  candidateTargetKeyForDeclaration,
+  resolveDirectRelativeImportPath,
+} from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
 import { git, hashSnapshot, materializeSnapshot } from "./snapshot.mts";
 import {
   preflightSnapshotPaths,
@@ -51,6 +55,7 @@ export interface Phase2SnapshotSourceResult {
   readonly unmappedCandidateCount: number;
   readonly ambiguousCandidateMappingCount: number;
   readonly parsedCallFileCount: number;
+  readonly parsedImportTargetFileCount: number;
   readonly parseFailureCount: number;
   readonly parseWallMs: number;
   readonly hypothesisWallMs: number;
@@ -290,21 +295,63 @@ function observationFromResult(
 
 function workspaceSourceFiles(
   factRows: readonly Phase2FactFile[],
-  parsedByFile: ReadonlyMap<
-    string,
-    { readonly data: { readonly callSiteShapeFacts?: AstCallSiteShapeFacts } }
-  >,
+  parsedByFile: ReadonlyMap<string, ParsedAstFileResult>,
 ): CallResolutionHypothesisWorkspaceInput["sourceFiles"] {
   return factRows.map(({ filePath, fileContentSha256, declaredTypeFacts }) => {
-    const callSiteShapeFacts =
-      parsedByFile.get(filePath)?.data.callSiteShapeFacts;
+    const data = parsedByFile.get(filePath)?.data;
     return {
       filePath,
       sourceContentHash: fileContentSha256,
-      callSiteShapeFacts: callSiteShapeFacts ?? null,
+      imports: data?.imports,
+      exports: data?.exports,
+      callSiteShapeFacts: data?.callSiteShapeFacts ?? null,
       declaredTypeFacts,
     };
   });
+}
+
+function directAliasTargetPaths(
+  callFiles: readonly ParsedAstFileResult[],
+  factRows: readonly Phase2FactFile[],
+): string[] {
+  const factsByPath = new Map<string, Phase2FactFile[]>();
+  for (const row of factRows) {
+    const matches = factsByPath.get(row.filePath) ?? [];
+    matches.push(row);
+    factsByPath.set(row.filePath, matches);
+  }
+  const availablePaths = factRows.map(({ filePath }) => filePath);
+  const targets = new Set<string>();
+  for (const caller of callFiles) {
+    const importsByLocalName = new Map<string, AstImportDescriptor[]>();
+    for (const descriptor of caller.data.imports) {
+      const descriptors = importsByLocalName.get(descriptor.localName) ?? [];
+      descriptors.push(descriptor);
+      importsByLocalName.set(descriptor.localName, descriptors);
+    }
+    for (const [localName, descriptors] of importsByLocalName) {
+      if (descriptors.length !== 1) continue;
+      const descriptor = descriptors[0];
+      if (
+        !descriptor ||
+        descriptor.viaReexport ||
+        descriptor.isTypeOnly ||
+        descriptor.originalName === "*" ||
+        descriptor.originalName === "default" ||
+        descriptor.localName === descriptor.originalName
+      )
+        continue;
+      const targetPath = resolveDirectRelativeImportPath(
+        caller.file,
+        descriptor.modulePath,
+        availablePaths,
+      );
+      if (!targetPath || (factsByPath.get(targetPath)?.length ?? 0) !== 1)
+        continue;
+      if (isDiscoverableSourceFile(targetPath)) targets.add(targetPath);
+    }
+  }
+  return [...targets].sort();
 }
 
 export function validateFactsAgainstSnapshot(
@@ -369,14 +416,49 @@ export async function processPhase2Snapshot(input: {
       return [source];
     });
     const parseStarted = performance.now();
-    const parsed = await input.processor.processFiles(
+    const parsedCallFiles = await input.processor.processFiles(
       input.temporaryDirectory,
       discovered,
     );
+    const callSourcePaths = new Set(discovered.map(({ file }) => file));
+    const aliasTargetPaths = directAliasTargetPaths(
+      parsedCallFiles.parsed,
+      factRows,
+    ).filter((filePath) => !callSourcePaths.has(filePath));
+    const factRowsByPath = new Map<string, Phase2FactFile[]>();
+    for (const row of factRows) {
+      const matches = factRowsByPath.get(row.filePath) ?? [];
+      matches.push(row);
+      factRowsByPath.set(row.filePath, matches);
+    }
+    const discoveredAliasTargets = aliasTargetPaths.flatMap((filePath) => {
+      const [expected] = factRowsByPath.get(filePath) ?? [];
+      if (!expected || (factRowsByPath.get(filePath)?.length ?? 0) !== 1)
+        return [];
+      const source = sourceBytesForPath(input.temporaryDirectory, filePath);
+      if (!source) return [];
+      if (source.hash !== expected.fileContentSha256)
+        throw new Error(`Imported target source hash differs for ${filePath}.`);
+      return [source];
+    });
+    const parsedAliasTargets = discoveredAliasTargets.length
+      ? await input.processor.processFiles(
+          input.temporaryDirectory,
+          discoveredAliasTargets,
+        )
+      : { parsed: [], failures: [] };
     const parseWallMs = performance.now() - parseStarted;
-    const parsedByFile = new Map(parsed.parsed.map((row) => [row.file, row]));
+    const parsedByFile = new Map<string, ParsedAstFileResult>(
+      [...parsedCallFiles.parsed, ...parsedAliasTargets.parsed].map((row) => [
+        row.file,
+        row,
+      ]),
+    );
     const sourceHashesByFile = new Map(
-      discovered.map(({ file, hash }) => [file, hash]),
+      [...discovered, ...discoveredAliasTargets].map(({ file, hash }) => [
+        file,
+        hash,
+      ]),
     );
     const factsByFile = new Map(
       factRows.map((row) => [row.filePath, row.declaredTypeFacts]),
@@ -390,7 +472,9 @@ export async function processPhase2Snapshot(input: {
         filePath,
         fileContentSha256,
       })),
-      callFiles: discovered.map(({ file, hash }) => ({ file, hash })),
+      parsedInputs: [...discovered, ...discoveredAliasTargets].map(
+        ({ file, hash }) => ({ file, hash }),
+      ),
     });
     const workspaceIndex = input.service.indexWorkspace({
       sourceFingerprint,
@@ -465,8 +549,10 @@ export async function processPhase2Snapshot(input: {
       generatedCandidateCount,
       unmappedCandidateCount,
       ambiguousCandidateMappingCount,
-      parsedCallFileCount: parsed.parsed.length,
-      parseFailureCount: parsed.failures.length,
+      parsedCallFileCount: parsedCallFiles.parsed.length,
+      parsedImportTargetFileCount: parsedAliasTargets.parsed.length,
+      parseFailureCount:
+        parsedCallFiles.failures.length + parsedAliasTargets.failures.length,
       parseWallMs,
       hypothesisWallMs: performance.now() - hypothesisStarted,
       hypothesisLatenciesMs,

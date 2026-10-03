@@ -81,6 +81,7 @@
 - [GRPH-008 Phase 0 — Measurement Gate](analysis/tiered-call-resolution-phase0-results.md)
 - [GRPH-008 Phase 1 — Declared Type Facts](analysis/tiered-call-resolution-phase1-results.md)
 - [GRPH-008 P2-A/P2-B — Snapshot-Scoped Evaluation Correction](analysis/tiered-call-resolution-phase2-snapshot-scope-correction.md)
+- [GRPH-008 P2-A — Direct Import Alias Candidates](analysis/tiered-call-resolution-phase2-p2a-direct-import-alias.md)
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
 - [Roadmap & Open Items](analysis/roadmap-and-open-items.md)
 - [Impact benchmark honesty — Phase 0 metric contract](analysis/impact-benchmark-honesty-phase0.md)

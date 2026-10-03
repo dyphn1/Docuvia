@@ -1,10 +1,12 @@
 import type { Node } from "web-tree-sitter";
 import {
   AST_CALL_SITE_SHAPE_SCHEMA_VERSION,
+  type AstCallCalleeBinding,
   type AstCallArgumentKind,
   type AstCallReceiverBinding,
   type AstCallSiteShapeFact,
   type AstCallSiteShapeFacts,
+  type AstImportDescriptor,
   type AstDeclaredTypeLanguage,
   type AstUtf16Span,
 } from "@workspace/contracts";
@@ -77,7 +79,11 @@ interface IndexedBinding {
   readonly name: string;
   readonly declarationSpan: AstUtf16Span;
   readonly scopeSpan: AstUtf16Span;
-  readonly kind: AstCallReceiverBinding["kind"] | "unsupported";
+  readonly kind:
+    | AstCallReceiverBinding["kind"]
+    | "import"
+    | "type-only-import"
+    | "unsupported";
 }
 
 interface ShapeIndexes {
@@ -383,8 +389,58 @@ function indexLoopBinding(
   addBinding(index, pattern, node, "unsupported", patternNames(pattern));
 }
 
+function indexImportBindings(
+  root: Node,
+  imports: readonly AstImportDescriptor[],
+  index: Map<string, Map<string, IndexedBinding>>,
+): void {
+  const bindings = index.get(scopeIndexKey(root)) ?? new Map();
+  for (const [name, descriptors] of groupImportBindings(imports))
+    setImportBinding(root, bindings, name, descriptors);
+  index.set(scopeIndexKey(root), bindings);
+}
+
+function groupImportBindings(
+  imports: readonly AstImportDescriptor[],
+): Map<string, AstImportDescriptor[]> {
+  const importsByName = new Map<string, AstImportDescriptor[]>();
+  for (const descriptor of imports) {
+    if (descriptor.viaReexport) continue;
+    const matches = importsByName.get(descriptor.localName) ?? [];
+    matches.push(descriptor);
+    importsByName.set(descriptor.localName, matches);
+  }
+  return importsByName;
+}
+
+function setImportBinding(
+  root: Node,
+  bindings: Map<string, IndexedBinding>,
+  name: string,
+  descriptors: readonly AstImportDescriptor[],
+): void {
+  const existing = bindings.get(name);
+  const scopeSpan = span(root);
+  if (descriptors.length !== 1 || existing) {
+    bindings.set(name, {
+      name,
+      declarationSpan: existing?.declarationSpan ?? scopeSpan,
+      scopeSpan,
+      kind: "unsupported",
+    });
+    return;
+  }
+  bindings.set(name, {
+    name,
+    declarationSpan: scopeSpan,
+    scopeSpan,
+    kind: descriptors[0]?.isTypeOnly ? "type-only-import" : "import",
+  });
+}
+
 function buildBindingIndex(
   root: Node,
+  imports: readonly AstImportDescriptor[],
 ): Map<string, Map<string, IndexedBinding>> {
   const index = new Map<string, Map<string, IndexedBinding>>();
   walk(root, (node) => {
@@ -399,6 +455,7 @@ function buildBindingIndex(
     indexCatchBinding(node, index);
     indexLoopBinding(node, index);
   });
+  indexImportBindings(root, imports, index);
   return index;
 }
 
@@ -476,7 +533,10 @@ function callSiteIndexKey(row: number, column: number, name: string): string {
   return `${row}:${column}:${name}`;
 }
 
-function buildShapeIndexes(root: Node): ShapeIndexes {
+function buildShapeIndexes(
+  root: Node,
+  imports: readonly AstImportDescriptor[],
+): ShapeIndexes {
   const calls = new Map<string, Node[]>();
   walk(root, (node) => {
     if (node.type !== "call_expression") return;
@@ -496,7 +556,7 @@ function buildShapeIndexes(root: Node): ShapeIndexes {
   });
   return {
     callExpressions: calls,
-    bindingsByScope: buildBindingIndex(root),
+    bindingsByScope: buildBindingIndex(root, imports),
     propertiesByClassAndName: buildPropertyIndex(root),
   };
 }
@@ -536,27 +596,67 @@ function resolveReceiverBinding(
   const thisBinding = resolveThisReceiverBinding(receiverText, call, indexes);
   if (thisBinding !== undefined) return thisBinding;
   if (!SIMPLE_IDENTIFIER.test(receiverText)) return null;
-  let current: Node | null = call;
+  const binding = findLexicalBinding(receiverText, call, indexes);
+  return binding ? bindingResult(receiverText, binding) : null;
+}
+
+function findLexicalBinding(
+  name: string,
+  node: Node,
+  indexes: ShapeIndexes,
+): IndexedBinding | undefined {
+  let current: Node | null = node;
   while (current) {
     const binding = indexes.bindingsByScope
       .get(scopeIndexKey(current))
-      ?.get(receiverText);
-    if (binding) return bindingResult(receiverText, binding);
+      ?.get(name);
+    if (binding) return binding;
     current = current.parent;
   }
-  return null;
+  return undefined;
 }
 
 function bindingResult(
   name: string,
   candidate: IndexedBinding | null,
 ): AstCallReceiverBinding | null {
-  if (!candidate || candidate.kind === "unsupported") return null;
+  if (
+    !candidate ||
+    candidate.kind === "unsupported" ||
+    candidate.kind === "import" ||
+    candidate.kind === "type-only-import"
+  )
+    return null;
   return {
     kind: candidate.kind,
     name,
     declarationSpan: candidate.declarationSpan,
     scopeSpan: candidate.scopeSpan,
+  };
+}
+
+function calleeBinding(
+  record: SupportedWorkerCallSite,
+  call: Node,
+  indexes: ShapeIndexes,
+): AstCallCalleeBinding | null {
+  const kind = record.calleeKind ?? "bare";
+  if (kind !== "bare") return null;
+  const name = record.calleeName;
+  const binding = findLexicalBinding(name, call, indexes);
+  if (!binding) return { kind: "unbound", name };
+  const bindingKind =
+    binding.kind === "import" ||
+    binding.kind === "type-only-import" ||
+    binding.kind === "local" ||
+    binding.kind === "parameter"
+      ? binding.kind
+      : "unsupported";
+  return {
+    kind: bindingKind,
+    name,
+    declarationSpan: binding.declarationSpan,
+    scopeSpan: binding.scopeSpan,
   };
 }
 
@@ -628,6 +728,7 @@ function pendingForCall(
   );
   const scope = lexicalScope(call, root);
   const binding = resolveReceiverBinding(record.receiverText, call, indexes);
+  const callBinding = calleeBinding(record, call, indexes);
   const fact: Omit<AstCallSiteShapeFact, "peerMemberNames"> = {
     startLine: record.startLine,
     startColumn: record.startColumn,
@@ -635,6 +736,7 @@ function pendingForCall(
     calleeKind: record.calleeKind ?? "bare",
     receiverText: record.receiverText ?? null,
     receiverBinding: binding,
+    calleeBinding: callBinding,
     lexicalScopeSpan: span(scope),
     callerType: callerType(call),
     argumentCount: hasSpreadArgument ? null : args.length,
@@ -661,8 +763,9 @@ export function extractCallSiteShapeFacts(
   root: Node,
   language: AstDeclaredTypeLanguage,
   calls: readonly WorkerCallSite[],
+  imports: readonly AstImportDescriptor[],
 ): AstCallSiteShapeFacts {
-  const indexes = buildShapeIndexes(root);
+  const indexes = buildShapeIndexes(root, imports);
   const pending = calls.flatMap((record) => {
     if (!isSupportedCall(record)) return [];
     const call = findCall(record, indexes);

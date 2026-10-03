@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalibrationRecords,
   calibrationSourceSidecarHashes,
+  evaluateCandidateRecallSplit,
   evaluatePhase2Split,
   type Phase2EvaluationLabel,
   type Phase2EvaluationObservation,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mjs";
+import { parseJsonlRowsForSplit } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-support.mjs";
 
 function observation(
   sampleId: string,
@@ -58,6 +60,104 @@ function records(
 }
 
 describe("Phase 2 call-resolution evaluation", () => {
+  it("[error-handling] parses only the requested split's label rows", () => {
+    const rows = parseJsonlRowsForSplit<{ sampleId: string; split: string }>(
+      [
+        '{"sampleId":"cal-1","split":"calibration"}',
+        '{"sampleId":"test-1","split":"test","positiveTargetIds":[BROKEN_JSON',
+      ],
+      "calibration",
+    );
+
+    expect(rows).toEqual([{ sampleId: "cal-1", split: "calibration" }]);
+  });
+
+  it("[happy] counts candidate recall and abstentions without a completeness gate", () => {
+    const observations = [
+      observation("candidate", "group-candidate", {
+        candidateSetComplete: false,
+        calleeKind: "bare",
+        reason: "incomplete-inventory",
+        generatedCandidateCount: 1,
+      }),
+      observation("abstention", "group-abstention", {
+        candidateTargetIds: [],
+        topTargetId: null,
+        candidateSetComplete: false,
+        unsupportedCallShape: true,
+        calleeKind: "unmapped",
+        reason: "no-supported-candidates",
+        generatedCandidateCount: 0,
+      }),
+      observation("partial", "group-partial", {
+        candidateTargetIds: ["src/target.ts#run"],
+        calleeKind: "bare",
+        reason: "candidate-inventory-incomplete",
+        generatedCandidateCount: 2,
+        ambiguousCandidateMappingCount: 1,
+        unmappedGeneratedCandidateCount: 1,
+      }),
+      observation("unreviewed", "group-unreviewed", {
+        candidateTargetIds: [],
+      }),
+    ];
+    const labels = [
+      label("candidate", { duplicateGroup: "group-candidate" }),
+      label("abstention", { duplicateGroup: "group-abstention" }),
+      label("partial", {
+        duplicateGroup: "group-partial",
+        positiveTargetIds: ["src/target.ts#run", "src/other.ts#run"],
+      }),
+      label("unreviewed", {
+        duplicateGroup: "group-unreviewed",
+        reviewStatus: "pending",
+      }),
+    ];
+
+    const metrics = evaluateCandidateRecallSplit(
+      observations,
+      labels,
+      "calibration",
+    );
+
+    expect(metrics).toMatchObject({
+      eligibleSiteCount: 3,
+      candidateGoldTargetCount: 4,
+      coveredGoldTargetCount: 2,
+      candidateRecall: 0.5,
+      zeroCandidateSiteCount: 1,
+      zeroCandidateRate: 1 / 3,
+      missSiteCount: 2,
+      zeroCandidateMissSiteCount: 1,
+      candidateButMissSiteCount: 1,
+      candidateWithoutOracleIdSiteCount: 1,
+      unmappedCandidateCount: 1,
+      ambiguousCandidateMappingCount: 1,
+      candidateSetSizeP50: 1,
+      candidateSetSizeP95: 2,
+      candidateSetSizeMax: 2,
+      families: [
+        { name: "family-a", eligibleSiteCount: 3, candidateRecall: 0.5 },
+      ],
+      callShapes: [
+        {
+          name: "bare",
+          eligibleSiteCount: 2,
+          candidateRecall: 2 / 3,
+        },
+        {
+          name: "unmapped",
+          eligibleSiteCount: 1,
+          candidateRecall: 0,
+        },
+      ],
+      missingEvidenceReasons: {
+        "candidate-inventory-incomplete": 1,
+        "no-supported-candidates": 1,
+      },
+    });
+  });
+
   it("[happy] counts independent duplicate groups rather than rows as calibration support", () => {
     const observations = Array.from({ length: 150 }, (_, index) =>
       observation(`sample-${index}`, `group-${index % 99}`),

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type {
+  AstCallSiteShapeFact,
   CallResolutionCalibrationRecord,
   CallResolutionCalibrationFamilyMetric,
 } from "../../lib/contracts/src/index.js";
@@ -11,6 +12,7 @@ export interface Phase2EvaluationObservation {
   readonly split: string;
   readonly duplicateGroup: string;
   readonly repoFamily: string;
+  readonly calleeKind?: AstCallSiteShapeFact["calleeKind"] | "unmapped";
   readonly ruleSignature: string | null;
   readonly candidateTargetIds: readonly string[];
   readonly topTargetId: string | null;
@@ -20,9 +22,50 @@ export interface Phase2EvaluationObservation {
   readonly truncated: boolean;
   readonly unsupportedCallShape: boolean;
   readonly generatedCandidateCount?: number;
+  readonly ambiguousCandidateMappingCount?: number;
   readonly unmappedGeneratedCandidateCount?: number;
   readonly proposedCandidateCount?: number;
   readonly reason?: string;
+}
+
+export interface Phase2CandidateRecallGroupMetrics {
+  readonly name: string;
+  readonly eligibleSiteCount: number;
+  readonly candidateGoldTargetCount: number;
+  readonly coveredGoldTargetCount: number;
+  readonly candidateRecall: number;
+  readonly zeroCandidateSiteCount: number;
+  readonly candidateWithoutOracleIdSiteCount: number;
+}
+
+export interface Phase2CandidateRecallMetrics {
+  readonly split: string;
+  readonly eligibleSiteCount: number;
+  readonly candidateGoldTargetCount: number;
+  readonly coveredGoldTargetCount: number;
+  readonly candidateRecall: number;
+  readonly zeroCandidateSiteCount: number;
+  readonly zeroCandidateRate: number;
+  readonly missSiteCount: number;
+  readonly zeroCandidateMissSiteCount: number;
+  readonly candidateButMissSiteCount: number;
+  readonly candidateWithoutOracleIdSiteCount: number;
+  readonly unmappedCandidateCount: number;
+  readonly ambiguousCandidateMappingCount: number;
+  readonly candidateSetSizeP50: number;
+  readonly candidateSetSizeP95: number;
+  readonly candidateSetSizeMax: number;
+  readonly families: readonly Phase2CandidateRecallGroupMetrics[];
+  readonly callShapes: readonly Phase2CandidateRecallGroupMetrics[];
+  readonly missingEvidenceReasons: Readonly<Record<string, number>>;
+}
+
+interface CandidateRecallBucket {
+  eligibleSiteCount: number;
+  candidateGoldTargetCount: number;
+  coveredGoldTargetCount: number;
+  zeroCandidateSiteCount: number;
+  candidateWithoutOracleIdSiteCount: number;
 }
 
 export interface Phase2EvaluationLabel {
@@ -207,6 +250,158 @@ function isRankedCorrect(row: ScoredRow): boolean {
 
 function canonicalTargets(targets: readonly string[]): string[] {
   return targets.map((target) => target.replace(/@L\d+(?:#\d+)?$/, ""));
+}
+
+function candidateRecallBucket(): CandidateRecallBucket {
+  return {
+    eligibleSiteCount: 0,
+    candidateGoldTargetCount: 0,
+    coveredGoldTargetCount: 0,
+    zeroCandidateSiteCount: 0,
+    candidateWithoutOracleIdSiteCount: 0,
+  };
+}
+
+function addCandidateRecallRow(
+  bucket: CandidateRecallBucket,
+  observation: Phase2EvaluationObservation,
+  label: Phase2EvaluationLabel,
+): void {
+  bucket.eligibleSiteCount++;
+  bucket.candidateGoldTargetCount += label.positiveTargetIds.length;
+  bucket.coveredGoldTargetCount += canonicalTargets(
+    label.positiveTargetIds,
+  ).filter((targetId) =>
+    observation.candidateTargetIds.includes(targetId),
+  ).length;
+  const generatedCandidateCount =
+    observation.generatedCandidateCount ??
+    observation.candidateTargetIds.length;
+  if (generatedCandidateCount === 0) bucket.zeroCandidateSiteCount++;
+  if (generatedCandidateCount > observation.candidateTargetIds.length)
+    bucket.candidateWithoutOracleIdSiteCount++;
+}
+
+function summarizeCandidateRecallBucket(
+  name: string,
+  bucket: CandidateRecallBucket,
+): Phase2CandidateRecallGroupMetrics {
+  return {
+    name,
+    eligibleSiteCount: bucket.eligibleSiteCount,
+    candidateGoldTargetCount: bucket.candidateGoldTargetCount,
+    coveredGoldTargetCount: bucket.coveredGoldTargetCount,
+    candidateRecall:
+      bucket.candidateGoldTargetCount === 0
+        ? 0
+        : bucket.coveredGoldTargetCount / bucket.candidateGoldTargetCount,
+    zeroCandidateSiteCount: bucket.zeroCandidateSiteCount,
+    candidateWithoutOracleIdSiteCount: bucket.candidateWithoutOracleIdSiteCount,
+  };
+}
+
+function candidateSetQuantile(
+  candidateSetSizes: readonly number[],
+  quantile: number,
+): number {
+  const sorted = [...candidateSetSizes].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(quantile * sorted.length) - 1)] ?? 0;
+}
+
+/** Candidate recall deliberately keeps incomplete and unsupported rows in the denominator. */
+export function evaluateCandidateRecallSplit(
+  observations: readonly Phase2EvaluationObservation[],
+  labels: readonly Phase2EvaluationLabel[],
+  split = observations[0]?.split ?? "unknown",
+): Phase2CandidateRecallMetrics {
+  const bySample = labelIndex(observations, labels, split);
+  const rows = eligibleRows(observations, bySample);
+  const overall = candidateRecallBucket();
+  const families = new Map<string, CandidateRecallBucket>();
+  const callShapes = new Map<string, CandidateRecallBucket>();
+  const missingEvidenceReasons: Record<string, number> = {};
+  const candidateSetSizes: number[] = [];
+  let ambiguousCandidateMappingCount = 0;
+  let missSiteCount = 0;
+  let zeroCandidateMissSiteCount = 0;
+  let candidateButMissSiteCount = 0;
+  let candidateWithoutOracleIdSiteCount = 0;
+  let unmappedCandidateCount = 0;
+
+  for (const row of rows) {
+    const { observation, label } = row;
+    addCandidateRecallRow(overall, observation, label);
+    const family = families.get(label.repoFamily) ?? candidateRecallBucket();
+    addCandidateRecallRow(family, observation, label);
+    families.set(label.repoFamily, family);
+
+    const callShape = observation.calleeKind ?? "unknown";
+    const shape = callShapes.get(callShape) ?? candidateRecallBucket();
+    addCandidateRecallRow(shape, observation, label);
+    callShapes.set(callShape, shape);
+
+    const candidateTargets = new Set(observation.candidateTargetIds);
+    const goldTargets = canonicalTargets(label.positiveTargetIds);
+    const coveredGoldTargetCount = goldTargets.filter((targetId) =>
+      candidateTargets.has(targetId),
+    ).length;
+    if (coveredGoldTargetCount < goldTargets.length) {
+      missSiteCount++;
+      const generatedCandidateCount =
+        observation.generatedCandidateCount ??
+        observation.candidateTargetIds.length;
+      if (generatedCandidateCount === 0) zeroCandidateMissSiteCount++;
+      else candidateButMissSiteCount++;
+      const reason = observation.reason ?? "unspecified";
+      missingEvidenceReasons[reason] =
+        (missingEvidenceReasons[reason] ?? 0) + 1;
+    }
+    const generatedCandidateCount =
+      observation.generatedCandidateCount ??
+      observation.candidateTargetIds.length;
+    candidateSetSizes.push(generatedCandidateCount);
+    if (generatedCandidateCount > observation.candidateTargetIds.length)
+      candidateWithoutOracleIdSiteCount++;
+    unmappedCandidateCount += observation.unmappedGeneratedCandidateCount ?? 0;
+    ambiguousCandidateMappingCount +=
+      observation.ambiguousCandidateMappingCount ?? 0;
+  }
+
+  return {
+    split,
+    eligibleSiteCount: overall.eligibleSiteCount,
+    candidateGoldTargetCount: overall.candidateGoldTargetCount,
+    coveredGoldTargetCount: overall.coveredGoldTargetCount,
+    candidateRecall:
+      overall.candidateGoldTargetCount === 0
+        ? 0
+        : overall.coveredGoldTargetCount / overall.candidateGoldTargetCount,
+    zeroCandidateSiteCount: overall.zeroCandidateSiteCount,
+    zeroCandidateRate:
+      overall.eligibleSiteCount === 0
+        ? 0
+        : overall.zeroCandidateSiteCount / overall.eligibleSiteCount,
+    missSiteCount,
+    zeroCandidateMissSiteCount,
+    candidateButMissSiteCount,
+    candidateWithoutOracleIdSiteCount,
+    unmappedCandidateCount,
+    ambiguousCandidateMappingCount,
+    candidateSetSizeP50: candidateSetQuantile(candidateSetSizes, 0.5),
+    candidateSetSizeP95: candidateSetQuantile(candidateSetSizes, 0.95),
+    candidateSetSizeMax: Math.max(0, ...candidateSetSizes),
+    families: [...families]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, bucket]) => summarizeCandidateRecallBucket(name, bucket)),
+    callShapes: [...callShapes]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, bucket]) => summarizeCandidateRecallBucket(name, bucket)),
+    missingEvidenceReasons: Object.fromEntries(
+      Object.entries(missingEvidenceReasons).sort(([left], [right]) =>
+        left.localeCompare(right),
+      ),
+    ),
+  };
 }
 
 function isAccepted(row: ScoredRow, thresholdScore: number): boolean {

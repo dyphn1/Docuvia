@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  createReadStream,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
+import { createInterface } from "node:readline";
 import path from "node:path";
 import type {
   AstDeclaredTypeFacts,
@@ -110,6 +117,32 @@ export function readJsonl<T>(filePath: string): T[] {
     .map((line) => JSON.parse(line) as T);
 }
 
+export function parseJsonlRowForSplit<T>(
+  line: string,
+  split: string,
+): T | null {
+  if (!line.trim()) return null;
+  const match = /"split"\s*:\s*"([^"\\]*)"/u.exec(line);
+  if (!match) throw new Error("Evaluation label row is missing its split.");
+  if (match[1] !== split) return null;
+  const row = JSON.parse(line) as T & { readonly split?: string };
+  if (row.split !== split)
+    throw new Error("Evaluation label row has conflicting split values.");
+  return row;
+}
+
+export function parseJsonlRowsForSplit<T>(
+  lines: Iterable<string>,
+  split: string,
+): T[] {
+  const rows: T[] = [];
+  for (const line of lines) {
+    const row = parseJsonlRowForSplit<T>(line, split);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
 export function writeJson(filePath: string, value: unknown): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
   const temporary = `${filePath}.tmp-${process.pid}`;
@@ -163,6 +196,45 @@ export function verifyPhase1Sidecars(): Record<string, string> {
   return actual;
 }
 
+/** Verifies only source inputs; prediction-only runs must not hash or read labels. */
+export function verifyPhase1SourceSidecars(): Record<string, string> {
+  const checksums = readJson<{
+    outputs: Record<string, string>;
+  }>(path.join(PHASE2_PHASE1, "checksums.json"));
+  const callsitesExpected = checksums.outputs["callsites.jsonl"];
+  if (!callsitesExpected)
+    throw new Error("Phase 1 callsite source checksum is missing.");
+  const callsitesHash = sha256(
+    readFileSync(path.join(PHASE2_PHASE1, "callsites.jsonl")),
+  );
+  if (callsitesHash !== callsitesExpected)
+    throw new Error("Phase 1 input checksum mismatch for callsites.jsonl.");
+
+  const parity = readJson<{
+    outputs: Record<string, string>;
+  }>(path.join(PHASE2_PHASE1_PARITY, "checksums.json"));
+  const factsHash = parity.outputs["declared-type-facts-pass-a.jsonl"];
+  const secondPassHash = parity.outputs["declared-type-facts-pass-b.jsonl"];
+  if (!factsHash || factsHash !== secondPassHash)
+    throw new Error(
+      "Corrected Phase 1 fact passes are missing or inconsistent.",
+    );
+  for (const name of [
+    "declared-type-facts-pass-a.jsonl",
+    "declared-type-facts-pass-b.jsonl",
+  ]) {
+    const digest = sha256(readFileSync(path.join(PHASE2_PHASE1_PARITY, name)));
+    if (digest !== parity.outputs[name])
+      throw new Error(`Corrected Phase 1 facts checksum mismatch for ${name}.`);
+  }
+  if (factsHash !== CORRECTED_PHASE1_FACTS_SHA256)
+    throw new Error("Phase 2 requires the corrected Phase 1 facts artifact.");
+  return {
+    "callsites.jsonl": callsitesHash,
+    "declared-type-facts-pass-a.jsonl": factsHash,
+  };
+}
+
 export function labelsForSplit(
   split: string,
   expectedSampleIds: ReadonlySet<string>,
@@ -170,6 +242,29 @@ export function labelsForSplit(
   const rows = readJsonl<Phase2LabelsRow>(
     path.join(PHASE2_PHASE1, "labels.jsonl"),
   ).filter((row) => row.split === split);
+  if (rows.length !== expectedSampleIds.size)
+    throw new Error(
+      `${split} label count ${rows.length} differs from source denominator ${expectedSampleIds.size}.`,
+    );
+  for (const row of rows)
+    if (!expectedSampleIds.has(row.sampleId))
+      throw new Error(`Unexpected ${split} label ${row.sampleId}.`);
+  return rows;
+}
+
+export async function labelsForSplitIsolated(
+  split: string,
+  expectedSampleIds: ReadonlySet<string>,
+): Promise<Phase2LabelsRow[]> {
+  const rows: Phase2LabelsRow[] = [];
+  const input = createReadStream(path.join(PHASE2_PHASE1, "labels.jsonl"), {
+    encoding: "utf8",
+  });
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  for await (const line of lines) {
+    const row = parseJsonlRowForSplit<Phase2LabelsRow>(line, split);
+    if (row) rows.push(row);
+  }
   if (rows.length !== expectedSampleIds.size)
     throw new Error(
       `${split} label count ${rows.length} differs from source denominator ${expectedSampleIds.size}.`,

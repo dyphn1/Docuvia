@@ -108,6 +108,7 @@ function aliasCollisionCounts(
 function addCandidateAliases(
   keys: readonly string[],
   byKey: ReadonlyMap<string, CandidateAliasInfo>,
+  aliasesByName: ReadonlyMap<string, number>,
 ): { aliases: string[]; unmapped: number; ambiguous: number } {
   const aliases = new Set<string>();
   let unmapped = 0;
@@ -118,10 +119,26 @@ function addCandidateAliases(
       unmapped++;
       continue;
     }
-    if (info.aliases.size !== 1 || info.declarationCount !== 1) ambiguous++;
-    for (const alias of info.aliases) aliases.add(alias);
+    if (info.aliases.size !== 1 || info.declarationCount !== 1) {
+      ambiguous++;
+      continue;
+    }
+    const [alias] = info.aliases;
+    if (!alias || aliasesByName.get(alias) !== 1) {
+      ambiguous++;
+      continue;
+    }
+    aliases.add(alias);
   }
   return { aliases: [...aliases].sort(), unmapped, ambiguous };
+}
+
+export function mapCandidateKeysToUnambiguousAliases(
+  keys: readonly string[],
+  factRows: readonly Phase2FactFile[],
+): { aliases: string[]; unmapped: number; ambiguous: number } {
+  const byKey = candidateAliasIndex(factRows);
+  return addCandidateAliases(keys, byKey, aliasCollisionCounts(byKey));
 }
 
 function sourceBytesForPath(
@@ -197,6 +214,7 @@ function observationWithoutCall(
     candidateSetComplete: false,
     truncated: false,
     unsupportedCallShape: true,
+    calleeKind: "unmapped",
     generatedCandidateCount: 0,
     unmappedGeneratedCandidateCount: 0,
     proposedCandidateCount: 0,
@@ -228,6 +246,7 @@ function observationFromResult(
   const generated = addCandidateAliases(
     result.generatedCandidateKeys,
     aliasesByKey,
+    aliasesByName,
   );
   const top = result.candidates[0];
   const topInfo = top ? aliasesByKey.get(top.targetKey) : undefined;
@@ -244,6 +263,7 @@ function observationFromResult(
       split: source.split,
       duplicateGroup: source.duplicateGroup,
       repoFamily: source.repoFamily,
+      calleeKind: callSite.calleeKind,
       ruleSignature: result.ruleSignature,
       candidateTargetIds: generated.aliases,
       topTargetId,
@@ -254,6 +274,7 @@ function observationFromResult(
       truncated: result.truncated,
       unsupportedCallShape: isUnsupportedCallShape(callSite, callerHasFacts),
       generatedCandidateCount: result.generatedCandidateKeys.length,
+      ambiguousCandidateMappingCount: generated.ambiguous,
       unmappedGeneratedCandidateCount: generated.unmapped,
       proposedCandidateCount: result.candidates.length,
       reason: result.reason,
@@ -282,7 +303,7 @@ function workspaceSourceFiles(
   });
 }
 
-function validateFactsAgainstSnapshot(
+export function validateFactsAgainstSnapshot(
   snapshotRoot: string,
   snapshotHash: string,
   factRows: readonly Phase2FactFile[],

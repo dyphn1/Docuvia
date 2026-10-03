@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import ts from "typescript";
+import { CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION } from "../../lib/contracts/src/index.js";
 import { CallResolutionHypothesisService } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import {
   buildCalibrationRecords,
@@ -27,6 +28,7 @@ import {
   readJson,
   sha256,
   verifyPhase1Sidecars,
+  verifyPhase1SourceSidecars,
   writeJson,
   writeJsonl,
 } from "./phase2-tiered-call-resolution-support.mjs";
@@ -61,6 +63,7 @@ const SOURCE_FILES = [
 interface Phase2RunOptions {
   readonly repositoriesDirectory: string;
   readonly outputDirectory: string;
+  readonly predictionsOnly: boolean;
 }
 
 interface CorpusSpecSnapshot {
@@ -103,8 +106,13 @@ interface Phase1RunSummary {
 
 function parseOptions(argv: readonly string[]): Phase2RunOptions {
   const values = new Map<string, string>();
-  for (let index = 0; index < argv.length; index += 2) {
+  let predictionsOnly = false;
+  for (let index = 0; index < argv.length; index++) {
     const key = argv[index];
+    if (key === "--predictions-only") {
+      predictionsOnly = true;
+      continue;
+    }
     const value = argv[index + 1];
     if (
       !["--repos", "--out"].includes(key ?? "") ||
@@ -112,15 +120,17 @@ function parseOptions(argv: readonly string[]): Phase2RunOptions {
       value.startsWith("--")
     )
       throw new Error(
-        "Usage: phase2-tiered-call-resolution-runner.mts [--repos <dir>] [--out <dir>]",
+        "Usage: phase2-tiered-call-resolution-runner.mts [--repos <dir>] [--out <dir>] [--predictions-only]",
       );
     values.set(key!, value);
+    index++;
   }
   return {
     repositoriesDirectory: path.resolve(
       values.get("--repos") ?? PHASE2_DEFAULT_REPOSITORIES,
     ),
     outputDirectory: path.resolve(values.get("--out") ?? PHASE2_DEFAULT_OUTPUT),
+    predictionsOnly,
   };
 }
 
@@ -361,7 +371,9 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
 
 async function run(options: Phase2RunOptions): Promise<void> {
   const started = performance.now();
-  const inputHashes = verifyPhase1Sidecars();
+  const inputHashes = options.predictionsOnly
+    ? verifyPhase1SourceSidecars()
+    : verifyPhase1Sidecars();
   const implementation = implementationFingerprint();
   const phase1Summary = readJson<Phase1RunSummary>(
     path.join(PHASE2_PHASE1, "summary.json"),
@@ -425,6 +437,49 @@ async function run(options: Phase2RunOptions): Promise<void> {
     throw new Error(
       "Hypothesis service configuration changed across snapshots.",
     );
+  if (options.predictionsOnly) {
+    const splitCounts = Object.fromEntries(
+      ["train", "calibration", "test", "temporal"].map((split) => [
+        split,
+        observations.filter((row) => row.split === split).length,
+      ]),
+    );
+    const predictionsPath = path.join(
+      options.outputDirectory,
+      "predictions.jsonl",
+    );
+    writeJson(
+      path.join(options.outputDirectory, "candidate-prediction-manifest.json"),
+      {
+        schemaVersion: 1,
+        measurement: "phase2-p2a-candidate-predictions/1",
+        generatedAt: new Date().toISOString(),
+        node: codeVersion().node,
+        typescript: codeVersion().typescript,
+        candidateGeneratorVersion: CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+        sourceRows: sourceRows.length,
+        predictionRows: observations.length,
+        splitCounts,
+        predictionSha256: sha256(readFileSync(predictionsPath)),
+        sourceInputHashes: inputHashes,
+        correctedFactsSha256: inputHashes["declared-type-facts-pass-a.jsonl"],
+        implementationHash: implementation.hash,
+        implementationFiles: implementation.files,
+        sourceFingerprints: results.map((row) => ({
+          snapshotId: row.snapshotId,
+          snapshotHash: row.snapshotHash,
+          sourceFingerprint: row.sourceFingerprint,
+        })),
+        configurationHash,
+        source: sourceSummary(results),
+        labelsRead: false,
+      },
+    );
+    console.info(
+      `[phase2-p2a] source-only complete: ${observations.length} predictions, labels not read, ${Math.round(performance.now() - started)}ms`,
+    );
+    return;
+  }
   const calibrationObservations = observations.filter(
     (row) => row.split === "calibration",
   );

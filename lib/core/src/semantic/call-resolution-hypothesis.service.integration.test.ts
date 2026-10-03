@@ -156,6 +156,165 @@ type CallResolutionHypothesisResultLike = ReturnType<
 >;
 
 describe("call-resolution hypothesis service", () => {
+  it("[state-diff] indexes named program arrows as distinct fail-closed candidates", async () => {
+    const declarations = await parseFile(
+      "src/declarations.ts",
+      [
+        "export const direct = (value: number) => value + 1;",
+        "export const duplicate = () => 1;",
+        "export const duplicate = () => 2;",
+        "export const factory = () => () => 3;",
+        "function localFactory() { const local = () => 4; return local(); }",
+      ].join("\n"),
+    );
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      "function run() { direct(1); duplicate(); factory(); local(); }",
+    );
+    const callSites = callerFile.callSiteShapeFacts?.callSites;
+    expect(callSites?.map(({ calleeName }) => calleeName)).toEqual([
+      "direct",
+      "duplicate",
+      "factory",
+      "local",
+    ]);
+    if (!callSites) throw new Error("worker omitted call shapes");
+
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(
+      service,
+      "a".repeat(64),
+      [
+        {
+          filePath: "src/declarations.ts",
+          declaredTypeFacts: declarations.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/caller.ts",
+          declaredTypeFacts: callerFile.declaredTypeFacts!,
+        },
+      ],
+      false,
+    );
+    const resultFor = (name: string) => {
+      const callSite = callSites.find(({ calleeName }) => calleeName === name);
+      expect(callSite).toEqual(expect.objectContaining({ calleeName: name }));
+      if (!callSite) throw new Error(`worker omitted ${name} call shape`);
+      return service.hypothesize({
+        callerFilePath: "src/caller.ts",
+        callSite,
+        workspaceIndex,
+      });
+    };
+
+    const directDeclaration = declarations.declaredTypeFacts?.declarations.find(
+      ({ name, kind, owner }) =>
+        name === "direct" && kind === "arrow" && owner.kind === "program",
+    );
+    expect(directDeclaration).toEqual(
+      expect.objectContaining({
+        kind: "arrow",
+        name: "direct",
+        owner: expect.objectContaining({ kind: "program" }),
+      }),
+    );
+    if (!directDeclaration) throw new Error("parser omitted direct arrow fact");
+
+    const direct = resultFor("direct");
+    expect(direct.generatedCandidateKeys).toEqual([
+      `src/declarations.ts#function:${directDeclaration.declarationSpan.start}:${directDeclaration.declarationSpan.end}#direct`,
+    ]);
+    expect(direct.candidates.map(({ targetKey }) => targetKey)).toEqual(
+      direct.generatedCandidateKeys,
+    );
+    expect(direct.candidateSetComplete).toBe(false);
+    expect(direct.status).toBe("ambiguous");
+    expect(direct.selected).toBeNull();
+
+    const duplicate = resultFor("duplicate");
+    expect(duplicate.generatedCandidateKeys).toHaveLength(2);
+    expect(new Set(duplicate.generatedCandidateKeys).size).toBe(2);
+    expect(duplicate.candidates.map(({ targetKey }) => targetKey)).toEqual(
+      duplicate.generatedCandidateKeys,
+    );
+    expect(duplicate.status).toBe("ambiguous");
+    expect(duplicate.selected).toBeNull();
+
+    const factoryFacts = declarations.declaredTypeFacts?.declarations.filter(
+      ({ kind }) => kind === "arrow",
+    );
+    expect(
+      factoryFacts?.some(
+        ({ name, owner }) => name === null && owner.kind === "function",
+      ),
+    ).toBe(true);
+    expect(resultFor("factory").generatedCandidateKeys).toHaveLength(1);
+    expect(resultFor("local").generatedCandidateKeys).toEqual([]);
+
+    const baseFacts = declarations.declaredTypeFacts!;
+    const unsupportedArrowFacts = {
+      ...baseFacts,
+      declarations: baseFacts.declarations.map((declaration) =>
+        declaration.name === "direct" && declaration.kind === "arrow"
+          ? { ...declaration, unsupportedReason: "syntax-error" as const }
+          : declaration,
+      ),
+    };
+    const unsupportedArrowService = new CallResolutionHypothesisService();
+    const unsupportedArrowIndex = indexWorkspace(
+      unsupportedArrowService,
+      "b".repeat(64),
+      [
+        {
+          filePath: "src/declarations.ts",
+          declaredTypeFacts: unsupportedArrowFacts,
+        },
+        {
+          filePath: "src/caller.ts",
+          declaredTypeFacts: callerFile.declaredTypeFacts!,
+        },
+      ],
+      false,
+    );
+    const directCall = callSites.find(
+      ({ calleeName }) => calleeName === "direct",
+    );
+    if (!directCall) throw new Error("worker omitted direct call shape");
+    const unsupportedArrowResult = unsupportedArrowService.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callSite: directCall,
+      workspaceIndex: unsupportedArrowIndex,
+    });
+    expect(unsupportedArrowResult.generatedCandidateKeys).toEqual([]);
+
+    const unsupportedLanguageFacts = {
+      ...baseFacts,
+      language: "python" as unknown as typeof baseFacts.language,
+    };
+    const unsupportedLanguageService = new CallResolutionHypothesisService();
+    const unsupportedLanguageIndex = indexWorkspace(
+      unsupportedLanguageService,
+      "c".repeat(64),
+      [
+        {
+          filePath: "src/declarations.ts",
+          declaredTypeFacts: unsupportedLanguageFacts,
+        },
+        {
+          filePath: "src/caller.ts",
+          declaredTypeFacts: callerFile.declaredTypeFacts!,
+        },
+      ],
+      false,
+    );
+    const unsupportedLanguageResult = unsupportedLanguageService.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callSite: directCall,
+      workspaceIndex: unsupportedLanguageIndex,
+    });
+    expect(unsupportedLanguageResult.generatedCandidateKeys).toEqual([]);
+  });
+
   it("[happy] proves a complete, unique member declared on the exact this owner", async () => {
     const code =
       "class Service { close(): void {} call(): void { this.close(); } }";

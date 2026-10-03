@@ -118,23 +118,59 @@ function memberNameIndexKey(
   return ownerMembersKey(filePath, declaration.owner, declaration.isStatic);
 }
 
+function isBareFunctionCandidate(declaration: AstDeclaredDeclaration): boolean {
+  return (
+    ["program", "function"].includes(declaration.owner.kind) &&
+    declaration.kind === "function"
+  );
+}
+
+function isNamedProgramArrowCandidate(
+  declaration: AstDeclaredDeclaration,
+): boolean {
+  return (
+    declaration.owner.kind === "program" &&
+    declaration.kind === "arrow" &&
+    !declaration.unsupportedReason
+  );
+}
+
+function candidateIdentity(declaration: AstDeclaredDeclaration): {
+  readonly isStatic: boolean;
+  readonly individualDeclarationSpan?: {
+    readonly start: number;
+    readonly end: number;
+  };
+} | null {
+  if (supportedDeclaration(declaration))
+    return { isStatic: declaration.isStatic };
+  if (isBareFunctionCandidate(declaration))
+    return {
+      isStatic: false,
+      individualDeclarationSpan: declaration.declarationSpan,
+    };
+  if (isNamedProgramArrowCandidate(declaration))
+    return {
+      isStatic: false,
+      individualDeclarationSpan: declaration.declarationSpan,
+    };
+  return null;
+}
+
 export function candidateTargetKeyForDeclaration(
   filePath: string,
   declaration: AstDeclaredDeclaration,
 ): string | undefined {
   const name = declaration.name;
   if (!name) return undefined;
-  const isMember = supportedDeclaration(declaration);
-  const isBareFunction =
-    ["program", "function"].includes(declaration.owner.kind) &&
-    declaration.kind === "function";
-  if (!isMember && !isBareFunction) return undefined;
+  const identity = candidateIdentity(declaration);
+  if (!identity) return undefined;
   return targetKey(
     filePath,
     declaration.owner,
     name,
-    isMember ? declaration.isStatic : false,
-    isBareFunction ? declaration.declarationSpan : undefined,
+    identity.isStatic,
+    identity.individualDeclarationSpan,
   );
 }
 
@@ -152,12 +188,26 @@ function indexOwnerMemberNames(
   }
 }
 
+function candidateFactsAreSupported(
+  facts: AstDeclaredTypeFacts,
+  declaration: AstDeclaredDeclaration,
+): boolean {
+  if (declaration.owner.kind !== "program" || declaration.kind !== "arrow")
+    return true;
+  return (
+    facts.schemaVersion === AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION &&
+    ["typescript", "tsx", "javascript"].includes(facts.language) &&
+    !declaration.unsupportedReason
+  );
+}
+
 function addCandidate(
   builder: WorkspaceBuilder,
   sourceFilePath: string,
   facts: AstDeclaredTypeFacts,
   declaration: AstDeclaredDeclaration,
 ): void {
+  if (!candidateFactsAreSupported(facts, declaration)) return;
   const key = candidateTargetKeyForDeclaration(sourceFilePath, declaration);
   if (!key || !declaration.name) return;
   const isMember = supportedDeclaration(declaration);

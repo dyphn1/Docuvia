@@ -11,7 +11,7 @@ import type {
 } from "./declared-type-facts.interfaces.js";
 
 export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
-  "declared-member-hypothesis-v2" as const;
+  "declared-member-hypothesis-v3" as const;
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;

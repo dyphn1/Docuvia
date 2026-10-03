@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-hypothesis-calibration.ts#anonymous
+id: lib/core/src/semantic/call-resolution-hypothesis-calibration.ts#anonymous@L128
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-hypothesis-calibration.ts

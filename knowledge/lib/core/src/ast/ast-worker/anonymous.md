@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker.ts#anonymous@L720
+id: lib/core/src/ast/ast-worker.ts#anonymous@L490
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker.ts

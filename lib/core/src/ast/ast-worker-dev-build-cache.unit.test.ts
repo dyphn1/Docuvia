@@ -1,11 +1,17 @@
 import {
+  closeSync,
   existsSync,
+  fstatSync,
+  ftruncateSync,
+  futimesSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   rmSync,
   statSync,
   utimesSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -64,19 +70,24 @@ describe("dev worker bundle dependency cache", () => {
     );
     expect(needsDevWorkerCompile(entryPath, bundlePath)).toBe(false);
 
-    const previous = statSync(dependencyPath);
-    const preservedMtime = new Date(
-      Math.floor(previous.mtimeMs / 1_000) * 1_000,
-    );
-    utimesSync(dependencyPath, previous.atime, preservedMtime);
-    const preserved = statSync(dependencyPath);
-    writeFileSync(
-      dependencyPath,
-      'export const helperValue = "after";\n',
-      "utf8",
-    );
-    utimesSync(dependencyPath, preserved.atime, preserved.mtime);
-    expect(statSync(dependencyPath).mtimeMs).toBeCloseTo(preserved.mtimeMs, 0);
+    const dependencyFd = openSync(dependencyPath, "r+");
+    try {
+      const previous = fstatSync(dependencyFd);
+      const preservedMtime = new Date(
+        Math.floor(previous.mtimeMs / 1_000) * 1_000,
+      );
+      futimesSync(dependencyFd, previous.atime, preservedMtime);
+      const preserved = fstatSync(dependencyFd);
+      const changedContent = Buffer.from(
+        'export const helperValue = "after";\n',
+      );
+      ftruncateSync(dependencyFd, 0);
+      writeSync(dependencyFd, changedContent, 0, changedContent.byteLength, 0);
+      futimesSync(dependencyFd, preserved.atime, preserved.mtime);
+      expect(fstatSync(dependencyFd).mtimeMs).toBeCloseTo(preserved.mtimeMs, 0);
+    } finally {
+      closeSync(dependencyFd);
+    }
 
     expect(needsDevWorkerCompile(entryPath, bundlePath)).toBe(true);
     await compileWorkerForDevMode(entryPath, bundlePath);

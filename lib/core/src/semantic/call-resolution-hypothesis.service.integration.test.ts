@@ -1081,7 +1081,7 @@ describe("call-resolution hypothesis service", () => {
       "function run(target: Target) { target.open(); }",
     );
     const callSite = callerFile.callSiteShapeFacts?.callSites[0];
-    expect(callSite).toBeDefined();
+    expect(callSite).toMatchObject({ calleeName: "open" });
     if (!callSite) throw new Error("worker omitted the call shape");
     const files = [
       {

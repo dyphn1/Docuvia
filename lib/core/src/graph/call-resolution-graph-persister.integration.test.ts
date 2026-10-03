@@ -107,7 +107,7 @@ describe("GraphPersister call-resolution integration", () => {
     const callSite = parsedData.callSiteShapeFacts?.callSites.find(
       (candidate) => candidate.calleeName === "close",
     );
-    expect(callSite).toBeDefined();
+    expect(callSite).toMatchObject({ calleeName: "close" });
     if (!callSite) throw new Error("AST worker omitted source call-site facts");
 
     const callSiteKey = createPortableCallSiteKey({

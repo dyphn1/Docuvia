@@ -1,4 +1,5 @@
 import type {
+  AstCallSiteShapeFact,
   AstDeclaredDeclaration,
   AstDeclaredTypeFact,
   AstDeclaredTypeFacts,
@@ -9,6 +10,7 @@ import type {
   CallResolutionHypothesisWorkspaceInput,
 } from "@workspace/contracts";
 import {
+  AST_CALL_SITE_SHAPE_SCHEMA_VERSION,
   AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION,
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
@@ -28,7 +30,16 @@ export interface IndexedWorkspace {
     readonly CandidateWithoutRank[]
   >;
   readonly memberNamesByTargetKey: ReadonlyMap<string, ReadonlySet<string>>;
+  readonly declarationsByFile: ReadonlyMap<
+    string,
+    readonly AstDeclaredDeclaration[]
+  >;
   readonly factsByFile: ReadonlyMap<string, readonly AstDeclaredTypeFact[]>;
+  readonly sourceContentHashByFile: ReadonlyMap<string, string>;
+  readonly callSiteShapesByFile: ReadonlyMap<
+    string,
+    readonly AstCallSiteShapeFact[]
+  >;
   readonly duplicateSourcePaths: boolean;
 }
 
@@ -49,7 +60,10 @@ interface WorkspaceBuilder {
   readonly seenPaths: Set<string>;
   readonly candidates: Map<string, MutableCandidate>;
   readonly memberNames: Map<string, Set<string>>;
+  readonly declarationsByFile: Map<string, readonly AstDeclaredDeclaration[]>;
   readonly factsByFile: Map<string, readonly AstDeclaredTypeFact[]>;
+  readonly sourceContentHashByFile: Map<string, string>;
+  readonly callSiteShapesByFile: Map<string, readonly AstCallSiteShapeFact[]>;
 }
 
 function ownerKey(owner: AstDeclaredTypeOwner): string {
@@ -187,6 +201,20 @@ function indexSourceFile(
     return;
   }
   builder.seenPaths.add(source.filePath);
+  if (source.sourceContentHash)
+    builder.sourceContentHashByFile.set(
+      source.filePath,
+      source.sourceContentHash,
+    );
+  if (
+    source.callSiteShapeFacts?.schemaVersion ===
+      AST_CALL_SITE_SHAPE_SCHEMA_VERSION &&
+    Array.isArray(source.callSiteShapeFacts.callSites)
+  )
+    builder.callSiteShapesByFile.set(
+      source.filePath,
+      source.callSiteShapeFacts.callSites,
+    );
   const facts = source.declaredTypeFacts;
   if (!facts) {
     builder.complete = false;
@@ -194,6 +222,7 @@ function indexSourceFile(
     return;
   }
   builder.factsByFile.set(source.filePath, facts.facts);
+  builder.declarationsByFile.set(source.filePath, facts.declarations);
   if (
     facts.schemaVersion !== AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION ||
     !["typescript", "tsx", "javascript"].includes(facts.language) ||
@@ -262,7 +291,10 @@ function workspaceBuilder(
     seenPaths: new Set(),
     candidates: new Map(),
     memberNames: new Map(),
+    declarationsByFile: new Map(),
     factsByFile: new Map(),
+    sourceContentHashByFile: new Map(),
+    callSiteShapesByFile: new Map(),
   };
 }
 
@@ -303,7 +335,10 @@ export function createIndexedWorkspace(
     complete: builder.complete,
     candidatesByMember,
     memberNamesByTargetKey,
+    declarationsByFile: builder.declarationsByFile,
     factsByFile: builder.factsByFile,
+    sourceContentHashByFile: builder.sourceContentHashByFile,
+    callSiteShapesByFile: builder.callSiteShapesByFile,
     duplicateSourcePaths: builder.duplicateSourcePaths,
   });
 }

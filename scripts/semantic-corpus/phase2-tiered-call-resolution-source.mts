@@ -5,6 +5,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   isDiscoverableSourceFile,
   type AstCallSiteShapeFact,
+  type AstCallSiteShapeFacts,
   type AstDeclaredDeclaration,
   type CallResolutionHypothesisWorkspaceInput,
   type ICallResolutionHypothesisService,
@@ -205,6 +206,7 @@ function observationWithoutCall(
 function observationFromResult(
   source: Phase2CorpusSource,
   callSite: AstCallSiteShapeFact,
+  callerSourceContentHash: string | undefined,
   callerHasFacts: boolean,
   service: ICallResolutionHypothesisService,
   workspaceIndex: ReturnType<
@@ -219,6 +221,7 @@ function observationFromResult(
 } {
   const result = service.hypothesize({
     callerFilePath: source.filePath,
+    ...(callerSourceContentHash ? { callerSourceContentHash } : {}),
     callSite,
     workspaceIndex,
   });
@@ -262,11 +265,21 @@ function observationFromResult(
 
 function workspaceSourceFiles(
   factRows: readonly Phase2FactFile[],
+  parsedByFile: ReadonlyMap<
+    string,
+    { readonly data: { readonly callSiteShapeFacts?: AstCallSiteShapeFacts } }
+  >,
 ): CallResolutionHypothesisWorkspaceInput["sourceFiles"] {
-  return factRows.map(({ filePath, declaredTypeFacts }) => ({
-    filePath,
-    declaredTypeFacts,
-  }));
+  return factRows.map(({ filePath, fileContentSha256, declaredTypeFacts }) => {
+    const callSiteShapeFacts =
+      parsedByFile.get(filePath)?.data.callSiteShapeFacts;
+    return {
+      filePath,
+      sourceContentHash: fileContentSha256,
+      callSiteShapeFacts: callSiteShapeFacts ?? null,
+      declaredTypeFacts,
+    };
+  });
 }
 
 function validateFactsAgainstSnapshot(
@@ -337,6 +350,9 @@ export async function processPhase2Snapshot(input: {
     );
     const parseWallMs = performance.now() - parseStarted;
     const parsedByFile = new Map(parsed.parsed.map((row) => [row.file, row]));
+    const sourceHashesByFile = new Map(
+      discovered.map(({ file, hash }) => [file, hash]),
+    );
     const factsByFile = new Map(
       factRows.map((row) => [row.filePath, row.declaredTypeFacts]),
     );
@@ -354,7 +370,7 @@ export async function processPhase2Snapshot(input: {
     const workspaceIndex = input.service.indexWorkspace({
       sourceFingerprint,
       sourceIndexComplete: true,
-      sourceFiles: workspaceSourceFiles(factRows),
+      sourceFiles: workspaceSourceFiles(factRows, parsedByFile),
     });
     const callShapeMaps = new Map(
       [...parsedByFile].map(([file, row]) => [
@@ -385,6 +401,7 @@ export async function processPhase2Snapshot(input: {
       const result = observationFromResult(
         source,
         callSite,
+        sourceHashesByFile.get(source.filePath),
         factsByFile.has(source.filePath),
         input.service,
         workspaceIndex,

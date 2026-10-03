@@ -34,6 +34,7 @@ import {
   filterCandidates,
   rankCandidates,
 } from "./call-resolution-hypothesis-ranking.js";
+import { proveUniqueThisMember } from "./call-resolution-strict-proof.js";
 
 export class CallResolutionHypothesisService implements ICallResolutionHypothesisService {
   private readonly options: NormalizedServiceOptions;
@@ -91,6 +92,12 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       filtered.candidates,
       this.options,
     );
+    const strictProof = proveUniqueThisMember(
+      request,
+      generated,
+      workspace,
+      truncated,
+    );
     const matchingRecords = matchingCalibrationRecords(
       this.options.calibrationRecords,
       ruleSignature,
@@ -129,6 +136,7 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       selected: decision.selected,
       confidence: decision.confidence,
       reason: decision.reason,
+      strictProof,
     };
   }
 

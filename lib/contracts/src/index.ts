@@ -139,6 +139,8 @@ export type {
   CallResolutionCalibrationFamilyMetric,
   CallResolutionCalibrationRecord,
   CallResolutionHypothesisCandidate,
+  CallResolutionStrictProof,
+  CallResolutionStrictProofReason,
   CallResolutionHypothesisFilterStage,
   CallResolutionHypothesisReason,
   CallResolutionHypothesisRequest,

@@ -107,7 +107,10 @@ function invalidRequest(message: string): never {
 
 export function validateWorkspaceInput(input: {
   sourceFingerprint: string;
-  sourceFiles: readonly { filePath: string }[];
+  sourceFiles: readonly {
+    filePath: string;
+    sourceContentHash?: string;
+  }[];
   sourceIndexComplete: boolean;
 }): void {
   if (!HASH_PATTERN.test(input.sourceFingerprint))
@@ -118,6 +121,14 @@ export function validateWorkspaceInput(input: {
     invalidRequest("sourceIndexComplete must be a boolean.");
   if (input.sourceFiles.some(({ filePath }) => !filePath))
     invalidRequest("Every source file must have a filePath.");
+  if (
+    input.sourceFiles.some(
+      ({ sourceContentHash }) =>
+        sourceContentHash !== undefined &&
+        !HASH_PATTERN.test(sourceContentHash),
+    )
+  )
+    invalidRequest("sourceContentHash must be a lowercase SHA-256 hash.");
 }
 
 export function validateHypothesisRequest(
@@ -125,6 +136,11 @@ export function validateHypothesisRequest(
 ): void {
   if (!request.callerFilePath || !request.callSite?.calleeName)
     invalidRequest("callerFilePath and callSite.calleeName are required.");
+  if (
+    request.callerSourceContentHash !== undefined &&
+    !HASH_PATTERN.test(request.callerSourceContentHash)
+  )
+    invalidRequest("callerSourceContentHash must be a lowercase SHA-256 hash.");
   if (
     request.callSite.argumentCount !== null &&
     (!Number.isInteger(request.callSite.argumentCount) ||

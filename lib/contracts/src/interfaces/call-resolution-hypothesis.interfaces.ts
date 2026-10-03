@@ -1,4 +1,7 @@
-import type { AstCallSiteShapeFact } from "./call-site-shape-facts.interfaces.js";
+import type {
+  AstCallSiteShapeFact,
+  AstCallSiteShapeFacts,
+} from "./call-site-shape-facts.interfaces.js";
 import type {
   AstDeclaredTypeFacts,
   AstDeclaredTypeOwner,
@@ -15,6 +18,10 @@ export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
 
 export interface CallResolutionHypothesisSourceFile {
   readonly filePath: string;
+  /** SHA-256 of the exact source bytes used to produce this file's syntax facts. */
+  readonly sourceContentHash?: string;
+  /** Parser output from the same source bytes; strict proofs verify callSite membership here. */
+  readonly callSiteShapeFacts?: AstCallSiteShapeFacts | null;
   /** Missing facts make the workspace candidate inventory incomplete. */
   readonly declaredTypeFacts: AstDeclaredTypeFacts | null;
 }
@@ -36,6 +43,8 @@ export interface CallResolutionHypothesisWorkspaceIndex {
 
 export interface CallResolutionHypothesisRequest {
   readonly callerFilePath: string;
+  /** Must be the hash paired with the parser-produced callSite fact. */
+  readonly callerSourceContentHash?: string;
   readonly callSite: AstCallSiteShapeFact;
   readonly workspaceIndex: CallResolutionHypothesisWorkspaceIndex;
 }
@@ -87,6 +96,33 @@ export interface CallResolutionCalibrationRecord {
   readonly calibrationRecordHash: string;
 }
 
+export type CallResolutionStrictProofReason =
+  | "unique-this-owner-member"
+  | "incomplete-inventory"
+  | "candidate-list-truncated"
+  | "unsupported-call-shape"
+  | "source-snapshot-unbound"
+  | "source-snapshot-mismatch"
+  | "call-site-not-in-indexed-source"
+  | "no-unique-owner-candidate";
+
+export type CallResolutionStrictProof =
+  | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: "single-candidate-this-v1";
+      readonly reason: "unique-this-owner-member";
+    }
+  | {
+      readonly status: "abstained";
+      readonly targetKey: null;
+      readonly ruleSignature: null;
+      readonly reason: Exclude<
+        CallResolutionStrictProofReason,
+        "unique-this-owner-member"
+      >;
+    };
+
 export type CallResolutionHypothesisReason =
   | "calibrated-likely"
   | "uncalibrated-signature"
@@ -120,6 +156,8 @@ export interface CallResolutionHypothesisResult {
   /** Calibrated group lower bound only; null for every uncalibrated/abstaining result. */
   readonly confidence: number | null;
   readonly reason: CallResolutionHypothesisReason;
+  /** Strict syntax proof is separate from the calibrated heuristic decision. */
+  readonly strictProof: CallResolutionStrictProof;
 }
 
 export interface CallResolutionHypothesisServiceOptions {

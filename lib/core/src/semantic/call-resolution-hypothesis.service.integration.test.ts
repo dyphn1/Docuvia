@@ -46,6 +46,10 @@ function indexWorkspace(
   sourceFingerprint: string,
   sourceFiles: readonly {
     filePath: string;
+    sourceContentHash?: string;
+    callSiteShapeFacts?: NonNullable<
+      Awaited<ReturnType<typeof parseFile>>["callSiteShapeFacts"]
+    > | null;
     declaredTypeFacts: NonNullable<
       Awaited<ReturnType<typeof parseFile>>["declaredTypeFacts"]
     > | null;
@@ -113,6 +117,304 @@ type CallResolutionHypothesisResultLike = ReturnType<
 >;
 
 describe("call-resolution hypothesis service", () => {
+  it("[happy] proves a complete, unique member declared on the exact this owner", async () => {
+    const code =
+      "class Service { close(): void {} call(): void { this.close(); } }";
+    const callerFile = await parseFile("src/service.ts", code);
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "close",
+    );
+    if (!callSite) throw new Error("worker omitted the this call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "0".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        sourceContentHash: createSha256(code),
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callSite,
+      callerSourceContentHash: createSha256(code),
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "single-candidate-this-v1",
+      targetKey: expect.any(String),
+      reason: "unique-this-owner-member",
+    });
+    expect(result.strictProof.targetKey).toBe(result.candidates[0]?.targetKey);
+  });
+
+  it("[error-handling] abstains for this calls inside static methods", async () => {
+    const code =
+      "class Service { close(): void {} static call(): void { this.close(); } }";
+    const callerFile = await parseFile("src/service.ts", code);
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+    if (!callSite) throw new Error("worker omitted the static this call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "d".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        sourceContentHash: createSha256(code),
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callerSourceContentHash: createSha256(code),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "unsupported-call-shape",
+    });
+  });
+
+  it("[state-diff] abstains when the caller shape and indexed source hashes differ", async () => {
+    const previousCode =
+      "class Service { reset(): void {} close(): void {} call(): void { this.reset(); } }";
+    const currentCode =
+      "class Service { reset(): void {} close(): void {} call(): void { this.close(); } }";
+    expect(previousCode).toHaveLength(currentCode.length);
+    const previousFile = await parseFile("src/service.ts", previousCode);
+    const currentFile = await parseFile("src/service.ts", currentCode);
+    const staleCallSite = previousFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "reset",
+    );
+    if (!staleCallSite)
+      throw new Error("worker omitted the previous call shape");
+    const sourceFile = {
+      filePath: "src/service.ts",
+      declaredTypeFacts: currentFile.declaredTypeFacts!,
+      sourceContentHash: createSha256(currentCode),
+    };
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "a".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [sourceFile],
+    });
+    const request = {
+      callerFilePath: "src/service.ts",
+      callSite: staleCallSite,
+      callerSourceContentHash: createSha256(previousCode),
+      workspaceIndex,
+    };
+
+    const result = service.hypothesize(request);
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "source-snapshot-mismatch",
+    });
+  });
+
+  it("[error-handling] abstains when a stale call-site fact is paired with the current hash", async () => {
+    const previousCode =
+      "class Service { reset(): void {} close(): void {} call(): void { this.reset(); } }";
+    const currentCode =
+      "class Service { reset(): void {} close(): void {} call(): void { this.close(); } }";
+    const previousFile = await parseFile("src/service.ts", previousCode);
+    const currentFile = await parseFile("src/service.ts", currentCode);
+    const staleCallSite = previousFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "reset",
+    );
+    if (!staleCallSite)
+      throw new Error("worker omitted the previous call shape");
+    const sourceFile = {
+      filePath: "src/service.ts",
+      declaredTypeFacts: currentFile.declaredTypeFacts!,
+      callSiteShapeFacts: currentFile.callSiteShapeFacts!,
+      sourceContentHash: createSha256(currentCode),
+    };
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "b".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [sourceFile],
+    });
+    const request = {
+      callerFilePath: "src/service.ts",
+      callSite: staleCallSite,
+      callerSourceContentHash: createSha256(currentCode),
+      workspaceIndex,
+    };
+
+    const result = service.hypothesize(request);
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "call-site-not-in-indexed-source",
+    });
+  });
+
+  it("[invalid-input] abstains when the indexed caller file has no source hash", async () => {
+    const code =
+      "class Service { close(): void {} call(): void { this.close(); } }";
+    const callerFile = await parseFile("src/service.ts", code);
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+    if (!callSite) throw new Error("worker omitted the this call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "c".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        callSiteShapeFacts: callerFile.callSiteShapeFacts!,
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callerSourceContentHash: createSha256(code),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "source-snapshot-unbound",
+    });
+  });
+
+  it("[invalid-input] abstains from strict proof when the workspace inventory is incomplete", async () => {
+    const callerFile = await parseFile(
+      "src/service.ts",
+      "class Service { close(): void {} call(): void { this.close(); } }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "close",
+    );
+    if (!callSite) throw new Error("worker omitted the this call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(
+      service,
+      "1".repeat(64),
+      [
+        {
+          filePath: "src/service.ts",
+          declaredTypeFacts: callerFile.declaredTypeFacts!,
+        },
+      ],
+      false,
+    );
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "incomplete-inventory",
+    });
+  });
+
+  it("[state-diff] abstains when the bounded candidate list is truncated", async () => {
+    const callerFile = await parseFile(
+      "src/service.ts",
+      "class Service { close(): void {} call(): void { this.close(); } }",
+    );
+    const otherFile = await parseFile(
+      "src/other.ts",
+      "class Other { close(): void {} }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "close",
+    );
+    if (!callSite) throw new Error("worker omitted the this call shape");
+    const service = new CallResolutionHypothesisService({ maxCandidates: 1 });
+    const workspaceIndex = indexWorkspace(service, "2".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/other.ts",
+        declaredTypeFacts: otherFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/service.ts",
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.truncated).toBe(true);
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "candidate-list-truncated",
+    });
+  });
+
+  it("[error-handling] abstains for member calls whose receiver binding is not direct this", async () => {
+    const serviceFile = await parseFile(
+      "src/service.ts",
+      "class Service { close(): void {} }",
+    );
+    const otherFile = await parseFile(
+      "src/other.ts",
+      "class Other { close(): void {} }",
+    );
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      "function run(service: Service) { service.close(); }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+    if (!callSite) throw new Error("worker omitted the member call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "3".repeat(64), [
+      {
+        filePath: "src/service.ts",
+        declaredTypeFacts: serviceFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/other.ts",
+        declaredTypeFacts: otherFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/caller.ts",
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toEqual({
+      status: "abstained",
+      targetKey: null,
+      ruleSignature: null,
+      reason: "unsupported-call-shape",
+    });
+  });
+
   it("[happy] indexes once and applies typed receiver, peer, and arity evidence in order", async () => {
     const serviceFile = await parseFile(
       "src/service.ts",

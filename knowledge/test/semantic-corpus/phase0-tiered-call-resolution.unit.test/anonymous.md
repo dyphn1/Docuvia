@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts#anonymous@L60
+id: test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts#anonymous@L98
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts

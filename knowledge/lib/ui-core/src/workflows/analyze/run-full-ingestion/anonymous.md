@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-full-ingestion.ts#anonymous@L116
+id: lib/ui-core/src/workflows/analyze/run-full-ingestion.ts#anonymous@L84
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/run-full-ingestion.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/run-full-ingestion.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/run-full-ingestion.ts`
+

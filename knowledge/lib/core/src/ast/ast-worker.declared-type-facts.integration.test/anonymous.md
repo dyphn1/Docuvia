@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker.declared-type-facts.integration.test.ts#anonymous@L97
+id: lib/core/src/ast/ast-worker.declared-type-facts.integration.test.ts#anonymous@L76
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker.declared-type-facts.integration.test.ts

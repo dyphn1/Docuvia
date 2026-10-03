@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.anonymous@L107
+id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.anonymous@L237
 type: symbol
 name: anonymous
 filePath: lib/core/src/graph/persist-ast-graph.ts

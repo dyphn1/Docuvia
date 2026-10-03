@@ -1308,9 +1308,9 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "3714074d4e1cff3aa439796d50e9dc9bc0816f3b",
-      "lastTierBProcessedAt": "2026-10-03 04:57:04",
-      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+      "contentHash": "2721115395fd58e1f5b0e4fea2208a7cf62a6759",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -1326,9 +1326,9 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts",
-      "contentHash": "f8a0e38edeb904c4d2fe82d7821dcd9bc771f710",
-      "lastTierBProcessedAt": "2026-10-03 04:57:04",
-      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+      "contentHash": "e639e4aedd0003c8482fec07f623b7f6e7f44d82",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts",
@@ -1380,9 +1380,9 @@
     },
     {
       "filePath": "lib/contracts/src/interfaces/graph-store.interfaces.ts",
-      "contentHash": "a87d9c2b3ffe0f0f13b8e3d8ecd22731e3f71381",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "332513cd867c51df9c537b6136ea04de1693cba0",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/contracts/src/interfaces/hooks.interfaces.ts",
@@ -1554,7 +1554,7 @@
     },
     {
       "filePath": "lib/contracts/src/testing/mocks-test.ts",
-      "contentHash": "be7f36e1faf4983a2bbd033084f500b1bf55faf5",
+      "contentHash": "65cf1b00cd5a3a97ab510ce80d7ade4bf644fed4",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     },
@@ -1953,6 +1953,18 @@
       "contentHash": "092509467d1139d00733d73a598f5a247c6a0c5f",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+    },
+    {
+      "filePath": "lib/core/src/graph/call-site-identity.ts",
+      "contentHash": "bfb295cbed8e06c026f6682e7f6d2e3581bf7952",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
+    },
+    {
+      "filePath": "lib/core/src/graph/call-site-identity.unit.test.ts",
+      "contentHash": "7f6af0471829e5bc2efa0bef2a9f45875cb1e131",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/core/src/graph/call-site-state-diff.unit.test.ts",
@@ -2598,15 +2610,15 @@
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
-      "contentHash": "404aa25b4011fd09602e1b324c9140d3f2001264",
+      "contentHash": "7aedc832c7d2242e00e3c79be03758c4ebbf90a1",
       "lastTierBProcessedAt": "2026-10-03 07:59:17",
       "lastTierBCommitSha": "be1213c01661011e8684ca4cb8f3e133dae67706"
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis-internal.ts",
-      "contentHash": "eb83702a360383937a7095efb1fbd851fb0c4e23",
-      "lastTierBProcessedAt": "2026-10-03 04:57:04",
-      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+      "contentHash": "1086b2e525897482ddc60aec216f1dad89a496e0",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts",
@@ -2616,15 +2628,21 @@
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts",
-      "contentHash": "4ae28d8c0a238d626659eac5b82f2aba362705a5",
-      "lastTierBProcessedAt": "2026-10-03 04:57:04",
-      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+      "contentHash": "1c7cf6181b67edcf33ddd4e2e7c33012bc8085f3",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.ts",
-      "contentHash": "fd6610de327d2a2dcf9e23ea557a4c12bb09f3da",
-      "lastTierBProcessedAt": "2026-10-03 04:57:04",
-      "lastTierBCommitSha": "4cb49986755accc142edc43f52e01185b061d12d"
+      "contentHash": "c00dfdafd6fbce4fde3a84f80bae654e2d083f97",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
+    },
+    {
+      "filePath": "lib/core/src/semantic/call-resolution-strict-proof.ts",
+      "contentHash": "2e491b0e2b942894b81ae8b52f4aa8155f95ff4d",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/core/src/semantic/collection/semantic-collection-reporting.ts",
@@ -3378,9 +3396,9 @@
     },
     {
       "filePath": "lib/schema/src/index.ts",
-      "contentHash": "f1351438c89b4a3a12433c201cb005b64f4609f0",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "2b345e421d09f2064011cc0a042a8b85af659e91",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/schema/src/register.ts",
@@ -3389,10 +3407,16 @@
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     },
     {
+      "filePath": "lib/schema/src/sqlite/call-site-resolutions.integration.test.ts",
+      "contentHash": "1d8738bd353f9a2996250b70a70a98dfbc3b0eec",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
+    },
+    {
       "filePath": "lib/schema/src/sqlite/constants.ts",
-      "contentHash": "261184cb5951b2513e9d25fd400faef5ce7ed76a",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "0b663aa77119ecf48e2342f237500893fb0ec616",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/schema/src/sqlite/diagnostic-runner.ts",
@@ -3408,7 +3432,7 @@
     },
     {
       "filePath": "lib/schema/src/sqlite/graph-store.ts",
-      "contentHash": "a4638402079a6ebfb3515bf8d9b169417b0e3eb1",
+      "contentHash": "75c84dfa4e175459731aa6191d8d9e8745a62543",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     },
@@ -3426,9 +3450,9 @@
     },
     {
       "filePath": "lib/schema/src/sqlite/migration-runner.unit.test.ts",
-      "contentHash": "085696fe29a7efc30146c06d14c40ad36681ebaa",
-      "lastTierBProcessedAt": "2026-10-02 16:04:10",
-      "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+      "contentHash": "847306349ac8c0cf9a46185c796ecb6051a2fe49",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/schema/src/sqlite/paths.ts",
@@ -3459,6 +3483,12 @@
       "contentHash": "89eec44206207b70825784ade756f167a93ae3c0",
       "lastTierBProcessedAt": "2026-10-02 16:04:10",
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
+    },
+    {
+      "filePath": "lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts",
+      "contentHash": "9a1bc66af45c60ea462360c83addb4711dd3238c",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "lib/schema/src/sqlite/repos/call-sites-repo.ts",
@@ -4620,9 +4650,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
-      "contentHash": "03245c7b958c83582b59f43d6448bee454ea8652",
-      "lastTierBProcessedAt": "2026-10-03 07:59:17",
-      "lastTierBCommitSha": "be1213c01661011e8684ca4cb8f3e133dae67706"
+      "contentHash": "4de4252729b912b0c36ac0e9e4fa2dde81a0f2f4",
+      "lastTierBProcessedAt": "2026-10-03 09:40:11",
+      "lastTierBCommitSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d"
     },
     {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts",
@@ -5009,7 +5039,7 @@
       "lastTierBCommitSha": "e896e23c4b71fd1649bc0f99e1170a18318b5468"
     }
   ],
-  "lastIngestedSourceSha": "be1213c01661011e8684ca4cb8f3e133dae67706",
+  "lastIngestedSourceSha": "c5b03a69922d8fb1488cae3c4bd2048774c09c2d",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#anonymous@L97
+id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#anonymous@L80
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase0-partial-semantic.unit.test.ts

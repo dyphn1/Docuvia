@@ -136,6 +136,25 @@ export type {
 } from "./interfaces/call-site-shape-facts.interfaces.js";
 export { AST_CALL_SITE_SHAPE_SCHEMA_VERSION } from "./interfaces/call-site-shape-facts.interfaces.js";
 export type {
+  CallResolutionCalibrationFamilyMetric,
+  CallResolutionCalibrationRecord,
+  CallResolutionHypothesisCandidate,
+  CallResolutionHypothesisFilterStage,
+  CallResolutionHypothesisReason,
+  CallResolutionHypothesisRequest,
+  CallResolutionHypothesisResult,
+  CallResolutionHypothesisServiceOptions,
+  CallResolutionHypothesisSourceFile,
+  CallResolutionHypothesisWorkspaceIndex,
+  CallResolutionHypothesisWorkspaceInput,
+  ICallResolutionHypothesisService,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export {
+  CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+  CALL_RESOLUTION_RANKING_POLICY_VERSION,
+  CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export type {
   ProjectRow,
   ProjectFileRow,
   ProjectFileSnapshotMetadata,

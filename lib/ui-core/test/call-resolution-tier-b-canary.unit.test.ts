@@ -1,10 +1,41 @@
 import { describe, expect, it } from "vitest";
-import type { CallSiteResolutionClass } from "@workspace/contracts";
+import type {
+  CallSiteResolutionClass,
+  CallSiteResolutionRecord,
+} from "@workspace/contracts";
 import {
   CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
+  isCertifiedNonCanaryCallSite,
+  isCertifiedProvenCallSite,
   isCallResolutionTierBCanary,
   resolveCanaryRate,
 } from "../src/workflows/analyze/call-resolution-tier-b-canary.js";
+import { createTestCertificationDecision } from "./helpers/call-resolution-certification.fixture.js";
+
+function provenResolution(ruleSignature = "rule-A"): CallSiteResolutionRecord {
+  return {
+    callSiteKey: `call-site:v1:${"0".repeat(64)}`,
+    identityVersion: 1,
+    filePath: "src/caller.ts",
+    sourceContentHash: "a".repeat(64),
+    startLine: 0,
+    startColumn: 0,
+    calleeKind: "identifier",
+    calleeName: "invoke",
+    callerNodeKey: "src/caller.ts#caller",
+    resolutionClass: "proven",
+    selectedTargetNodeKey: "src/target.ts#target",
+    confidence: null,
+    resolver: "strict-proof",
+    ruleSignature,
+    dependencyFingerprint: "b".repeat(64),
+    dependencies: [],
+    verificationStatus: "unverified",
+    verifiedTargetNodeKey: null,
+    isStale: false,
+    candidates: [],
+  };
+}
 
 describe("Tier B call-resolution canary selection", () => {
   it("[happy] uses the versioned portable-key/signature/class hash for a deterministic stratified subset", () => {
@@ -72,13 +103,12 @@ describe("Tier B call-resolution canary selection", () => {
         1,
       ),
     ).toBe(true);
-    expect(resolveCanaryRate({ certifiedRuleSignatures: new Set() })).toBe(0.1);
+    expect(resolveCanaryRate({})).toBe(0.1);
   });
 
   it("[invalid-input][error-handling] rejects a canary rate outside the documented range", () => {
     expect(() =>
       resolveCanaryRate({
-        certifiedRuleSignatures: new Set(),
         canaryRate: Number.NaN,
       }),
     ).toThrow(/must be in \[0, 1\]/);
@@ -90,5 +120,58 @@ describe("Tier B call-resolution canary selection", () => {
         1.01,
       ),
     ).toThrow(/must be in \[0, 1\]/);
+  });
+
+  it("[happy][invalid-input][state-diff] lets only a current loader-bound artifact skip non-canary proven rows", () => {
+    const resolution = provenResolution();
+    const certification = createTestCertificationDecision(["rule-A"]);
+    expect(certification.certifiedRuleSignatures).toEqual(["rule-A"]);
+    expect(
+      isCertifiedProvenCallSite(resolution, resolution.sourceContentHash, {
+        certification,
+        canaryRate: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isCertifiedNonCanaryCallSite(resolution, resolution.sourceContentHash, {
+        certification,
+        canaryRate: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isCertifiedNonCanaryCallSite(resolution, resolution.sourceContentHash, {
+        certification,
+        canaryRate: 1,
+      }),
+    ).toBe(false);
+    expect(
+      isCertifiedProvenCallSite(resolution, "c".repeat(64), {
+        certification,
+        canaryRate: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("[invalid-input][error-handling] fails closed for caller-built and cloned certification sets", () => {
+    const resolution = provenResolution();
+    const certified = createTestCertificationDecision(["rule-A"]);
+    const forged = {
+      artifactSha256: "c".repeat(64),
+      status: "loaded",
+      certifiedRuleSignatures: new Set(["rule-A"]),
+      rejectionReasons: [],
+    };
+    const cloned = { ...certified };
+
+    expect(
+      isCertifiedProvenCallSite(resolution, resolution.sourceContentHash, {
+        certification: forged as never,
+      }),
+    ).toBe(false);
+    expect(
+      isCertifiedProvenCallSite(resolution, resolution.sourceContentHash, {
+        certification: cloned as never,
+      }),
+    ).toBe(false);
   });
 });

@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
   docuviaFactory,
   TOKENS,
   resetFactoryForTests,
@@ -25,8 +27,62 @@ import {
   readTierBQueue,
   removeTierBQueueEntriesForFiles,
 } from "./tier-b-queue.js";
+import {
+  CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
+  loadCallResolutionCertificationArtifact,
+  type CallResolutionCertificationArtifact,
+} from "./call-resolution-certification.js";
 
 const HEAD_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+const CERTIFICATION_INPUTS = {
+  implementationCommitSha: "a".repeat(40),
+  ruleConfigurationSha256: "b".repeat(64),
+  oracleIdentity: "typescript-language-server",
+  oracleVersion: "5.9.2",
+  oracleConfigurationSha256: "c".repeat(64),
+  corpusManifestSha256: "d".repeat(64),
+  newFamily: {
+    familyId: "new-family-a",
+    revision: "commit-new-family",
+    splitSha256: "e".repeat(64),
+  },
+  temporal: {
+    familyId: "nestjs",
+    baseRevision: "commit-temporal-base",
+    revision: "commit-temporal-newer",
+    splitSha256: "f".repeat(64),
+  },
+};
+
+function createBatchCertificationDecision(ruleSignature: string) {
+  const passingTrack = {
+    eligibleDuplicateGroups: 299,
+    uniquelyResolvedGroups: 299,
+    successfulGroups: 299,
+    contradictionGroups: 0,
+    lowerBound95: 0.05 ** (1 / 299),
+  };
+  const artifact: CallResolutionCertificationArtifact = {
+    schemaVersion: CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
+    policyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
+    frozenAt: "2026-01-01T00:00:00.000Z",
+    labelsOpenedAt: "2026-01-02T00:00:00.000Z",
+    resultsRecordedAt: "2026-01-03T00:00:00.000Z",
+    inputs: CERTIFICATION_INPUTS,
+    signatures: [
+      {
+        ruleSignature,
+        newFamily: passingTrack,
+        temporal: passingTrack,
+      },
+    ],
+  };
+  const rawArtifact = JSON.stringify(artifact);
+  return loadCallResolutionCertificationArtifact(rawArtifact, {
+    ...CERTIFICATION_INPUTS,
+    artifactSha256: createHash("sha256").update(rawArtifact).digest("hex"),
+  });
+}
 
 function makeGit(overrides: Partial<IGitProvider> = {}): IGitProvider {
   return {
@@ -558,7 +614,7 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         }),
         knowledgeGit: makeKnowledgeGit(),
         callResolutionCanary: {
-          certifiedRuleSignatures: new Set(["cert-rule-v1"]),
+          certification: createBatchCertificationDecision("cert-rule-v1"),
           canaryRate: 0.5,
         },
       });
@@ -876,7 +932,7 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         }),
         knowledgeGit: makeKnowledgeGit(),
         callResolutionCanary: {
-          certifiedRuleSignatures: new Set(["certified-rule-v1"]),
+          certification: createBatchCertificationDecision("certified-rule-v1"),
           canaryRate: 1,
         },
       });

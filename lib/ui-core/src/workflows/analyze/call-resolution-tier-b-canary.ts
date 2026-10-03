@@ -3,14 +3,18 @@ import {
   CALL_SITE_VERIFICATION_POLICY_VERSION,
   type CallSiteResolutionRecord,
 } from "@workspace/contracts";
+import {
+  isRuleSignatureCertified,
+  type CallResolutionCertificationDecision,
+} from "./call-resolution-certification.js";
 
 export const CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION =
   CALL_SITE_VERIFICATION_POLICY_VERSION;
 export const DEFAULT_CALL_RESOLUTION_TIER_B_CANARY_RATE = 0.1;
 
 export interface CallResolutionTierBCanaryPolicy {
-  /** Signatures with successful one-shot certification on both required tracks. */
-  readonly certifiedRuleSignatures: ReadonlySet<string>;
+  /** A loader-validated, externally pinned one-shot artifact. Raw signature sets are not trusted. */
+  readonly certification?: CallResolutionCertificationDecision;
   /** Local quarantine overrides certification until that signature is recertified. */
   readonly quarantinedRuleSignatures?: ReadonlySet<string>;
   /** Fraction sampled per rule signature. Defaults to the plan's provisional 10%. */
@@ -65,7 +69,7 @@ export function isCertifiedProvenCallSite(
   if (!hasCurrentVerification(resolution)) return false;
   if (!hasCurrentPortableIdentity(resolution)) return false;
   if (resolution.sourceContentHash !== sourceContentHash) return false;
-  if (!policy.certifiedRuleSignatures.has(resolution.ruleSignature))
+  if (!isRuleSignatureCertified(policy.certification, resolution.ruleSignature))
     return false;
   return !policy.quarantinedRuleSignatures?.has(resolution.ruleSignature);
 }

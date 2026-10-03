@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/dev-worker-compiler.ts#anonymous@L212
+id: lib/core/src/ast/dev-worker-compiler.ts#anonymous@L217
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/dev-worker-compiler.ts

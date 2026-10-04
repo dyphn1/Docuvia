@@ -8,4 +8,3 @@ filePath: lib/core/src/graph/call-resolution-graph-persister.integration.test.ts
 
 File: `lib/core/src/graph/call-resolution-graph-persister.integration.test.ts`
 ts`
-

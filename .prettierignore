@@ -19,3 +19,6 @@ docs/gitbook/analysis/tiered-call-resolution-phase2-p2b-v4-confidence-oof-eviden
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2b-v4-confidence-oof-bin-boundary-fix-evidence/system1-calibration-quality-oof.json
 # Keep this machine-readable family-transfer artifact byte-identical to the runner output/hash.
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2b-v4-family-transfer-evidence/system1-train-family-transfer-lofo.json
+# Keep this machine-readable proposal-stage aggregate byte-identical to the runner output/hash.
+docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-train-evidence/proposal-filter-stage-train-summary.json
+docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-train-evidence/proposal-filter-stage-replay-manifest.json

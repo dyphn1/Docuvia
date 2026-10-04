@@ -32,11 +32,27 @@ import {
 } from "./call-resolution-hypothesis-index.js";
 import {
   boundProposals,
+  type CandidateFilterStageKeys,
   decideResolution,
   filterCandidates,
   rankCandidates,
 } from "./call-resolution-hypothesis-ranking.js";
 import { proveUniqueThisMember } from "./call-resolution-strict-proof.js";
+
+export interface CallResolutionCandidateStageTrace extends CandidateFilterStageKeys {
+  readonly beforeMaxCandidates: readonly string[];
+  readonly afterMaxCandidates: readonly string[];
+}
+
+export interface CallResolutionHypothesisWithCandidateStageTrace {
+  readonly result: CallResolutionHypothesisResult;
+  readonly candidateStageTrace: CallResolutionCandidateStageTrace;
+}
+
+interface HypothesisComputation {
+  readonly result: CallResolutionHypothesisResult;
+  readonly candidateStageTrace?: CallResolutionCandidateStageTrace;
+}
 
 function sameCalleeBinding(
   left: AstCallSiteShapeFact["calleeBinding"],
@@ -75,6 +91,29 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
   hypothesize(
     request: CallResolutionHypothesisRequest,
   ): CallResolutionHypothesisResult {
+    return this.computeHypothesis(request, false).result;
+  }
+
+  /**
+   * Returns exact ranked target keys after each filter and on both sides of
+   * the display cap. This measurement-only path must not affect the result.
+   */
+  hypothesizeWithCandidateStageTrace(
+    request: CallResolutionHypothesisRequest,
+  ): CallResolutionHypothesisWithCandidateStageTrace {
+    const computation = this.computeHypothesis(request, true);
+    if (!computation.candidateStageTrace)
+      throw new Error("Candidate stage trace was not captured.");
+    return {
+      result: computation.result,
+      candidateStageTrace: computation.candidateStageTrace,
+    };
+  }
+
+  private computeHypothesis(
+    request: CallResolutionHypothesisRequest,
+    captureCandidateStageTrace: boolean,
+  ): HypothesisComputation {
     validateHypothesisRequest(request);
     const workspace = this.getWorkspace(request.workspaceIndex);
     const baseIndexedCandidates =
@@ -110,6 +149,7 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       request,
       workspace,
       receiverTypeName,
+      captureCandidateStageTrace,
     );
     const { proposals, truncated } = boundProposals(
       filtered.candidates,
@@ -140,7 +180,7 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
     );
     this.verifyDecisionConfidence(decision.confidence);
 
-    return {
+    const result: CallResolutionHypothesisResult = {
       schemaVersion: CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
       candidateGeneratorVersion: workspace.handle.candidateGeneratorVersion,
       configurationHash: this.configurationHash,
@@ -159,6 +199,20 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       confidence: decision.confidence,
       reason: decision.reason,
       strictProof,
+    };
+    if (!captureCandidateStageTrace) return { result };
+    const stageKeys = filtered.candidateStageKeys;
+    if (!stageKeys)
+      throw new Error("Candidate filter stage keys were not captured.");
+    return {
+      result,
+      candidateStageTrace: {
+        ...stageKeys,
+        beforeMaxCandidates: filtered.candidates.map(
+          ({ targetKey }) => targetKey,
+        ),
+        afterMaxCandidates: proposals.map(({ targetKey }) => targetKey),
+      },
     };
   }
 

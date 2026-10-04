@@ -9,6 +9,7 @@ import {
   type CandidateStageEvidence,
 } from "./phase2-tiered-call-resolution-candidate-stage-evidence.mjs";
 import type { Phase2EvaluationObservation } from "./phase2-tiered-call-resolution-evaluation.mjs";
+import type { ProposalFilterStageEvidence } from "./phase2-tiered-call-resolution-proposal-filter-stage-evidence.mjs";
 import {
   allFactRows,
   allSourceRows,
@@ -40,6 +41,8 @@ const PINNED_FACTS_SHA256 =
 const PINNED_V4_SOURCE_DIRECTORY =
   "phase2-p2a-direct-import-alias-final-source-reproduction";
 const REPLAY_OUTPUT_DIRECTORY = "phase2-p2a-v4-train-candidate-stage-replay";
+const PROPOSAL_FILTER_REPLAY_OUTPUT_DIRECTORY =
+  "phase2-p2a-v4-train-proposal-filter-stage-replay";
 const PINNED_V4_SOURCE_FILE =
   "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts";
 
@@ -80,6 +83,7 @@ interface CorpusSpec {
 interface ReplayOptions {
   readonly repositoriesDirectory: string;
   readonly outputDirectory: string;
+  readonly includeProposalFilterStages: boolean;
 }
 
 interface ReplayRow {
@@ -89,6 +93,7 @@ interface ReplayRow {
   readonly replayedDecisionSha256: string;
   readonly decisionFieldsEquivalent: true;
   readonly candidateStages: CandidateStageEvidence;
+  readonly proposalFilterStages?: ProposalFilterStageEvidence;
 }
 
 const PINNED_V4_PREDICTION_PATH = path.join(
@@ -106,8 +111,14 @@ const PINNED_V4_MANIFEST_PATH = path.join(
 
 function parseOptions(argv: readonly string[]): ReplayOptions {
   const values = new Map<string, string>();
-  for (let index = 0; index < argv.length; index += 2) {
+  let includeProposalFilterStages = false;
+  for (let index = 0; index < argv.length;) {
     const key = argv[index];
+    if (key === "--capture-proposal-filter-stages") {
+      includeProposalFilterStages = true;
+      index++;
+      continue;
+    }
     const value = argv[index + 1];
     if (
       !["--repos", "--out"].includes(key ?? "") ||
@@ -115,17 +126,25 @@ function parseOptions(argv: readonly string[]): ReplayOptions {
       value.startsWith("--")
     )
       throw new Error(
-        "Usage: phase2-tiered-call-resolution-candidate-stage-replay.mts [--repos <dir>] [--out <dir>]",
+        "Usage: phase2-tiered-call-resolution-candidate-stage-replay.mts [--repos <dir>] [--out <dir>] [--capture-proposal-filter-stages]",
       );
     values.set(key!, value);
+    index += 2;
   }
   return {
     repositoriesDirectory: path.resolve(
       values.get("--repos") ?? PHASE2_DEFAULT_REPOSITORIES,
     ),
     outputDirectory: path.resolve(
-      values.get("--out") ?? path.join(PHASE2_CORPUS, REPLAY_OUTPUT_DIRECTORY),
+      values.get("--out") ??
+        path.join(
+          PHASE2_CORPUS,
+          includeProposalFilterStages
+            ? PROPOSAL_FILTER_REPLAY_OUTPUT_DIRECTORY
+            : REPLAY_OUTPUT_DIRECTORY,
+        ),
     ),
+    includeProposalFilterStages,
   };
 }
 
@@ -165,20 +184,25 @@ function currentReplayImplementation(
 ): {
   readonly hash: string;
   readonly files: Readonly<Record<string, string>>;
-  readonly allowedV4SourceDifference: {
+  readonly allowedV4ImplementationDifferences: readonly {
     readonly file: string;
     readonly v4Sha256: string;
     readonly replaySha256: string;
     readonly reason: string;
-  };
+  }[];
 } {
   const root = PHASE2_ROOT;
   const currentFiles: Record<string, string> = {};
   const differences: string[] = [];
+  const measurementOnlyChanges = new Set([
+    PINNED_V4_SOURCE_FILE,
+    "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts",
+    "lib/core/src/semantic/call-resolution-hypothesis.service.ts",
+  ]);
   for (const [file, expected] of Object.entries(pinnedFiles).sort()) {
     const current = sha256(readFileSync(path.join(root, file)));
     currentFiles[file] = current;
-    if (current !== expected && file !== PINNED_V4_SOURCE_FILE)
+    if (current !== expected && !measurementOnlyChanges.has(file))
       differences.push(file);
   }
   if (differences.length > 0)
@@ -188,28 +212,28 @@ function currentReplayImplementation(
   for (const file of [
     "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts",
     "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-replay.mts",
+    "scripts/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.mts",
   ])
     currentFiles[file] = sha256(readFileSync(path.join(root, file)));
-  const replaySourceHash = currentFiles[PINNED_V4_SOURCE_FILE];
-  const pinnedSourceHash = pinnedFiles[PINNED_V4_SOURCE_FILE];
-  if (
-    !replaySourceHash ||
-    !pinnedSourceHash ||
-    replaySourceHash === pinnedSourceHash
-  )
-    throw new Error(
-      "Expected only the opt-in candidate-stage source instrumentation change.",
+  const allowedV4ImplementationDifferences = [...measurementOnlyChanges]
+    .map((file) => ({
+      file,
+      v4Sha256: pinnedFiles[file],
+      replaySha256: currentFiles[file],
+      reason:
+        "opt-in proposal-stage identity capture only; v4 decision fingerprints are compared for every TRAIN row",
+    }))
+    .filter(
+      (difference) =>
+        difference.v4Sha256 !== undefined &&
+        difference.v4Sha256 !== difference.replaySha256,
     );
+  if (allowedV4ImplementationDifferences.length === 0)
+    throw new Error("Expected proposal-stage measurement instrumentation.");
   return {
     hash: canonicalHash(currentFiles),
     files: currentFiles,
-    allowedV4SourceDifference: {
-      file: PINNED_V4_SOURCE_FILE,
-      v4Sha256: pinnedSourceHash,
-      replaySha256: replaySourceHash,
-      reason:
-        "optional TRAIN-only capture of generator keys and proposal target keys; row decision fields are verified independently",
-    },
+    allowedV4ImplementationDifferences,
   };
 }
 
@@ -293,6 +317,7 @@ async function replayTrainCandidateStages(
   const tempRoot = mkdtempSync(path.join(os.tmpdir(), "docuvia-stage-replay-"));
   const replayedObservations: Phase2EvaluationObservation[] = [];
   const stageEvidence: CandidateStageEvidence[] = [];
+  const proposalFilterStageEvidence: ProposalFilterStageEvidence[] = [];
   const snapshotFingerprints: Record<string, string> = {};
   const snapshotFactRowCounts: Record<string, number> = {};
   const snapshotParseCounts: Record<
@@ -317,9 +342,15 @@ async function replayTrainCandidateStages(
         processor,
         factsSidecarHash: PINNED_FACTS_SHA256,
         includeCandidateStageEvidence: true,
+        ...(options.includeProposalFilterStages
+          ? { includeProposalFilterStageEvidence: true }
+          : {}),
       });
       replayedObservations.push(...result.observations);
       stageEvidence.push(...(result.candidateStageEvidence ?? []));
+      proposalFilterStageEvidence.push(
+        ...(result.proposalFilterStageEvidence ?? []),
+      );
       snapshotFingerprints[snapshot.snapshotId] = result.sourceFingerprint;
       snapshotFactRowCounts[snapshot.snapshotId] = result.sourceFactFileCount;
       snapshotParseCounts[snapshot.snapshotId] = {
@@ -342,8 +373,16 @@ async function replayTrainCandidateStages(
   const sortedEvidence = stageEvidence.sort((left, right) =>
     left.sampleId.localeCompare(right.sampleId),
   );
+  const sortedProposalFilterEvidence = proposalFilterStageEvidence.sort(
+    (left, right) => left.sampleId.localeCompare(right.sampleId),
+  );
   assertCandidateStageTrainScope(trainObservations, sortedReplay);
   assertCandidateStageTrainScope(trainObservations, sortedEvidence);
+  if (options.includeProposalFilterStages)
+    assertCandidateStageTrainScope(
+      trainObservations,
+      sortedProposalFilterEvidence,
+    );
   if (
     configurations.size !== 1 ||
     !configurations.has(manifest.configurationHash)
@@ -357,12 +396,22 @@ async function replayTrainCandidateStages(
   const evidenceById = new Map(
     sortedEvidence.map((row) => [row.sampleId, row]),
   );
+  const proposalFilterEvidenceById = new Map(
+    sortedProposalFilterEvidence.map((row) => [row.sampleId, row]),
+  );
   const replayedById = new Map(sortedReplay.map((row) => [row.sampleId, row]));
   const replayRows: ReplayRow[] = trainObservations.map((pinned) => {
     const replayed = replayedById.get(pinned.sampleId);
     const evidence = evidenceById.get(pinned.sampleId);
+    const proposalFilterStages = proposalFilterEvidenceById.get(
+      pinned.sampleId,
+    );
     if (!replayed || !evidence)
       throw new Error(`TRAIN replay evidence missing for ${pinned.sampleId}.`);
+    if (options.includeProposalFilterStages && !proposalFilterStages)
+      throw new Error(
+        `TRAIN proposal-filter evidence missing for ${pinned.sampleId}.`,
+      );
     try {
       assertV4ObservationDecisionEquivalent(pinned, replayed);
     } catch (error) {
@@ -376,7 +425,24 @@ async function replayTrainCandidateStages(
       evidence.orderedEvidenceProposals.length !==
         pinned.proposedCandidateCount ||
       JSON.stringify(evidence.mappedCandidateTargetIds) !==
-        JSON.stringify(pinned.candidateTargetIds)
+        JSON.stringify(pinned.candidateTargetIds) ||
+      (proposalFilterStages !== undefined &&
+        (JSON.stringify(
+          proposalFilterStages.stages
+            .find(({ stage }) => stage === "beforeVisibility")
+            ?.candidateKeys.slice()
+            .sort(),
+        ) !== JSON.stringify(evidence.generatedCandidateKeys.slice().sort()) ||
+          JSON.stringify(
+            proposalFilterStages.stages.find(
+              ({ stage }) => stage === "afterMaxCandidates",
+            )?.candidateKeys,
+          ) !==
+            JSON.stringify(
+              evidence.orderedEvidenceProposals.map(
+                ({ targetKey }) => targetKey,
+              ),
+            )))
     )
       throw new Error(
         `Candidate stage count or membership mismatch at ${pinned.sampleId}.`,
@@ -388,13 +454,16 @@ async function replayTrainCandidateStages(
       replayedDecisionSha256: replayedFingerprints.get(pinned.sampleId)!,
       decisionFieldsEquivalent: true,
       candidateStages: evidence,
+      ...(proposalFilterStages ? { proposalFilterStages } : {}),
     };
   });
 
   mkdirSync(options.outputDirectory, { recursive: true });
   const outputPath = path.join(
     options.outputDirectory,
-    "candidate-stage-evidence-train.jsonl",
+    options.includeProposalFilterStages
+      ? "proposal-filter-stage-evidence-train.jsonl"
+      : "candidate-stage-evidence-train.jsonl",
   );
   writeJsonl(outputPath, replayRows);
   const outputSha256 = sha256(readFileSync(outputPath));
@@ -420,10 +489,13 @@ async function replayTrainCandidateStages(
     snapshotFactRowCounts,
     snapshotFingerprints,
     configurationHash: manifest.configurationHash,
+    proposalFilterStageCapture: options.includeProposalFilterStages,
   });
   writeJson(path.join(options.outputDirectory, "manifest.json"), {
     schemaVersion: 1,
-    measurement: "phase2-p2a-candidate-stage-replay/1",
+    measurement: options.includeProposalFilterStages
+      ? "phase2-p2a-proposal-filter-stage-replay/1"
+      : "phase2-p2a-candidate-stage-replay/1",
     split: "train",
     labelSplitsRead: [],
     labelsRead: false,
@@ -461,7 +533,8 @@ async function replayTrainCandidateStages(
     replay: {
       implementationHash: implementation.hash,
       implementationFiles: implementation.files,
-      allowedV4SourceDifference: implementation.allowedV4SourceDifference,
+      allowedV4ImplementationDifferences:
+        implementation.allowedV4ImplementationDifferences,
       snapshotFingerprints,
       configurationHash: manifest.configurationHash,
     },
@@ -501,7 +574,7 @@ async function replayTrainCandidateStages(
     },
   });
   console.info(
-    `[phase2-p2a] TRAIN candidate-stage replay preserved ${replayRows.length} v4 decisions; wrote ${outputPath} (${outputSha256}).`,
+    `[phase2-p2a] TRAIN ${options.includeProposalFilterStages ? "proposal-filter" : "candidate-stage"} replay preserved ${replayRows.length} v4 decisions; wrote ${outputPath} (${outputSha256}).`,
   );
 }
 

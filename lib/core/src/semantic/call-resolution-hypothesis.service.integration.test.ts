@@ -222,6 +222,33 @@ function parsedDeclarationKey(
   return key;
 }
 
+function parsedMemberTargetKey(
+  parsedFiles: readonly {
+    readonly filePath: string;
+    readonly data: Awaited<ReturnType<typeof parseFile>>;
+  }[],
+  filePath: string,
+  ownerName: string,
+  memberName: string,
+): string {
+  const declaration = parsedFiles
+    .find((file) => file.filePath === filePath)
+    ?.data.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === memberName &&
+        owner.kind === "class" &&
+        owner.name === ownerName,
+    );
+  if (!declaration)
+    throw new Error(`parser omitted ${filePath}#${ownerName}.${memberName}`);
+  const key = candidateTargetKeyForDeclaration(filePath, declaration);
+  if (!key)
+    throw new Error(
+      `target ${filePath}#${ownerName}.${memberName} has no candidate key`,
+    );
+  return key;
+}
+
 type CallResolutionHypothesisResultLike = ReturnType<
   CallResolutionHypothesisService["hypothesize"]
 >;
@@ -1245,6 +1272,224 @@ describe("call-resolution hypothesis service", () => {
     expect(result.selected).toBeNull();
     expect(result.confidence).toBeNull();
     expect(result.reason).toBe("uncalibrated-signature");
+  });
+
+  it("[happy][state-diff] captures ordered filter identities without changing decisions", async () => {
+    const serviceFile = await parseFile(
+      "src/service.ts",
+      "export class Service { close(): void {} open(value: string): void {} }",
+    );
+    const otherFile = await parseFile(
+      "src/other.ts",
+      "export class Service { close(): void {} open(value: number, second: number): void {} }",
+    );
+    const peerMismatchFile = await parseFile(
+      "src/peer-mismatch.ts",
+      "export class Service { open(value: string): void {} }",
+    );
+    const privateFile = await parseFile(
+      "src/private.ts",
+      "export class Service { close(): void {} private open(value: string): void {} }",
+    );
+    const unrelatedFile = await parseFile(
+      "src/unrelated.ts",
+      "export class Other { open(value: string): void {} }",
+    );
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      [
+        "function run(service: Service) {",
+        '  service.close(); service.open("value");',
+        "}",
+      ].join("\n"),
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites.find(
+      (call) => call.calleeName === "open",
+    );
+    if (!callSite) throw new Error("worker omitted the open call shape");
+    const files = [
+      {
+        filePath: "src/service.ts",
+        declaredTypeFacts: serviceFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/other.ts",
+        declaredTypeFacts: otherFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/peer-mismatch.ts",
+        declaredTypeFacts: peerMismatchFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/private.ts",
+        declaredTypeFacts: privateFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/unrelated.ts",
+        declaredTypeFacts: unrelatedFile.declaredTypeFacts!,
+      },
+      {
+        filePath: "src/caller.ts",
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ];
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = indexWorkspace(service, "a".repeat(64), files);
+    const request = {
+      callerFilePath: "src/caller.ts",
+      callSite,
+      workspaceIndex,
+    };
+    const ordinaryResult = service.hypothesize(request);
+    const traced = (
+      service as CallResolutionHypothesisService & {
+        hypothesizeWithCandidateStageTrace: (input: typeof request) => {
+          result: CallResolutionHypothesisResultLike;
+          candidateStageTrace: {
+            beforeVisibility: readonly string[];
+            afterVisibility: readonly string[];
+            afterExplicitReceiverType: readonly string[];
+            afterPeerMembers: readonly string[];
+            afterArgumentShape: readonly string[];
+            beforeMaxCandidates: readonly string[];
+            afterMaxCandidates: readonly string[];
+          };
+        };
+      }
+    ).hypothesizeWithCandidateStageTrace(request);
+    const parsedFiles = [
+      { filePath: "src/service.ts", data: serviceFile },
+      { filePath: "src/other.ts", data: otherFile },
+      { filePath: "src/peer-mismatch.ts", data: peerMismatchFile },
+      { filePath: "src/private.ts", data: privateFile },
+      { filePath: "src/unrelated.ts", data: unrelatedFile },
+    ];
+    const serviceKey = parsedMemberTargetKey(
+      parsedFiles,
+      "src/service.ts",
+      "Service",
+      "open",
+    );
+    const otherKey = parsedMemberTargetKey(
+      parsedFiles,
+      "src/other.ts",
+      "Service",
+      "open",
+    );
+    const peerMismatchKey = parsedMemberTargetKey(
+      parsedFiles,
+      "src/peer-mismatch.ts",
+      "Service",
+      "open",
+    );
+    const privateKey = parsedMemberTargetKey(
+      parsedFiles,
+      "src/private.ts",
+      "Service",
+      "open",
+    );
+    const unrelatedKey = parsedMemberTargetKey(
+      parsedFiles,
+      "src/unrelated.ts",
+      "Other",
+      "open",
+    );
+    const generated = ordinaryResult.generatedCandidateKeys;
+
+    expect(traced.result).toEqual(ordinaryResult);
+    expect([...traced.candidateStageTrace.beforeVisibility].sort()).toEqual(
+      [...generated].sort(),
+    );
+    expect(traced.candidateStageTrace.afterVisibility).toEqual(
+      traced.candidateStageTrace.beforeVisibility.filter(
+        (targetKey) => targetKey !== privateKey,
+      ),
+    );
+    expect(traced.candidateStageTrace.afterExplicitReceiverType).toEqual(
+      traced.candidateStageTrace.afterVisibility.filter((targetKey) =>
+        [serviceKey, otherKey, peerMismatchKey].includes(targetKey),
+      ),
+    );
+    expect(traced.candidateStageTrace.afterPeerMembers).toEqual(
+      traced.candidateStageTrace.afterExplicitReceiverType.filter((targetKey) =>
+        [serviceKey, otherKey].includes(targetKey),
+      ),
+    );
+    expect(traced.candidateStageTrace.afterArgumentShape).toEqual([serviceKey]);
+    expect(traced.candidateStageTrace.beforeMaxCandidates).toEqual([
+      serviceKey,
+    ]);
+    expect(traced.candidateStageTrace.afterMaxCandidates).toEqual([serviceKey]);
+    expect(generated).toContain(unrelatedKey);
+    expect(ordinaryResult.filterStages).toMatchObject({
+      visibility: { inputCount: 5, outputCount: 4, applied: true },
+      explicitReceiverType: { inputCount: 4, outputCount: 3, applied: true },
+      peerMembers: { inputCount: 3, outputCount: 2, applied: true },
+      argumentShape: { inputCount: 2, outputCount: 1, applied: true },
+    });
+  });
+
+  it("[happy][state-diff] records exact identities before and after the candidate cap", async () => {
+    const targetFiles = await Promise.all(
+      ["Alpha", "Beta", "Gamma"].map(async (name) => ({
+        name,
+        data: await parseFile(
+          `src/${name}.ts`,
+          `export class ${name} { open(): void {} }`,
+        ),
+      })),
+    );
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      "function run(target: unknown) { target.open(); }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+    if (!callSite) throw new Error("worker omitted the open call shape");
+    const service = new CallResolutionHypothesisService({ maxCandidates: 1 });
+    const workspaceIndex = indexWorkspace(service, "b".repeat(64), [
+      ...targetFiles.map(({ name, data }) => ({
+        filePath: `src/${name}.ts`,
+        declaredTypeFacts: data.declaredTypeFacts!,
+      })),
+      {
+        filePath: "src/caller.ts",
+        declaredTypeFacts: callerFile.declaredTypeFacts!,
+      },
+    ]);
+    const request = {
+      callerFilePath: "src/caller.ts",
+      callSite,
+      workspaceIndex,
+    };
+    const ordinaryResult = service.hypothesize(request);
+    const traced = (
+      service as CallResolutionHypothesisService & {
+        hypothesizeWithCandidateStageTrace: (input: typeof request) => {
+          result: CallResolutionHypothesisResultLike;
+          candidateStageTrace: {
+            beforeVisibility: readonly string[];
+            afterArgumentShape: readonly string[];
+            beforeMaxCandidates: readonly string[];
+            afterMaxCandidates: readonly string[];
+          };
+        };
+      }
+    ).hypothesizeWithCandidateStageTrace(request);
+
+    expect(traced.result).toEqual(ordinaryResult);
+    expect([...traced.candidateStageTrace.beforeVisibility].sort()).toEqual(
+      [...ordinaryResult.generatedCandidateKeys].sort(),
+    );
+    expect(traced.candidateStageTrace.beforeMaxCandidates).toEqual(
+      traced.candidateStageTrace.afterArgumentShape,
+    );
+    expect(traced.candidateStageTrace.beforeMaxCandidates).toHaveLength(3);
+    expect(traced.candidateStageTrace.afterMaxCandidates).toEqual(
+      ordinaryResult.candidates.map(({ targetKey }) => targetKey),
+    );
+    expect(traced.candidateStageTrace.afterMaxCandidates).toHaveLength(1);
+    expect(ordinaryResult.truncated).toBe(true);
+    expect(ordinaryResult.reason).toBe("candidate-list-truncated");
   });
 
   it("[invalid-input] preserves recall proposals but fails closed for incomplete inventories", async () => {

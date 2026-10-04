@@ -13,6 +13,10 @@ import {
 } from "../../lib/contracts/src/index.js";
 import { AstProcessingService } from "../../lib/core/src/ast/ast-processing.service.js";
 import { AstWorkerPool } from "../../lib/core/src/ast/ast-worker-pool.js";
+import type {
+  CallResolutionCandidateStageTrace,
+  CallResolutionHypothesisService,
+} from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import {
   candidateTargetKeyForDeclaration,
   resolveDirectRelativeImportPath,
@@ -34,6 +38,10 @@ import {
   type CandidateStageEvidence,
   type CandidateTargetMapping,
 } from "./phase2-tiered-call-resolution-candidate-stage-evidence.mjs";
+import {
+  createProposalFilterStageEvidence,
+  type ProposalFilterStageEvidence,
+} from "./phase2-tiered-call-resolution-proposal-filter-stage-evidence.mjs";
 
 export interface Phase2PinnedSnapshot {
   readonly snapshotId: string;
@@ -51,6 +59,7 @@ export interface Phase2SnapshotSourceResult {
   readonly configurationHash: string;
   readonly observations: readonly Phase2EvaluationObservation[];
   readonly candidateStageEvidence?: readonly CandidateStageEvidence[];
+  readonly proposalFilterStageEvidence?: readonly ProposalFilterStageEvidence[];
   readonly sourceFactFileCount: number;
   readonly sourceIndexComplete: boolean;
   readonly ownerInventoryCount: number;
@@ -72,6 +81,9 @@ interface CandidateAliasInfo {
   readonly aliases: Set<string>;
   declarationCount: number;
 }
+
+type CandidateStageTraceService = ICallResolutionHypothesisService &
+  Pick<CallResolutionHypothesisService, "hypothesizeWithCandidateStageTrace">;
 
 function candidateAlias(
   filePath: string,
@@ -285,7 +297,7 @@ function observationFromResult(
   callSite: AstCallSiteShapeFact,
   callerSourceContentHash: string | undefined,
   callerHasFacts: boolean,
-  service: ICallResolutionHypothesisService,
+  service: CandidateStageTraceService,
   workspaceIndex: ReturnType<
     ICallResolutionHypothesisService["indexWorkspace"]
   >,
@@ -294,19 +306,28 @@ function observationFromResult(
   candidateStageContext?: {
     readonly sourceContentHash: string;
     readonly callSiteInputHash: string;
+    readonly captureProposalFilterStages: boolean;
   },
 ): {
   observation: Phase2EvaluationObservation;
   candidateStageEvidence?: CandidateStageEvidence;
+  proposalFilterStageEvidence?: ProposalFilterStageEvidence;
   unmapped: number;
   ambiguous: number;
 } {
-  const result = service.hypothesize({
+  const request = {
     callerFilePath: source.filePath,
     ...(callerSourceContentHash ? { callerSourceContentHash } : {}),
     callSite,
     workspaceIndex,
-  });
+  };
+  let result: ReturnType<ICallResolutionHypothesisService["hypothesize"]>;
+  let proposalFilterTrace: CallResolutionCandidateStageTrace | undefined;
+  if (candidateStageContext?.captureProposalFilterStages) {
+    const traced = service.hypothesizeWithCandidateStageTrace(request);
+    result = traced.result;
+    proposalFilterTrace = traced.candidateStageTrace;
+  } else result = service.hypothesize(request);
   const generated = addCandidateAliases(
     result.generatedCandidateKeys,
     aliasesByKey,
@@ -336,6 +357,20 @@ function observationFromResult(
         (key) => candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
       )
     : undefined;
+  const proposalFilterStageEvidence =
+    candidateStageContext?.captureProposalFilterStages && proposalFilterTrace
+      ? createProposalFilterStageEvidence(
+          {
+            sampleId: source.sampleId,
+            split: source.split,
+            sourceContentHash: candidateStageContext.sourceContentHash,
+            callSiteInputHash: candidateStageContext.callSiteInputHash,
+            candidateKeysByStage: proposalFilterTrace,
+          },
+          (key) =>
+            candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
+        )
+      : undefined;
   if (
     candidateStageEvidence &&
     JSON.stringify(candidateStageEvidence.mappedCandidateTargetIds) !==
@@ -369,6 +404,7 @@ function observationFromResult(
       reason: result.reason,
     },
     ...(candidateStageEvidence ? { candidateStageEvidence } : {}),
+    ...(proposalFilterStageEvidence ? { proposalFilterStageEvidence } : {}),
     unmapped: generated.unmapped,
     ambiguous: generated.ambiguous,
   };
@@ -460,17 +496,26 @@ export async function processPhase2Snapshot(input: {
   readonly temporaryDirectory: string;
   readonly sourceRows: readonly Phase2CorpusSource[];
   readonly factRows: readonly Phase2FactFile[];
-  readonly service: ICallResolutionHypothesisService;
+  readonly service: CandidateStageTraceService;
   readonly processor: AstProcessingService;
   readonly factsSidecarHash: string;
   readonly includeCandidateStageEvidence?: boolean;
+  readonly includeProposalFilterStageEvidence?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
   if (
-    input.includeCandidateStageEvidence &&
+    (input.includeCandidateStageEvidence ||
+      input.includeProposalFilterStageEvidence) &&
     input.sourceRows.some((row) => row.split !== "train")
   )
     throw new Error("Candidate-stage source replay accepts TRAIN rows only.");
+  if (
+    input.includeProposalFilterStageEvidence &&
+    !input.includeCandidateStageEvidence
+  )
+    throw new Error(
+      "Proposal-filter replay requires the base candidate-stage evidence.",
+    );
   const sourceDirectory = path.join(
     input.repositoriesDirectory,
     snapshot.sourceDir,
@@ -576,6 +621,7 @@ export async function processPhase2Snapshot(input: {
     );
     const observations: Phase2EvaluationObservation[] = [];
     const candidateStageEvidence: CandidateStageEvidence[] = [];
+    const proposalFilterStageEvidence: ProposalFilterStageEvidence[] = [];
     const hypothesisLatenciesMs: number[] = [];
     let callShapeMappedCount = 0;
     let callShapeMissingCount = 0;
@@ -589,14 +635,19 @@ export async function processPhase2Snapshot(input: {
         source,
       );
       const sourceContentHash = sourceHashesByFile.get(source.filePath);
-      if (input.includeCandidateStageEvidence && !sourceContentHash)
+      const captureCandidateStageEvidence =
+        input.includeCandidateStageEvidence ||
+        input.includeProposalFilterStageEvidence;
+      if (captureCandidateStageEvidence && !sourceContentHash)
         throw new Error(
           `TRAIN caller source bytes were not pinned for ${source.filePath}.`,
         );
       const candidateStageContext =
-        input.includeCandidateStageEvidence && sourceContentHash
+        captureCandidateStageEvidence && sourceContentHash
           ? {
               sourceContentHash,
+              captureProposalFilterStages:
+                input.includeProposalFilterStageEvidence ?? false,
               callSiteInputHash: candidateStageCallSiteInputHash(
                 source,
                 sourceContentHash,
@@ -606,7 +657,7 @@ export async function processPhase2Snapshot(input: {
           : undefined;
       if (!callSite || source.positionStatus !== "unique") {
         observations.push(observationWithoutCall(source));
-        if (candidateStageContext) {
+        if (candidateStageContext && input.includeCandidateStageEvidence) {
           candidateStageEvidence.push(
             createCandidateStageEvidence(
               {
@@ -616,6 +667,30 @@ export async function processPhase2Snapshot(input: {
                 callSiteInputHash: candidateStageContext.callSiteInputHash,
                 generatedCandidateKeys: [],
                 orderedProposalKeys: [],
+              },
+              (key) =>
+                candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
+            ),
+          );
+        }
+        if (candidateStageContext && input.includeProposalFilterStageEvidence) {
+          const emptyKeys: CallResolutionCandidateStageTrace = {
+            beforeVisibility: [],
+            afterVisibility: [],
+            afterExplicitReceiverType: [],
+            afterPeerMembers: [],
+            afterArgumentShape: [],
+            beforeMaxCandidates: [],
+            afterMaxCandidates: [],
+          };
+          proposalFilterStageEvidence.push(
+            createProposalFilterStageEvidence(
+              {
+                sampleId: source.sampleId,
+                split: source.split,
+                sourceContentHash: candidateStageContext.sourceContentHash,
+                callSiteInputHash: candidateStageContext.callSiteInputHash,
+                candidateKeysByStage: emptyKeys,
               },
               (key) =>
                 candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
@@ -641,7 +716,10 @@ export async function processPhase2Snapshot(input: {
       hypothesisLatenciesMs.push(performance.now() - started);
       observations.push(result.observation);
       if (result.candidateStageEvidence)
-        candidateStageEvidence.push(result.candidateStageEvidence);
+        if (input.includeCandidateStageEvidence)
+          candidateStageEvidence.push(result.candidateStageEvidence);
+      if (result.proposalFilterStageEvidence)
+        proposalFilterStageEvidence.push(result.proposalFilterStageEvidence);
       generatedCandidateCount +=
         result.observation.generatedCandidateCount ?? 0;
       unmappedCandidateCount += result.unmapped;
@@ -655,6 +733,9 @@ export async function processPhase2Snapshot(input: {
       observations,
       ...(input.includeCandidateStageEvidence
         ? { candidateStageEvidence }
+        : {}),
+      ...(input.includeProposalFilterStageEvidence
+        ? { proposalFilterStageEvidence }
         : {}),
       sourceFactFileCount: factRows.length,
       sourceIndexComplete: true,

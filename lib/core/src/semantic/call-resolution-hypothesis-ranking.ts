@@ -20,6 +20,15 @@ export interface FilteredHypotheses {
   readonly candidates: readonly CallResolutionHypothesisCandidate[];
   readonly stages: CallResolutionHypothesisResult["filterStages"];
   readonly unsupportedCallShape: boolean;
+  readonly candidateStageKeys?: CandidateFilterStageKeys;
+}
+
+export interface CandidateFilterStageKeys {
+  readonly beforeVisibility: readonly string[];
+  readonly afterVisibility: readonly string[];
+  readonly afterExplicitReceiverType: readonly string[];
+  readonly afterPeerMembers: readonly string[];
+  readonly afterArgumentShape: readonly string[];
 }
 
 export interface ResolutionDecision {
@@ -201,6 +210,32 @@ function arityFilter(
   });
 }
 
+function targetKeys(
+  candidates: readonly CallResolutionHypothesisCandidate[],
+): readonly string[] {
+  return candidates.map((candidate) => candidate.targetKey);
+}
+
+function candidateFilterStageKeys(
+  shouldCapture: boolean,
+  stages: {
+    readonly beforeVisibility: readonly CallResolutionHypothesisCandidate[];
+    readonly afterVisibility: readonly CallResolutionHypothesisCandidate[];
+    readonly afterExplicitReceiverType: readonly CallResolutionHypothesisCandidate[];
+    readonly afterPeerMembers: readonly CallResolutionHypothesisCandidate[];
+    readonly afterArgumentShape: readonly CallResolutionHypothesisCandidate[];
+  },
+): CandidateFilterStageKeys | undefined {
+  if (!shouldCapture) return undefined;
+  return {
+    beforeVisibility: targetKeys(stages.beforeVisibility),
+    afterVisibility: targetKeys(stages.afterVisibility),
+    afterExplicitReceiverType: targetKeys(stages.afterExplicitReceiverType),
+    afterPeerMembers: targetKeys(stages.afterPeerMembers),
+    afterArgumentShape: targetKeys(stages.afterArgumentShape),
+  };
+}
+
 function applyEvidenceStage<T>(
   current: readonly T[],
   filtered: readonly T[],
@@ -221,7 +256,9 @@ export function filterCandidates(
   request: CallResolutionHypothesisRequest,
   workspace: IndexedWorkspace,
   receiverTypeName: string | null,
+  captureCandidateStageKeys = false,
 ): FilteredHypotheses {
+  const beforeVisibility = generated;
   let current = generated;
   const visible = visibilityFilter(current, request);
   const visibilityApplied = visible.length < current.length;
@@ -230,21 +267,35 @@ export function filterCandidates(
     stage: stage(current.length, visible.length, visibilityApplied),
   };
   current = visibility.current;
+  const afterVisibility = current;
 
   const explicit = applyEvidenceStage(
     current,
     explicitTypeFilter(current, workspace, receiverTypeName),
   );
   current = explicit.current;
+  const afterExplicitReceiverType = current;
 
   const peers = applyEvidenceStage(
     current,
     peerFilter(current, request.callSite.peerMemberNames, workspace),
   );
   current = peers.current;
+  const afterPeerMembers = current;
 
   const arity = applyEvidenceStage(current, arityFilter(current, request));
   current = arity.current;
+  const afterArgumentShape = current;
+  const candidateStageKeys = candidateFilterStageKeys(
+    captureCandidateStageKeys,
+    {
+      beforeVisibility,
+      afterVisibility,
+      afterExplicitReceiverType,
+      afterPeerMembers,
+      afterArgumentShape,
+    },
+  );
 
   return {
     candidates: current,
@@ -254,6 +305,7 @@ export function filterCandidates(
       peerMembers: peers.stage,
       argumentShape: arity.stage,
     },
+    ...(candidateStageKeys ? { candidateStageKeys } : {}),
     unsupportedCallShape:
       !workspace.factsByFile.has(request.callerFilePath) ||
       request.callSite.calleeKind === "arg-chain" ||

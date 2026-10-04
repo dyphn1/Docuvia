@@ -5,6 +5,7 @@ import type {
   AstDeclaredTypeFact,
   AstDeclaredTypeFacts,
   AstDeclaredTypeOwner,
+  CallResolutionConfiguredPathAliases,
   CallResolutionHypothesisCandidate,
   CallResolutionHypothesisRequest,
   CallResolutionHypothesisWorkspaceIndex,
@@ -402,6 +403,62 @@ export function resolveDirectRelativeImportPath(
   modulePath: string,
   availableFilePaths: readonly string[],
 ): string | undefined {
+  return resolveUniqueImportPath(
+    relativeImportPathCandidates(callerFilePath, modulePath),
+    availableFilePaths,
+  );
+}
+
+/** Resolve the explicitly supported root-local mapping without guessing module semantics. */
+export function resolveDirectConfiguredImportPath(
+  callerFilePath: string,
+  modulePath: string,
+  availableFilePaths: readonly string[],
+  evidence?: CallResolutionConfiguredPathAliases,
+): string | undefined {
+  if (
+    !evidence ||
+    !isSupportedConfiguredMapping(evidence) ||
+    !isSupportedConfiguredSpecifier(callerFilePath, modulePath)
+  )
+    return undefined;
+  return resolveUniqueImportPath(
+    pathCandidatesForNormalizedImport("src/" + modulePath.slice(2)),
+    availableFilePaths,
+  );
+}
+
+function isSupportedConfiguredMapping(
+  evidence: CallResolutionConfiguredPathAliases,
+): boolean {
+  return !(
+    evidence.configurationFilePath !== "tsconfig.json" ||
+    !HASH_PATTERN.test(evidence.sourceContentHash) ||
+    evidence.baseUrl !== null ||
+    evidence.extends.length !== 0 ||
+    Object.keys(evidence.paths).length !== 1 ||
+    evidence.paths["@/*"]?.length !== 1 ||
+    evidence.paths["@/*"]?.[0] !== "./src/*"
+  );
+}
+
+function isSupportedConfiguredSpecifier(
+  callerFilePath: string,
+  modulePath: string,
+): boolean {
+  return !(
+    path.posix.isAbsolute(callerFilePath) ||
+    !modulePath.startsWith("@/") ||
+    modulePath.length <= 2 ||
+    /[\\%?#]/.test(modulePath) ||
+    modulePath.split("/").some((part) => part === "." || part === ".." || !part)
+  );
+}
+
+function resolveUniqueImportPath(
+  candidates: readonly string[],
+  availableFilePaths: readonly string[],
+): string | undefined {
   const availableByPath = new Map<string, string[]>();
   for (const filePath of availableFilePaths) {
     const key = normalizedWorkspacePath(filePath);
@@ -410,10 +467,7 @@ export function resolveDirectRelativeImportPath(
     availableByPath.set(key, paths);
   }
   const matchingPaths = new Set<string>();
-  for (const candidate of relativeImportPathCandidates(
-    callerFilePath,
-    modulePath,
-  )) {
+  for (const candidate of candidates) {
     const matches = availableByPath.get(candidate) ?? [];
     if (matches.length > 1) return undefined;
     const [match] = matches;
@@ -439,6 +493,7 @@ function directImportAliasCandidateMap(
   sourceFiles: CallResolutionHypothesisWorkspaceInput["sourceFiles"],
   candidates: readonly CandidateWithoutRank[],
   duplicateSourcePaths: boolean,
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
 ): ReadonlyMap<string, ReadonlyMap<string, readonly CandidateWithoutRank[]>> {
   if (duplicateSourcePaths) return new Map();
   const sourceByPath = new Map(
@@ -456,6 +511,7 @@ function directImportAliasCandidateMap(
       sourceByPath,
       availableFilePaths,
       candidatesByFileAndName,
+      configuredPathAliases,
     );
     if (aliases.size > 0) result.set(caller.filePath, aliases);
   }
@@ -484,6 +540,7 @@ function directImportAliasesForCaller(
   sourceByPath: ReadonlyMap<string, AliasSourceFile>,
   availableFilePaths: readonly string[],
   candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
 ): Map<string, readonly CandidateWithoutRank[]> {
   const result = new Map<string, readonly CandidateWithoutRank[]>();
   if (!caller.imports || !HASH_PATTERN.test(caller.sourceContentHash ?? ""))
@@ -496,6 +553,7 @@ function directImportAliasesForCaller(
       sourceByPath,
       availableFilePaths,
       candidatesByFileAndName,
+      configuredPathAliases,
     );
     if (candidate) result.set(localName, [candidate]);
   }
@@ -520,23 +578,68 @@ function resolveImportedAliasCandidate(
   sourceByPath: ReadonlyMap<string, AliasSourceFile>,
   availableFilePaths: readonly string[],
   candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
 ): CandidateWithoutRank | undefined {
   if (descriptors.length !== 1) return undefined;
   const [descriptor] = descriptors;
   if (!descriptor || !isSupportedAliasDescriptor(descriptor)) return undefined;
-  const targetPath = resolveDirectRelativeImportPath(
+  const relativeTargetPath = resolveDirectRelativeImportPath(
     caller.filePath,
     descriptor.modulePath,
     availableFilePaths,
   );
+  const targetPath =
+    relativeTargetPath ??
+    resolveDirectConfiguredImportPath(
+      caller.filePath,
+      descriptor.modulePath,
+      availableFilePaths,
+      configuredPathAliases,
+    );
   if (!targetPath) return undefined;
+  return uniqueImportedCandidate(
+    targetPath,
+    descriptor.originalName,
+    sourceByPath,
+    candidatesByFileAndName,
+    relativeTargetPath !== undefined,
+  );
+}
+
+function uniqueImportedCandidate(
+  targetPath: string,
+  importedName: string,
+  sourceByPath: ReadonlyMap<string, AliasSourceFile>,
+  candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+  relativeImport: boolean,
+): CandidateWithoutRank | undefined {
   const target = sourceByPath.get(targetPath);
   if (!target || !isHashBoundExportSource(target)) return undefined;
-  if (!hasUniqueDirectExport(target, descriptor.originalName)) return undefined;
+  if (!hasUniqueDirectExport(target, importedName)) return undefined;
   const candidates =
-    candidatesByFileAndName.get(targetPath + "\0" + descriptor.originalName) ??
-    [];
-  return candidates.length === 1 ? candidates[0] : undefined;
+    candidatesByFileAndName.get(targetPath + "\0" + importedName) ?? [];
+  const [candidate] = candidates;
+  if (candidates.length !== 1 || !candidate) return undefined;
+  if (
+    !relativeImport &&
+    !isUniqueConfiguredFunction(candidate, target, importedName)
+  )
+    return undefined;
+  return candidate;
+}
+
+function isUniqueConfiguredFunction(
+  candidate: CandidateWithoutRank,
+  target: AliasSourceFile,
+  importedName: string,
+): boolean {
+  const exports = target.exports?.filter(({ name }) => name === importedName);
+  return (
+    importedName !== "default" &&
+    candidate.declarations[0]?.kind === "function" &&
+    exports?.length === 1 &&
+    exports[0]?.type === "function"
+  );
 }
 
 function isSupportedAliasDescriptor(descriptor: AstImportDescriptor): boolean {
@@ -588,9 +691,14 @@ export function createIndexedWorkspace(
 ): IndexedWorkspace {
   validateWorkspaceInput(input);
   const sourceFiles = deepFreeze(structuredClone(input.sourceFiles));
+  const configuredPathAliases =
+    input.configuredPathAliases === undefined
+      ? undefined
+      : deepFreeze(structuredClone(input.configuredPathAliases));
   const boundSourceFingerprint = hash({
     manifestFingerprint: input.sourceFingerprint,
     sourceFiles,
+    ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
   });
   const builder = workspaceBuilder(input);
   for (const source of sourceFiles) indexSourceFile(builder, source);
@@ -600,6 +708,7 @@ export function createIndexedWorkspace(
     sourceFiles,
     candidates,
     builder.duplicateSourcePaths,
+    configuredPathAliases,
   );
   const handle = Object.freeze({
     schemaVersion: CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,

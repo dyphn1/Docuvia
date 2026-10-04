@@ -12,10 +12,19 @@ import type {
 } from "./declared-type-facts.interfaces.js";
 
 export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
-  "declared-member-hypothesis-v4" as const;
+  "declared-member-hypothesis-v5" as const;
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
+
+/** Source-bound configuration facts; unsupported mappings do not enrich candidates. */
+export interface CallResolutionConfiguredPathAliases {
+  readonly configurationFilePath: string;
+  readonly sourceContentHash: string;
+  readonly paths: Readonly<Record<string, readonly string[]>>;
+  readonly baseUrl: string | null;
+  readonly extends: readonly string[];
+}
 
 export interface CallResolutionHypothesisSourceFile {
   readonly filePath: string;
@@ -39,6 +48,8 @@ export interface CallResolutionHypothesisWorkspaceInput {
   /** True only when the caller supplied every source file in the workspace index. */
   readonly sourceIndexComplete: boolean;
   readonly sourceFiles: readonly CallResolutionHypothesisSourceFile[];
+  /** Parsed once at the source boundary, from the exact hashed configuration bytes. */
+  readonly configuredPathAliases?: CallResolutionConfiguredPathAliases;
 }
 
 /** Opaque, immutable handle returned by one service's indexWorkspace call. */

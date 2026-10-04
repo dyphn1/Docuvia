@@ -153,6 +153,7 @@ export type {
   CallResolutionHypothesisResult,
   CallResolutionHypothesisServiceOptions,
   CallResolutionHypothesisSourceFile,
+  CallResolutionConfiguredPathAliases,
   CallResolutionHypothesisWorkspaceIndex,
   CallResolutionHypothesisWorkspaceInput,
   ICallResolutionHypothesisService,

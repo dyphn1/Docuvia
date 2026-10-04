@@ -7,6 +7,7 @@ import {
   type AstImportDescriptor,
   type AstCallSiteShapeFact,
   type AstDeclaredDeclaration,
+  type CallResolutionConfiguredPathAliases,
   type CallResolutionHypothesisWorkspaceInput,
   type ICallResolutionHypothesisService,
   type ParsedAstFileResult,
@@ -19,6 +20,7 @@ import type {
 } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import {
   candidateTargetKeyForDeclaration,
+  resolveDirectConfiguredImportPath,
   resolveDirectRelativeImportPath,
 } from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
 import { git, hashSnapshot, materializeSnapshot } from "./snapshot.mts";
@@ -430,6 +432,7 @@ function workspaceSourceFiles(
 function directAliasTargetPaths(
   callFiles: readonly ParsedAstFileResult[],
   factRows: readonly Phase2FactFile[],
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
 ): string[] {
   const factsByPath = new Map<string, Phase2FactFile[]>();
   for (const row of factRows) {
@@ -458,17 +461,83 @@ function directAliasTargetPaths(
         descriptor.localName === descriptor.originalName
       )
         continue;
-      const targetPath = resolveDirectRelativeImportPath(
-        caller.file,
-        descriptor.modulePath,
-        availablePaths,
-      );
+      const targetPath =
+        resolveDirectRelativeImportPath(
+          caller.file,
+          descriptor.modulePath,
+          availablePaths,
+        ) ??
+        resolveDirectConfiguredImportPath(
+          caller.file,
+          descriptor.modulePath,
+          availablePaths,
+          configuredPathAliases,
+        );
       if (!targetPath || (factsByPath.get(targetPath)?.length ?? 0) !== 1)
         continue;
       if (isDiscoverableSourceFile(targetPath)) targets.add(targetPath);
     }
   }
   return [...targets].sort();
+}
+
+/** Parse exact root configuration bytes once; inheritance and unsupported shapes stay unavailable. */
+export function configuredPathAliasesFromSource(
+  code: string,
+  sourceContentHash: string,
+): CallResolutionConfiguredPathAliases | undefined {
+  if (sha256(Buffer.from(code)) !== sourceContentHash) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(code);
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    return undefined;
+  const root = parsed as Record<string, unknown>;
+  const options = root.compilerOptions;
+  if (!options || typeof options !== "object" || Array.isArray(options))
+    return undefined;
+  const compilerOptions = options as Record<string, unknown>;
+  const paths = compilerOptions.paths;
+  if (!paths || typeof paths !== "object" || Array.isArray(paths))
+    return undefined;
+  const entries = Object.entries(paths);
+  if (
+    entries.some(
+      ([, targets]) =>
+        !Array.isArray(targets) ||
+        targets.some((target) => typeof target !== "string"),
+    )
+  )
+    return undefined;
+  if (
+    compilerOptions.baseUrl !== undefined &&
+    typeof compilerOptions.baseUrl !== "string"
+  )
+    return undefined;
+  const inherited = root.extends;
+  if (
+    inherited !== undefined &&
+    typeof inherited !== "string" &&
+    (!Array.isArray(inherited) ||
+      inherited.some((item) => typeof item !== "string"))
+  )
+    return undefined;
+  return {
+    configurationFilePath: "tsconfig.json",
+    sourceContentHash,
+    paths: Object.fromEntries(entries) as Record<string, string[]>,
+    baseUrl: (compilerOptions.baseUrl as string | undefined) ?? null,
+    extends:
+      inherited === undefined
+        ? []
+        : typeof inherited === "string"
+          ? [inherited]
+          : (inherited as string[]),
+  };
 }
 
 export function validateFactsAgainstSnapshot(
@@ -501,6 +570,8 @@ export async function processPhase2Snapshot(input: {
   readonly factsSidecarHash: string;
   readonly includeCandidateStageEvidence?: boolean;
   readonly includeProposalFilterStageEvidence?: boolean;
+  /** Add source-bound configuration facts without changing the replay eligibility or runtime policy. */
+  readonly includeConfiguredPathAliases?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
   if (
@@ -535,6 +606,15 @@ export async function processPhase2Snapshot(input: {
       snapshot.snapshotHash,
       factRows,
     );
+    const configurationSource = input.includeConfiguredPathAliases
+      ? sourceBytesForPath(input.temporaryDirectory, "tsconfig.json")
+      : null;
+    const configuredPathAliases = configurationSource
+      ? configuredPathAliasesFromSource(
+          configurationSource.code,
+          configurationSource.hash,
+        )
+      : undefined;
     const sourcePaths = [
       ...new Set(input.sourceRows.map((row) => row.filePath)),
     ].sort();
@@ -556,6 +636,7 @@ export async function processPhase2Snapshot(input: {
     const aliasTargetPaths = directAliasTargetPaths(
       parsedCallFiles.parsed,
       factRows,
+      configuredPathAliases,
     ).filter((filePath) => !callSourcePaths.has(filePath));
     const factRowsByPath = new Map<string, Phase2FactFile[]>();
     for (const row of factRows) {
@@ -612,6 +693,7 @@ export async function processPhase2Snapshot(input: {
       sourceFingerprint,
       sourceIndexComplete: true,
       sourceFiles: workspaceSourceFiles(factRows, parsedByFile),
+      ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
     });
     const callShapeMaps = new Map(
       [...parsedByFile].map(([file, row]) => [

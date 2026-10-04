@@ -1873,6 +1873,12 @@ describe("call-resolution hypothesis service", () => {
     const valid = makeCalibrationRecord(baseline);
     const invalidCases = [
       {
+        name: "previous generator version",
+        record: makeCalibrationRecord(baseline, {
+          candidateGeneratorVersion: "declared-member-hypothesis-v4",
+        }),
+      },
+      {
         name: "tampered hash",
         record: { ...valid, calibrationRecordHash: "0".repeat(64) },
       },

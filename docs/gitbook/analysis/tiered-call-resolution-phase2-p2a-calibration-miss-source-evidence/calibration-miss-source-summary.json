@@ -1,0 +1,2187 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2a-calibration-miss-source-audit/1",
+  "split": "calibration",
+  "labelSplitsRead": [],
+  "labelsCopiedFromVerifiedCalibrationSummary": true,
+  "productionBehaviorChanged": false,
+  "corpusManifestRead": false,
+  "systemOneArtifactsRead": false,
+  "pinnedCalibrationSummary": {
+    "path": "docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-calibration-cap-evidence/calibration-cap-summary.json",
+    "sha256": "afe3d04099ca83ab5330962a638aeb1367cf6e0947f1a5697928653219f1b13f",
+    "calibrationLabelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+    "sampleIdCount": 2966,
+    "sampleIdsHash": "c95b92a9d5cd284250cdfaf178b990b77b59cf6d60b81e5068a2c7c573fe76c9"
+  },
+  "source": {
+    "snapshotId": "repomind",
+    "repoId": "github.com/403errors/repomind",
+    "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+    "subtree": null,
+    "snapshotHash": "cbb61dc0524f8f741e4f7a16c59be95785a7b28c966eb54ad2f712518a67e63c",
+    "sourceDir": "repomind",
+    "sourceFingerprint": "adb0c75149e94dcbed7fe56448b47c7bc0b007d5ae1c7a29436b6b88b8b262ad",
+    "sourceFactFileCount": 328,
+    "parsedCallFileCount": 178,
+    "parsedImportTargetFileCount": 0,
+    "parseFailureCount": 0,
+    "replayedRows": 1207,
+    "files": [
+      {
+        "file": "src/app/actions.ts",
+        "sha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b"
+      },
+      {
+        "file": "src/lib/services/scan-share-links.ts",
+        "sha256": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd"
+      },
+      {
+        "file": "src/lib/services/report-service.ts",
+        "sha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7"
+      },
+      {
+        "file": "src/lib/services/artifact-service.ts",
+        "sha256": "8714e13e743393b863ffbbc83aeedde956b5b486975d43c6c6c3e924bafa7183"
+      },
+      {
+        "file": "src/lib/services/history-service.ts",
+        "sha256": "29bc8e52369f0d31007c1df5b6b63d91fcc5b4a6a089b6bfd7e3cb0cb8fcf2b4"
+      },
+      {
+        "file": "src/lib/services/repo-suggestions.ts",
+        "sha256": "29c1d0b9e535dd02e6de42d00f099f51fa5050ff37c5694a6b3ed3504a445273"
+      },
+      {
+        "file": "src/app/admin/blog/actions.ts",
+        "sha256": "66ab3350e435a1af8655026d1ee3807238b5605817e98ac8e221215be1945791"
+      },
+      {
+        "file": "src/lib/services/blog-service.ts",
+        "sha256": "d071188cadce17d46308d09c148d5c7603bc1835358105e351c860404be11dd6"
+      },
+      {
+        "file": "src/app/report/[scan_id]/page.test.tsx",
+        "sha256": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773"
+      },
+      {
+        "file": "src/app/report/[scan_id]/page.tsx",
+        "sha256": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c"
+      },
+      {
+        "file": "src/lib/services/__tests__/fix-verification.test.ts",
+        "sha256": "5e1d36183c315dc0abe03fe7a4b55eb3e137429483187991126cc4e2f6a183d5"
+      },
+      {
+        "file": "src/lib/services/fix-verification.ts",
+        "sha256": "676c552218094c9771804493dff5f1e937a8aea68a8bf57b3d410169fec3deb0"
+      },
+      {
+        "file": "src/lib/services/security-verification.ts",
+        "sha256": "2ce620b69734a422e1e0a6f00687d66c0318a01ad042f21543b2aa1e9edf1117"
+      }
+    ],
+    "tsconfigPath": "tsconfig.json",
+    "tsconfigSha256": "235139181c8ebfc0f1f6cb07771d00cabed961d7c41469c9ef6b3cb04f86d6ef",
+    "compilerOptionsPaths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "baseUrl": null,
+    "extends": null
+  },
+  "parserEvidence": {
+    "parsedFiles": 13,
+    "parseFailures": 0,
+    "exactCallFacts": 16,
+    "allCallSiteInputHashesMatch": true,
+    "exactInputsHash": "759d07598f33cbdf50bd310ad14698057edc4932a2f0513bcd7a0e33b20a14dd"
+  },
+  "classificationCounts": {
+    "configured-path-named-import-gap": 13,
+    "combined-default-import-export-descriptor-gap": 3
+  },
+  "cases": [
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1027:23",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1027,
+        "column": 23,
+        "calleeName": "createScanShareLinkRecord",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/scan-share-links.ts#createScanShareLink",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+      "callSiteInputHash": "f81ce4c7cb9863ef4baaa6baaad078f0bc4d09613a79d7eaf7efff3e55b0e377",
+      "exactCallSiteFact": {
+        "startLine": 1027,
+        "startColumn": 23,
+        "calleeName": "createScanShareLinkRecord",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "createScanShareLinkRecord",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 37045,
+          "end": 37983
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "object"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "createScanShareLinkRecord",
+          "originalName": "createScanShareLink",
+          "modulePath": "@/lib/services/scan-share-links"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/scan-share-links",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "createScanShareLink",
+        "declarationSpan": {
+          "start": 1022,
+          "end": 3222
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5639
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 1258,
+          "end": 3222
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "DEFAULT_SCAN_SHARE_TTL_DAYS",
+          "type": "variable"
+        },
+        {
+          "name": "hashShareToken",
+          "type": "function"
+        },
+        {
+          "name": "createScanShareLink",
+          "type": "function"
+        },
+        {
+          "name": "resolveScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "peekScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "getScanShareLinkById",
+          "type": "function"
+        },
+        {
+          "name": "revokeScanShareLink",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    const link = await createScanShareLinkRecord({",
+      "targetDirectExportLine": "export async function createScanShareLink(params: {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1043:11",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1043,
+        "column": 11,
+        "calleeName": "resolveScanFromShareTokenRecord",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/scan-share-links.ts#resolveScanFromShareToken",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+      "callSiteInputHash": "c7aece43d3101553b5aba73e9cd3a5967e10a7010363ad174d86eca73daeef64",
+      "exactCallSiteFact": {
+        "startLine": 1043,
+        "startColumn": 11,
+        "calleeName": "resolveScanFromShareTokenRecord",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "resolveScanFromShareTokenRecord",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 37992,
+          "end": 38102
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "resolveScanFromShareTokenRecord",
+          "originalName": "resolveScanFromShareToken",
+          "modulePath": "@/lib/services/scan-share-links"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/scan-share-links",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "resolveScanFromShareToken",
+        "declarationSpan": {
+          "start": 4689,
+          "end": 4837
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5639
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 4775,
+          "end": 4837
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "DEFAULT_SCAN_SHARE_TTL_DAYS",
+          "type": "variable"
+        },
+        {
+          "name": "hashShareToken",
+          "type": "function"
+        },
+        {
+          "name": "createScanShareLink",
+          "type": "function"
+        },
+        {
+          "name": "resolveScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "peekScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "getScanShareLinkById",
+          "type": "function"
+        },
+        {
+          "name": "revokeScanShareLink",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    return resolveScanFromShareTokenRecord(token);",
+      "targetDirectExportLine": "export async function resolveScanFromShareToken(token: string): Promise<ScanShareResolution> {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1065:23",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1065,
+        "column": 23,
+        "calleeName": "createScanShareLinkRecord",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/scan-share-links.ts#createScanShareLink",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+      "callSiteInputHash": "658f689974e46e71463262c990a04595ba7b8d763df4ac8d96f7987ca488b5ea",
+      "exactCallSiteFact": {
+        "startLine": 1065,
+        "startColumn": 23,
+        "calleeName": "createScanShareLinkRecord",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "createScanShareLinkRecord",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 38111,
+          "end": 39164
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "object"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "createScanShareLinkRecord",
+          "originalName": "createScanShareLink",
+          "modulePath": "@/lib/services/scan-share-links"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/scan-share-links",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "createScanShareLink",
+        "declarationSpan": {
+          "start": 1022,
+          "end": 3222
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5639
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 1258,
+          "end": 3222
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "DEFAULT_SCAN_SHARE_TTL_DAYS",
+          "type": "variable"
+        },
+        {
+          "name": "hashShareToken",
+          "type": "function"
+        },
+        {
+          "name": "createScanShareLink",
+          "type": "function"
+        },
+        {
+          "name": "resolveScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "peekScanFromShareToken",
+          "type": "function"
+        },
+        {
+          "name": "getScanShareLinkById",
+          "type": "function"
+        },
+        {
+          "name": "revokeScanShareLink",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    const link = await createScanShareLinkRecord({",
+      "targetDirectExportLine": "export async function createScanShareLink(params: {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1107:24",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1107,
+        "column": 24,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "99de52247ea93abf5a04c31cfbb87b6df1b4ad43ff18abbe1d38b16d48c33974",
+      "exactCallSiteFact": {
+        "startLine": 1107,
+        "startColumn": 24,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 39173,
+          "end": 41062
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    const fingerprint = buildFindingFingerprint(finding);",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1251:11",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1251,
+        "column": 11,
+        "calleeName": "_searchRepositoryCode",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/artifact-service.ts#searchRepositoryCode",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "8714e13e743393b863ffbbc83aeedde956b5b486975d43c6c6c3e924bafa7183",
+      "callSiteInputHash": "fc55662b318b01a82655d7e4b5cd35765ce4c2225d947f5f74326b222bb243d6",
+      "exactCallSiteFact": {
+        "startLine": 1251,
+        "startColumn": 11,
+        "calleeName": "_searchRepositoryCode",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "_searchRepositoryCode",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 43682,
+          "end": 43966
+        },
+        "callerType": null,
+        "argumentCount": 5,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown",
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "_searchRepositoryCode",
+          "originalName": "searchRepositoryCode",
+          "modulePath": "@/lib/services/artifact-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/artifact-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "searchRepositoryCode",
+        "declarationSpan": {
+          "start": 815,
+          "end": 1855
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 1857
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 1062,
+          "end": 1855
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 4,
+          "maxParameterCount": 6
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "searchRepositoryCode",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    return _searchRepositoryCode(owner, repo, files, query, type);",
+      "targetDirectExportLine": "export async function searchRepositoryCode("
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1257:11",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 1257,
+        "column": 11,
+        "calleeName": "_getRecentSearches",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/history-service.ts#getRecentSearches",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "29bc8e52369f0d31007c1df5b6b63d91fcc5b4a6a089b6bfd7e3cb0cb8fcf2b4",
+      "callSiteInputHash": "420cf3a77b150cf38c4b3c044d23593741d8f767ebad32a1afb8b57526cbb62d",
+      "exactCallSiteFact": {
+        "startLine": 1257,
+        "startColumn": 11,
+        "calleeName": "_getRecentSearches",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "_getRecentSearches",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 43975,
+          "end": 44134
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "_getRecentSearches",
+          "originalName": "getRecentSearches",
+          "modulePath": "@/lib/services/history-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/history-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "getRecentSearches",
+        "declarationSpan": {
+          "start": 1027,
+          "end": 1457
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 1458
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 1125,
+          "end": 1457
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 2
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "recordSearch",
+          "type": "function"
+        },
+        {
+          "name": "getRecentSearches",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    return _getRecentSearches(session.user.id);",
+      "targetDirectExportLine": "export async function getRecentSearches(userId: string, limit: number = 3): Promise<SearchHistoryItem[]> {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:435:11",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/actions.ts",
+        "line": 435,
+        "column": 11,
+        "calleeName": "_getRepoSuggestions",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/repo-suggestions.ts#getRepoSuggestions",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+      "targetSourceContentHash": "29c1d0b9e535dd02e6de42d00f099f51fa5050ff37c5694a6b3ed3504a445273",
+      "callSiteInputHash": "7fc8ebb6bfa94f50149a2294b3681c4c8f5617eab57cab27560eb2ec3dae5210",
+      "exactCallSiteFact": {
+        "startLine": 435,
+        "startColumn": 11,
+        "calleeName": "_getRepoSuggestions",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "_getRepoSuggestions",
+          "declarationSpan": {
+            "start": 0,
+            "end": 44135
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 44135
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 15837,
+          "end": 15928
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "_getRepoSuggestions",
+          "originalName": "getRepoSuggestions",
+          "modulePath": "@/lib/services/repo-suggestions"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/repo-suggestions",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "getRepoSuggestions",
+        "declarationSpan": {
+          "start": 1388,
+          "end": 4843
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 4844
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 1464,
+          "end": 4843
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "getRepoSuggestions",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "    return _getRepoSuggestions(query);",
+      "targetDirectExportLine": "export async function getRepoSuggestions(query: string): Promise<RepoSuggestion[]> {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/admin/blog/actions.ts:27:8",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/app/admin/blog/actions.ts",
+        "line": 27,
+        "column": 8,
+        "calleeName": "deletePostFromDb",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/blog-service.ts#deletePost",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "66ab3350e435a1af8655026d1ee3807238b5605817e98ac8e221215be1945791",
+      "targetSourceContentHash": "d071188cadce17d46308d09c148d5c7603bc1835358105e351c860404be11dd6",
+      "callSiteInputHash": "f560b8114ce8eedb5227d5f49d5744039db33a8f767d33adb83ca82756d6cee6",
+      "exactCallSiteFact": {
+        "startLine": 27,
+        "startColumn": 8,
+        "calleeName": "deletePostFromDb",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "deletePostFromDb",
+          "declarationSpan": {
+            "start": 0,
+            "end": 750
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 750
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 616,
+          "end": 749
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "deletePostFromDb",
+          "originalName": "deletePost",
+          "modulePath": "@/lib/services/blog-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/blog-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "deletePost",
+        "declarationSpan": {
+          "start": 4755,
+          "end": 5049
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5050
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 4793,
+          "end": 5049
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "BLOG_HOMEPAGE_CACHE_TAG",
+          "type": "variable"
+        },
+        {
+          "name": "getPublishedPosts",
+          "type": "function"
+        },
+        {
+          "name": "getHomepagePosts",
+          "type": "function"
+        },
+        {
+          "name": "getAllPosts",
+          "type": "function"
+        },
+        {
+          "name": "getPostBySlug",
+          "type": "function"
+        },
+        {
+          "name": "getPublishedPostBySlug",
+          "type": "function"
+        },
+        {
+          "name": "savePost",
+          "type": "function"
+        },
+        {
+          "name": "deletePost",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "  await deletePostFromDb(id);",
+      "targetDirectExportLine": "export async function deletePost(id: string) {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:111:21",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-unbound",
+      "source": {
+        "filePath": "src/app/report/[scan_id]/page.test.tsx",
+        "line": 111,
+        "column": 21,
+        "calleeName": "ReportPage",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "combined-default-import-export-descriptor-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "unbound",
+        "importDescriptorCount": 0,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": false,
+        "combinedDefaultImportInSource": true,
+        "directDefaultFunctionInSource": true,
+        "parserHasDefaultExport": false
+      },
+      "sourceContentHash": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+      "targetSourceContentHash": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+      "callSiteInputHash": "79eb44c8fdf5837db2e26c2b55793363bb85fe1eaf38b47f17c509d76c193094",
+      "exactCallSiteFact": {
+        "startLine": 111,
+        "startColumn": 21,
+        "calleeName": "ReportPage",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "unbound",
+          "name": "ReportPage"
+        },
+        "lexicalScopeSpan": {
+          "start": 3588,
+          "end": 3902
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "object"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [],
+      "sourceImportStatement": "import ReportPage, { generateMetadata } from \"@/app/report/[scan_id]/page\"",
+      "configuredModulePath": "@/app/report/[scan_id]/page",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "PrivateReportPage",
+        "declarationSpan": {
+          "start": 3642,
+          "end": 5205
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5206
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 3729,
+          "end": 5205
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "generateMetadata",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        await expect(ReportPage({ params: Promise.resolve({ scan_id: \"scan_1\" }) })).rejects.toThrow(\"notFound\");",
+      "targetDirectExportLine": "export default async function PrivateReportPage({ params }: { params: Promise<{ scan_id: string }> }) {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:128:27",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-unbound",
+      "source": {
+        "filePath": "src/app/report/[scan_id]/page.test.tsx",
+        "line": 128,
+        "column": 27,
+        "calleeName": "ReportPage",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "combined-default-import-export-descriptor-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "unbound",
+        "importDescriptorCount": 0,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": false,
+        "combinedDefaultImportInSource": true,
+        "directDefaultFunctionInSource": true,
+        "parserHasDefaultExport": false
+      },
+      "sourceContentHash": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+      "targetSourceContentHash": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+      "callSiteInputHash": "db4616250b86561033ab2caf0d726c7fbf5f3176fd9448b463d9b2bca8b3f078",
+      "exactCallSiteFact": {
+        "startLine": 128,
+        "startColumn": 27,
+        "calleeName": "ReportPage",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "unbound",
+          "name": "ReportPage"
+        },
+        "lexicalScopeSpan": {
+          "start": 3959,
+          "end": 5340
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "object"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [],
+      "sourceImportStatement": "import ReportPage, { generateMetadata } from \"@/app/report/[scan_id]/page\"",
+      "configuredModulePath": "@/app/report/[scan_id]/page",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "PrivateReportPage",
+        "declarationSpan": {
+          "start": 3642,
+          "end": 5205
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5206
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 3729,
+          "end": 5205
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "generateMetadata",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        const view = await ReportPage({ params: Promise.resolve({ scan_id: \"scan_1\" }) }) as ReactElement<{",
+      "targetDirectExportLine": "export default async function PrivateReportPage({ params }: { params: Promise<{ scan_id: string }> }) {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:150:27",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-unbound",
+      "source": {
+        "filePath": "src/app/report/[scan_id]/page.test.tsx",
+        "line": 150,
+        "column": 27,
+        "calleeName": "ReportPage",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "combined-default-import-export-descriptor-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "unbound",
+        "importDescriptorCount": 0,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": false,
+        "combinedDefaultImportInSource": true,
+        "directDefaultFunctionInSource": true,
+        "parserHasDefaultExport": false
+      },
+      "sourceContentHash": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+      "targetSourceContentHash": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+      "callSiteInputHash": "36152cffc3dd6290a5c1e030c49f1dd948b9289a7c6773069307b2ad5f6bb1e6",
+      "exactCallSiteFact": {
+        "startLine": 150,
+        "startColumn": 27,
+        "calleeName": "ReportPage",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "unbound",
+          "name": "ReportPage"
+        },
+        "lexicalScopeSpan": {
+          "start": 5400,
+          "end": 5934
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "object"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [],
+      "sourceImportStatement": "import ReportPage, { generateMetadata } from \"@/app/report/[scan_id]/page\"",
+      "configuredModulePath": "@/app/report/[scan_id]/page",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "PrivateReportPage",
+        "declarationSpan": {
+          "start": 3642,
+          "end": 5205
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 5206
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 3729,
+          "end": 5205
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "generateMetadata",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        const view = await ReportPage({ params: Promise.resolve({ scan_id: \"scan_1\" }) }) as ReactElement;",
+      "targetDirectExportLine": "export default async function PrivateReportPage({ params }: { params: Promise<{ scan_id: string }> }) {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/__tests__/fix-verification.test.ts:175:28",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/lib/services/__tests__/fix-verification.test.ts",
+        "line": 175,
+        "column": 28,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "5e1d36183c315dc0abe03fe7a4b55eb3e137429483187991126cc4e2f6a183d5",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "cb6e7305b1234d46a5fcb853c745ec7532eee9121db922ef496856092f727c26",
+      "exactCallSiteFact": {
+        "startLine": 175,
+        "startColumn": 28,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 7367
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 7367
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 5915,
+          "end": 7360
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        const fingerprint = buildFindingFingerprint(finding);",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/fix-verification.ts:103:21",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/lib/services/fix-verification.ts",
+        "line": 103,
+        "column": 21,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "676c552218094c9771804493dff5f1e937a8aea68a8bf57b3d410169fec3deb0",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "4ed399dc873b606f48c53e95a0caea4811208dc1f6eb33a8871139a9212ca7b3",
+      "exactCallSiteFact": {
+        "startLine": 103,
+        "startColumn": 21,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 9219
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 9219
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 3492,
+          "end": 3567
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        (finding) => buildFindingFingerprint(finding) === params.findingFingerprint",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/fix-verification.ts:131:21",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/lib/services/fix-verification.ts",
+        "line": 131,
+        "column": 21,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "676c552218094c9771804493dff5f1e937a8aea68a8bf57b3d410169fec3deb0",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "41b611d63df8763ef262866ee73b635da78344084200791dba74547aefda87fc",
+      "exactCallSiteFact": {
+        "startLine": 131,
+        "startColumn": 21,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 9219
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 9219
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 4460,
+          "end": 4535
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        (finding) => buildFindingFingerprint(finding) === params.findingFingerprint",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/security-verification.ts:765:36",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/lib/services/security-verification.ts",
+        "line": 765,
+        "column": 36,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "2ce620b69734a422e1e0a6f00687d66c0318a01ad042f21543b2aa1e9edf1117",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "8cd62f27aa7f11ba7d20e7922468a60a4842dc5bda9d8aed156e0b0ea86ded90",
+      "exactCallSiteFact": {
+        "startLine": 765,
+        "startColumn": 36,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 31775
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 31775
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 27625,
+          "end": 29084
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "                findingFingerprint: buildFindingFingerprint(annotated),",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/security-verification.ts:808:28",
+      "repoFamily": "403errors/repomind",
+      "calleeKind": "bare",
+      "evidenceKind": "callee-import",
+      "source": {
+        "filePath": "src/lib/services/security-verification.ts",
+        "line": 808,
+        "column": 28,
+        "calleeName": "buildFindingFingerprint",
+        "positionStatus": "unique"
+      },
+      "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+      "rawPresent": false,
+      "firstLossStage": "raw-generation",
+      "beforeMaxRank": null,
+      "classification": "configured-path-named-import-gap",
+      "ordinarySourceCase": true,
+      "needsTypeInference": false,
+      "evidence": {
+        "parserBinding": "import",
+        "importDescriptorCount": 1,
+        "configuredPathMatchesTarget": true,
+        "directNamedExport": true,
+        "combinedDefaultImportInSource": false,
+        "directDefaultFunctionInSource": false,
+        "parserHasDefaultExport": true
+      },
+      "sourceContentHash": "2ce620b69734a422e1e0a6f00687d66c0318a01ad042f21543b2aa1e9edf1117",
+      "targetSourceContentHash": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+      "callSiteInputHash": "ad3c2af4b8e5f7f298d879d8ee07a70f249cd268be7d2dc87b88b8312eb5bc0c",
+      "exactCallSiteFact": {
+        "startLine": 808,
+        "startColumn": 28,
+        "calleeName": "buildFindingFingerprint",
+        "calleeKind": "bare",
+        "receiverText": null,
+        "receiverBinding": null,
+        "calleeBinding": {
+          "kind": "import",
+          "name": "buildFindingFingerprint",
+          "declarationSpan": {
+            "start": 0,
+            "end": 31775
+          },
+          "scopeSpan": {
+            "start": 0,
+            "end": 31775
+          }
+        },
+        "lexicalScopeSpan": {
+          "start": 26887,
+          "end": 31774
+        },
+        "callerType": null,
+        "argumentCount": 1,
+        "hasSpreadArgument": false,
+        "argumentKinds": [
+          "unknown"
+        ],
+        "peerMemberNames": []
+      },
+      "importDescriptors": [
+        {
+          "localName": "buildFindingFingerprint",
+          "originalName": "findingFingerprint",
+          "modulePath": "@/lib/services/report-service"
+        }
+      ],
+      "sourceImportStatement": null,
+      "configuredModulePath": "@/lib/services/report-service",
+      "targetDeclaration": {
+        "kind": "function",
+        "name": "findingFingerprint",
+        "declarationSpan": {
+          "start": 6611,
+          "end": 6978
+        },
+        "owner": {
+          "kind": "program",
+          "name": null,
+          "span": {
+            "start": 0,
+            "end": 22802
+          },
+          "genericTypeParameterNames": []
+        },
+        "lexicalScopeSpan": {
+          "start": 6673,
+          "end": 6978
+        },
+        "visibility": null,
+        "isStatic": false,
+        "isAbstract": false,
+        "isOptional": false,
+        "arity": {
+          "requiredParameterCount": 1,
+          "maxParameterCount": 1
+        },
+        "genericTypeParameterNames": []
+      },
+      "parserTargetExports": [
+        {
+          "name": "findingFingerprint",
+          "type": "function"
+        },
+        {
+          "name": "scoreFindingForTriage",
+          "type": "function"
+        },
+        {
+          "name": "rankFindingsForTriage",
+          "type": "function"
+        },
+        {
+          "name": "computePriorScanDiff",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildFindingChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalFixPrompt",
+          "type": "function"
+        },
+        {
+          "name": "buildGlobalChatHref",
+          "type": "function"
+        },
+        {
+          "name": "buildReportViewData",
+          "type": "function"
+        },
+        {
+          "name": "buildOutreachPack",
+          "type": "function"
+        }
+      ],
+      "sourceCallLine": "        const fingerprint = buildFindingFingerprint(annotated);",
+      "targetDirectExportLine": "export function findingFingerprint(finding: SecurityFinding): string {"
+    }
+  ],
+  "provenance": {
+    "pins": {
+      "summary": "afe3d04099ca83ab5330962a638aeb1367cf6e0947f1a5697928653219f1b13f",
+      "replay": "a54ea61858e9025b53468a94fbe25e7ecb18319913e15e4fbf66463969e33e02",
+      "facts": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "tsconfig": "235139181c8ebfc0f1f6cb07771d00cabed961d7c41469c9ef6b3cb04f86d6ef"
+    },
+    "runnerPath": "scripts/semantic-corpus/phase2-tiered-call-resolution-calibration-miss-source-audit.mts",
+    "runnerSha256": "866b1464749fa86739b5cff779204af13793c83ab5a3c18a75eeb31e20790078",
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd",
+    "replayImplementationHash": "e19ac6a08adcabfae697703458223d30208e664c693f59a9d9f54d555e4ebb01",
+    "replayImplementationFiles": {
+      "lib/ast-core/src/core/edge-computer.ts": "78f025aa1300d5c3c7df0ab76a8da9f61e2c595d29fde2edb5c490742b9b3240",
+      "lib/contracts/src/interfaces/ast.interfaces.ts": "8c605394789d88785363cbfe94d2dd87f90133274304e19eb047dc67312dbbc6",
+      "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "14d513f360ba57bc5100463620762990f21a1002bf7e6836d9b42939c8ddcd84",
+      "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "685d1122b73e51093d05bb817d813bfa7b53418b9f7f7d772aed85b436b7f14d",
+      "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "d2b5301f55100a895e6171dd5821f5bfdd903db90a3d669a9b5de016a2993d2f",
+      "lib/core/src/ast/ast-worker.ts": "1b962da230bd95248f3ee165ebe6362a4b8173d5fe461c485d86d40ce83fd272",
+      "lib/core/src/ast/call-site-shape-facts.ts": "b25f7034c1e0b4e36120e135bf107a9ca644e3de4cefe9c49e0da0d445439d15",
+      "lib/core/src/ast/declared-type-facts.ts": "6b75961c3bb71816d23b1fde973f5db669ff8ab1f1a2fcc25f1ea8d068aec796",
+      "lib/core/src/semantic/call-resolution-hypothesis-calibration.ts": "36dec8c4e7f4a85421b17ae7c7930a59b41f196fdc0c2310da62a0561a031631",
+      "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "2ff3a8a3d39adeabe476691b2df370cbd69bffc8334e5c8f683d855d5b6ed442",
+      "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+      "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts": "d225e2f941af244bd87744837a0a8a42eba3633923dfb0d04a1d06a6ff019442",
+      "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "b9590776864310baab76f312bffc2ff9e2cea22ec2fda7144e755a88b59574b2",
+      "scripts/semantic-corpus/phase0-snapshot-safety.mts": "18c2afecdaa873787374dd4464fecf0d613c87e3664bad03d3c0bcf8fba07123",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts": "ad036b0ed3d0b39c11dbad0f0d336a72948c81087e268a02fe20e459a3d24be4",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts": "85f21c2976721512af8ca1fe2cc77aa20ddf82493a0d28b05db0e607d336d1b7",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts": "cc2d4a417fe5ca2bc93b5f2a404c036ca56bb65463f527aaabc78cc1f25fa13b",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-runner.mts": "b12bdfca5e067f2371e34501f9ad0af8d1305d347859ce454677757077239b7c",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "7eb371d899fcce8caa70355a27d734043c9d59d08da96ed3f76bc3e31bf11dce",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts": "777eb0a69e6138733d23dfa74164a74ddb792007710fc1e138540cd86c130f46",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts": "49e78996ba153ad6ed013fd92f82fa91ea7e016b5b56c67bb8f5236fe9f6e43c",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-replay.mts": "bb0ad6258798a9bd1fcb8c441dcbda0313ba067ebd79d30a077388260f969dde",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.mts": "7f1e0cff0d2c5d6a2f3a3573b9fc53f34021ee056b0c68c23f8b414fda92e50b"
+    }
+  }
+}

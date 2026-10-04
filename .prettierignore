@@ -24,3 +24,5 @@ docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-tr
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-train-evidence/proposal-filter-stage-replay-manifest.json
 # Keep this CALIBRATION candidate-cap aggregate byte-identical to runner output.
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-calibration-cap-evidence/calibration-cap-summary.json
+# Keep the exact CALIBRATION source audit byte-identical to runner output.
+docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-calibration-miss-source-evidence/calibration-miss-source-summary.json

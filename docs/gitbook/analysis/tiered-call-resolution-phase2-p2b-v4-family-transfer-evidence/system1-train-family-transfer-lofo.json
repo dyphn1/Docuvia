@@ -1,0 +1,2017 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2b-system1-family-transfer-train-artifact/1",
+  "split": "train",
+  "generatedAt": "2026-10-04T01:40:06.431Z",
+  "provenance": {
+    "candidateGeneratorVersion": "declared-member-hypothesis-v4",
+    "rankingPolicyVersion": "ordered-evidence-v1",
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd",
+    "sourceFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "sourcePredictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+    "sourcePredictionManifestSha256": "de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e",
+    "sourceImplementationHash": "f51c86da6dc003082a3dc5e4015d45e60e25696fa694912e782d92b57b247182",
+    "systemOneImplementationHash": "30e27e82be908fb9a3a5f16b432497cd3bf9240aca7b1859e322c2bc78bce03d",
+    "runnerImplementationHash": "8ecf7d51f9f252c699f2a2f81a388c4660a29c62e6c7ad8b9494181aeb0e2299",
+    "sourceSplitAssignmentHash": "41c9c0649c6e68d2afc4c66c8978ea3dfacbfbd78a67760f1f167b4cabeda595",
+    "sourceSplitCounts": {
+      "train": 13496,
+      "calibration": 2966,
+      "test": 12422,
+      "temporal": 2694
+    },
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "snapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "snapshotScopedUniqueAliasCount": 119141
+  },
+  "trainLabelRowsHash": "4983b8bd52ca2c8048fd5fc9a5f4b8efdb6f7d48843740044e097e7901f9f62a",
+  "inputFingerprint": "09c5455b98c5b4c43d6b342cd11121f859943e487d14724c2060ad536ad490bb",
+  "labelSplitsRead": [
+    "train"
+  ],
+  "heldoutModeInvoked": false,
+  "evaluation": {
+    "schemaVersion": 1,
+    "measurement": "phase2-p2b-system1-family-transfer-train/1",
+    "split": "train",
+    "probabilityMapMethod": "beta-smoothed-isotonic-v1",
+    "targetAcceptedPrecision": 0.9,
+    "probabilityMapSupportRule": {
+      "minimumTrainingDuplicateGroups": 50,
+      "minimumTrainingScoreLevels": 5
+    },
+    "sourceRowCount": 13496,
+    "eligibleSiteCount": 13496,
+    "duplicateGroupCount": 11843,
+    "crossFamilyDuplicateGroupCount": 0,
+    "crossFamilyDuplicateGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "crossFamilyGroupFamiliesHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "familyMacroRawTop1": 0.8791792712845125,
+    "worstFamilyRawTop1": 0.77175,
+    "familyMacroEndToEndTop1": 0.751981350759874,
+    "worstFamilyEndToEndTop1": 0.6340933767643865,
+    "folds": [
+      {
+        "heldOutFamily": "dyphn1/Docuvia",
+        "trainingFamilyNames": [
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 3610,
+        "heldOutEligibleSiteCount": 3610,
+        "trainingSourceRowCount": 9886,
+        "trainingEligibleSiteCount": 9886,
+        "trainingDuplicateGroupCount": 8594,
+        "heldOutDuplicateGroupCount": 3249,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "cf953d6df59a8d353b801bea82dcf69a6f442d2703e5c4a91aa6606deb7e1eea",
+        "heldOutSampleIdsHash": "dcb1e63baada1428c00ac93a4265aeb8a021ca856b9cab2a553e4371699b1c25",
+        "trainingLabelRowsHash": "fe44f401253ffbc7ed7871ed3c583215661ba914840754964f9f56aa7c40cb1f",
+        "heldOutLabelRowsHash": "306e710bb9f05c0fb7ecca18524dacc429577913efacad7ffddd0aee6e8c9250",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 12,
+        "thresholdQualifyingCount": 12,
+        "thresholdTrainingMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 9886,
+          "scorableLabelSiteCount": 8612,
+          "unscorableLabelSiteCount": 1274,
+          "rawTop1CorrectCount": 7899,
+          "rawTop1": 0.7990086991705442,
+          "selectedSiteCount": 6901,
+          "coverage": 0.6980578595994336,
+          "abstentionCount": 2985,
+          "abstentionRate": 0.30194214040056644,
+          "selectedCorrectSiteCount": 6891,
+          "acceptedSitePrecision": 0.9985509346471526,
+          "endToEndTop1": 0.6970463281408051,
+          "acceptedDuplicateGroupCount": 6151,
+          "correctAcceptedDuplicateGroupCount": 6066,
+          "duplicateGroupPrecision": 0.9861811087628028,
+          "selectedIncompleteInventorySiteCount": 6901,
+          "familyMacroRawTop1": 0.8990433411832027,
+          "worstFamilyRawTop1": 0.77175,
+          "familyMacroEndToEndTop1": 0.781869174599427,
+          "worstFamilyEndToEndTop1": 0.6340933767643865,
+          "families": [
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 6174,
+              "selectedSiteCount": 5376,
+              "selectedCorrectSiteCount": 5374,
+              "rawTop1": 0.77175,
+              "acceptedSitePrecision": 0.9996279761904762,
+              "endToEndTop1": 0.67175
+            },
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            },
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 869,
+              "selectedSiteCount": 875,
+              "selectedCorrectSiteCount": 868,
+              "rawTop1": 0.9786036036036037,
+              "acceptedSitePrecision": 0.992,
+              "endToEndTop1": 0.9774774774774775
+            },
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 585,
+              "selectedCorrectSiteCount": 584,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982905982905983,
+              "endToEndTop1": 0.6340933767643865
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 348,
+              "rawTop1CorrectCount": 278,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7988505747126436,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 4200,
+              "rawTop1CorrectCount": 3431,
+              "selectedSiteCount": 3408,
+              "selectedCorrectSiteCount": 3406,
+              "rawTop1": 0.8169047619047619,
+              "acceptedSitePrecision": 0.9994131455399061,
+              "endToEndTop1": 0.810952380952381
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 5132,
+              "rawTop1CorrectCount": 4104,
+              "selectedSiteCount": 3408,
+              "selectedCorrectSiteCount": 3400,
+              "rawTop1": 0.7996882307092751,
+              "acceptedSitePrecision": 0.9976525821596244,
+              "endToEndTop1": 0.6625097427903351
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 199,
+              "rawTop1CorrectCount": 86,
+              "selectedSiteCount": 85,
+              "selectedCorrectSiteCount": 85,
+              "rawTop1": 0.4321608040201005,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.4271356783919598
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "161c8998eb3bddc929f5555a044a8c3a5c234f31020fcbf84cd05203f0575703",
+          "trainingExamplesHash": "ba5b87d5a830c982bbc4b4e06e08d6c33ff5412c3899635f9bc55cfd5f00e566",
+          "selectedTrainingSiteCount": 6901,
+          "trainingDuplicateGroupCount": 6151,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 3610,
+          "scorableLabelSiteCount": 3565,
+          "unscorableLabelSiteCount": 45,
+          "rawTop1CorrectCount": 2887,
+          "rawTop1": 0.7997229916897507,
+          "selectedSiteCount": 2293,
+          "coverage": 0.635180055401662,
+          "abstentionCount": 1317,
+          "abstentionRate": 0.36481994459833794,
+          "selectedCorrectSiteCount": 2293,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.635180055401662,
+          "acceptedDuplicateGroupCount": 2033,
+          "correctAcceptedDuplicateGroupCount": 2033,
+          "duplicateGroupPrecision": 1,
+          "selectedIncompleteInventorySiteCount": 2293,
+          "familyMacroRawTop1": 0.7997229916897507,
+          "worstFamilyRawTop1": 0.7997229916897507,
+          "familyMacroEndToEndTop1": 0.635180055401662,
+          "worstFamilyEndToEndTop1": 0.635180055401662,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2887,
+              "selectedSiteCount": 2293,
+              "selectedCorrectSiteCount": 2293,
+              "rawTop1": 0.7997229916897507,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.635180055401662
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 169,
+              "rawTop1CorrectCount": 135,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7988165680473372,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 1484,
+              "rawTop1CorrectCount": 1457,
+              "selectedSiteCount": 1381,
+              "selectedCorrectSiteCount": 1381,
+              "rawTop1": 0.9818059299191375,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.9305929919137467
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 1955,
+              "rawTop1CorrectCount": 1295,
+              "selectedSiteCount": 912,
+              "selectedCorrectSiteCount": 912,
+              "rawTop1": 0.6624040920716112,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.46649616368286445
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 3610,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 11,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "generatedCountAvailableSiteCount": 3610,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 3,
+              "generatedCandidateSizeP95": 44,
+              "generatedCandidateSizeMax": 98,
+              "mappedCandidateZeroSiteCount": 11,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 21,
+              "mappedCandidateSizeMax": 36,
+              "proposalCountAvailableSiteCount": 3610,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 169,
+              "generatedCountAvailableSiteCount": 169,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 15,
+              "generatedCandidateSizeP95": 15,
+              "generatedCandidateSizeMax": 15,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 15,
+              "mappedCandidateSizeP95": 15,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 169,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 12,
+              "proposalSizeP95": 12,
+              "proposalSizeMax": 13
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 1484,
+              "generatedCountAvailableSiteCount": 1484,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 44,
+              "generatedCandidateSizeMax": 44,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 16,
+              "mappedCandidateSizeMax": 16,
+              "proposalCountAvailableSiteCount": 1484,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 1955,
+              "generatedCountAvailableSiteCount": 1955,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 15,
+              "generatedCandidateSizeP95": 62,
+              "generatedCandidateSizeMax": 98,
+              "mappedCandidateZeroSiteCount": 11,
+              "mappedCandidateSizeP50": 7,
+              "mappedCandidateSizeP95": 27,
+              "mappedCandidateSizeMax": 36,
+              "proposalCountAvailableSiteCount": 1955,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "generatedCountAvailableSiteCount": 2,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 14,
+              "generatedCandidateSizeP95": 14,
+              "generatedCandidateSizeMax": 14,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 4,
+              "mappedCandidateSizeP95": 4,
+              "mappedCandidateSizeMax": 4,
+              "proposalCountAvailableSiteCount": 2,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 14,
+              "proposalSizeP95": 14,
+              "proposalSizeMax": 14
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 2293,
+          "selectedScorableSiteCount": 2293,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 2033,
+          "siteWeighted": {
+            "siteCount": 2293,
+            "duplicateGroupCount": 2033,
+            "brierScore": 0.000243441385023884,
+            "expectedCalibrationError": 0.014697676701262097
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 2293,
+            "duplicateGroupCount": 2033,
+            "brierScore": 0.000243441385023884,
+            "expectedCalibrationError": 0.014697676701262097
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 2293,
+            "duplicateGroupCount": 2033,
+            "brierScore": 0.00024164938267247143,
+            "expectedCalibrationError": 0.01460886424842689
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 1381,
+              "siteWeighted": {
+                "siteCount": 1381,
+                "duplicateGroupCount": 1239,
+                "brierScore": 0.0002911984102333267,
+                "expectedCalibrationError": 0.0170645366252008
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 1381,
+                "duplicateGroupCount": 1239,
+                "brierScore": 0.0002911984102333267,
+                "expectedCalibrationError": 0.0170645366252008
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 1381,
+                "duplicateGroupCount": 1239,
+                "brierScore": 0.00029119841023332425,
+                "expectedCalibrationError": 0.01706453662520413
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 912,
+              "siteWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.00017112510013985065,
+                "expectedCalibrationError": 0.011113648680496468
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.00017112510013985065,
+                "expectedCalibrationError": 0.011113648680496468
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.00016433043412347647,
+                "expectedCalibrationError": 0.010776901937585293
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "nestjs/nest",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 8000,
+        "heldOutEligibleSiteCount": 8000,
+        "trainingSourceRowCount": 5496,
+        "trainingEligibleSiteCount": 5496,
+        "trainingDuplicateGroupCount": 5045,
+        "heldOutDuplicateGroupCount": 6798,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "c023b6e34e85f6b71749763d9dc438b3bf76ae8c9a21322c42848d8598f7f7b9",
+        "heldOutSampleIdsHash": "4ad4ff42d4c416f37f418f73cc638b04759d94288a772fbe5d7228cec8d46835",
+        "trainingLabelRowsHash": "ea6d0e0d47d99e9a75800561fc48e29cdd94a0302b8380f8308dfe638412b54c",
+        "heldOutLabelRowsHash": "00e63401713dd456e44971ca3e6d3adc15e81086a49fa7020e11e009910df27d",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 10,
+        "thresholdCandidateCount": 9,
+        "thresholdQualifyingCount": 9,
+        "thresholdTrainingMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 5496,
+          "scorableLabelSiteCount": 5325,
+          "unscorableLabelSiteCount": 171,
+          "rawTop1CorrectCount": 4612,
+          "rawTop1": 0.839155749636099,
+          "selectedSiteCount": 3818,
+          "coverage": 0.6946870451237264,
+          "abstentionCount": 1678,
+          "abstentionRate": 0.30531295487627363,
+          "selectedCorrectSiteCount": 3810,
+          "acceptedSitePrecision": 0.997904662126768,
+          "endToEndTop1": 0.6932314410480349,
+          "acceptedDuplicateGroupCount": 3487,
+          "correctAcceptedDuplicateGroupCount": 3478,
+          "duplicateGroupPrecision": 0.9974189848006882,
+          "selectedIncompleteInventorySiteCount": 3818,
+          "familyMacroRawTop1": 0.9060365891056404,
+          "worstFamilyRawTop1": 0.7997229916897507,
+          "familyMacroEndToEndTop1": 0.7727266884498425,
+          "worstFamilyEndToEndTop1": 0.6340933767643865,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2887,
+              "selectedSiteCount": 2293,
+              "selectedCorrectSiteCount": 2293,
+              "rawTop1": 0.7997229916897507,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.635180055401662
+            },
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            },
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 869,
+              "selectedSiteCount": 875,
+              "selectedCorrectSiteCount": 868,
+              "rawTop1": 0.9786036036036037,
+              "acceptedSitePrecision": 0.992,
+              "endToEndTop1": 0.9774774774774775
+            },
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 585,
+              "selectedCorrectSiteCount": 584,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982905982905983,
+              "endToEndTop1": 0.6340933767643865
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 176,
+              "rawTop1CorrectCount": 142,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.8068181818181818,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 2659,
+              "rawTop1CorrectCount": 2518,
+              "selectedSiteCount": 2418,
+              "selectedCorrectSiteCount": 2417,
+              "rawTop1": 0.9469725460699511,
+              "acceptedSitePrecision": 0.9995864350703061,
+              "endToEndTop1": 0.9089883414817601
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 2657,
+              "rawTop1CorrectCount": 1950,
+              "selectedSiteCount": 1398,
+              "selectedCorrectSiteCount": 1391,
+              "rawTop1": 0.7339104252916824,
+              "acceptedSitePrecision": 0.9949928469241774,
+              "endToEndTop1": 0.5235227700414
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 4,
+              "rawTop1CorrectCount": 2,
+              "selectedSiteCount": 2,
+              "selectedCorrectSiteCount": 2,
+              "rawTop1": 0.5,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.5
+            }
+          ]
+        },
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "8c702fd56f224a72b3b0be30574511fb25b4a204f79eca8009af5c20b43e1ba3",
+          "trainingExamplesHash": "9fa14849725d4393572133cf3304b40e3d48b1c978c62b7d0b3282871b1f6cb5",
+          "selectedTrainingSiteCount": 3818,
+          "trainingDuplicateGroupCount": 3487,
+          "scoreLevelCount": 9
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 8000,
+          "scorableLabelSiteCount": 6852,
+          "unscorableLabelSiteCount": 1148,
+          "rawTop1CorrectCount": 6174,
+          "rawTop1": 0.77175,
+          "selectedSiteCount": 5354,
+          "coverage": 0.66925,
+          "abstentionCount": 2646,
+          "abstentionRate": 0.33075,
+          "selectedCorrectSiteCount": 5352,
+          "acceptedSitePrecision": 0.9996264475158759,
+          "endToEndTop1": 0.669,
+          "acceptedDuplicateGroupCount": 4675,
+          "correctAcceptedDuplicateGroupCount": 4599,
+          "duplicateGroupPrecision": 0.9837433155080214,
+          "selectedIncompleteInventorySiteCount": 5354,
+          "familyMacroRawTop1": 0.77175,
+          "worstFamilyRawTop1": 0.77175,
+          "familyMacroEndToEndTop1": 0.669,
+          "worstFamilyEndToEndTop1": 0.669,
+          "families": [
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 6174,
+              "selectedSiteCount": 5354,
+              "selectedCorrectSiteCount": 5352,
+              "rawTop1": 0.77175,
+              "acceptedSitePrecision": 0.9996264475158759,
+              "endToEndTop1": 0.669
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 341,
+              "rawTop1CorrectCount": 271,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7947214076246334,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 3025,
+              "rawTop1CorrectCount": 2370,
+              "selectedSiteCount": 2349,
+              "selectedCorrectSiteCount": 2348,
+              "rawTop1": 0.7834710743801653,
+              "acceptedSitePrecision": 0.9995742869306088,
+              "endToEndTop1": 0.7761983471074381
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 4430,
+              "rawTop1CorrectCount": 3449,
+              "selectedSiteCount": 2922,
+              "selectedCorrectSiteCount": 2921,
+              "rawTop1": 0.7785553047404064,
+              "acceptedSitePrecision": 0.9996577686516085,
+              "endToEndTop1": 0.6593679458239278
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 197,
+              "rawTop1CorrectCount": 84,
+              "selectedSiteCount": 83,
+              "selectedCorrectSiteCount": 83,
+              "rawTop1": 0.4263959390862944,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.4213197969543147
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 8000,
+          "generatedCandidateZeroSiteCount": 463,
+          "mappedCandidateZeroSiteCount": 795,
+          "proposalZeroSiteCount": 463,
+          "byFamily": [
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "generatedCountAvailableSiteCount": 8000,
+              "generatedCandidateZeroSiteCount": 463,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 70,
+              "generatedCandidateSizeMax": 118,
+              "mappedCandidateZeroSiteCount": 795,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 42,
+              "mappedCandidateSizeMax": 96,
+              "proposalCountAvailableSiteCount": 8000,
+              "proposalZeroSiteCount": 463,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 10,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 341,
+              "generatedCountAvailableSiteCount": 341,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 2,
+              "generatedCandidateSizeP95": 6,
+              "generatedCandidateSizeMax": 78,
+              "mappedCandidateZeroSiteCount": 28,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 6,
+              "mappedCandidateSizeMax": 26,
+              "proposalCountAvailableSiteCount": 341,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 6,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 3025,
+              "generatedCountAvailableSiteCount": 3025,
+              "generatedCandidateZeroSiteCount": 456,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 30,
+              "mappedCandidateZeroSiteCount": 456,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 8,
+              "proposalCountAvailableSiteCount": 3025,
+              "proposalZeroSiteCount": 456,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 3,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 4430,
+              "generatedCountAvailableSiteCount": 4430,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 3,
+              "generatedCandidateSizeP95": 78,
+              "generatedCandidateSizeMax": 118,
+              "mappedCandidateZeroSiteCount": 221,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 71,
+              "mappedCandidateSizeMax": 96,
+              "proposalCountAvailableSiteCount": 4430,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 15,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 197,
+              "generatedCountAvailableSiteCount": 197,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 2,
+              "generatedCandidateSizeP95": 10,
+              "generatedCandidateSizeMax": 31,
+              "mappedCandidateZeroSiteCount": 83,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 10,
+              "mappedCandidateSizeMax": 27,
+              "proposalCountAvailableSiteCount": 197,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 2,
+              "proposalSizeP95": 7,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "generatedCountAvailableSiteCount": 7,
+              "generatedCandidateZeroSiteCount": 7,
+              "generatedCandidateSizeP50": 0,
+              "generatedCandidateSizeP95": 0,
+              "generatedCandidateSizeMax": 0,
+              "mappedCandidateZeroSiteCount": 7,
+              "mappedCandidateSizeP50": 0,
+              "mappedCandidateSizeP95": 0,
+              "mappedCandidateSizeMax": 0,
+              "proposalCountAvailableSiteCount": 7,
+              "proposalZeroSiteCount": 7,
+              "proposalSizeP50": 0,
+              "proposalSizeP95": 0,
+              "proposalSizeMax": 0
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 5354,
+          "selectedScorableSiteCount": 5353,
+          "selectedUnscorableSiteCount": 1,
+          "selectedDuplicateGroupCount": 4675,
+          "siteWeighted": {
+            "siteCount": 5354,
+            "duplicateGroupCount": 4675,
+            "brierScore": 0.03179926059312074,
+            "expectedCalibrationError": 0.026593733637461647
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 5353,
+            "duplicateGroupCount": 4674,
+            "brierScore": 0.03162045971617719,
+            "expectedCalibrationError": 0.026412928292163573
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 5354,
+            "duplicateGroupCount": 4675,
+            "brierScore": 0.016106726608559895,
+            "expectedCalibrationError": 0.010726898872679524
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 2349,
+              "siteWeighted": {
+                "siteCount": 2349,
+                "duplicateGroupCount": 2010,
+                "brierScore": 0.00045184401748742987,
+                "expectedCalibrationError": 0.00512953991246845
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 2348,
+                "duplicateGroupCount": 2009,
+                "brierScore": 0.00003086083569250764,
+                "expectedCalibrationError": 0.00555525298185966
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 2349,
+                "duplicateGroupCount": 2010,
+                "brierScore": 0.0005228456585961256,
+                "expectedCalibrationError": 0.005057740544023859
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 2922,
+              "siteWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.05620973672106271,
+                "expectedCalibrationError": 0.05129816055691483
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.05620973672106271,
+                "expectedCalibrationError": 0.05129816055691483
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.028317251829152658,
+                "expectedCalibrationError": 0.02309533067501046
+              }
+            },
+            {
+              "name": "this",
+              "selectedSiteCount": 83,
+              "siteWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.05960251710293789,
+                "expectedCalibrationError": 0.05468571087355778
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.05960251710293789,
+                "expectedCalibrationError": 0.05468571087355778
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.012708931272054958,
+                "expectedCalibrationError": 0.007265259838648674
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "tirth8205/code-review-graph",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 77,
+        "heldOutEligibleSiteCount": 77,
+        "trainingSourceRowCount": 13419,
+        "trainingEligibleSiteCount": 13419,
+        "trainingDuplicateGroupCount": 11768,
+        "heldOutDuplicateGroupCount": 75,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "abc3af05204b34a56c5e05865e9554c333ad4c55ec6af30ff9b9227aad9731c2",
+        "heldOutSampleIdsHash": "32dff8e6e1fbeeac0110e7883f46a201fbc9b5baacec844255d217cc22b841e0",
+        "trainingLabelRowsHash": "033a45d8be4307099f78d2e720af13241e4be6cb05f020dadcc7043e50326a4d",
+        "heldOutLabelRowsHash": "ed8d26e64078b1520ab9ca8a0db277675305a616714ecf7de9b74a3657abf50f",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 12,
+        "thresholdQualifyingCount": 12,
+        "thresholdTrainingMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 13419,
+          "scorableLabelSiteCount": 12100,
+          "unscorableLabelSiteCount": 1319,
+          "rawTop1CorrectCount": 10709,
+          "rawTop1": 0.7980475445264178,
+          "selectedSiteCount": 9129,
+          "coverage": 0.6803040465012296,
+          "abstentionCount": 4290,
+          "abstentionRate": 0.3196959534987704,
+          "selectedCorrectSiteCount": 9119,
+          "acceptedSitePrecision": 0.9989045897688684,
+          "endToEndTop1": 0.6795588344884119,
+          "acceptedDuplicateGroupCount": 8121,
+          "correctAcceptedDuplicateGroupCount": 8036,
+          "duplicateGroupPrecision": 0.9895333087058245,
+          "selectedIncompleteInventorySiteCount": 9129,
+          "familyMacroRawTop1": 0.8489740891056404,
+          "worstFamilyRawTop1": 0.77175,
+          "familyMacroEndToEndTop1": 0.7296252274108814,
+          "worstFamilyEndToEndTop1": 0.6340933767643865,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2887,
+              "selectedSiteCount": 2293,
+              "selectedCorrectSiteCount": 2293,
+              "rawTop1": 0.7997229916897507,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.635180055401662
+            },
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 6174,
+              "selectedSiteCount": 5376,
+              "selectedCorrectSiteCount": 5374,
+              "rawTop1": 0.77175,
+              "acceptedSitePrecision": 0.9996279761904762,
+              "endToEndTop1": 0.67175
+            },
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 869,
+              "selectedSiteCount": 875,
+              "selectedCorrectSiteCount": 868,
+              "rawTop1": 0.9786036036036037,
+              "acceptedSitePrecision": 0.992,
+              "endToEndTop1": 0.9774774774774775
+            },
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 585,
+              "selectedCorrectSiteCount": 584,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982905982905983,
+              "endToEndTop1": 0.6340933767643865
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 517,
+              "rawTop1CorrectCount": 413,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7988394584139265,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 5676,
+              "rawTop1CorrectCount": 4880,
+              "selectedSiteCount": 4781,
+              "selectedCorrectSiteCount": 4779,
+              "rawTop1": 0.8597603946441156,
+              "acceptedSitePrecision": 0.9995816774733319,
+              "endToEndTop1": 0.8419661733615222
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 7018,
+              "rawTop1CorrectCount": 5330,
+              "selectedSiteCount": 4263,
+              "selectedCorrectSiteCount": 4255,
+              "rawTop1": 0.7594756340837846,
+              "acceptedSitePrecision": 0.9981233872859488,
+              "endToEndTop1": 0.6062980906241094
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 201,
+              "rawTop1CorrectCount": 86,
+              "selectedSiteCount": 85,
+              "selectedCorrectSiteCount": 85,
+              "rawTop1": 0.42786069651741293,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.4228855721393035
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "bf000547a24b7e78ff2592d8f17362364fe9c8838b147039ae8a6845c0a85f04",
+          "trainingExamplesHash": "7763374a30ad6eb7fbd1175610b3173e2ce13d078fa1f1911fadf74cf136103c",
+          "selectedTrainingSiteCount": 9129,
+          "trainingDuplicateGroupCount": 8121,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 77,
+          "scorableLabelSiteCount": 77,
+          "unscorableLabelSiteCount": 0,
+          "rawTop1CorrectCount": 77,
+          "rawTop1": 1,
+          "selectedSiteCount": 65,
+          "coverage": 0.8441558441558441,
+          "abstentionCount": 12,
+          "abstentionRate": 0.15584415584415584,
+          "selectedCorrectSiteCount": 65,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.8441558441558441,
+          "acceptedDuplicateGroupCount": 63,
+          "correctAcceptedDuplicateGroupCount": 63,
+          "duplicateGroupPrecision": 1,
+          "selectedIncompleteInventorySiteCount": 65,
+          "familyMacroRawTop1": 1,
+          "worstFamilyRawTop1": 1,
+          "familyMacroEndToEndTop1": 0.8441558441558441,
+          "worstFamilyEndToEndTop1": 0.8441558441558441,
+          "families": [
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 8,
+              "rawTop1CorrectCount": 8,
+              "selectedSiteCount": 8,
+              "selectedCorrectSiteCount": 8,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 1
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 69,
+              "rawTop1CorrectCount": 69,
+              "selectedSiteCount": 57,
+              "selectedCorrectSiteCount": 57,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8260869565217391
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 77,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 0,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "generatedCountAvailableSiteCount": 77,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 6,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 6,
+              "proposalCountAvailableSiteCount": 77,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 5
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 8,
+              "generatedCountAvailableSiteCount": 8,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 3,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 3,
+              "proposalCountAvailableSiteCount": 8,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 2
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 69,
+              "generatedCountAvailableSiteCount": 69,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 2,
+              "generatedCandidateSizeMax": 6,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 2,
+              "mappedCandidateSizeMax": 6,
+              "proposalCountAvailableSiteCount": 69,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 5
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 65,
+          "selectedScorableSiteCount": 65,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 63,
+          "siteWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.0001423726637601099,
+            "expectedCalibrationError": 0.011119381513197357
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.0001423726637601099,
+            "expectedCalibrationError": 0.011119381513197357
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.0001413787541729742,
+            "expectedCalibrationError": 0.011054003092753728
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 8,
+              "siteWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00017368081575488395,
+                "expectedCalibrationError": 0.013178801757173564
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00017368081575488395,
+                "expectedCalibrationError": 0.013178801757173564
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00017368081575488398,
+                "expectedCalibrationError": 0.013178801757173564
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 57,
+              "siteWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00013797853716435206,
+                "expectedCalibrationError": 0.010830340075446587
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00013797853716435206,
+                "expectedCalibrationError": 0.010830340075446587
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00013797853716435206,
+                "expectedCalibrationError": 0.010830340075446587
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "trailhq/Graft",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 888,
+        "heldOutEligibleSiteCount": 888,
+        "trainingSourceRowCount": 12608,
+        "trainingEligibleSiteCount": 12608,
+        "trainingDuplicateGroupCount": 10961,
+        "heldOutDuplicateGroupCount": 882,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "8497c47cea79cbbbdaaedefae9eacf2c921ae300f17a26f1e72f995c474d0c6b",
+        "heldOutSampleIdsHash": "02662d8cc3d1f07e5e6717689ec776249346e98e1c8fd4986caeeba7a21c280e",
+        "trainingLabelRowsHash": "62de6e5c8f330b77b8830a1512b45ad7a22245d1c71f241cb1d91b3962d7b853",
+        "heldOutLabelRowsHash": "812badb1a8ec020915a68e88f10f949239e47bb572e1fbfef19f2ce1e38e9729",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 12,
+        "thresholdQualifyingCount": 12,
+        "thresholdTrainingMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 12608,
+          "scorableLabelSiteCount": 11294,
+          "unscorableLabelSiteCount": 1314,
+          "rawTop1CorrectCount": 9917,
+          "rawTop1": 0.7865640862944162,
+          "selectedSiteCount": 8319,
+          "coverage": 0.6598191624365483,
+          "abstentionCount": 4289,
+          "abstentionRate": 0.3401808375634518,
+          "selectedCorrectSiteCount": 8316,
+          "acceptedSitePrecision": 0.999639379733141,
+          "endToEndTop1": 0.6595812182741116,
+          "acceptedDuplicateGroupCount": 7315,
+          "correctAcceptedDuplicateGroupCount": 7237,
+          "duplicateGroupPrecision": 0.9893369788106631,
+          "selectedIncompleteInventorySiteCount": 8319,
+          "familyMacroRawTop1": 0.8543231882047395,
+          "worstFamilyRawTop1": 0.77175,
+          "familyMacroEndToEndTop1": 0.6962948190804731,
+          "worstFamilyEndToEndTop1": 0.6340933767643865,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2887,
+              "selectedSiteCount": 2293,
+              "selectedCorrectSiteCount": 2293,
+              "rawTop1": 0.7997229916897507,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.635180055401662
+            },
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 6174,
+              "selectedSiteCount": 5376,
+              "selectedCorrectSiteCount": 5374,
+              "rawTop1": 0.77175,
+              "acceptedSitePrecision": 0.9996279761904762,
+              "endToEndTop1": 0.67175
+            },
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            },
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 585,
+              "selectedCorrectSiteCount": 584,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982905982905983,
+              "endToEndTop1": 0.6340933767643865
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 517,
+              "rawTop1CorrectCount": 413,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7988394584139265,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 4849,
+              "rawTop1CorrectCount": 4066,
+              "selectedSiteCount": 3966,
+              "selectedCorrectSiteCount": 3965,
+              "rawTop1": 0.8385234068880182,
+              "acceptedSitePrecision": 0.9997478567826525,
+              "endToEndTop1": 0.8176943699731903
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 7034,
+              "rawTop1CorrectCount": 5352,
+              "selectedSiteCount": 4268,
+              "selectedCorrectSiteCount": 4266,
+              "rawTop1": 0.7608757463747512,
+              "acceptedSitePrecision": 0.9995313964386129,
+              "endToEndTop1": 0.6064827978390673
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 201,
+              "rawTop1CorrectCount": 86,
+              "selectedSiteCount": 85,
+              "selectedCorrectSiteCount": 85,
+              "rawTop1": 0.42786069651741293,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.4228855721393035
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "38dbf204e80532ed996dee5dca66cdb187413924f57c1f9a449c5819c1cf2127",
+          "trainingExamplesHash": "1254e7d416309f843cd9286f4847c8754b0b4bdafba4a045d656e5dc23bf9f0b",
+          "selectedTrainingSiteCount": 8319,
+          "trainingDuplicateGroupCount": 7315,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 888,
+          "scorableLabelSiteCount": 883,
+          "unscorableLabelSiteCount": 5,
+          "rawTop1CorrectCount": 869,
+          "rawTop1": 0.9786036036036037,
+          "selectedSiteCount": 875,
+          "coverage": 0.9853603603603603,
+          "abstentionCount": 13,
+          "abstentionRate": 0.01463963963963964,
+          "selectedCorrectSiteCount": 868,
+          "acceptedSitePrecision": 0.992,
+          "endToEndTop1": 0.9774774774774775,
+          "acceptedDuplicateGroupCount": 869,
+          "correctAcceptedDuplicateGroupCount": 862,
+          "duplicateGroupPrecision": 0.9919447640966629,
+          "selectedIncompleteInventorySiteCount": 875,
+          "familyMacroRawTop1": 0.9786036036036037,
+          "worstFamilyRawTop1": 0.9786036036036037,
+          "familyMacroEndToEndTop1": 0.9774774774774775,
+          "worstFamilyEndToEndTop1": 0.9774774774774775,
+          "families": [
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 869,
+              "selectedSiteCount": 875,
+              "selectedCorrectSiteCount": 868,
+              "rawTop1": 0.9786036036036037,
+              "acceptedSitePrecision": 0.992,
+              "endToEndTop1": 0.9774774774774775
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 835,
+              "rawTop1CorrectCount": 822,
+              "selectedSiteCount": 823,
+              "selectedCorrectSiteCount": 822,
+              "rawTop1": 0.9844311377245509,
+              "acceptedSitePrecision": 0.9987849331713244,
+              "endToEndTop1": 0.9844311377245509
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 53,
+              "rawTop1CorrectCount": 47,
+              "selectedSiteCount": 52,
+              "selectedCorrectSiteCount": 46,
+              "rawTop1": 0.8867924528301887,
+              "acceptedSitePrecision": 0.8846153846153846,
+              "endToEndTop1": 0.8679245283018868
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 888,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 1,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "generatedCountAvailableSiteCount": 888,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 2,
+              "generatedCandidateSizeMax": 28,
+              "mappedCandidateZeroSiteCount": 1,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 2,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 888,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 21
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 835,
+              "generatedCountAvailableSiteCount": 835,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 22,
+              "mappedCandidateZeroSiteCount": 1,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 835,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 21
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 53,
+              "generatedCountAvailableSiteCount": 53,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 7,
+              "generatedCandidateSizeMax": 28,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 7,
+              "mappedCandidateSizeMax": 10,
+              "proposalCountAvailableSiteCount": 53,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 3,
+              "proposalSizeMax": 6
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 875,
+          "selectedScorableSiteCount": 872,
+          "selectedUnscorableSiteCount": 3,
+          "selectedDuplicateGroupCount": 869,
+          "siteWeighted": {
+            "siteCount": 875,
+            "duplicateGroupCount": 869,
+            "brierScore": 0.007963726886238724,
+            "expectedCalibrationError": 0.0054050059390986505
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 872,
+            "duplicateGroupCount": 866,
+            "brierScore": 0.004644549975948351,
+            "expectedCalibrationError": 0.008816748101831418
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 875,
+            "duplicateGroupCount": 869,
+            "brierScore": 0.008017411651252372,
+            "expectedCalibrationError": 0.005347558679956399
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 823,
+              "siteWeighted": {
+                "siteCount": 823,
+                "duplicateGroupCount": 817,
+                "brierScore": 0.0013700959742353293,
+                "expectedCalibrationError": 0.012510217142729707
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 823,
+                "duplicateGroupCount": 817,
+                "brierScore": 0.0013700959742353293,
+                "expectedCalibrationError": 0.012510217142729707
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 823,
+                "duplicateGroupCount": 817,
+                "brierScore": 0.0013787744018055133,
+                "expectedCalibrationError": 0.012501293763325982
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 52,
+              "siteWeighted": {
+                "siteCount": 52,
+                "duplicateGroupCount": 52,
+                "brierScore": 0.112320616128139,
+                "expectedCalibrationError": 0.10704862522610958
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 49,
+                "duplicateGroupCount": 49,
+                "brierScore": 0.05964201208635322,
+                "expectedCalibrationError": 0.05321845640146661
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 52,
+                "duplicateGroupCount": 52,
+                "brierScore": 0.112320616128139,
+                "expectedCalibrationError": 0.10704862522610958
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "typescript-language-server/typescript-language-server",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft"
+        ],
+        "heldOutSourceRowCount": 921,
+        "heldOutEligibleSiteCount": 921,
+        "trainingSourceRowCount": 12575,
+        "trainingEligibleSiteCount": 12575,
+        "trainingDuplicateGroupCount": 11004,
+        "heldOutDuplicateGroupCount": 839,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "e001afb0686d22e94d65ab607b5e90f0dce64db75f3ab9e8c2a76e7003bf0ff1",
+        "heldOutSampleIdsHash": "545b3ce4cacae6765127efd993df3e144259884458bf99aead316d47cf1aadcb",
+        "trainingLabelRowsHash": "359ec8e5e98d10eaa5ee3155821b306f50b22bc2bd2eb938b605767dfce32d07",
+        "heldOutLabelRowsHash": "b51b4b4b827431feac8cae4b1f374847af825cc6f33b7d658429c1ed98e60596",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 12,
+        "thresholdQualifyingCount": 12,
+        "thresholdTrainingMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 12575,
+          "scorableLabelSiteCount": 11377,
+          "unscorableLabelSiteCount": 1198,
+          "rawTop1CorrectCount": 10007,
+          "rawTop1": 0.7957852882703778,
+          "selectedSiteCount": 8609,
+          "coverage": 0.6846123260437376,
+          "abstentionCount": 3966,
+          "abstentionRate": 0.31538767395626244,
+          "selectedCorrectSiteCount": 8600,
+          "acceptedSitePrecision": 0.998954582413753,
+          "endToEndTop1": 0.68389662027833,
+          "acceptedDuplicateGroupCount": 7662,
+          "correctAcceptedDuplicateGroupCount": 7579,
+          "duplicateGroupPrecision": 0.9891673192377969,
+          "selectedIncompleteInventorySiteCount": 8609,
+          "familyMacroRawTop1": 0.8875191488233386,
+          "worstFamilyRawTop1": 0.77175,
+          "familyMacroEndToEndTop1": 0.7821408442587459,
+          "worstFamilyEndToEndTop1": 0.635180055401662,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2887,
+              "selectedSiteCount": 2293,
+              "selectedCorrectSiteCount": 2293,
+              "rawTop1": 0.7997229916897507,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.635180055401662
+            },
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 6174,
+              "selectedSiteCount": 5376,
+              "selectedCorrectSiteCount": 5374,
+              "rawTop1": 0.77175,
+              "acceptedSitePrecision": 0.9996279761904762,
+              "endToEndTop1": 0.67175
+            },
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            },
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 869,
+              "selectedSiteCount": 875,
+              "selectedCorrectSiteCount": 868,
+              "rawTop1": 0.9786036036036037,
+              "acceptedSitePrecision": 0.992,
+              "endToEndTop1": 0.9774774774774775
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 510,
+              "rawTop1CorrectCount": 406,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.796078431372549,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 5352,
+              "rawTop1CorrectCount": 4657,
+              "selectedSiteCount": 4583,
+              "selectedCorrectSiteCount": 4581,
+              "rawTop1": 0.8701420029895366,
+              "acceptedSitePrecision": 0.999563604625791,
+              "endToEndTop1": 0.8559417040358744
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 6507,
+              "rawTop1CorrectCount": 4860,
+              "selectedSiteCount": 3943,
+              "selectedCorrectSiteCount": 3936,
+              "rawTop1": 0.7468879668049793,
+              "acceptedSitePrecision": 0.9982247020035506,
+              "endToEndTop1": 0.6048870447210696
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 199,
+              "rawTop1CorrectCount": 84,
+              "selectedSiteCount": 83,
+              "selectedCorrectSiteCount": 83,
+              "rawTop1": 0.4221105527638191,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.41708542713567837
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "b82ae882af4d69f82c3e5a5757122f477a67a3c88f6e992ae56996be9e48ae69",
+          "trainingExamplesHash": "f5f594c9deab70d6d8428d071ecae7ddb23cd0a60c61124330769d70b7ee1cf1",
+          "selectedTrainingSiteCount": 8609,
+          "trainingDuplicateGroupCount": 7662,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 921,
+          "scorableLabelSiteCount": 800,
+          "unscorableLabelSiteCount": 121,
+          "rawTop1CorrectCount": 779,
+          "rawTop1": 0.8458197611292074,
+          "selectedSiteCount": 585,
+          "coverage": 0.6351791530944625,
+          "abstentionCount": 336,
+          "abstentionRate": 0.36482084690553745,
+          "selectedCorrectSiteCount": 584,
+          "acceptedSitePrecision": 0.9982905982905983,
+          "endToEndTop1": 0.6340933767643865,
+          "acceptedDuplicateGroupCount": 522,
+          "correctAcceptedDuplicateGroupCount": 520,
+          "duplicateGroupPrecision": 0.9961685823754789,
+          "selectedIncompleteInventorySiteCount": 585,
+          "familyMacroRawTop1": 0.8458197611292074,
+          "worstFamilyRawTop1": 0.8458197611292074,
+          "familyMacroEndToEndTop1": 0.6340933767643865,
+          "worstFamilyEndToEndTop1": 0.6340933767643865,
+          "families": [
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 585,
+              "selectedCorrectSiteCount": 584,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982905982905983,
+              "endToEndTop1": 0.6340933767643865
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 7,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 1,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 332,
+              "rawTop1CorrectCount": 231,
+              "selectedSiteCount": 206,
+              "selectedCorrectSiteCount": 206,
+              "rawTop1": 0.6957831325301205,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.6204819277108434
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 580,
+              "rawTop1CorrectCount": 539,
+              "selectedSiteCount": 377,
+              "selectedCorrectSiteCount": 376,
+              "rawTop1": 0.9293103448275862,
+              "acceptedSitePrecision": 0.9973474801061007,
+              "endToEndTop1": 0.6482758620689655
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "rawTop1CorrectCount": 2,
+              "selectedSiteCount": 2,
+              "selectedCorrectSiteCount": 2,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 1
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 921,
+          "generatedCandidateZeroSiteCount": 5,
+          "mappedCandidateZeroSiteCount": 26,
+          "proposalZeroSiteCount": 5,
+          "byFamily": [
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "generatedCountAvailableSiteCount": 921,
+              "generatedCandidateZeroSiteCount": 5,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 97,
+              "generatedCandidateSizeMax": 97,
+              "mappedCandidateZeroSiteCount": 26,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 8,
+              "mappedCandidateSizeMax": 9,
+              "proposalCountAvailableSiteCount": 921,
+              "proposalZeroSiteCount": 5,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 7,
+              "generatedCountAvailableSiteCount": 7,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 1,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 1,
+              "proposalCountAvailableSiteCount": 7,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 1
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 332,
+              "generatedCountAvailableSiteCount": 332,
+              "generatedCandidateZeroSiteCount": 5,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 97,
+              "generatedCandidateSizeMax": 97,
+              "mappedCandidateZeroSiteCount": 5,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 8,
+              "mappedCandidateSizeMax": 8,
+              "proposalCountAvailableSiteCount": 332,
+              "proposalZeroSiteCount": 5,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 580,
+              "generatedCountAvailableSiteCount": 580,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 9,
+              "generatedCandidateSizeMax": 77,
+              "mappedCandidateZeroSiteCount": 21,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 9,
+              "mappedCandidateSizeMax": 9,
+              "proposalCountAvailableSiteCount": 580,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 9
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "generatedCountAvailableSiteCount": 2,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 1,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 1,
+              "proposalCountAvailableSiteCount": 2,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 1
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 585,
+          "selectedScorableSiteCount": 585,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 522,
+          "siteWeighted": {
+            "siteCount": 585,
+            "duplicateGroupCount": 522,
+            "brierScore": 0.003481477904894069,
+            "expectedCalibrationError": 0.008325451898654523
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 585,
+            "duplicateGroupCount": 522,
+            "brierScore": 0.003481477904894069,
+            "expectedCalibrationError": 0.008325451898654523
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 585,
+            "duplicateGroupCount": 522,
+            "brierScore": 0.0038796261864067114,
+            "expectedCalibrationError": 0.007708768148648626
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 206,
+              "siteWeighted": {
+                "siteCount": 206,
+                "duplicateGroupCount": 182,
+                "brierScore": 0.00018540039997771074,
+                "expectedCalibrationError": 0.013616181549084061
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 206,
+                "duplicateGroupCount": 182,
+                "brierScore": 0.00018540039997771074,
+                "expectedCalibrationError": 0.013616181549084061
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 206,
+                "duplicateGroupCount": 182,
+                "brierScore": 0.00018540039997771074,
+                "expectedCalibrationError": 0.013616181549084172
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 377,
+              "siteWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.00530000342484789,
+                "expectedCalibrationError": 0.005406428643246364
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.00530000342484789,
+                "expectedCalibrationError": 0.005406428643246364
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.005890684010971584,
+                "expectedCalibrationError": 0.004492898131844836
+              }
+            },
+            {
+              "name": "this",
+              "selectedSiteCount": 2,
+              "siteWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00018540039997771095,
+                "expectedCalibrationError": 0.013616181549087503
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00018540039997771095,
+                "expectedCalibrationError": 0.013616181549087503
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00018540039997771095,
+                "expectedCalibrationError": 0.013616181549087503
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "limitations": [
+      "This is train-family transfer analysis, not unseen-family certification.",
+      "For each held family, threshold and probability map fit use only other TRAIN families.",
+      "Cross-family duplicate groups are excluded from each fold's fit rows and retained in held-family evaluation.",
+      "The probability map is a Beta-smoothed isotonic estimate with conservative unscorable outcomes; abstentions receive no probability.",
+      "No calibration, test, or temporal labels are read; no System One heldout mode is invoked."
+    ]
+  }
+}

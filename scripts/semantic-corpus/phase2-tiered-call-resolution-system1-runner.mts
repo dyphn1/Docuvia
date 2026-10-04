@@ -18,6 +18,7 @@ import {
   type SystemOneSplitMetrics,
 } from "./phase2-tiered-call-resolution-system1-evaluation.mjs";
 import { evaluateSystemOneCalibrationQualityOof } from "./phase2-tiered-call-resolution-system1-confidence-calibration.mjs";
+import { evaluateSystemOneFamilyTransferTrain } from "./phase2-tiered-call-resolution-system1-family-transfer.mjs";
 import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
@@ -33,12 +34,15 @@ import {
   writeJson,
 } from "./phase2-tiered-call-resolution-support.mjs";
 
+const SYSTEM_ONE_RUNNER_FILE =
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts";
 const IMPLEMENTATION_FILES = [
   "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-evaluation.mts",
-  "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts",
+  SYSTEM_ONE_RUNNER_FILE,
   "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts",
 ] as const;
 const CORRECTED_FACTS_SHA256 =
   "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e";
@@ -46,7 +50,12 @@ const ACCEPTED_PRECISION_TARGET = 0.9;
 const FREEZE_NAME = "system1-calibration-threshold.json";
 const EXPOSURE_NAME = "system1-heldout-exposure.json";
 
-type Mode = "develop" | "calibrate" | "calibration-quality-oof" | "heldout";
+type Mode =
+  | "develop"
+  | "calibrate"
+  | "calibration-quality-oof"
+  | "family-transfer-train"
+  | "heldout";
 type Split = "train" | "calibration" | "test" | "temporal";
 
 interface Options {
@@ -119,7 +128,7 @@ interface FreezeArtifact {
   readonly calibrationMetrics: SystemOneSplitMetrics | null;
 }
 
-function parseOptions(argv: readonly string[]): Options {
+export function parseOptions(argv: readonly string[]): Options {
   const values = new Map<string, string>();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
@@ -130,7 +139,7 @@ function parseOptions(argv: readonly string[]): Options {
       value.startsWith("--")
     )
       throw new Error(
-        "Usage: ... --mode <develop|calibrate|calibration-quality-oof|heldout> --predictions <jsonl> --out <dir> [--freeze <artifact>]",
+        "Usage: ... --mode <develop|calibrate|calibration-quality-oof|family-transfer-train|heldout> --predictions <jsonl> --out <dir> [--freeze <artifact>]",
       );
     values.set(key!, value);
   }
@@ -142,6 +151,7 @@ function parseOptions(argv: readonly string[]): Options {
     (mode !== "develop" &&
       mode !== "calibrate" &&
       mode !== "calibration-quality-oof" &&
+      mode !== "family-transfer-train" &&
       mode !== "heldout") ||
     !predictionsPath ||
     !outputDirectory
@@ -167,6 +177,10 @@ function shaImplementation(files: readonly string[]): string {
     digest.update(file).update("\0").update(bytes).update("\0");
   }
   return digest.digest("hex");
+}
+
+export function systemOneRunnerImplementationHash(): string {
+  return shaImplementation([SYSTEM_ONE_RUNNER_FILE]);
 }
 
 function verifyOriginalImplementation(manifest: PredictionManifest): void {
@@ -266,6 +280,7 @@ function commonProvenance(bundle: Bundle) {
     sourcePredictionManifestSha256: bundle.manifestHash,
     sourceImplementationHash: bundle.manifest.implementationHash,
     systemOneImplementationHash: bundle.systemOneHash,
+    runnerImplementationHash: systemOneRunnerImplementationHash(),
     sourceSplitAssignmentHash: bundle.splitAssignmentHash,
     sourceSplitCounts: bundle.manifest.splitCounts,
     candidateOracleMappingScope: "snapshotId+repoId",
@@ -506,6 +521,59 @@ async function calibrateQualityOof(
   );
 }
 
+async function evaluateFamilyTransferTrain(
+  bundle: Bundle,
+  options: Options,
+): Promise<void> {
+  const observations = rowsFor(bundle, "train");
+  const labels = await labelsFor("train", observations);
+  const evaluation = evaluateSystemOneFamilyTransferTrain(
+    observations,
+    labels,
+    bundle.oracleMapping,
+  );
+  const trainLabelRowsHash = labelsHash(labels);
+  const inputFingerprint = canonicalHash({
+    measurement: evaluation.measurement,
+    provenance: commonProvenance(bundle),
+    trainLabelRowsHash,
+    probabilityMapMethod: evaluation.probabilityMapMethod,
+    probabilityMapSupportRule: evaluation.probabilityMapSupportRule,
+    targetAcceptedPrecision: evaluation.targetAcceptedPrecision,
+    crossFamilyDuplicateGroupsHash: evaluation.crossFamilyDuplicateGroupsHash,
+    crossFamilyGroupFamiliesHash: evaluation.crossFamilyGroupFamiliesHash,
+    folds: evaluation.folds.map((fold) => ({
+      heldOutFamily: fold.heldOutFamily,
+      trainingSampleIdsHash: fold.trainingSampleIdsHash,
+      heldOutSampleIdsHash: fold.heldOutSampleIdsHash,
+      trainingLabelRowsHash: fold.trainingLabelRowsHash,
+      heldOutLabelRowsHash: fold.heldOutLabelRowsHash,
+      excludedCrossFamilyGroupsHash: fold.excludedCrossFamilyGroupsHash,
+      thresholdScore: fold.thresholdScore,
+      probabilityMapFitHash: fold.probabilityMap.fitHash,
+    })),
+  });
+  const output = path.join(
+    options.outputDirectory,
+    "system1-train-family-transfer-lofo.json",
+  );
+  writeJson(output, {
+    schemaVersion: 1,
+    measurement: "phase2-p2b-system1-family-transfer-train-artifact/1",
+    split: "train",
+    generatedAt: new Date().toISOString(),
+    provenance: commonProvenance(bundle),
+    trainLabelRowsHash,
+    inputFingerprint,
+    labelSplitsRead: ["train"],
+    heldoutModeInvoked: false,
+    evaluation,
+  });
+  console.info(
+    `[phase2-p2b] train-family LOFO ${evaluation.folds.length} families; eligible=${evaluation.eligibleSiteCount}; macro end-to-end=${evaluation.familyMacroEndToEndTop1 ?? "n/a"}; wrote ${output}`,
+  );
+}
+
 function verifyFreeze(freezePath: string, bundle: Bundle): FreezeArtifact {
   const freeze = readJson<FreezeArtifact>(freezePath);
   const current = commonProvenance(bundle);
@@ -618,6 +686,8 @@ async function run(options: Options): Promise<void> {
   if (options.mode === "calibrate") return calibrate(bundle, options);
   if (options.mode === "calibration-quality-oof")
     return calibrateQualityOof(bundle, options);
+  if (options.mode === "family-transfer-train")
+    return evaluateFamilyTransferTrain(bundle, options);
   return regressHeldout(bundle, options);
 }
 

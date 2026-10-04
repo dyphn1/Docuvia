@@ -4691,6 +4691,12 @@
       "lastTierBCommitSha": "10f03825829b123cc60a09ff2b3853c7639196db"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-calibration-miss-source-audit.mts",
+      "contentHash": "ce72541ef899127d645370ffcb299159b15efd01",
+      "lastTierBProcessedAt": "2026-10-04 05:51:21",
+      "lastTierBCommitSha": "5b6c787f433c551cd3c82ab9f5caa29b6c28b264"
+    },
+    {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
       "contentHash": "871366258ca2bafa71219747a17fb542f7a95acc",
       "lastTierBProcessedAt": "2026-10-04 05:34:24",
@@ -5147,6 +5153,12 @@
       "lastTierBCommitSha": "10f03825829b123cc60a09ff2b3853c7639196db"
     },
     {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-calibration-miss-source-audit.unit.test.ts",
+      "contentHash": "6991718b7cbd5a54d1ccbb811acaeec0e9f4f90e",
+      "lastTierBProcessedAt": "2026-10-04 05:51:21",
+      "lastTierBCommitSha": "5b6c787f433c551cd3c82ab9f5caa29b6c28b264"
+    },
+    {
       "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.unit.test.ts",
       "contentHash": "0ec309b74f0834c8b586d99cde7591edbfc5de08",
       "lastTierBProcessedAt": "2026-10-04 05:34:24",
@@ -5255,7 +5267,7 @@
       "lastTierBCommitSha": "10f03825829b123cc60a09ff2b3853c7639196db"
     }
   ],
-  "lastIngestedSourceSha": "10f03825829b123cc60a09ff2b3853c7639196db",
+  "lastIngestedSourceSha": "5b6c787f433c551cd3c82ab9f5caa29b6c28b264",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.unit.test.ts#anonymous@L82
+id: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.unit.test.ts#anonymous@L323
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.unit.test.ts
@@ -7,4 +7,3 @@ filePath: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-eva
 # Symbol: anonymous
 
 File: `test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.unit.test.ts`
-

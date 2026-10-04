@@ -5142,7 +5142,7 @@
     },
     {
       "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-calibration-cap-audit.unit.test.ts",
-      "contentHash": "ab89393046cf7fbe2cfc1985c3f770acc047a375",
+      "contentHash": "2ff230b61fd19ef3a68df78c44dbdc3408746614",
       "lastTierBProcessedAt": null,
       "lastTierBCommitSha": null
     },
@@ -5255,7 +5255,7 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     }
   ],
-  "lastIngestedSourceSha": "831b67e3a1a4c8e01504d5b9df2d04bccc129a66",
+  "lastIngestedSourceSha": "10f03825829b123cc60a09ff2b3853c7639196db",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

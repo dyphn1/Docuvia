@@ -597,6 +597,25 @@ export { origThing as outwardThing } from "../deep/other";
 `;
 
 describe("typescript fixture: exported consts and barrel re-exports (issue #192)", () => {
+  it("[happy] emits direct named callable declarations as export descriptors", async () => {
+    const response = await buildParseResponse({
+      taskId: "direct-export-descriptors",
+      filePath: "exports.ts",
+      code: [
+        "export function shutdown(): void {}",
+        "export const handler = () => {};",
+        "export default function fallback(): void {}",
+        'export { shutdown as renamed } from "./other.js";',
+        "const local = () => {};",
+      ].join("\n"),
+      language: "typescript",
+    });
+    expect(response.data?.exports).toEqual([
+      { name: "shutdown", type: "function" },
+      { name: "handler", type: "variable" },
+    ]);
+  });
+
   it("indexes an exported scalar const as a variable symbol, but not a non-exported one", async () => {
     const response = await buildParseResponse({
       taskId: "const-indexing",

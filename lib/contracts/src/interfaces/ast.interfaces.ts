@@ -1,4 +1,6 @@
 import type { DiscoveredFile } from "./discovery.interfaces.js";
+import type { AstDeclaredTypeFacts } from "./declared-type-facts.interfaces.js";
+import type { AstCallSiteShapeFacts } from "./call-site-shape-facts.interfaces.js";
 
 export const AstExportKinds = {
   FUNCTION: "function",
@@ -17,6 +19,8 @@ export interface AstImportDescriptor {
    *  persist-ast-graph links these as file-level `depends_on` edges (a barrel depends on its
    *  source even though it has no call sites). */
   viaReexport?: boolean;
+  /** True for TS `import type` and `import { type X }` bindings. */
+  isTypeOnly?: boolean;
 }
 
 export interface ParsedAstFileData {
@@ -46,7 +50,8 @@ export interface ParsedAstFileData {
     contentHash?: string;
   }>;
   /** One static call site. `startLine`/`startColumn` are the 0-based source position of the
-   *  callee expression's start (Tier A's own `startPosition` convention) -- the seed Tier B
+   *  callee expression's start (Tier A's `startPosition` convention; column is a UTF-16 code-unit
+   *  column, matching TypeScript offsets) -- the seed Tier B
    *  forward resolution (issue #11 plan A) issues `textDocument/definition` at this position per
    *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1.
    *
@@ -70,6 +75,10 @@ export interface ParsedAstFileData {
   }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;
+  /** Optional source-only TypeScript/JavaScript syntax facts; older producers omit this versioned payload. */
+  declaredTypeFacts?: AstDeclaredTypeFacts;
+  /** Optional binding-scoped, syntax-only call features for candidate filtering. */
+  callSiteShapeFacts?: AstCallSiteShapeFacts;
   /** `new Worker(<path>)` spawn sites (TS/JS only) — see `ast-worker.ts`'s `collectWorkerSpawns`. */
   workerSpawns?: Array<{ sourceFunction: string; targetPath: string }>;
   decisions?: string[];

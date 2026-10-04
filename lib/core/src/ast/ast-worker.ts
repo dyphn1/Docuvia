@@ -11,10 +11,16 @@ import {
 import {
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
+  type AstImportDescriptor,
+  type AstDeclaredTypeLanguage,
   type AstExportKind,
+  type AstDeclaredTypeFacts,
+  type AstCallSiteShapeFacts,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
+import { extractDeclaredTypeFacts } from "./declared-type-facts.js";
+import { extractCallSiteShapeFacts } from "./call-site-shape-facts.js";
 import {
   collectClassNodes,
   collectFunctionNodes,
@@ -58,11 +64,7 @@ export interface AstParseRequest {
   language: SupportedLanguage;
 }
 
-export interface ImportDescriptor {
-  localName: string;
-  originalName: string;
-  modulePath: string;
-}
+export type ImportDescriptor = AstImportDescriptor;
 
 export interface AstParseResponse {
   taskId: string;
@@ -111,6 +113,10 @@ export interface AstParseResponse {
     }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
+    /** Optional explicit TypeScript/JavaScript syntax facts; not a resolution or proof. */
+    declaredTypeFacts?: AstDeclaredTypeFacts;
+    /** Optional binding-scoped, syntax-only call features; not a resolution or proof. */
+    callSiteShapeFacts?: AstCallSiteShapeFacts;
     /**
      * `new Worker(<path>)` spawn sites (TS/JS only — see `WORKER_SPAWN_LANGUAGES`), one per
      * resolved spawn call, attributing it to its enclosing function like `calls` does.
@@ -496,6 +502,90 @@ export function collectWorkerSpawns(
   }
 }
 
+function namedChildren(node: Node): Node[] {
+  const children: Node[] = [];
+  for (let index = 0; index < node.namedChildCount; index += 1) {
+    const child = node.namedChild(index);
+    if (child) children.push(child);
+  }
+  return children;
+}
+
+function directExportDescriptors(root: Node): AstExtractionResult["exports"] {
+  const exports: AstExtractionResult["exports"] = [];
+  for (const statement of namedChildren(root))
+    exports.push(...directExportForStatement(statement));
+  return exports;
+}
+
+function directExportForStatement(
+  statement: Node,
+): AstExtractionResult["exports"] {
+  if (
+    statement.type !== "export_statement" ||
+    /^export\s+default\b/u.test(statement.text)
+  )
+    return [];
+  const declaration = statement.childForFieldName("declaration");
+  return declaration ? directExportForDeclaration(declaration) : [];
+}
+
+function directExportForDeclaration(
+  declaration: Node,
+): AstExtractionResult["exports"] {
+  const classExport = directClassExportDescriptor(declaration);
+  if (classExport) return [classExport];
+  const functionExport = directFunctionExportDescriptor(declaration);
+  if (functionExport) return [functionExport];
+  if (
+    declaration.type !== "lexical_declaration" &&
+    declaration.type !== "variable_declaration"
+  )
+    return [];
+  return directVariableExportDescriptors(declaration);
+}
+
+function directClassExportDescriptor(
+  declaration: Node,
+): AstExtractionResult["exports"][number] | undefined {
+  if (
+    declaration.type !== "class_declaration" &&
+    declaration.type !== "abstract_class_declaration"
+  )
+    return undefined;
+  const name = declaration.childForFieldName("name");
+  return name?.type === "identifier"
+    ? { name: name.text, type: "class" }
+    : undefined;
+}
+
+function directFunctionExportDescriptor(
+  declaration: Node,
+): AstExtractionResult["exports"][number] | undefined {
+  if (
+    declaration.type !== "function_declaration" &&
+    declaration.type !== "generator_function_declaration"
+  )
+    return undefined;
+  const name = declaration.childForFieldName("name");
+  return name?.type === "identifier"
+    ? { name: name.text, type: "function" }
+    : undefined;
+}
+
+function directVariableExportDescriptors(
+  declaration: Node,
+): AstExtractionResult["exports"] {
+  const exports: AstExtractionResult["exports"] = [];
+  for (const declarator of namedChildren(declaration)) {
+    if (declarator.type !== "variable_declarator") continue;
+    const name = declarator.childForFieldName("name");
+    if (name?.type === "identifier")
+      exports.push({ name: name.text, type: "variable" });
+  }
+  return exports;
+}
+
 /**
  * Runs every provider-driven extraction against a parsed tree (or returns empty results plus a
  * decision note if parsing produced no tree). A single try/catch wraps the whole pass, matching
@@ -522,6 +612,7 @@ function extractAstData(
     decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
 
     try {
+      exports.push(...directExportDescriptors(tree.rootNode));
       const classNodes = collectClassNodes(tree, provider, classes);
       const functionNodes = collectFunctionNodes(
         tree,
@@ -591,6 +682,7 @@ function parseAndExtract(
   provider: LanguageProvider,
   langInstance: Language,
   language: SupportedLanguage,
+  filePath: string,
 ): AstExtractionResult {
   const parser = new Parser();
   parser.setLanguage(langInstance);
@@ -605,11 +697,40 @@ function parseAndExtract(
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider, language);
+  const declaredTypeLanguage = getDeclaredTypeLanguage(language, filePath);
+  const result =
+    tree && declaredTypeLanguage
+      ? {
+          ...data,
+          declaredTypeFacts: extractDeclaredTypeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+          ),
+          callSiteShapeFacts: extractCallSiteShapeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+            data.calls,
+            data.imports,
+          ),
+        }
+      : data;
 
   if (tree) tree.delete();
   parser.delete();
 
-  return data;
+  return result;
+}
+
+function getDeclaredTypeLanguage(
+  language: SupportedLanguage,
+  filePath: string,
+): AstDeclaredTypeLanguage | undefined {
+  if (language === SUPPORTED_LANGUAGES.TYPESCRIPT)
+    return path.extname(filePath).toLowerCase() === ".tsx"
+      ? "tsx"
+      : "typescript";
+  if (language === SUPPORTED_LANGUAGES.JAVASCRIPT) return "javascript";
+  return undefined;
 }
 
 /**
@@ -670,6 +791,7 @@ export async function buildParseResponse(
     provider,
     langInstance,
     request.language,
+    request.filePath,
   );
 
   return {

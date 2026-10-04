@@ -46,6 +46,7 @@
 - [ADR Index](adr/README.md)
   - [PLAT-010 — Phase-Based Test Quality Governance](adr/platform/PLAT-010-phase-based-test-quality-governance.md)
   - [PLAT-011 — Semantic Decision Feature Provider Boundary](adr/platform/PLAT-011-semantic-decision-feature-provider-boundary.md)
+  - [GRPH-008 — Tiered Call Resolution](adr/graph/GRPH-008-tiered-call-resolution.md)
   - [Semantic Decision Phase 0 Contract](analysis/semantic-decision-phase0-contract.md)
   - [Semantic decision Phase 1 corpus](analysis/semantic-decision-phase1-corpus.md)
   - [Semantic decision Phase 1 collection](analysis/semantic-decision-phase1-collection.md)
@@ -76,6 +77,13 @@
 
 ## 📊 Analysis
 
+- [Tiered Call Resolution Implementation Plan](analysis/tiered-call-resolution-implementation-plan.md)
+- [GRPH-008 Phase 0 — Measurement Gate](analysis/tiered-call-resolution-phase0-results.md)
+- [GRPH-008 Phase 1 — Declared Type Facts](analysis/tiered-call-resolution-phase1-results.md)
+- [GRPH-008 P2-A/P2-B — Snapshot-Scoped Evaluation Correction](analysis/tiered-call-resolution-phase2-snapshot-scope-correction.md)
+- [GRPH-008 P2-A — Direct Import Alias Candidates](analysis/tiered-call-resolution-phase2-p2a-direct-import-alias.md)
+- [GRPH-008 P2-A — TRAIN Candidate and Proposal-Filter Stage Audit](analysis/tiered-call-resolution-phase2-p2a-candidate-stage-train-audit.md)
+- [GRPH-008 P2-B v4 — System One Train/Calibration Evidence](analysis/tiered-call-resolution-phase2-p2b-v4.md)
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
 - [Roadmap & Open Items](analysis/roadmap-and-open-items.md)
 - [Impact benchmark honesty — Phase 0 metric contract](analysis/impact-benchmark-honesty-phase0.md)

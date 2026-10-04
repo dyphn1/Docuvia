@@ -1,5 +1,6 @@
 import {
   type ExternalIncomingLink,
+  type ICallResolutionHypothesisService,
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
@@ -11,6 +12,13 @@ import {
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
+import {
+  collectStrictCallSiteProofs,
+  isSha256,
+  portableCallSiteKeyForCall,
+  sourceManifestFingerprint,
+  type FunctionNodeReference,
+} from "./call-resolution-graph-projection.js";
 
 /** Mutable per-file accumulator `linkSymbolReference` increments while resolving one file's
  *  call sites (issue #221, extended by #230). `unresolved` is derived at close time (`total`
@@ -68,21 +76,40 @@ function closeCallResolutionCounters(
  * practically-infinite operation (docs/cli-test-analysis/typescript-cli-benchmark.md).
  */
 export class GraphPersisterService implements IGraphPersister {
+  constructor(
+    private readonly hypothesisService?: ICallResolutionHypothesisService,
+  ) {}
+
   public async persist(input: {
     store: IGraphStore;
     workspaceRoot: string;
     projectId: number;
     parsedResults: ParsedAstFileResult[];
     tags: string[];
+    sourceIndexComplete?: boolean;
   }): Promise<{
     updatedCount: number;
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
   }> {
-    const { store, workspaceRoot, projectId, parsedResults, tags } = input;
+    const {
+      store,
+      workspaceRoot,
+      projectId,
+      parsedResults,
+      tags,
+      sourceIndexComplete,
+    } = input;
 
     return store.withWriteLock(() =>
-      this.persistLocked(store, workspaceRoot, projectId, parsedResults, tags),
+      this.persistLocked(
+        store,
+        workspaceRoot,
+        projectId,
+        parsedResults,
+        tags,
+        sourceIndexComplete === true,
+      ),
     );
   }
 
@@ -100,6 +127,7 @@ export class GraphPersisterService implements IGraphPersister {
     projectId: number,
     parsedResults: ParsedAstFileResult[],
     tags: string[],
+    sourceIndexComplete: boolean,
   ): {
     updatedCount: number;
     callResolution?: CallResolutionStats;
@@ -120,6 +148,7 @@ export class GraphPersisterService implements IGraphPersister {
       // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
       // actual function/class node instead of collapsing to a file-to-file edge.
       const symbolIdMap = new Map<string, Map<string, number>>();
+      const functionNodeRefsByFile = new Map<string, FunctionNodeReference[]>();
 
       // Issue #221: per-file Tier A call-site resolution counters, aggregated for the caller
       // (the orchestration layer stamps them into docuvia_meta / the analyze log).
@@ -139,6 +168,7 @@ export class GraphPersisterService implements IGraphPersister {
           tags,
           fileIdMap,
           symbolIdMap,
+          functionNodeRefsByFile,
         );
       });
       const updatedCount = this.linkParsedResults(
@@ -149,6 +179,16 @@ export class GraphPersisterService implements IGraphPersister {
         fileIdMap,
         symbolIdMap,
         callResolutionByFile,
+      );
+      this.persistStrictCallSiteProofs(
+        store,
+        projectId,
+        parsedResults,
+        sourceIndexComplete,
+        fileIdMap,
+        symbolIdMap,
+        functionNodeRefsByFile,
+        resolver,
       );
       this.reattachExternalIncomingLinks(store, externalIncoming);
 
@@ -220,8 +260,13 @@ export class GraphPersisterService implements IGraphPersister {
     tags: string[],
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
   ): void {
     for (const result of parsedResults) {
+      // Current per-site decisions are file-version scoped: retire them with the old symbols
+      // before inserting the freshly parsed graph. Append-only observations remain available.
+      store.callSiteResolutions?.deleteForFile(projectId, result.file);
+
       // Delete any stale nodes (and their links, both directions, and tag-links) for this path
       // so a re-parsed file's old graph state doesn't linger. External incoming edges were
       // captured by node_key in persistLocked and are re-attached after linking (#508 D9).
@@ -257,6 +302,8 @@ export class GraphPersisterService implements IGraphPersister {
       fileIdMap.set(result.file, fileId);
       const symbolsForFile = new Map<string, number>();
       symbolIdMap.set(result.file, symbolsForFile);
+      const functionNodeRefs: FunctionNodeReference[] = [];
+      functionNodeRefsByFile.set(result.file, functionNodeRefs);
 
       this.linkFileToTags(store, fileId, tags);
 
@@ -276,6 +323,7 @@ export class GraphPersisterService implements IGraphPersister {
         fileId,
         symbolsForFile,
         usedNodeKeys,
+        functionNodeRefs,
       );
       this.insertClassNodes(
         store,
@@ -314,6 +362,7 @@ export class GraphPersisterService implements IGraphPersister {
     fileId: number,
     symbolsForFile: Map<string, number>,
     usedNodeKeys: Set<string>,
+    functionNodeRefs: FunctionNodeReference[],
   ): void {
     for (const fn of result.data.functions ?? []) {
       const nodeKey = buildUniqueNodeKey(
@@ -330,6 +379,13 @@ export class GraphPersisterService implements IGraphPersister {
         pathPatterns: [result.file],
         nodeKey,
         contentHash: fn.contentHash,
+      });
+      functionNodeRefs.push({
+        nodeKey,
+        name: fn.name,
+        containerName: fn.containerName,
+        startLine: fn.startLine,
+        endLine: fn.endLine,
       });
       symbolsForFile.set(fn.name, fnId);
       store.graph.insertLink({
@@ -450,6 +506,116 @@ export class GraphPersisterService implements IGraphPersister {
     }
 
     return updatedCount;
+  }
+
+  /** Persists only the narrow source-bound Q3 proof for a complete source index. ScopeResolver
+   *  links are initially written unchanged; the per-site projection replaces a proved site, then
+   *  the legacy proposal edges for every other site are restored inside the same transaction. */
+  private persistStrictCallSiteProofs(
+    store: IGraphStore,
+    projectId: number,
+    parsedResults: ParsedAstFileResult[],
+    sourceIndexComplete: boolean,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
+    resolver: ScopeResolver,
+  ): void {
+    const repo = store.callSiteResolutions;
+    const service = this.hypothesisService;
+    if (
+      !repo ||
+      !service ||
+      !sourceIndexComplete ||
+      parsedResults.length === 0 ||
+      parsedResults.some((result) => !isSha256(result.hash))
+    ) {
+      return;
+    }
+
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: sourceManifestFingerprint(
+        parsedResults,
+        sourceIndexComplete,
+      ),
+      sourceIndexComplete,
+      sourceFiles: parsedResults.map((result) => ({
+        filePath: result.file,
+        sourceContentHash: result.hash,
+        imports: result.data.imports ?? [],
+        exports: result.data.exports ?? [],
+        callSiteShapeFacts: result.data.callSiteShapeFacts ?? null,
+        declaredTypeFacts: result.data.declaredTypeFacts ?? null,
+      })),
+    });
+
+    for (const result of parsedResults) {
+      const proofs = collectStrictCallSiteProofs({
+        service,
+        workspaceIndex,
+        result,
+        functionNodes: functionNodeRefsByFile.get(result.file) ?? [],
+      });
+      if (proofs.length === 0) continue;
+
+      repo.replaceForFile(
+        projectId,
+        result.file,
+        proofs.map(({ resolution }) => resolution),
+      );
+      for (const proof of proofs) {
+        repo.appendObservation(projectId, proof.strictObservation);
+      }
+
+      const provenKeys = new Set(proofs.map(({ callSiteKey }) => callSiteKey));
+      this.restoreScopeResolverCallsForUnprovenSites(
+        store,
+        resolver,
+        result,
+        fileIdMap.get(result.file),
+        symbolIdMap.get(result.file),
+        fileIdMap,
+        symbolIdMap,
+        provenKeys,
+      );
+    }
+  }
+
+  private restoreScopeResolverCallsForUnprovenSites(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    result: ParsedAstFileResult,
+    sourceFileId: number | undefined,
+    sourceSymbols: Map<string, number> | undefined,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    provenCallSiteKeys: ReadonlySet<string>,
+  ): void {
+    if (!sourceFileId) return;
+    for (const call of result.data.calls ?? []) {
+      const callSiteKey = portableCallSiteKeyForCall(result, call);
+      if (callSiteKey && provenCallSiteKeys.has(callSiteKey)) continue;
+
+      this.linkSymbolReference(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        sourceSymbols,
+        fileIdMap,
+        symbolIdMap,
+        call.sourceFunction,
+        call.targetFunction,
+        LinkTypes.CALLS,
+        false,
+        undefined,
+        {
+          calleeName: call.calleeName,
+          receiverText: call.receiverText,
+          calleeKind: call.calleeKind,
+        },
+      );
+    }
   }
 
   private linkParsedResultRelations(

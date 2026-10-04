@@ -643,6 +643,174 @@ export interface ICallSitesRepo {
   replaceForProject?(projectId: number, callSites: SnapshotCallSiteRow[]): void;
 }
 
+export const CallSiteResolutionClasses = {
+  PROVEN: "proven",
+  LIKELY: "likely",
+  AMBIGUOUS: "ambiguous",
+  UNRESOLVED: "unresolved",
+  EXTERNAL: "external",
+  UNSUPPORTED: "unsupported",
+} as const;
+export type CallSiteResolutionClass =
+  (typeof CallSiteResolutionClasses)[keyof typeof CallSiteResolutionClasses];
+
+/** Tier B response tied to an exact stored site, source snapshot and selected target. Results that
+ *  do not name exactly one local definition never carry a target node key. */
+export type CallSiteLspResolutionResult =
+  | {
+      callSiteKey: string;
+      sourceContentHash: string;
+      ruleSignature: string;
+      verificationPolicyVersion: string;
+      expectedTargetNodeKey: string;
+      resolutionClass: CallSiteResolutionClass;
+      verificationMode: "tier-b" | "canary";
+      outcome: "unique-local";
+      targetNodeKey: string;
+    }
+  | {
+      callSiteKey: string;
+      sourceContentHash: string;
+      ruleSignature: string;
+      verificationPolicyVersion: string;
+      expectedTargetNodeKey: string;
+      resolutionClass: CallSiteResolutionClass;
+      verificationMode: "tier-b" | "canary";
+      outcome: "no-result" | "timeout" | "external" | "multi-location";
+    };
+
+export const CallSiteRuleQuarantineReasons = {
+  TIER_B_TARGET_MISMATCH: "tier-b-target-mismatch",
+} as const;
+
+export interface CallSiteRuleQuarantine {
+  ruleSignature: string;
+  policyVersion: string;
+  reason: (typeof CallSiteRuleQuarantineReasons)[keyof typeof CallSiteRuleQuarantineReasons];
+  callSiteKey: string;
+  sourceContentHash: string;
+  expectedTargetNodeKey: string;
+  observedTargetNodeKey: string;
+  createdAt: string;
+}
+
+export interface CallSiteVerificationApplyResult {
+  updatedCallSiteKeys: string[];
+  affectedFilePaths: string[];
+  quarantinedRuleSignatures: string[];
+}
+
+export const CallSiteVerificationStatuses = {
+  UNVERIFIED: "unverified",
+  VERIFIED: "verified",
+  CONTRADICTED: "contradicted",
+} as const;
+export type CallSiteVerificationStatus =
+  (typeof CallSiteVerificationStatuses)[keyof typeof CallSiteVerificationStatuses];
+
+export const CALL_SITE_VERIFICATION_POLICY_VERSION =
+  "sha256-callsite-rule-class-v1" as const;
+
+export const CallSiteResolutionObservationSources = {
+  SCOPE_RESOLVER: "scope-resolver",
+  STRICT_PROOF: "strict-proof",
+  HYPOTHESIS: "hypothesis",
+  TIER_B: "tier-b",
+} as const;
+export type CallSiteResolutionObservationSource =
+  (typeof CallSiteResolutionObservationSources)[keyof typeof CallSiteResolutionObservationSources];
+
+export interface CallSiteResolutionCandidate {
+  targetNodeKey: string;
+  ordinal: number;
+  evidenceJson: string;
+}
+
+/** File inputs whose hashes contributed to the current resolution's dependency fingerprint. */
+export interface CallSiteResolutionDependency {
+  filePath: string;
+  contentHash: string | null;
+}
+
+/** Current content-scoped resolution for one call site. Candidates are normalized separately. */
+export interface CallSiteResolutionRecord {
+  callSiteKey: string;
+  identityVersion: 1;
+  filePath: string;
+  sourceContentHash: string;
+  startLine: number;
+  startColumn: number;
+  calleeKind: string;
+  calleeName: string;
+  callerNodeKey: string;
+  resolutionClass: CallSiteResolutionClass;
+  selectedTargetNodeKey: string | null;
+  confidence: number | null;
+  resolver: string;
+  ruleSignature: string;
+  dependencyFingerprint: string;
+  dependencies: CallSiteResolutionDependency[];
+  verificationStatus: CallSiteVerificationStatus;
+  /** Unique local target observed by Tier B when status is verified or contradicted. */
+  verifiedTargetNodeKey: string | null;
+  isStale: boolean;
+  candidates: CallSiteResolutionCandidate[];
+}
+
+export interface CallSiteResolutionObservationInput {
+  callSiteKey: string;
+  filePath: string;
+  sourceContentHash: string;
+  source: CallSiteResolutionObservationSource;
+  targetNodeKey: string | null;
+  evidenceJson: string;
+  resolutionClass?: CallSiteResolutionClass | null;
+  resolver?: string | null;
+  ruleSignature?: string | null;
+}
+
+export interface CallSiteResolutionObservation extends CallSiteResolutionObservationInput {
+  id: number;
+  createdAt: string;
+}
+
+export interface ICallSiteResolutionsRepo {
+  /** Atomically replaces current resolutions and candidates for one caller file. */
+  replaceForFile(
+    projectId: number,
+    filePath: string,
+    resolutions: CallSiteResolutionRecord[],
+  ): void;
+  /** Deletes current per-site resolutions and derived candidates for one file, retaining history. */
+  deleteForFile(projectId: number, filePath: string): void;
+  /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
+  getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Applies site-bound Tier B responses and atomically rebuilds affected calls projections. */
+  applyTierBVerificationResults(
+    projectId: number,
+    results: CallSiteLspResolutionResult[],
+  ): CallSiteVerificationApplyResult;
+  /** Locally quarantined signatures survive batches and force future replacement rows to Tier B. */
+  getQuarantinedRuleSignatures(projectId: number): string[];
+  /** Local-only quarantine evidence; excluded from portable snapshots. */
+  getRuleQuarantines(projectId: number): CallSiteRuleQuarantine[];
+  /** Marks current resolutions stale when a dependency's observed hash differs from current content. */
+  invalidateChangedDependencies(
+    projectId: number,
+    changedDependencies: CallSiteResolutionDependency[],
+  ): number;
+  /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
+  appendObservation(
+    projectId: number,
+    observation: CallSiteResolutionObservationInput,
+  ): void;
+  /** Returns all history for the caller file, including observations for prior source versions. */
+  getObservations(
+    projectId: number,
+    filePath: string,
+  ): CallSiteResolutionObservation[];
+}
+
 /**
  * The shared memory/state layer surface — implemented by `lib/schema`'s `GraphStore`. One
  * instance per `dbPath` per process, opened and closed exclusively by the Orchestration layer
@@ -657,6 +825,8 @@ export interface IGraphStore {
   readonly fts: IFtsRepo;
   readonly meta: IMetaRepo;
   readonly callSites: ICallSitesRepo;
+  /** Optional while alternate GraphStore providers migrate to per-call-site resolution storage. */
+  readonly callSiteResolutions?: ICallSiteResolutionsRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
   /**

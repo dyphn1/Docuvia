@@ -334,6 +334,39 @@ describe("runDeltaIngestion()", () => {
     const git = makeMockGitProvider({
       getChangedFilesSince: vi.fn().mockResolvedValue(entries),
     });
+    let inTransaction = false;
+    const operations: string[] = [];
+    const transaction = vi.fn((fn: () => unknown) => {
+      operations.push("begin");
+      inTransaction = true;
+      try {
+        return fn();
+      } finally {
+        inTransaction = false;
+        operations.push("commit");
+      }
+    });
+    Object.defineProperty(store, "withTransaction", { value: transaction });
+    const deleteResolutionForFile = vi.fn(() => {
+      expect(inTransaction).toBe(true);
+      operations.push("resolutions");
+    });
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: { deleteForFile: deleteResolutionForFile },
+    });
+    vi.mocked(store.graph.deleteNodesForPath).mockImplementation(() => {
+      expect(inTransaction).toBe(true);
+      operations.push("nodes");
+      return [];
+    });
+    vi.mocked(store.callSites.deleteForFile).mockImplementation(() => {
+      expect(inTransaction).toBe(true);
+      operations.push("call-sites");
+    });
+    vi.mocked(store.files.deleteFile).mockImplementation(() => {
+      expect(inTransaction).toBe(true);
+      operations.push("file");
+    });
 
     await runDeltaIngestion({
       workspaceRoot: tmpDir,
@@ -351,7 +384,17 @@ describe("runDeltaIngestion()", () => {
       1,
       "src/gone.ts",
     );
+    expect(deleteResolutionForFile).toHaveBeenCalledWith(1, "src/gone.ts");
     expect(store.files.deleteFile).toHaveBeenCalledWith(1, "src/gone.ts");
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(operations).toEqual([
+      "begin",
+      "resolutions",
+      "nodes",
+      "call-sites",
+      "file",
+      "commit",
+    ]);
     expect(graphPersister.persist).toHaveBeenCalledTimes(1);
     expect(graphPersister.persist).toHaveBeenCalledWith(
       expect.objectContaining({ parsedResults: [], projectId: 1 }),

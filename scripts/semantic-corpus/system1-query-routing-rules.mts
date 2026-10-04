@@ -42,6 +42,13 @@ export interface System1QueryState {
 
 export type System1QueryId = "q1" | "q2" | "q3";
 
+/** Exact call-site location supplied out of band from model-visible request context. `column`
+ *  uses the canonical AstWorker/corpus and TypeScript UTF-16 code-unit convention. */
+export interface System1CallSitePosition {
+  readonly line: number;
+  readonly column: number;
+}
+
 export type System1QueryResult =
   | {
       readonly status: "commit";
@@ -478,6 +485,7 @@ function candidateOptions(
 function validateDirectImportCall(
   context: QueryContext,
   source: System1QuerySourceIndex,
+  callSitePosition?: System1CallSitePosition,
 ): { readonly valid: true } | { readonly reason: string } {
   const binding = context.importBinding;
   if (!binding) return { reason: "missing-import-binding" };
@@ -494,11 +502,27 @@ function validateDirectImportCall(
     actualBinding.importedName !== binding.imported
   )
     return { reason: "import-binding-does-not-match-caller-source" };
-  const callSites = findCallSite(sourceFile, context.call.expression);
-  if (callSites.length !== 1) return { reason: "callsite-not-unique" };
+  const callSite = callSitePosition
+    ? findCallSiteAtPosition(sourceFile, callSitePosition)
+    : (() => {
+        const callSites = findCallSite(sourceFile, context.call.expression);
+        return callSites.length === 1 ? callSites[0] : null;
+      })();
+  if (!callSite)
+    return {
+      reason: callSitePosition
+        ? "callsite-not-at-position"
+        : "callsite-not-unique",
+    };
   if (
-    !ts.isIdentifier(callSites[0].expression) ||
-    callSites[0].expression.text !== binding.local
+    callSitePosition &&
+    compactSyntax(callSite.getText(sourceFile)) !==
+      compactSyntax(context.call.expression)
+  )
+    return { reason: "callsite-context-mismatch" };
+  if (
+    !ts.isIdentifier(callSite.expression) ||
+    callSite.expression.text !== binding.local
   )
     return { reason: "request-callsite-not-direct-import" };
   return { valid: true };
@@ -545,10 +569,15 @@ function q1ImportSource(
   state: System1QueryState,
   context: QueryContext,
   source: System1QuerySourceIndex,
+  callSitePosition?: System1CallSitePosition,
 ): System1QueryResult {
   const binding = context.importBinding;
   if (!binding) return abstain("missing-import-binding");
-  const validation = validateDirectImportCall(context, source);
+  const validation = validateDirectImportCall(
+    context,
+    source,
+    callSitePosition,
+  );
   if (!validation.valid) return abstain(validation.reason);
   const modulePath = source.resolveModule(
     context.caller.filePath,
@@ -574,10 +603,15 @@ function q2ReexportTrace(
   state: System1QueryState,
   context: QueryContext,
   source: System1QuerySourceIndex,
+  callSitePosition?: System1CallSitePosition,
 ): System1QueryResult {
   const binding = context.importBinding;
   if (!binding) return abstain("missing-import-binding");
-  const validation = validateDirectImportCall(context, source);
+  const validation = validateDirectImportCall(
+    context,
+    source,
+    callSitePosition,
+  );
   if (!validation.valid) return abstain(validation.reason);
   const modulePath = source.resolveModule(
     context.caller.filePath,
@@ -802,6 +836,53 @@ function findCallSite(
   visit(sourceFile);
   expressionCache.set(expressionText, matches);
   return matches;
+}
+
+function findCallSiteAtPosition(
+  sourceFile: ts.SourceFile,
+  position: System1CallSitePosition,
+): ts.CallExpression | null {
+  const lineStarts = sourceFile.getLineStarts();
+  if (
+    !Number.isSafeInteger(position.line) ||
+    position.line < 0 ||
+    !Number.isSafeInteger(position.column) ||
+    position.column < 0 ||
+    position.line >= lineStarts.length
+  )
+    return null;
+  const lineStart = lineStarts[position.line];
+  const nextLineStart = lineStarts[position.line + 1] ?? sourceFile.text.length;
+  const lineText = sourceFile.text
+    .slice(lineStart, nextLineStart)
+    .replace(/(?:\r\n|\r|\n)$/, "");
+  if (position.column > lineText.length) return null;
+  let offset: number;
+  try {
+    offset = sourceFile.getPositionOfLineAndCharacter(
+      position.line,
+      position.column,
+    );
+  } catch {
+    return null;
+  }
+  const matches: ts.CallExpression[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      offset >= node.expression.getStart(sourceFile) &&
+      offset < node.expression.getEnd()
+    )
+      matches.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  matches.sort((a, b) => a.getWidth(sourceFile) - b.getWidth(sourceFile));
+  const smallestWidth = matches[0]?.getWidth(sourceFile);
+  const innermost = matches.filter(
+    (call) => call.getWidth(sourceFile) === smallestWidth,
+  );
+  return innermost.length === 1 ? innermost[0] : null;
 }
 
 function compactSyntax(value: string): string {
@@ -1292,14 +1373,28 @@ function q3ReceiverType(
   state: System1QueryState,
   context: QueryContext,
   source: System1QuerySourceIndex,
+  callSitePosition?: System1CallSitePosition,
 ): System1QueryResult {
   if (context.call.kind !== "member") return abstain("call-is-not-member-kind");
   const sourceFile = source.read(context.caller.filePath);
   if (!sourceFile || hasParseErrors(sourceFile))
     return abstain("caller-file-unparseable");
-  const calls = findCallSite(sourceFile, context.call.expression);
-  if (calls.length !== 1) return abstain("callsite-not-unique");
-  const [call] = calls;
+  const call = callSitePosition
+    ? findCallSiteAtPosition(sourceFile, callSitePosition)
+    : (() => {
+        const calls = findCallSite(sourceFile, context.call.expression);
+        return calls.length === 1 ? calls[0] : null;
+      })();
+  if (!call)
+    return abstain(
+      callSitePosition ? "callsite-not-at-position" : "callsite-not-unique",
+    );
+  if (
+    callSitePosition &&
+    compactSyntax(call.getText(sourceFile)) !==
+      compactSyntax(context.call.expression)
+  )
+    return abstain("callsite-context-mismatch");
   if (
     (call.typeArguments?.length ?? 0) > 0 ||
     context.call.genericHints.length > 0 ||
@@ -1333,13 +1428,14 @@ function q3ReceiverType(
 export function resolveSystem1DeterministicQueries(
   state: System1QueryState,
   source: System1QuerySourceIndex,
+  callSitePosition?: System1CallSitePosition,
 ): System1QueryResults {
   const context = parseContext(state);
   const results = context
     ? {
-        q1: q1ImportSource(state, context, source),
-        q2: q2ReexportTrace(state, context, source),
-        q3: q3ReceiverType(state, context, source),
+        q1: q1ImportSource(state, context, source, callSitePosition),
+        q2: q2ReexportTrace(state, context, source, callSitePosition),
+        q3: q3ReceiverType(state, context, source, callSitePosition),
       }
     : {
         q1: abstain("invalid-request-context"),

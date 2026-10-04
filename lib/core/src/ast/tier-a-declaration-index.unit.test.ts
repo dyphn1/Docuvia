@@ -120,6 +120,55 @@ describe("Tier A TypeScript declaration index", () => {
     },
   );
 
+  it("keeps returned anonymous arrows separate from their const factory bindings", () => {
+    const file = "src/factory-arrows.ts";
+    const source = [
+      "export const RequestMapping = (path: string) => {",
+      "  return (target: object) => {",
+      "    void path;",
+      "    void target;",
+      "  };",
+      "};",
+      "export const createExtractor = (prefix: string) =>",
+      "  (((value: string) => prefix + value));",
+    ].join("\n");
+    const tree = parser.parse(source);
+    expect(tree).not.toBeNull();
+    if (!tree) return;
+
+    const declarations = extractTierAIndexedDeclarations(file, tree, provider);
+    tree.delete();
+
+    expect(
+      declarations.map(({ name, nodeKey, nodeType }) => ({
+        name,
+        nodeKey,
+        nodeType,
+      })),
+    ).toEqual([
+      {
+        name: "RequestMapping",
+        nodeKey: `${file}#RequestMapping`,
+        nodeType: "arrow_function",
+      },
+      {
+        name: "anonymous",
+        nodeKey: `${file}#anonymous`,
+        nodeType: "arrow_function",
+      },
+      {
+        name: "createExtractor",
+        nodeKey: `${file}#createExtractor`,
+        nodeType: "arrow_function",
+      },
+      {
+        name: "anonymous",
+        nodeKey: `${file}#anonymous@L7`,
+        nodeType: "arrow_function",
+      },
+    ]);
+  });
+
   it.each(["verbose", "error", "log", "warn", "debug"])(
     "keeps the exported conflict-policy %s function ahead of its object property",
     (name) => {

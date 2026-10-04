@@ -1,0 +1,488 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2a-candidate-recall/2",
+  "evaluatedAt": "2026-10-03T17:30:41.412Z",
+  "split": "calibration",
+  "provenance": {
+    "predictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+    "labelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+    "correctedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "implementationHash": "5d6a9c3d332c9ea744eaa17c49b0f0873f6f4bb606375bf482cf29aa9a28d3ca",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v3",
+    "snapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "uniqueOracleAliasCount": 119141,
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "candidateOracleMappingScopeCount": 10,
+    "allOracleAliasCount": 153585,
+    "candidateOracleMappingImplementationHash": "bf8602f4bb49b0906467ad60d825c5e594ad523dc28dbea016189c4a5a683a2c",
+    "candidateOracleMappingImplementationFiles": {
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts": "6196ea238af4dfb45b9a97b74fbbd9abd9116657abd1e28ff66ac3c921064978",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-evaluation.mts": "fddcc0ee2966b2316476fc6c28884c588d8ebee86cc1ef7e05266433d2d261d7",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "ca5637dc13bdb725ff9d9c18b92171995e97f4189a19d77de253fbcc27b24655"
+    }
+  },
+  "candidateRecallDomain": {
+    "totalConfirmedPositiveSiteCount": 2966,
+    "uniqueMappedPositiveTargetOccurrenceCount": 2766,
+    "ambiguousPositiveTargetOccurrenceCount": 13,
+    "unmappedPositiveTargetOccurrenceCount": 187,
+    "uniqueMappedPositiveSiteCount": 2766,
+    "sitesWithoutUniquePositiveTargetCount": 200
+  },
+  "metrics": {
+    "split": "calibration",
+    "eligibleSiteCount": 2766,
+    "candidateGoldTargetCount": 2766,
+    "coveredGoldTargetCount": 2749,
+    "candidateRecall": 0.9938539407086044,
+    "zeroCandidateSiteCount": 17,
+    "zeroCandidateRate": 0.006146059291395517,
+    "missSiteCount": 17,
+    "zeroCandidateMissSiteCount": 17,
+    "candidateButMissSiteCount": 0,
+    "candidateWithoutOracleIdSiteCount": 159,
+    "unmappedCandidateCount": 0,
+    "ambiguousCandidateMappingCount": 1958,
+    "candidateSetSizeP50": 1,
+    "candidateSetSizeP95": 23,
+    "candidateSetSizeMax": 35,
+    "families": [
+      {
+        "name": "403errors/repomind",
+        "eligibleSiteCount": 1196,
+        "candidateGoldTargetCount": 1196,
+        "coveredGoldTargetCount": 1179,
+        "candidateRecall": 0.9857859531772575,
+        "zeroCandidateSiteCount": 17,
+        "candidateWithoutOracleIdSiteCount": 2
+      },
+      {
+        "name": "Egonex-AI/Understand-Anything",
+        "eligibleSiteCount": 1570,
+        "candidateGoldTargetCount": 1570,
+        "coveredGoldTargetCount": 1570,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 157
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "bare",
+        "eligibleSiteCount": 2028,
+        "candidateGoldTargetCount": 2028,
+        "coveredGoldTargetCount": 2011,
+        "candidateRecall": 0.9916173570019724,
+        "zeroCandidateSiteCount": 17,
+        "candidateWithoutOracleIdSiteCount": 2
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 738,
+        "candidateGoldTargetCount": 738,
+        "coveredGoldTargetCount": 738,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 157
+      }
+    ],
+    "missingEvidenceReasons": {
+      "no-supported-candidates": 17
+    }
+  },
+  "candidateSetDistribution": {
+    "overall": {
+      "name": "all eligible sites",
+      "eligibleSiteCount": 2966,
+      "zeroCandidateSiteCount": 194,
+      "zeroCandidateRate": 0.06540795684423466,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 23,
+      "candidateSetSizeMax": 35,
+      "candidateWithoutOracleIdSiteCount": 172,
+      "ambiguousCandidateMappingCount": 2117,
+      "unmappedCandidateCount": 0
+    },
+    "byFamily": [
+      {
+        "name": "403errors/repomind",
+        "eligibleSiteCount": 1207,
+        "zeroCandidateSiteCount": 18,
+        "zeroCandidateRate": 0.014913007456503728,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 5,
+        "candidateSetSizeMax": 32,
+        "candidateWithoutOracleIdSiteCount": 2,
+        "ambiguousCandidateMappingCount": 46,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "Egonex-AI/Understand-Anything",
+        "eligibleSiteCount": 1759,
+        "zeroCandidateSiteCount": 176,
+        "zeroCandidateRate": 0.10005685048322911,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 23,
+        "candidateSetSizeMax": 35,
+        "candidateWithoutOracleIdSiteCount": 170,
+        "ambiguousCandidateMappingCount": 2071,
+        "unmappedCandidateCount": 0
+      }
+    ],
+    "byCallShape": [
+      {
+        "name": "bare",
+        "eligibleSiteCount": 2222,
+        "zeroCandidateSiteCount": 194,
+        "zeroCandidateRate": 0.08730873087308731,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 4,
+        "candidateSetSizeMax": 32,
+        "candidateWithoutOracleIdSiteCount": 9,
+        "ambiguousCandidateMappingCount": 193,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 744,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 14,
+        "candidateSetSizeP95": 35,
+        "candidateSetSizeMax": 35,
+        "candidateWithoutOracleIdSiteCount": 163,
+        "ambiguousCandidateMappingCount": 1924,
+        "unmappedCandidateCount": 0
+      }
+    ]
+  },
+  "baselineComparison": {
+    "baselineRuleVersion": "declared-member-hypothesis-v2",
+    "currentRuleVersion": "declared-member-hypothesis-v3",
+    "baselineImplementationHash": "dbae5f856f5ab1d3f8b2432dfe761c9fdfb2eec067a378c960a95959f976b3a0",
+    "baselinePredictionSha256": "3a250e913a1927376adbb7309d3281d3454a51e18abbe7d181c0f923da328aa5",
+    "commonSourceInputs": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "commonCorrectedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "commonLabelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+    "commonSnapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "commonUniqueOracleAliasCount": 119141,
+    "commonCandidateOracleMappingImplementationHash": "bf8602f4bb49b0906467ad60d825c5e594ad523dc28dbea016189c4a5a683a2c",
+    "callShapeGrouping": "current source-only prediction rows, joined by sampleId for both versions",
+    "baselineMetrics": {
+      "split": "calibration",
+      "eligibleSiteCount": 2766,
+      "candidateGoldTargetCount": 2766,
+      "coveredGoldTargetCount": 2746,
+      "candidateRecall": 0.9927693420101229,
+      "zeroCandidateSiteCount": 20,
+      "zeroCandidateRate": 0.0072306579898770785,
+      "missSiteCount": 20,
+      "zeroCandidateMissSiteCount": 20,
+      "candidateButMissSiteCount": 0,
+      "candidateWithoutOracleIdSiteCount": 159,
+      "unmappedCandidateCount": 0,
+      "ambiguousCandidateMappingCount": 0,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 23,
+      "candidateSetSizeMax": 35,
+      "families": [
+        {
+          "name": "403errors/repomind",
+          "eligibleSiteCount": 1196,
+          "candidateGoldTargetCount": 1196,
+          "coveredGoldTargetCount": 1176,
+          "candidateRecall": 0.9832775919732442,
+          "zeroCandidateSiteCount": 20,
+          "candidateWithoutOracleIdSiteCount": 2
+        },
+        {
+          "name": "Egonex-AI/Understand-Anything",
+          "eligibleSiteCount": 1570,
+          "candidateGoldTargetCount": 1570,
+          "coveredGoldTargetCount": 1570,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 157
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2028,
+          "candidateGoldTargetCount": 2028,
+          "coveredGoldTargetCount": 2008,
+          "candidateRecall": 0.9901380670611439,
+          "zeroCandidateSiteCount": 20,
+          "candidateWithoutOracleIdSiteCount": 2
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 738,
+          "candidateGoldTargetCount": 738,
+          "coveredGoldTargetCount": 738,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 157
+        }
+      ],
+      "missingEvidenceReasons": {
+        "no-supported-candidates": 20
+      }
+    },
+    "currentMetrics": {
+      "split": "calibration",
+      "eligibleSiteCount": 2766,
+      "candidateGoldTargetCount": 2766,
+      "coveredGoldTargetCount": 2749,
+      "candidateRecall": 0.9938539407086044,
+      "zeroCandidateSiteCount": 17,
+      "zeroCandidateRate": 0.006146059291395517,
+      "missSiteCount": 17,
+      "zeroCandidateMissSiteCount": 17,
+      "candidateButMissSiteCount": 0,
+      "candidateWithoutOracleIdSiteCount": 159,
+      "unmappedCandidateCount": 0,
+      "ambiguousCandidateMappingCount": 1958,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 23,
+      "candidateSetSizeMax": 35,
+      "families": [
+        {
+          "name": "403errors/repomind",
+          "eligibleSiteCount": 1196,
+          "candidateGoldTargetCount": 1196,
+          "coveredGoldTargetCount": 1179,
+          "candidateRecall": 0.9857859531772575,
+          "zeroCandidateSiteCount": 17,
+          "candidateWithoutOracleIdSiteCount": 2
+        },
+        {
+          "name": "Egonex-AI/Understand-Anything",
+          "eligibleSiteCount": 1570,
+          "candidateGoldTargetCount": 1570,
+          "coveredGoldTargetCount": 1570,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 157
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2028,
+          "candidateGoldTargetCount": 2028,
+          "coveredGoldTargetCount": 2011,
+          "candidateRecall": 0.9916173570019724,
+          "zeroCandidateSiteCount": 17,
+          "candidateWithoutOracleIdSiteCount": 2
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 738,
+          "candidateGoldTargetCount": 738,
+          "coveredGoldTargetCount": 738,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 157
+        }
+      ],
+      "missingEvidenceReasons": {
+        "no-supported-candidates": 17
+      }
+    },
+    "uniqueOracleTargetDomain": {
+      "baseline": {
+        "siteCount": 2966,
+        "rawCandidateSiteCount": 2769,
+        "uniquelyMappedCandidateSiteCount": 2769,
+        "sitesWithCandidatesButNoUniqueTargetCount": 0,
+        "candidateAliasMembershipCountBeforeFiltering": 10119,
+        "uniqueCandidateMembershipCount": 9733,
+        "uniqueMappedPositiveTargetOccurrenceCount": 2766,
+        "ambiguousPositiveTargetOccurrenceCount": 13,
+        "unmappedPositiveTargetOccurrenceCount": 187,
+        "uniqueMappedPositiveSiteCount": 2766,
+        "sitesWithoutUniquePositiveTargetCount": 200,
+        "droppedAmbiguousCandidateMembershipCount": 386,
+        "droppedUnmappedCandidateMembershipCount": 0
+      },
+      "current": {
+        "siteCount": 2966,
+        "rawCandidateSiteCount": 2772,
+        "uniquelyMappedCandidateSiteCount": 2772,
+        "sitesWithCandidatesButNoUniqueTargetCount": 0,
+        "candidateAliasMembershipCountBeforeFiltering": 9736,
+        "uniqueCandidateMembershipCount": 9736,
+        "uniqueMappedPositiveTargetOccurrenceCount": 2766,
+        "ambiguousPositiveTargetOccurrenceCount": 13,
+        "unmappedPositiveTargetOccurrenceCount": 187,
+        "uniqueMappedPositiveSiteCount": 2766,
+        "sitesWithoutUniquePositiveTargetCount": 200,
+        "droppedAmbiguousCandidateMembershipCount": 0,
+        "droppedUnmappedCandidateMembershipCount": 0
+      }
+    },
+    "comparison": {
+      "baselineCandidateRecall": 0.9927693420101229,
+      "currentCandidateRecall": 0.9938539407086044,
+      "candidateRecallDelta": 0.0010845986984815426,
+      "baselineCoveredGoldTargetCount": 2746,
+      "currentCoveredGoldTargetCount": 2749,
+      "addedCandidateMembershipCount": 3,
+      "removedCandidateMembershipCount": 0,
+      "sitesWithAddedCandidateCount": 3,
+      "sitesWithRemovedCandidateCount": 0,
+      "newlyCoveredGoldTargetCount": 3,
+      "noLongerCoveredGoldTargetCount": 0
+    },
+    "generatedCandidateCounts": {
+      "siteCount": 2966,
+      "baselineGeneratedCandidateCount": 11850,
+      "currentGeneratedCandidateCount": 11853,
+      "generatedCandidateCountDelta": 3,
+      "sitesWithFewerGeneratedCandidates": 0,
+      "sitesWithEqualGeneratedCandidates": 2963,
+      "sitesWithMoreGeneratedCandidates": 3
+    },
+    "baselineCandidateSetDistribution": {
+      "overall": {
+        "name": "all eligible sites",
+        "eligibleSiteCount": 2966,
+        "zeroCandidateSiteCount": 197,
+        "zeroCandidateRate": 0.06641942009440324,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 23,
+        "candidateSetSizeMax": 35,
+        "candidateWithoutOracleIdSiteCount": 172,
+        "ambiguousCandidateMappingCount": 0,
+        "unmappedCandidateCount": 0
+      },
+      "byFamily": [
+        {
+          "name": "403errors/repomind",
+          "eligibleSiteCount": 1207,
+          "zeroCandidateSiteCount": 21,
+          "zeroCandidateRate": 0.01739850869925435,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 5,
+          "candidateSetSizeMax": 32,
+          "candidateWithoutOracleIdSiteCount": 2,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "Egonex-AI/Understand-Anything",
+          "eligibleSiteCount": 1759,
+          "zeroCandidateSiteCount": 176,
+          "zeroCandidateRate": 0.10005685048322911,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 23,
+          "candidateSetSizeMax": 35,
+          "candidateWithoutOracleIdSiteCount": 170,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        }
+      ],
+      "byCallShape": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2222,
+          "zeroCandidateSiteCount": 197,
+          "zeroCandidateRate": 0.08865886588658865,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 4,
+          "candidateSetSizeMax": 32,
+          "candidateWithoutOracleIdSiteCount": 9,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 744,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 14,
+          "candidateSetSizeP95": 35,
+          "candidateSetSizeMax": 35,
+          "candidateWithoutOracleIdSiteCount": 163,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        }
+      ]
+    },
+    "currentCandidateSetDistribution": {
+      "overall": {
+        "name": "all eligible sites",
+        "eligibleSiteCount": 2966,
+        "zeroCandidateSiteCount": 194,
+        "zeroCandidateRate": 0.06540795684423466,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 23,
+        "candidateSetSizeMax": 35,
+        "candidateWithoutOracleIdSiteCount": 172,
+        "ambiguousCandidateMappingCount": 2117,
+        "unmappedCandidateCount": 0
+      },
+      "byFamily": [
+        {
+          "name": "403errors/repomind",
+          "eligibleSiteCount": 1207,
+          "zeroCandidateSiteCount": 18,
+          "zeroCandidateRate": 0.014913007456503728,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 5,
+          "candidateSetSizeMax": 32,
+          "candidateWithoutOracleIdSiteCount": 2,
+          "ambiguousCandidateMappingCount": 46,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "Egonex-AI/Understand-Anything",
+          "eligibleSiteCount": 1759,
+          "zeroCandidateSiteCount": 176,
+          "zeroCandidateRate": 0.10005685048322911,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 23,
+          "candidateSetSizeMax": 35,
+          "candidateWithoutOracleIdSiteCount": 170,
+          "ambiguousCandidateMappingCount": 2071,
+          "unmappedCandidateCount": 0
+        }
+      ],
+      "byCallShape": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2222,
+          "zeroCandidateSiteCount": 194,
+          "zeroCandidateRate": 0.08730873087308731,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 4,
+          "candidateSetSizeMax": 32,
+          "candidateWithoutOracleIdSiteCount": 9,
+          "ambiguousCandidateMappingCount": 193,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 744,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 14,
+          "candidateSetSizeP95": 35,
+          "candidateSetSizeMax": 35,
+          "candidateWithoutOracleIdSiteCount": 163,
+          "ambiguousCandidateMappingCount": 1924,
+          "unmappedCandidateCount": 0
+        }
+      ]
+    },
+    "interpretation": "Both versions are re-evaluated with the same snapshotId+repoId-scoped unique candidate-alias mapping built from the pinned corrected facts. The unique-oracle denominator excludes positive aliases that are ambiguous or absent within that source snapshot. Candidate-set sizes use raw generatedCandidateCount and include every confirmed site. Test and temporal splits are not part of this train/calibration comparison."
+  }
+}

@@ -100,6 +100,69 @@ describe("runParseAndPersist", () => {
     );
   });
 
+  it("marks only a fully parsed full-discovery source set as complete for strict proof", async () => {
+    const graphPersister = makeGraphPersister();
+
+    await runParseAndPersist({
+      astProcessor: makeAstProcessor({
+        parsed: [
+          {
+            file: "src/a.ts",
+            hash: "hash-a",
+            data: {
+              imports: [],
+              exports: [],
+              functions: [],
+              classes: [],
+              calls: [],
+            },
+            language: "typescript",
+          },
+        ],
+        failures: [],
+      }),
+      graphPersister,
+      store: fakeStore,
+      workspaceRoot: tmpDir,
+      projectId: 1,
+      filesToParse,
+      candidateFileCount: 1,
+      skippedOversized: [],
+      tags: new Set(),
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
+    });
+
+    expect(graphPersister.persist).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceIndexComplete: true }),
+    );
+  });
+
+  it("does not mark a source set complete when a candidate file failed or was skipped", async () => {
+    const graphPersister = makeGraphPersister();
+
+    await runParseAndPersist({
+      astProcessor: makeAstProcessor({
+        parsed: [],
+        failures: [{ file: "src/a.ts", hash: "hash-a", error: "parse failed" }],
+      }),
+      graphPersister,
+      store: fakeStore,
+      workspaceRoot: tmpDir,
+      projectId: 1,
+      filesToParse,
+      candidateFileCount: 1,
+      skippedOversized: [],
+      tags: new Set(),
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
+    });
+
+    expect(graphPersister.persist).toHaveBeenCalledWith(
+      expect.not.objectContaining({ sourceIndexComplete: true }),
+    );
+  });
+
   it("does not mutate the caller-supplied tags Set", async () => {
     const astProcessor = makeAstProcessor({
       parsed: [

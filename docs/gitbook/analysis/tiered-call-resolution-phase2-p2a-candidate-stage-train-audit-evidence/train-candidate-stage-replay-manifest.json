@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2a-candidate-stage-replay/1",
+  "split": "train",
+  "labelSplitsRead": [],
+  "labelsRead": false,
+  "candidateGenerationReplayed": true,
+  "corpusRecollected": false,
+  "declaredFactsRebuilt": false,
+  "callShapeInputsReparsed": true,
+  "callsiteFilesParsed": 1508,
+  "importTargetFilesParsed": 3,
+  "snapshotParseCounts": {
+    "nest": {
+      "callsiteFiles": 1049,
+      "importTargetFiles": 1
+    },
+    "typescript-language-server": {
+      "callsiteFiles": 47,
+      "importTargetFiles": 0
+    },
+    "graft": {
+      "callsiteFiles": 94,
+      "importTargetFiles": 0
+    },
+    "docuvia": {
+      "callsiteFiles": 305,
+      "importTargetFiles": 2
+    },
+    "code-review-graph": {
+      "callsiteFiles": 13,
+      "importTargetFiles": 0
+    }
+  },
+  "snapshotFactRowCounts": {
+    "nest": 2003,
+    "typescript-language-server": 106,
+    "graft": 282,
+    "docuvia": 688,
+    "code-review-graph": 30
+  },
+  "pinnedFactsRowsLoaded": 10956,
+  "verifiedTrainSnapshotFacts": 3109,
+  "trainSampleIds": 13496,
+  "trainSampleIdsHash": "83d1f36810abcb10306b15d2579afa4e113419f91a45c0fa59aab704aa6b20b6",
+  "candidateGeneratorVersion": "declared-member-hypothesis-v4",
+  "pinnedV4": {
+    "predictionsPath": "evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl",
+    "predictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+    "implementationHash": "f51c86da6dc003082a3dc5e4015d45e60e25696fa694912e782d92b57b247182",
+    "implementationFiles": {
+      "lib/ast-core/src/core/edge-computer.ts": "78f025aa1300d5c3c7df0ab76a8da9f61e2c595d29fde2edb5c490742b9b3240",
+      "lib/contracts/src/interfaces/ast.interfaces.ts": "8c605394789d88785363cbfe94d2dd87f90133274304e19eb047dc67312dbbc6",
+      "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "14d513f360ba57bc5100463620762990f21a1002bf7e6836d9b42939c8ddcd84",
+      "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "685d1122b73e51093d05bb817d813bfa7b53418b9f7f7d772aed85b436b7f14d",
+      "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "d2b5301f55100a895e6171dd5821f5bfdd903db90a3d669a9b5de016a2993d2f",
+      "lib/core/src/ast/ast-worker.ts": "1b962da230bd95248f3ee165ebe6362a4b8173d5fe461c485d86d40ce83fd272",
+      "lib/core/src/ast/call-site-shape-facts.ts": "b25f7034c1e0b4e36120e135bf107a9ca644e3de4cefe9c49e0da0d445439d15",
+      "lib/core/src/ast/declared-type-facts.ts": "6b75961c3bb71816d23b1fde973f5db669ff8ab1f1a2fcc25f1ea8d068aec796",
+      "lib/core/src/semantic/call-resolution-hypothesis-calibration.ts": "36dec8c4e7f4a85421b17ae7c7930a59b41f196fdc0c2310da62a0561a031631",
+      "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "2ff3a8a3d39adeabe476691b2df370cbd69bffc8334e5c8f683d855d5b6ed442",
+      "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+      "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts": "c474afba6f8503a61b40ce347098a6d4ce4fd44a93d2d9fbde9a683dca043592",
+      "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "a80e8a6d3383a8b0bf19142781622902bf964a4561dadbe76342935a51d026f7",
+      "scripts/semantic-corpus/phase0-snapshot-safety.mts": "18c2afecdaa873787374dd4464fecf0d613c87e3664bad03d3c0bcf8fba07123",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts": "ad036b0ed3d0b39c11dbad0f0d336a72948c81087e268a02fe20e459a3d24be4",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts": "85f21c2976721512af8ca1fe2cc77aa20ddf82493a0d28b05db0e607d336d1b7",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts": "cc2d4a417fe5ca2bc93b5f2a404c036ca56bb65463f527aaabc78cc1f25fa13b",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-runner.mts": "b12bdfca5e067f2371e34501f9ad0af8d1305d347859ce454677757077239b7c",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "2e0e698544992a7ce1fecb1b60b4d503456c94bf5b1caa2e9510e28c5ced8f8f",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts": "777eb0a69e6138733d23dfa74164a74ddb792007710fc1e138540cd86c130f46"
+    },
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "correctedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd"
+  },
+  "replay": {
+    "implementationHash": "96b23e49c8d75929aacb85050bfa83c7b8196bd23c1293b83fb1a7d617f86f70",
+    "implementationFiles": {
+      "lib/ast-core/src/core/edge-computer.ts": "78f025aa1300d5c3c7df0ab76a8da9f61e2c595d29fde2edb5c490742b9b3240",
+      "lib/contracts/src/interfaces/ast.interfaces.ts": "8c605394789d88785363cbfe94d2dd87f90133274304e19eb047dc67312dbbc6",
+      "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "14d513f360ba57bc5100463620762990f21a1002bf7e6836d9b42939c8ddcd84",
+      "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "685d1122b73e51093d05bb817d813bfa7b53418b9f7f7d772aed85b436b7f14d",
+      "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "d2b5301f55100a895e6171dd5821f5bfdd903db90a3d669a9b5de016a2993d2f",
+      "lib/core/src/ast/ast-worker.ts": "1b962da230bd95248f3ee165ebe6362a4b8173d5fe461c485d86d40ce83fd272",
+      "lib/core/src/ast/call-site-shape-facts.ts": "b25f7034c1e0b4e36120e135bf107a9ca644e3de4cefe9c49e0da0d445439d15",
+      "lib/core/src/ast/declared-type-facts.ts": "6b75961c3bb71816d23b1fde973f5db669ff8ab1f1a2fcc25f1ea8d068aec796",
+      "lib/core/src/semantic/call-resolution-hypothesis-calibration.ts": "36dec8c4e7f4a85421b17ae7c7930a59b41f196fdc0c2310da62a0561a031631",
+      "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "2ff3a8a3d39adeabe476691b2df370cbd69bffc8334e5c8f683d855d5b6ed442",
+      "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+      "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts": "c474afba6f8503a61b40ce347098a6d4ce4fd44a93d2d9fbde9a683dca043592",
+      "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "a80e8a6d3383a8b0bf19142781622902bf964a4561dadbe76342935a51d026f7",
+      "scripts/semantic-corpus/phase0-snapshot-safety.mts": "18c2afecdaa873787374dd4464fecf0d613c87e3664bad03d3c0bcf8fba07123",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts": "ad036b0ed3d0b39c11dbad0f0d336a72948c81087e268a02fe20e459a3d24be4",
+      "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts": "85f21c2976721512af8ca1fe2cc77aa20ddf82493a0d28b05db0e607d336d1b7",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts": "cc2d4a417fe5ca2bc93b5f2a404c036ca56bb65463f527aaabc78cc1f25fa13b",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-runner.mts": "b12bdfca5e067f2371e34501f9ad0af8d1305d347859ce454677757077239b7c",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "b35069a58e5813e199646480a1949ae24c56634fa9c094274ee04952307e15d5",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts": "777eb0a69e6138733d23dfa74164a74ddb792007710fc1e138540cd86c130f46",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts": "49e78996ba153ad6ed013fd92f82fa91ea7e016b5b56c67bb8f5236fe9f6e43c",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-replay.mts": "cea66b245d0d7f8752cda3dc97a037fa43cba1d66dc1d5ad2c9972ac62e230b7"
+    },
+    "allowedV4SourceDifference": {
+      "file": "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
+      "v4Sha256": "2e0e698544992a7ce1fecb1b60b4d503456c94bf5b1caa2e9510e28c5ced8f8f",
+      "replaySha256": "b35069a58e5813e199646480a1949ae24c56634fa9c094274ee04952307e15d5",
+      "reason": "optional TRAIN-only capture of generator keys and proposal target keys; row decision fields are verified independently"
+    },
+    "snapshotFingerprints": {
+      "nest": "ad22aecb58e4575ba6e16973d875fe129a815899e51569f01a78b69e78863e85",
+      "typescript-language-server": "0b79636765375d938f823b5d6f559e8be285698851879ec633bd15c63b04a555",
+      "graft": "e45a99ed241e1d822c5c6e9db5a1a0ee162774f68379753c87b2638afe99d699",
+      "docuvia": "86c8157de1da59ac35c0855279873d658b5b451fdd23d4a4c0c0bfbfbe456430",
+      "code-review-graph": "84c3ac0ef0577b7c93a7f42d84732aed95d435d429f6a2f6ed47872ad71d0a66"
+    },
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd"
+  },
+  "decisions": {
+    "comparedDecisionFields": [
+      "sampleId",
+      "split",
+      "duplicateGroup",
+      "repoFamily",
+      "snapshotId",
+      "repoId",
+      "calleeKind",
+      "ruleSignature",
+      "candidateTargetIds",
+      "topTargetId",
+      "topRankScore",
+      "tied",
+      "candidateSetComplete",
+      "truncated",
+      "unsupportedCallShape",
+      "generatedCandidateCount",
+      "ambiguousCandidateMappingCount",
+      "unmappedGeneratedCandidateCount",
+      "proposedCandidateCount",
+      "reason"
+    ],
+    "equivalentTrainRows": 13496,
+    "totalTrainRows": 13496,
+    "allEquivalent": true,
+    "decisionProofHash": "88f159245dc0ea77c2d4466a61dccd4c78d3d46972e8aa58361a282559f1e807"
+  },
+  "provenance": {
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "outputPath": "evaluate/results/semantic-corpus/v1/phase2-p2a-v4-train-candidate-stage-replay/candidate-stage-evidence-train.jsonl",
+    "outputSha256": "3806b5f555f2873747fab6a1f0943141f749995ab2cd139df4c05cea348f070a",
+    "inputFingerprint": "1289b0b9d90bba55b956ae10633c8575e6defcbfb4155880a79de627b158ca59"
+  }
+}

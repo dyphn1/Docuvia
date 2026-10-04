@@ -202,6 +202,7 @@ export const ANALYZE_EVENTS = {
    *  `ast_call_sites` table (stale `local.db` from before Phase 0's migration) makes forward
    *  silently degrade to reverse-via-fallback with no other visible error. */
   TIER_B_FORWARD_SEEDED: "analyze.tierB.forward_seeded",
+  TIER_B_CALL_RESOLUTION_CANARY: "analyze.tierB.call_resolution_canary",
 
   /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
   TIER_C_START: "analyze.tierC.start",

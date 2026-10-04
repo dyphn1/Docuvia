@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-snapshot-scope-correction-comparison/1",
+  "sourceFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+  "sourceInputHashes": {
+    "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+    "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+  },
+  "predictionRows": 31578,
+  "splitCounts": {
+    "train": 13496,
+    "calibration": 2966,
+    "test": 12422,
+    "temporal": 2694
+  },
+  "sourceOnly": true,
+  "sourcePredictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+  "predictionManifestSha256": "685c7765f668e64df19f13e998dfc11a3e8b0f5e9a2aa26ae3049b5e50a66bd2",
+  "snapshotRepoScopes": 10,
+  "predictionBehavioralFieldsCompared": [
+    "sampleId",
+    "split",
+    "duplicateGroup",
+    "repoFamily",
+    "calleeKind",
+    "ruleSignature",
+    "candidateTargetIds",
+    "topTargetId",
+    "topRankScore",
+    "tied",
+    "candidateSetComplete",
+    "truncated",
+    "unsupportedCallShape",
+    "generatedCandidateCount",
+    "unmappedGeneratedCandidateCount",
+    "ambiguousCandidateMappingCount",
+    "proposedCandidateCount",
+    "reason"
+  ],
+  "predictionBehavioralFieldDifferenceRows": 0,
+  "scope": {
+    "scope": "snapshotId+repoId",
+    "uniqueAliasMembershipCount": 119141,
+    "scopeCount": 10,
+    "mappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "mappingImplementationHash": "bf8602f4bb49b0906467ad60d825c5e594ad523dc28dbea016189c4a5a683a2c",
+    "previousUnscopedUniqueAliasCount": 72676,
+    "previousUnscopedMappingHash": "67ccf482e32d0a83bb0f8ff214ca61ac1cea6d1e6c75507a176679af98641484"
+  },
+  "splits": {
+    "train": {
+      "labelRowsHashSame": true,
+      "candidateMetricsIdentical": true,
+      "candidateSetDistributionIdentical": true,
+      "systemOneMetricsIdentical": true,
+      "oldGlobalUniqueAliasCount": 72676,
+      "newSnapshotScopedAliasMembershipCount": 119141,
+      "oldGlobalAliasMapHash": "67ccf482e32d0a83bb0f8ff214ca61ac1cea6d1e6c75507a176679af98641484",
+      "newSnapshotScopedMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+      "oldCandidateRecallSha256": "53a45d8aa0574a80fc4acb0bf3339f7f83ede378b30a96df1c5460b988985618",
+      "newCandidateRecallSha256": "2becb74c1e2d30bb63df24b8d471393bc5cba66cf1149ea4d77ac5a1073a6cbf",
+      "newSystemOneMetricsSha256": "e1cb14259c8adf397916d124563534a6b41d222779796c148e14ff82ed57f49c"
+    },
+    "calibration": {
+      "labelRowsHashSame": true,
+      "candidateMetricsIdentical": true,
+      "candidateSetDistributionIdentical": true,
+      "systemOneMetricsIdentical": true,
+      "oldGlobalUniqueAliasCount": 72676,
+      "newSnapshotScopedAliasMembershipCount": 119141,
+      "oldGlobalAliasMapHash": "67ccf482e32d0a83bb0f8ff214ca61ac1cea6d1e6c75507a176679af98641484",
+      "newSnapshotScopedMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+      "oldCandidateRecallSha256": "db2454f22dfd69cd3aa6cb6d9a9292b134c5d8f2e9c8335f3a1b36e2daa7e4dd",
+      "newCandidateRecallSha256": "bc216c9d679212ae611aed269bc4a76e5dd4b819c6e09856ee4ddd1d12fea681",
+      "newSystemOneMetricsSha256": "fdf580d2ff41ff368342190b16197f149588c4584cb10522fd0812a558f27a4b"
+    }
+  },
+  "heldout": {
+    "labelsRead": false,
+    "evaluatorRun": false,
+    "priorP2BRegressionArtifactsModified": false,
+    "correctedImpact": "unknown"
+  },
+  "p2bTrainCalibration": {
+    "systemOneImplementationHash": "4c284d5033ddb3866d4f7b405269623af95d97563c87d4fc20cc201080bf3c94",
+    "trainDevelopmentArtifactSha256": "e1cb14259c8adf397916d124563534a6b41d222779796c148e14ff82ed57f49c",
+    "calibrationMetricsSha256": "fdf580d2ff41ff368342190b16197f149588c4584cb10522fd0812a558f27a4b",
+    "calibrationThresholdArtifactSha256": "45cc38678a530c8f79bb1a004dfe4282e47934689a1172d35c4b561cf9051bfd",
+    "calibrationInputFingerprint": "4e065bfed707f897af6194728368eb363d0cb54c4f5cbac91f66bb92686a49c4",
+    "thresholdScore": 0,
+    "heldoutLabelsRead": false,
+    "heldoutEvaluatorRerun": false
+  }
+}

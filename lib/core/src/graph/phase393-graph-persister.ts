@@ -1,4 +1,7 @@
-import type { IGraphPersister } from "@workspace/contracts";
+import type {
+  ICallResolutionHypothesisService,
+  IGraphPersister,
+} from "@workspace/contracts";
 import { GraphPersisterService as Phase6GraphPersisterService } from "./phase6-graph-persister.js";
 import { persistDynamicDependencyEvidence } from "../impact/dynamic-dependency-evidence.js";
 
@@ -11,7 +14,11 @@ import { persistDynamicDependencyEvidence } from "../impact/dynamic-dependency-e
  * to a confirmed `node_links` edge.
  */
 export class GraphPersisterService implements IGraphPersister {
-  private readonly base = new Phase6GraphPersisterService();
+  private readonly base: Phase6GraphPersisterService;
+
+  constructor(hypothesisService?: ICallResolutionHypothesisService) {
+    this.base = new Phase6GraphPersisterService(hypothesisService);
+  }
 
   public async persist(
     input: Parameters<IGraphPersister["persist"]>[0],

@@ -65,6 +65,93 @@ describe("AstWorkerPool CALL edge extraction", () => {
   );
 
   it(
+    "[happy] keeps TypeScript and TSX extraction isolated across mixed parses in one worker",
+    async () => {
+      pool = new AstWorkerPool();
+      await pool.initialize(1);
+
+      const typescriptBefore = await pool.parse({
+        filePath: "before.ts",
+        code: `function beforeHelper() { return 1; }
+export function before() { return beforeHelper(); }`,
+        language: "typescript",
+      });
+      const tsx = await pool.parse({
+        filePath: "component.tsx",
+        code: `function label() { return "hello"; }
+export function Component() { return <button>{label()}</button>; }`,
+        language: "typescript",
+      });
+      const typescriptAfter = await pool.parse({
+        filePath: "after.ts",
+        code: `function afterHelper() { return 2; }
+export function after() { return afterHelper(); }`,
+        language: "typescript",
+      });
+
+      expect(typescriptBefore.success).toBe(true);
+      expect(typescriptBefore.data?.calls).toContainEqual(
+        expect.objectContaining({
+          sourceFunction: "before",
+          targetFunction: "beforeHelper",
+        }),
+      );
+      expect(tsx.success).toBe(true);
+      expect(tsx.data?.functions.map(({ name }) => name)).toEqual(
+        expect.arrayContaining(["Component", "label"]),
+      );
+      expect(tsx.data?.calls).toContainEqual(
+        expect.objectContaining({
+          sourceFunction: "Component",
+          targetFunction: "label",
+        }),
+      );
+      expect(typescriptAfter.success).toBe(true);
+      expect(typescriptAfter.data?.calls).toContainEqual(
+        expect.objectContaining({
+          sourceFunction: "after",
+          targetFunction: "afterHelper",
+        }),
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[happy] parses TypeScript after TSX when the TSX grammar loads first",
+    async () => {
+      pool = new AstWorkerPool();
+      await pool.initialize(1);
+
+      const tsx = await pool.parse({
+        filePath: "component-first.tsx",
+        code: `function label() { return "hello"; }
+export function Component() { return <button>{label()}</button>; }`,
+        language: "typescript",
+      });
+      const typescript = await pool.parse({
+        filePath: "component-after.ts",
+        code: `function renderLabel() { return "world"; }
+export function render() { return renderLabel(); }`,
+        language: "typescript",
+      });
+
+      expect(tsx.success).toBe(true);
+      expect(tsx.data?.functions.map(({ name }) => name)).toEqual(
+        expect.arrayContaining(["Component", "label"]),
+      );
+      expect(typescript.success).toBe(true);
+      expect(typescript.data?.calls).toContainEqual(
+        expect.objectContaining({
+          sourceFunction: "render",
+          targetFunction: "renderLabel",
+        }),
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
     "terminate() does not respawn replacement workers",
     async () => {
       pool = new AstWorkerPool();

@@ -1,6 +1,7 @@
 import * as path from "path";
 import {
   LinkTypes,
+  type ICallResolutionHypothesisService,
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
@@ -60,7 +61,11 @@ function localSymbols(result: ParsedAstFileResult): string[] {
  * guessing them would trade an honest false negative for a false positive.
  */
 export class GraphPersisterService implements IGraphPersister {
-  private readonly base = new BaseGraphPersisterService();
+  private readonly base: BaseGraphPersisterService;
+
+  constructor(hypothesisService?: ICallResolutionHypothesisService) {
+    this.base = new BaseGraphPersisterService(hypothesisService);
+  }
 
   public async persist(
     input: Parameters<IGraphPersister["persist"]>[0],

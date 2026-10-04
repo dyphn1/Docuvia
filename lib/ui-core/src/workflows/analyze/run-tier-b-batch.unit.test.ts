@@ -1,15 +1,21 @@
+import { createHash } from "node:crypto";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
   docuviaFactory,
   TOKENS,
   resetFactoryForTests,
   createMockLogger,
+  createPortableCallSiteKey,
   type IGitProvider,
   type IGraphStore,
   type IKnowledgeGitService,
   type IEdgeResolutionProvider,
   type EdgeResolutionOutcome,
+  type EdgeResolutionRequest,
   type NodeLinkRow,
+  type CallSiteResolutionRecord,
+  type CallSiteLspResolutionResult,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
   ANALYZE_LOG_FILE_NAME,
@@ -21,8 +27,62 @@ import {
   readTierBQueue,
   removeTierBQueueEntriesForFiles,
 } from "./tier-b-queue.js";
+import {
+  CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
+  loadCallResolutionCertificationArtifact,
+  type CallResolutionCertificationArtifact,
+} from "./call-resolution-certification.js";
 
 const HEAD_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+const CERTIFICATION_INPUTS = {
+  implementationCommitSha: "a".repeat(40),
+  ruleConfigurationSha256: "b".repeat(64),
+  oracleIdentity: "typescript-language-server",
+  oracleVersion: "5.9.2",
+  oracleConfigurationSha256: "c".repeat(64),
+  corpusManifestSha256: "d".repeat(64),
+  newFamily: {
+    familyId: "new-family-a",
+    revision: "commit-new-family",
+    splitSha256: "e".repeat(64),
+  },
+  temporal: {
+    familyId: "nestjs",
+    baseRevision: "commit-temporal-base",
+    revision: "commit-temporal-newer",
+    splitSha256: "f".repeat(64),
+  },
+};
+
+function createBatchCertificationDecision(ruleSignature: string) {
+  const passingTrack = {
+    eligibleDuplicateGroups: 299,
+    uniquelyResolvedGroups: 299,
+    successfulGroups: 299,
+    contradictionGroups: 0,
+    lowerBound95: 0.05 ** (1 / 299),
+  };
+  const artifact: CallResolutionCertificationArtifact = {
+    schemaVersion: CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
+    policyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
+    frozenAt: "2026-01-01T00:00:00.000Z",
+    labelsOpenedAt: "2026-01-02T00:00:00.000Z",
+    resultsRecordedAt: "2026-01-03T00:00:00.000Z",
+    inputs: CERTIFICATION_INPUTS,
+    signatures: [
+      {
+        ruleSignature,
+        newFamily: passingTrack,
+        temporal: passingTrack,
+      },
+    ],
+  };
+  const rawArtifact = JSON.stringify(artifact);
+  return loadCallResolutionCertificationArtifact(rawArtifact, {
+    ...CERTIFICATION_INPUTS,
+    artifactSha256: createHash("sha256").update(rawArtifact).digest("hex"),
+  });
+}
 
 function makeGit(overrides: Partial<IGitProvider> = {}): IGitProvider {
   return {
@@ -186,6 +246,520 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
 });
 
 describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g)", () => {
+  it("[happy] schedules ambiguous, unresolved and unsupported call sites before proven and likely by stable signature groups, while uncertified proven still reaches Tier B", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-resolution-priority-"),
+    );
+    for (const file of [
+      "likely.ts",
+      "proven.ts",
+      "unresolved.ts",
+      "ambiguous-z.ts",
+      "ambiguous-a-1.ts",
+      "ambiguous-a-2.ts",
+      "unsupported.ts",
+    ])
+      fs.writeFileSync(path.join(workspaceRoot, file), "export {}\n");
+
+    const { store } = makeStore();
+    const recordsByFile = new Map([
+      [
+        "likely.ts",
+        [{ resolutionClass: "likely", ruleSignature: "heuristic-v1" }],
+      ],
+      [
+        "proven.ts",
+        [
+          {
+            resolutionClass: "proven",
+            ruleSignature: "single-candidate-this-v1",
+          },
+        ],
+      ],
+      [
+        "unresolved.ts",
+        [
+          { resolutionClass: "likely", ruleSignature: "aaa-likely-v1" },
+          { resolutionClass: "unresolved", ruleSignature: "needs-binding-v1" },
+        ],
+      ],
+      [
+        "ambiguous-z.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "z-rule-v1" }],
+      ],
+      [
+        "ambiguous-a-1.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "a-rule-v1" }],
+      ],
+      [
+        "ambiguous-a-2.ts",
+        [{ resolutionClass: "ambiguous", ruleSignature: "a-rule-v1" }],
+      ],
+      [
+        "unsupported.ts",
+        [{ resolutionClass: "unsupported", ruleSignature: "unsupported-v1" }],
+      ],
+    ]);
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn((_projectId: number, file: string) =>
+          (recordsByFile.get(file) ?? []).map((record, index) => ({
+            callSiteKey: `${file}:call-${index}`,
+            ...record,
+          })),
+        ),
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "likely.ts", commitSha: HEAD_SHA },
+      { file: "proven.ts", commitSha: HEAD_SHA },
+      { file: "unresolved.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-z.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-a-2.ts", commitSha: HEAD_SHA },
+      { file: "ambiguous-a-1.ts", commitSha: HEAD_SHA },
+      { file: "unsupported.ts", commitSha: HEAD_SHA },
+    ]);
+
+    let requestedFiles: string[] = [];
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async (files) => {
+          requestedFiles = files;
+          return { edges: [], filesProcessed: files, filesFailed: [] };
+        },
+      ),
+    );
+
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit(),
+        knowledgeGit: makeKnowledgeGit(),
+      });
+
+      expect(requestedFiles).toEqual([
+        "ambiguous-a-1.ts",
+        "ambiguous-a-2.ts",
+        "unresolved.ts",
+        "unsupported.ts",
+        "ambiguous-z.ts",
+        "proven.ts",
+        "likely.ts",
+      ]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("[happy][invalid-input][state-diff] runs only hash-selected certified call sites plus every uncertified site, and completes fully certified non-canary files without LSP", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-callsite-canary-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "mixed.ts"),
+      "export function caller() {\n  sampled();\n  ruleOnly();\n  uncertified();\n}\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "rule-only.ts"),
+      "export function caller() {\n  ruleOnly();\n}\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "invalid-evidence.ts"),
+      "missingKey();\nsourceMismatch();\nmissingSignature();\n",
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "coverage-mismatch.ts"),
+      "known();\n",
+    );
+
+    const mixedSourceHash = "c".repeat(64);
+    const ruleOnlySourceHash = "a".repeat(64);
+    const invalidEvidenceSourceHash = "d".repeat(64);
+    const mismatchedSourceHash = "e".repeat(64);
+    const coverageSourceHash = "f".repeat(64);
+    const sourceHashes = [
+      { filePath: "mixed.ts", contentHash: mixedSourceHash },
+      { filePath: "rule-only.ts", contentHash: ruleOnlySourceHash },
+      {
+        filePath: "invalid-evidence.ts",
+        contentHash: invalidEvidenceSourceHash,
+      },
+      { filePath: "coverage-mismatch.ts", contentHash: coverageSourceHash },
+    ];
+    const { store, fake } = makeStore([], sourceHashes);
+    store.callSites.getForFiles = vi.fn(
+      () =>
+        new Map([
+          [
+            "mixed.ts",
+            [
+              { targetFunction: "sampled", startLine: 1, startColumn: 2 },
+              { targetFunction: "ruleOnly", startLine: 2, startColumn: 2 },
+              { targetFunction: "uncertified", startLine: 3, startColumn: 2 },
+            ],
+          ],
+          [
+            "rule-only.ts",
+            [{ targetFunction: "ruleOnly", startLine: 1, startColumn: 2 }],
+          ],
+          [
+            "invalid-evidence.ts",
+            [
+              { targetFunction: "missingKey", startLine: 0, startColumn: 0 },
+              {
+                targetFunction: "sourceMismatch",
+                startLine: 1,
+                startColumn: 0,
+              },
+              {
+                targetFunction: "missingSignature",
+                startLine: 2,
+                startColumn: 0,
+              },
+            ],
+          ],
+          [
+            "coverage-mismatch.ts",
+            [{ targetFunction: "known", startLine: 0, startColumn: 0 }],
+          ],
+        ]),
+    );
+
+    const makeResolution = (
+      filePath: string,
+      sourceContentHash: string,
+      startLine: number,
+      calleeName: string,
+      ruleSignature: string,
+      startColumn = 2,
+    ): CallSiteResolutionRecord => ({
+      callSiteKey: createPortableCallSiteKey({
+        filePath,
+        sourceContentHash,
+        startLine,
+        startColumn,
+        calleeKind: "bare",
+        calleeName,
+      }),
+      identityVersion: 1,
+      filePath,
+      sourceContentHash,
+      startLine,
+      startColumn,
+      calleeKind: "bare",
+      calleeName,
+      callerNodeKey: `${filePath}#caller`,
+      resolutionClass: "proven",
+      selectedTargetNodeKey: `targets.ts#${calleeName}`,
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature,
+      dependencyFingerprint: "source-only",
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    });
+    const resolutionsByFile = new Map<string, CallSiteResolutionRecord[]>([
+      [
+        "mixed.ts",
+        [
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            1,
+            "sampled",
+            "cert-rule-v1",
+          ),
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            2,
+            "ruleOnly",
+            "cert-rule-v1",
+          ),
+          makeResolution(
+            "mixed.ts",
+            mixedSourceHash,
+            3,
+            "uncertified",
+            "unseen-rule-v1",
+          ),
+        ],
+      ],
+      [
+        "rule-only.ts",
+        [
+          makeResolution(
+            "rule-only.ts",
+            ruleOnlySourceHash,
+            1,
+            "ruleOnly",
+            "cert-rule-v1",
+          ),
+        ],
+      ],
+      [
+        "invalid-evidence.ts",
+        [
+          {
+            ...makeResolution(
+              "invalid-evidence.ts",
+              invalidEvidenceSourceHash,
+              0,
+              "missingKey",
+              "cert-rule-v1",
+              0,
+            ),
+            callSiteKey: "",
+          },
+          makeResolution(
+            "invalid-evidence.ts",
+            mismatchedSourceHash,
+            1,
+            "sourceMismatch",
+            "cert-rule-v1",
+            0,
+          ),
+          makeResolution(
+            "invalid-evidence.ts",
+            invalidEvidenceSourceHash,
+            2,
+            "missingSignature",
+            "",
+            0,
+          ),
+        ],
+      ],
+      [
+        "coverage-mismatch.ts",
+        [
+          makeResolution(
+            "coverage-mismatch.ts",
+            coverageSourceHash,
+            0,
+            "known",
+            "cert-rule-v1",
+            0,
+          ),
+          makeResolution(
+            "coverage-mismatch.ts",
+            coverageSourceHash,
+            1,
+            "extra",
+            "cert-rule-v1",
+            0,
+          ),
+        ],
+      ],
+    ]);
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(
+          (_projectId: number, file: string) =>
+            resolutionsByFile.get(file) ?? [],
+        ),
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "mixed.ts", commitSha: HEAD_SHA },
+      { file: "rule-only.ts", commitSha: HEAD_SHA },
+      { file: "invalid-evidence.ts", commitSha: HEAD_SHA },
+      { file: "coverage-mismatch.ts", commitSha: HEAD_SHA },
+    ]);
+
+    let request: EdgeResolutionRequest | undefined;
+    const provider: IEdgeResolutionProvider = {
+      name: "canary-test-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (value) => {
+        request = value;
+        return {
+          edges: [],
+          filesProcessed: value.files,
+          filesFailed: [],
+        };
+      }),
+    };
+    registerProvider(provider);
+
+    try {
+      const result = await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () =>
+              new Map([
+                ["mixed.ts", mixedSourceHash],
+                ["rule-only.ts", ruleOnlySourceHash],
+                ["invalid-evidence.ts", invalidEvidenceSourceHash],
+                ["coverage-mismatch.ts", coverageSourceHash],
+              ]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+        callResolutionCanary: {
+          certification: createBatchCertificationDecision("cert-rule-v1"),
+          canaryRate: 0.5,
+        },
+      });
+
+      expect(request).toBeDefined();
+      const receivedRequest = request!;
+      expect(receivedRequest.files).toEqual(
+        expect.arrayContaining([
+          "mixed.ts",
+          "invalid-evidence.ts",
+          "coverage-mismatch.ts",
+        ]),
+      );
+      expect(receivedRequest.files).toHaveLength(3);
+      expect(receivedRequest.files).not.toContain("rule-only.ts");
+      expect(receivedRequest.callsByFile).toMatchObject({
+        "mixed.ts": [
+          {
+            targetFunction: "sampled",
+            startLine: 1,
+            startColumn: 2,
+            callSiteKey: createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "sampled",
+            }),
+            ruleSignature: "cert-rule-v1",
+            resolutionClass: "proven",
+            verificationMode: "canary",
+          },
+          {
+            targetFunction: "uncertified",
+            startLine: 3,
+            startColumn: 2,
+            callSiteKey: createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 3,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "uncertified",
+            }),
+            ruleSignature: "unseen-rule-v1",
+            resolutionClass: "proven",
+            verificationMode: "tier-b",
+          },
+        ],
+      });
+      expect(receivedRequest.callResolutionCanary).toMatchObject({
+        policyVersion: "sha256-callsite-rule-class-v1",
+        sampleRate: 0.5,
+        stratification: "rule-signature",
+        hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"],
+        selectedCallSiteKeysByRuleSignature: {
+          "cert-rule-v1": [
+            createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "sampled",
+            }),
+          ],
+        },
+        ruleOverriddenCallSiteKeysByRuleSignature: {
+          "cert-rule-v1": [
+            createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 2,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
+            createPortableCallSiteKey({
+              filePath: "rule-only.ts",
+              sourceContentHash: ruleOnlySourceHash,
+              startLine: 1,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
+          ],
+        },
+      });
+      expect(receivedRequest.callsByFile?.["invalid-evidence.ts"]).toEqual([
+        {
+          targetFunction: "missingKey",
+          startLine: 0,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+        {
+          targetFunction: "sourceMismatch",
+          startLine: 1,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+        {
+          targetFunction: "missingSignature",
+          startLine: 2,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+      ]);
+      expect(receivedRequest.callsByFile?.["coverage-mismatch.ts"]).toEqual([
+        {
+          targetFunction: "known",
+          startLine: 0,
+          startColumn: 0,
+          verificationMode: "tier-b",
+        },
+      ]);
+      expect(result.filesProcessed).toBe(4);
+      expect(result.filesFailed).toBe(0);
+      expect(fake.tierBProcessed).toEqual(
+        expect.arrayContaining([
+          { projectId: 1, filePath: "rule-only.ts", commitSha: HEAD_SHA },
+          { projectId: 1, filePath: "mixed.ts", commitSha: HEAD_SHA },
+          {
+            projectId: 1,
+            filePath: "invalid-evidence.ts",
+            commitSha: HEAD_SHA,
+          },
+          {
+            projectId: 1,
+            filePath: "coverage-mismatch.ts",
+            commitSha: HEAD_SHA,
+          },
+        ]),
+      );
+      expect(
+        JSON.parse(
+          fake.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING) ?? "{}",
+        ),
+      ).toMatchObject({ headSha: HEAD_SHA, remainingQueue: [] });
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("drops a deleted-at-HEAD entry and skips an unsupported-language entry, both logged, leaving nothing to process", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
@@ -224,6 +798,153 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     expect(providerFactory).not.toHaveBeenCalled();
 
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[state-diff][error-handling] forwards site-bound LSP outcomes through the batch without deriving evidence from aggregate edges", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-site-evidence-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "caller.ts"),
+      "export function caller() {\n  oldTarget();\n  noAnswer();\n}\n",
+    );
+
+    const sourceContentHash = "7".repeat(64);
+    const callSites = [
+      { targetFunction: "oldTarget", startLine: 1, startColumn: 2 },
+      { targetFunction: "noAnswer", startLine: 2, startColumn: 2 },
+    ];
+    const makeRecord = (
+      startLine: number,
+      calleeName: string,
+    ): CallSiteResolutionRecord => ({
+      callSiteKey: createPortableCallSiteKey({
+        filePath: "caller.ts",
+        sourceContentHash,
+        startLine,
+        startColumn: 2,
+        calleeKind: "bare",
+        calleeName,
+      }),
+      identityVersion: 1,
+      filePath: "caller.ts",
+      sourceContentHash,
+      startLine,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName,
+      callerNodeKey: "caller.ts#caller",
+      resolutionClass: "proven",
+      selectedTargetNodeKey: "targets.ts#oldTarget",
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature: "certified-rule-v1",
+      dependencyFingerprint: "source-only",
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    });
+    const records = [makeRecord(1, "oldTarget"), makeRecord(2, "noAnswer")];
+    const { store } = makeStore(
+      ["caller.ts#caller", "targets.ts#oldTarget", "targets.ts#newTarget"],
+      [{ filePath: "caller.ts", contentHash: sourceContentHash }],
+    );
+    store.callSites.getForFiles = vi.fn(
+      () => new Map([["caller.ts", callSites]]),
+    );
+    const applyTierBVerificationResults = vi.fn();
+    let transactionDepth = 0;
+    Object.defineProperty(store, "withTransaction", {
+      value: (fn: () => unknown) => {
+        transactionDepth++;
+        try {
+          return fn();
+        } finally {
+          transactionDepth--;
+        }
+      },
+    });
+    applyTierBVerificationResults.mockImplementation(() => {
+      expect(transactionDepth).toBe(1);
+    });
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(() => records),
+        applyTierBVerificationResults,
+      },
+    });
+    appendTierBQueueEntries(store, [
+      { file: "caller.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const expectedResults: CallSiteLspResolutionResult[] = [
+      {
+        callSiteKey: records[0].callSiteKey,
+        sourceContentHash,
+        ruleSignature: records[0].ruleSignature,
+        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        expectedTargetNodeKey: records[0].selectedTargetNodeKey!,
+        resolutionClass: "proven",
+        verificationMode: "canary",
+        outcome: "unique-local",
+        targetNodeKey: "targets.ts#newTarget",
+      },
+      {
+        callSiteKey: records[1].callSiteKey,
+        sourceContentHash,
+        ruleSignature: records[1].ruleSignature,
+        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        expectedTargetNodeKey: records[1].selectedTargetNodeKey!,
+        resolutionClass: "proven",
+        verificationMode: "canary",
+        outcome: "no-result",
+      },
+    ];
+    const provider: IEdgeResolutionProvider = {
+      name: "site-evidence-test-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (request) => ({
+        edges: [],
+        filesProcessed: request.files,
+        filesFailed: [],
+        callSiteResults: expectedResults,
+      })),
+    };
+    registerProvider(provider);
+
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () => new Map([["caller.ts", sourceContentHash]]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+        callResolutionCanary: {
+          certification: createBatchCertificationDecision("certified-rule-v1"),
+          canaryRate: 1,
+        },
+      });
+
+      expect(applyTierBVerificationResults).toHaveBeenCalledTimes(1);
+      expect(applyTierBVerificationResults).toHaveBeenCalledWith(
+        1,
+        expectedResults,
+      );
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
 

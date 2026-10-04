@@ -1,3 +1,8 @@
+import type {
+  CallSiteLspResolutionResult,
+  CallSiteResolutionClass,
+} from "./graph-store.interfaces.js";
+
 /**
  * D1 edge-resolution provider seam (phase1-decision-integration.md §8b; PLAT-007 Tier B) —
  * `escalateToLsp`'s real implementation sits behind this interface so a second provider (§8b
@@ -72,6 +77,8 @@ export interface EdgeResolutionOutcome {
   edges: ResolvedCallEdge[];
   filesProcessed: string[];
   filesFailed: EdgeResolutionFileFailure[];
+  /** Optional additive evidence channel. Legacy providers continue to report aggregate edges. */
+  callSiteResults?: CallSiteLspResolutionResult[];
   unavailableReason?: string;
 }
 
@@ -88,6 +95,28 @@ export interface EdgeResolutionCallSite {
   targetFunction: string;
   startLine: number;
   startColumn: number;
+  /** Portable Phase 3 identity, present only when the same source snapshot was verified. */
+  callSiteKey?: string;
+  /** Resolution evidence paired with `callSiteKey`; never inferred from receiver/callee text. */
+  ruleSignature?: string;
+  resolutionClass?: CallSiteResolutionClass;
+  verificationPolicyVersion?: string;
+  /** The exact source bytes whose portable identity was checked by the caller. */
+  sourceContentHash?: string;
+  /** Current selected target at the same call-site key and source hash. */
+  expectedTargetNodeKey?: string;
+  /** `canary` is a deterministic sample of an already-certified proven signature. */
+  verificationMode?: "tier-b" | "canary";
+}
+
+/** Reproducible local scheduling metadata attached to each TypeScript LSP request. */
+export interface CallResolutionCanaryRequestMetadata {
+  policyVersion: string;
+  sampleRate: number;
+  stratification: "rule-signature";
+  hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"];
+  selectedCallSiteKeysByRuleSignature: Record<string, string[]>;
+  ruleOverriddenCallSiteKeysByRuleSignature: Record<string, string[]>;
 }
 
 export interface EdgeResolutionRequest {
@@ -103,6 +132,8 @@ export interface EdgeResolutionRequest {
    *  this in, so production behavior is unchanged; it is the unit-tested seam the Flip (Slice 3)
    *  feeds call sites through. */
   callsByFile?: Record<string, EdgeResolutionCallSite[]>;
+  /** Local Phase 4 sampling ledger; not exported to knowledge snapshots. */
+  callResolutionCanary?: CallResolutionCanaryRequestMetadata;
   /** PRJ-002: the directory the LSP server should be initialized against (its `cwd`, `rootUri`
    *  and workspace folder). When set, it must be a project root (or the workspace root) -- the
    *  sharding driver points each shard at its owning project's root so the server loads only that

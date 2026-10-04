@@ -47,6 +47,7 @@ export type {
 export type {
   EdgeResolutionAvailability,
   EdgeResolutionCallSite,
+  CallResolutionCanaryRequestMetadata,
   EdgeResolutionFileFailure,
   EdgeResolutionOutcome,
   EdgeResolutionProviderConfig,
@@ -112,6 +113,56 @@ export type {
 } from "./interfaces/ast.interfaces.js";
 export { AstExportKinds } from "./interfaces/ast.interfaces.js";
 export type {
+  AstDeclaredCallableArity,
+  AstDeclaredDeclaration,
+  AstDeclaredDeclarationKind,
+  AstDeclaredOwnerInventory,
+  AstDeclaredTypeFact,
+  AstDeclaredTypeFactKind,
+  AstDeclaredTypeFacts,
+  AstDeclaredTypeLanguage,
+  AstDeclaredTypeOwner,
+  AstDeclaredTypeOwnerKind,
+  AstDeclaredUnsupportedReason,
+  AstDeclaredVisibility,
+  AstUtf16Span,
+} from "./interfaces/declared-type-facts.interfaces.js";
+export { AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
+export type {
+  AstCallCalleeBinding,
+  AstCallArgumentKind,
+  AstCallReceiverBinding,
+  AstCallReceiverBindingKind,
+  AstCallSiteShapeFact,
+  AstCallSiteShapeFacts,
+} from "./interfaces/call-site-shape-facts.interfaces.js";
+export { AST_CALL_SITE_SHAPE_SCHEMA_VERSION } from "./interfaces/call-site-shape-facts.interfaces.js";
+export {
+  createPortableCallSiteKey,
+  type PortableCallSiteKeyInput,
+} from "./graph/call-site-identity.js";
+export type {
+  CallResolutionCalibrationFamilyMetric,
+  CallResolutionCalibrationRecord,
+  CallResolutionHypothesisCandidate,
+  CallResolutionStrictProof,
+  CallResolutionStrictProofReason,
+  CallResolutionHypothesisFilterStage,
+  CallResolutionHypothesisReason,
+  CallResolutionHypothesisRequest,
+  CallResolutionHypothesisResult,
+  CallResolutionHypothesisServiceOptions,
+  CallResolutionHypothesisSourceFile,
+  CallResolutionHypothesisWorkspaceIndex,
+  CallResolutionHypothesisWorkspaceInput,
+  ICallResolutionHypothesisService,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export {
+  CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+  CALL_RESOLUTION_RANKING_POLICY_VERSION,
+  CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export type {
   ProjectRow,
   ProjectFileRow,
   ProjectFileSnapshotMetadata,
@@ -140,6 +191,18 @@ export type {
   AstCallSiteRow,
   SnapshotCallSiteRow,
   ICallSitesRepo,
+  CallSiteResolutionClass,
+  CallSiteVerificationStatus,
+  CallSiteResolutionObservationSource,
+  CallSiteResolutionCandidate,
+  CallSiteResolutionDependency,
+  CallSiteResolutionRecord,
+  CallSiteResolutionObservationInput,
+  CallSiteResolutionObservation,
+  CallSiteLspResolutionResult,
+  CallSiteRuleQuarantine,
+  CallSiteVerificationApplyResult,
+  ICallSiteResolutionsRepo,
   L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
 export {
@@ -149,6 +212,11 @@ export {
   L3NodeTypes,
   ValidityStatuses,
   L3DecisionSources,
+  CallSiteResolutionClasses,
+  CallSiteVerificationStatuses,
+  CallSiteResolutionObservationSources,
+  CallSiteRuleQuarantineReasons,
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   ExtractedDecision,

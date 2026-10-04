@@ -6,9 +6,13 @@ import DatabaseCtor from "better-sqlite3";
 import { DefaultProvider, typescriptConfig } from "@workspace/ast-core";
 import { Language, Parser } from "web-tree-sitter";
 import { GraphStore } from "@workspace/schema";
-import type { ParsedAstFileResult } from "@workspace/contracts";
+import type {
+  CallSiteResolutionRecord,
+  ParsedAstFileResult,
+} from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
+import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import { resolveWasmPath } from "../ast/resolve-wasm-path.js";
 import { extractTierAIndexedDeclarations } from "../ast/tier-a-declaration-index.js";
 
@@ -70,6 +74,94 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("links an imported bare call to a const factory, not its returned anonymous arrow", async () => {
+    const factoryFile = "src/decorator.ts";
+    const callerFile = "src/consumer.ts";
+    const factoryCode = [
+      "export const RequestMapping = (path: string) => {",
+      "  return (target: object) => {",
+      "    void path;",
+      "    void target;",
+      "  };",
+      "};",
+    ].join("\n");
+    const callerCode = [
+      'import { RequestMapping } from "./decorator";',
+      "export function controller() {",
+      '  RequestMapping("/test");',
+      "}",
+    ].join("\n");
+
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, factoryFile), factoryCode);
+    fs.writeFileSync(path.join(tmpDir, callerFile), callerCode);
+
+    const workerPool = new AstWorkerPool();
+    try {
+      await workerPool.initialize(1);
+      const factoryResponse = await workerPool.parse({
+        filePath: factoryFile,
+        code: factoryCode,
+        language: "typescript",
+      });
+      const callerResponse = await workerPool.parse({
+        filePath: callerFile,
+        code: callerCode,
+        language: "typescript",
+      });
+      expect(factoryResponse.data?.functions.map(({ name }) => name)).toEqual([
+        "RequestMapping",
+        "anonymous",
+      ]);
+
+      await persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [
+          {
+            file: factoryFile,
+            hash: "factory-hash",
+            data: factoryResponse.data!,
+          },
+          {
+            file: callerFile,
+            hash: "caller-hash",
+            data: callerResponse.data!,
+          },
+        ],
+        tags: [],
+      });
+
+      const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+      const raw = new DatabaseCtor(dbPath, { readonly: true });
+      try {
+        const edge = raw
+          .prepare(
+            `SELECT target.node_key AS targetNodeKey
+           FROM node_links AS link
+           JOIN l2_nodes AS source ON source.id = link.source_node_id
+           JOIN l2_nodes AS target ON target.id = link.target_node_id
+           WHERE source.node_key = ? AND link.link_type = 'calls'`,
+          )
+          .get(`${callerFile}#controller`) as
+          { targetNodeKey: string } | undefined;
+
+        expect(edge?.targetNodeKey).toBe(`${factoryFile}#RequestMapping`);
+        expect(
+          store.graph.findNodeIdByNodeKey(`${factoryFile}#RequestMapping`),
+        ).toBeTypeOf("number");
+        expect(
+          store.graph.findNodeIdByNodeKey(`${factoryFile}#anonymous`),
+        ).toBeTypeOf("number");
+      } finally {
+        raw.close();
+      }
+    } finally {
+      await workerPool.terminate();
+    }
   });
 
   it("matches the extracted declaration index to Tier A's persisted node_key insertion order", async () => {
@@ -368,6 +460,89 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("[state-diff] clears current call resolutions on same-path reparse but retains history and other callers", async () => {
+    const callerFile = "src/caller.ts";
+    const otherFile = "src/other.ts";
+    const targetFile = "src/target.ts";
+    const makeParsedFile = (
+      file: string,
+      hash: string,
+      functionName: string,
+    ): ParsedAstFileResult => ({
+      file,
+      hash,
+      data: {
+        imports: [],
+        exports: [],
+        functions: [{ name: functionName, startLine: 0, endLine: 1 }],
+        classes: [],
+        calls: [],
+      },
+    });
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        makeParsedFile(callerFile, "caller-before", "caller"),
+        makeParsedFile(otherFile, "other-before", "otherCaller"),
+        makeParsedFile(targetFile, "target-before", "target"),
+      ],
+      tags: [],
+    });
+
+    const callerResolution = callResolution(
+      "call-site:v1:" + "a".repeat(64),
+      callerFile,
+      `${callerFile}#caller`,
+    );
+    const otherResolution = callResolution(
+      "call-site:v1:" + "b".repeat(64),
+      otherFile,
+      `${otherFile}#otherCaller`,
+    );
+    store.callSiteResolutions.replaceForFile(projectId, callerFile, [
+      callerResolution,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, otherFile, [
+      otherResolution,
+    ]);
+    store.callSiteResolutions.appendObservation(projectId, {
+      callSiteKey: callerResolution.callSiteKey,
+      filePath: callerFile,
+      sourceContentHash: callerResolution.sourceContentHash,
+      source: "strict-proof",
+      targetNodeKey: callerResolution.selectedTargetNodeKey,
+      resolutionClass: "proven",
+      resolver: callerResolution.resolver,
+      ruleSignature: callerResolution.ruleSignature,
+      evidenceJson: "{}",
+    });
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [
+        makeParsedFile(callerFile, "caller-after", "renamedCaller"),
+      ],
+      tags: [],
+    });
+
+    expect(store.callSiteResolutions.getForFile(projectId, callerFile)).toEqual(
+      [],
+    );
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, otherFile)
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([otherResolution.callSiteKey]);
+    expect(
+      store.callSiteResolutions.getObservations(projectId, callerFile),
+    ).toMatchObject([{ callSiteKey: callerResolution.callSiteKey }]);
   });
 
   it("re-persisting a real parsed file deletes stale nodes and produces correct call-resolution counters", async () => {
@@ -751,6 +926,42 @@ describe("GraphPersisterService.persist()", () => {
     });
   });
 });
+
+function callResolution(
+  callSiteKey: string,
+  filePath: string,
+  callerNodeKey: string,
+): CallSiteResolutionRecord {
+  const sourceContentHash = "a".repeat(64);
+  const selectedTargetNodeKey = "src/target.ts#target";
+  return {
+    callSiteKey,
+    identityVersion: 1,
+    filePath,
+    sourceContentHash,
+    startLine: 0,
+    startColumn: 0,
+    calleeKind: "bare",
+    calleeName: "target",
+    callerNodeKey,
+    resolutionClass: "proven",
+    selectedTargetNodeKey,
+    confidence: null,
+    resolver: "persist-reparse-test",
+    ruleSignature: "direct-test/v1",
+    dependencyFingerprint: "c".repeat(64),
+    dependencies: [
+      { filePath, contentHash: sourceContentHash },
+      { filePath: "src/target.ts", contentHash: "d".repeat(64) },
+    ],
+    verificationStatus: "unverified",
+    verifiedTargetNodeKey: null,
+    isStale: false,
+    candidates: [
+      { targetNodeKey: selectedTargetNodeKey, ordinal: 0, evidenceJson: "{}" },
+    ],
+  };
+}
 
 // ── Honest self-analysis: parse real Docuvia source files and verify edges ─────────────
 // These tests feed REAL source code through the FULL pipeline (parse → persist → resolve)

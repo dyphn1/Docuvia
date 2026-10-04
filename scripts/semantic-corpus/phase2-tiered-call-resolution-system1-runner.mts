@@ -490,8 +490,8 @@ async function calibrateQualityOof(
     "system1-calibration-quality-oof.json",
   );
   writeJson(output, {
-    schemaVersion: 2,
-    measurement: "phase2-p2b-system1-calibration-quality-oof-artifact/2",
+    schemaVersion: 3,
+    measurement: "phase2-p2b-system1-calibration-quality-oof-artifact/3",
     split: "calibration",
     generatedAt: new Date().toISOString(),
     provenance: commonProvenance(bundle),

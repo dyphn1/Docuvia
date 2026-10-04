@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateSystemOneCalibrationQualityOof,
   assignDuplicateGroupFolds,
+  reliabilityBinForProbability,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mjs";
 import type {
   Phase2EvaluationLabel,
@@ -50,6 +51,27 @@ function label(
 const aliases = new Set(["src/target.ts#run", "src/wrong.ts#run"]);
 
 describe("P2-B duplicate-group cross-fitted confidence calibration", () => {
+  it("[happy][state-diff] defines half-open bins and includes probability one in the final bin", () => {
+    expect(reliabilityBinForProbability(0.249999, 4)).toEqual({
+      binIndex: 0,
+      lowerInclusive: 0,
+      upperBound: 0.25,
+      upperBoundInclusive: false,
+    });
+    expect(reliabilityBinForProbability(0.25, 4)).toEqual({
+      binIndex: 1,
+      lowerInclusive: 0.25,
+      upperBound: 0.5,
+      upperBoundInclusive: false,
+    });
+    expect(reliabilityBinForProbability(1, 4)).toEqual({
+      binIndex: 3,
+      lowerInclusive: 0.75,
+      upperBound: 1,
+      upperBoundInclusive: true,
+    });
+  });
+
   it("[state-diff][error-handling] excludes every held duplicate group from its fold fit and threshold", () => {
     const observations = [
       observation("a", "group-a", { topRankScore: 10 }),
@@ -158,6 +180,10 @@ describe("P2-B duplicate-group cross-fitted confidence calibration", () => {
     );
 
     expect(result).toMatchObject({
+      schemaVersion: 3,
+      measurement: "phase2-p2b-system1-calibration-quality-oof/3",
+    });
+    expect(result).toMatchObject({
       eligibleSiteCount: 30,
       eligibleDuplicateGroupCount: 27,
       selectedSiteCount: 27,
@@ -201,21 +227,33 @@ describe("P2-B duplicate-group cross-fitted confidence calibration", () => {
         expectedCalibrationError: null,
         bins: [
           {
+            lowerInclusive: 0,
+            upperBound: 0.25,
+            upperBoundInclusive: false,
             siteCount: 0,
             predictedProbability: null,
             observedSuccessRate: null,
           },
           {
+            lowerInclusive: 0.25,
+            upperBound: 0.5,
+            upperBoundInclusive: false,
             siteCount: 0,
             predictedProbability: null,
             observedSuccessRate: null,
           },
           {
+            lowerInclusive: 0.5,
+            upperBound: 0.75,
+            upperBoundInclusive: false,
             siteCount: 0,
             predictedProbability: null,
             observedSuccessRate: null,
           },
           {
+            lowerInclusive: 0.75,
+            upperBound: 1,
+            upperBoundInclusive: true,
             siteCount: 0,
             predictedProbability: null,
             observedSuccessRate: null,

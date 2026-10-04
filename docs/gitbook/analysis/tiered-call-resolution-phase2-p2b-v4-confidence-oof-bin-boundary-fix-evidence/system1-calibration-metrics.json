@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-system1-calibration/2",
+  "split": "calibration",
+  "generatedAt": "2026-10-04T00:06:54.353Z",
+  "provenance": {
+    "candidateGeneratorVersion": "declared-member-hypothesis-v4",
+    "rankingPolicyVersion": "ordered-evidence-v1",
+    "configurationHash": "e09018b7f5abca2e246fd1b6a9c7e078d6972b0a66fa54b67c2eeabc17437fdd",
+    "sourceFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "sourcePredictionSha256": "6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622",
+    "sourcePredictionManifestSha256": "de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e",
+    "sourceImplementationHash": "f51c86da6dc003082a3dc5e4015d45e60e25696fa694912e782d92b57b247182",
+    "systemOneImplementationHash": "c876602a62b4156771a06f59347d218ed551a407e42cd5600d4070db18863477",
+    "sourceSplitAssignmentHash": "41c9c0649c6e68d2afc4c66c8978ea3dfacbfbd78a67760f1f167b4cabeda595",
+    "sourceSplitCounts": {
+      "train": 13496,
+      "calibration": 2966,
+      "test": 12422,
+      "temporal": 2694
+    },
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "snapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "snapshotScopedUniqueAliasCount": 119141
+  },
+  "calibrationLabelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+  "calibrationInputFingerprint": "4bf62a57a6f7f907bd9fc11475845c03c7a7397523b73c6f5cd6c6c45d4e9960",
+  "threshold": {
+    "thresholdScore": 0,
+    "targetAcceptedPrecision": 0.9,
+    "candidateThresholdCount": 9,
+    "qualifyingThresholdCount": 9,
+    "metrics": {
+      "split": "calibration",
+      "eligibleSiteCount": 2966,
+      "scorableLabelSiteCount": 2766,
+      "unscorableLabelSiteCount": 200,
+      "rawTop1CorrectCount": 2665,
+      "rawTop1": 0.8985165205664194,
+      "selectedSiteCount": 2669,
+      "coverage": 0.8998651382333108,
+      "abstentionCount": 297,
+      "abstentionRate": 0.10013486176668915,
+      "selectedCorrectSiteCount": 2662,
+      "acceptedSitePrecision": 0.9973772948669913,
+      "endToEndTop1": 0.8975050573162509,
+      "acceptedDuplicateGroupCount": 2446,
+      "correctAcceptedDuplicateGroupCount": 2424,
+      "duplicateGroupPrecision": 0.9910057236304171,
+      "selectedIncompleteInventorySiteCount": 2669,
+      "familyMacroRawTop1": 0.907940133191215,
+      "worstFamilyRawTop1": 0.8573052870949404,
+      "familyMacroEndToEndTop1": 0.9066973825698397,
+      "worstFamilyEndToEndTop1": 0.8573052870949404,
+      "families": [
+        {
+          "name": "403errors/repomind",
+          "eligibleSiteCount": 1207,
+          "rawTop1CorrectCount": 1157,
+          "selectedSiteCount": 1161,
+          "selectedCorrectSiteCount": 1154,
+          "rawTop1": 0.9585749792874897,
+          "acceptedSitePrecision": 0.9939707149009475,
+          "endToEndTop1": 0.956089478044739
+        },
+        {
+          "name": "Egonex-AI/Understand-Anything",
+          "eligibleSiteCount": 1759,
+          "rawTop1CorrectCount": 1508,
+          "selectedSiteCount": 1508,
+          "selectedCorrectSiteCount": 1508,
+          "rawTop1": 0.8573052870949404,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.8573052870949404
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "bare",
+          "eligibleSiteCount": 2222,
+          "rawTop1CorrectCount": 1988,
+          "selectedSiteCount": 1995,
+          "selectedCorrectSiteCount": 1988,
+          "rawTop1": 0.8946894689468947,
+          "acceptedSitePrecision": 0.9964912280701754,
+          "endToEndTop1": 0.8946894689468947
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 744,
+          "rawTop1CorrectCount": 677,
+          "selectedSiteCount": 674,
+          "selectedCorrectSiteCount": 674,
+          "rawTop1": 0.9099462365591398,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.9059139784946236
+        }
+      ]
+    },
+    "reason": "selected-max-coverage"
+  },
+  "thresholdArtifactPath": "system1-calibration-threshold.json",
+  "thresholdArtifactSha256": "4ad98ab6b46ed48b4e34dbeda6ba92576fa005be1e8e72a2ddb092a9d5edb201"
+}

@@ -72,10 +72,14 @@ interface ReliabilityRow {
   readonly scorable: boolean;
 }
 
-interface ReliabilityBin {
+interface ReliabilityBinBounds {
   readonly binIndex: number;
   readonly lowerInclusive: number;
-  readonly upperInclusive: number;
+  readonly upperBound: number;
+  readonly upperBoundInclusive: boolean;
+}
+
+interface ReliabilityBin extends ReliabilityBinBounds {
   readonly siteCount: number;
   readonly duplicateGroupCount: number;
   readonly predictedProbability: number | null;
@@ -159,8 +163,8 @@ interface CallShapeSensitivity {
 }
 
 export interface SystemOneCalibrationQualityResult {
-  readonly schemaVersion: 2;
-  readonly measurement: "phase2-p2b-system1-calibration-quality-oof/2";
+  readonly schemaVersion: 3;
+  readonly measurement: "phase2-p2b-system1-calibration-quality-oof/3";
   readonly split: "calibration";
   readonly method: string;
   readonly probabilityMeaning: string;
@@ -526,6 +530,34 @@ function binIndex(probability: number, binCount: number): number {
   return Math.min(binCount - 1, Math.floor(probability * binCount));
 }
 
+function binBounds(
+  binIndexValue: number,
+  binCount: number,
+): ReliabilityBinBounds {
+  return {
+    binIndex: binIndexValue,
+    lowerInclusive: binIndexValue / binCount,
+    upperBound: (binIndexValue + 1) / binCount,
+    upperBoundInclusive: binIndexValue === binCount - 1,
+  };
+}
+
+export function reliabilityBinForProbability(
+  probability: number,
+  binCount: number,
+): ReliabilityBinBounds {
+  if (
+    !Number.isFinite(probability) ||
+    probability < 0 ||
+    probability > 1 ||
+    !Number.isInteger(binCount) ||
+    binCount < 1
+  ) {
+    throw new Error("A reliability-bin probability or bin count is invalid.");
+  }
+  return binBounds(binIndex(probability, binCount), binCount);
+}
+
 function metricWeights(
   rows: readonly ReliabilityRow[],
   groupWeighted: boolean,
@@ -567,7 +599,8 @@ function reliabilityMetric(
   rows.forEach((row, index) => {
     const weight = weights[index]!;
     brierTotal += weight * (row.probability - row.outcome) ** 2;
-    const bucket = buckets[binIndex(row.probability, binCount)]!;
+    const assignment = reliabilityBinForProbability(row.probability, binCount);
+    const bucket = buckets[assignment.binIndex]!;
     bucket.rows.push(index);
     bucket.weight += weight;
     bucket.predicted += weight * row.probability;
@@ -578,9 +611,7 @@ function reliabilityMetric(
   const bins = buckets.map((bucket, index): ReliabilityBin => {
     if (bucket.weight === 0)
       return {
-        binIndex: index,
-        lowerInclusive: index / binCount,
-        upperInclusive: (index + 1) / binCount,
+        ...binBounds(index, binCount),
         siteCount: 0,
         duplicateGroupCount: 0,
         predictedProbability: null,
@@ -593,9 +624,7 @@ function reliabilityMetric(
       (bucket.weight / totalWeight) *
       Math.abs(predictedProbability - observedSuccessRate);
     return {
-      binIndex: index,
-      lowerInclusive: index / binCount,
-      upperInclusive: (index + 1) / binCount,
+      ...binBounds(index, binCount),
       siteCount: bucket.rows.length,
       duplicateGroupCount: bucket.groups.size,
       predictedProbability,
@@ -616,9 +645,7 @@ function reliabilityMetric(
 
 function emptyBins(binCount: number): ReliabilityBin[] {
   return Array.from({ length: binCount }, (_, index) => ({
-    binIndex: index,
-    lowerInclusive: index / binCount,
-    upperInclusive: (index + 1) / binCount,
+    ...binBounds(index, binCount),
     siteCount: 0,
     duplicateGroupCount: 0,
     predictedProbability: null,
@@ -1000,8 +1027,8 @@ export function evaluateSystemOneCalibrationQualityOof(
   const selectedSiteCount = selectedRowsOnly.length;
   const abstentionCount = baseRows.length - selectedSiteCount;
   return {
-    schemaVersion: 2,
-    measurement: "phase2-p2b-system1-calibration-quality-oof/2",
+    schemaVersion: 3,
+    measurement: "phase2-p2b-system1-calibration-quality-oof/3",
     split: "calibration",
     method: METHOD,
     probabilityMeaning:

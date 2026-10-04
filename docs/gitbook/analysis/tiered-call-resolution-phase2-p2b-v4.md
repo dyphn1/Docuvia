@@ -92,6 +92,8 @@ The ordinal top-rank score is mapped to a probability estimate with pooled-adjac
 
 The group-weighted values differ substantially from the primary site-weighted values because they give each duplicate group equal weight. They do not replace site-weighted reporting. Only two repository families are present; these are descriptive in-split estimates, not broad-family reliability claims.
 
+Reliability-bin metadata uses `lowerInclusive`, `upperBound`, and `upperBoundInclusive`. The assignment is `[lowerInclusive, upperBound)` for every bin except the last, which is `[lowerInclusive, 1]`; probability `1` is clamped into and included by the final bin. This is OOF artifact schema 3. The original schema-2 artifact from commit `4e629db9` mislabeled every upper bound as inclusive; its metrics were unchanged, but it is superseded for interval semantics and preserved in the prior evidence directory.
+
 | Family                          | Eligible sites / groups | Selected sites / groups | Coverage |  Site ECE / Brier | Group ECE / Brier |
 | ------------------------------- | ----------------------: | ----------------------: | -------: | ----------------: | ----------------: |
 | `403errors/repomind`            |           1,207 / 1,129 |           1,161 / 1,086 |   96.19% | 0.00816 / 0.01648 | 0.00836 / 0.00316 |
@@ -112,21 +114,23 @@ The per-shape sensitivity uses the same five folds, global threshold, and accept
 |    3 |                      2,191 / 548 |                      590 / 540 |                0 |            1,508 / 4 (unsupported) |                     440 / 7 (fitted) |
 |    4 |                      2,192 / 547 |                      634 / 569 |                0 |            1,522 / 4 (unsupported) |                     440 / 7 (fitted) |
 
-The current train-development, calibration-threshold, and OOF commands took 2.32s, 1.65s, and 1.79s wall time with maximum RSS 1,528,758,272, 1,982,840,832, and 1,990,246,400 bytes respectively. These whole-command costs include startup, loading, and evaluation; per-call ranking latency and incremental index memory remain unmeasured.
+The boundary-fix train-development, calibration-threshold, and OOF commands took 2.32s, 1.77s, and 1.84s wall time with maximum RSS 1,786,249,216, 1,996,587,008, and 1,994,244,096 bytes respectively. These whole-command costs include startup, loading, and evaluation; per-call ranking latency and incremental index memory remain unmeasured.
 
-The OOF command read only calibration labels (`labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`). No heldout exposure marker exists in its output directory. The OOF result and all current train/calibration artifacts use System One implementation hash `6f9129c603dc0218ac04c70914658e5a8c7889cf2060c868967f92874b5c6527`; they are distinct from the earlier follow-up attempt under `17fa7ff1…` and from the older f7 evidence. Full OOF fold hashes and reliability bins are retained in the machine-readable artifact directory below.
+The original OOF command read only calibration labels (`labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`). The boundary correction regenerated train description, calibration freeze, and OOF output under the current System One implementation hash `c876602a62b4156771a06f59347d218ed551a407e42cd5600d4070db18863477`; the resulting calibration and OOF runs still read only calibration labels. No heldout exposure marker exists in the new output directory. The earlier schema-2 artifacts (implementation hash `6f9129c6…`) remain byte-preserved in their original directory. These current outputs are distinct from the earlier attempt under `17fa7ff1…` and the older f7 evidence. Full OOF fold hashes and corrected interval metadata are retained in the new machine-readable evidence directory below.
 
-| Current follow-up artifact        |                                                            SHA-256 |
-| --------------------------------- | -----------------------------------------------------------------: |
-| Train development JSON            | `a69b6050746fb86313f5b43d167b43518379641520b954362c745e43d897e306` |
-| Calibration metrics JSON          | `6053bc40cc63ca6e0bbe9cb154a6f737a35b7739c56c8d0acafdcf9e87907d24` |
-| Calibration threshold/freeze JSON | `62fdf95129aad69dcd894c17d8634780a4a3ac8f2b602fff1fb39fcf3d6b5f9d` |
-| Calibration-quality OOF JSON      | `3c3ec7d54652a5c696da544321bd1ffe4456556b846227720089ba0f2a8dae68` |
-| OOF row content hash              | `f54f52c4c0d3a2f67e982eff86c9255b1c54d66b2bc4dc4356022a9239fcf5f4` |
-| Calibration labels hash           | `5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426` |
-| OOF input fingerprint             | `87f2b0ab52573ea8ff163994516e3c892bf5682669e35c0775ed9ca15e9a3499` |
+| Current boundary-fix artifact         |                                                            SHA-256 |
+| ------------------------------------- | -----------------------------------------------------------------: |
+| Train development JSON                | `7c77e43e7d33141194fd7bdbaf3e789dc2b62c17b49392c34f674130b65de35d` |
+| Calibration metrics JSON              | `439b87d2b512c3f855127369b9fc8d3921c2d5f4508a5fe8021376f036b5fdea` |
+| Calibration threshold/freeze JSON     | `4ad98ab6b46ed48b4e34dbeda6ba92576fa005be1e8e72a2ddb092a9d5edb201` |
+| Calibration-quality OOF schema-3 JSON | `f71a0067f3d420601500b0316b0a51317cc902e5e740c6e9aa27849ce2972e97` |
+| System One implementation hash        | `c876602a62b4156771a06f59347d218ed551a407e42cd5600d4070db18863477` |
+| V4 source predictions hash            | `6d99b1b940d470cbeb94e2bd55527a8e372d2c30c26b56b7d51fc9d773c0e622` |
+| OOF row content hash                  | `f54f52c4c0d3a2f67e982eff86c9255b1c54d66b2bc4dc4356022a9239fcf5f4` |
+| Calibration labels hash               | `5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426` |
+| OOF input fingerprint                 | `bc27aaba55e033d14502c90426603ac956c51b773f68c30f77f7faede612a6ae` |
 
-These four current JSON outputs are tracked in [`tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence`](tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence/). The earlier [v4 train/calibration evidence directory](tiered-call-resolution-phase2-p2b-v4-evidence/) is preserved and remains bound to its earlier implementation hash.
+These four corrected JSON outputs are tracked in [`tiered-call-resolution-phase2-p2b-v4-confidence-oof-bin-boundary-fix-evidence`](tiered-call-resolution-phase2-p2b-v4-confidence-oof-bin-boundary-fix-evidence/). The schema-2 [previous confidence OOF evidence](tiered-call-resolution-phase2-p2b-v4-confidence-oof-evidence/) and the earlier [v4 train/calibration evidence](tiered-call-resolution-phase2-p2b-v4-evidence/) remain byte-preserved and bound to their respective earlier implementation hashes.
 
 ## Provenance
 
@@ -160,20 +164,20 @@ Machine-readable outputs are in [`tiered-call-resolution-phase2-p2b-v4-evidence`
 Run under Node `v24.14.1` from the repository root. The first command evaluates train labels descriptively; the second uses calibration labels only to choose/freeze the threshold. Do not run `--mode heldout` for this v4 output under the current evaluation boundary.
 
 ```sh
-PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode develop --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4
+PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode develop --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4-confidence-oof-bin-boundary-fix
 
-PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibrate --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4
+PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibrate --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4-confidence-oof-bin-boundary-fix
 
-PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibration-quality-oof --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4-confidence-oof-shape-sensitivity-followup
+PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH /usr/bin/time -l pnpm exec tsx scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts --mode calibration-quality-oof --predictions evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction/predictions.jsonl --out evaluate/results/semantic-corpus/v1/phase2-p2b-v4-confidence-oof-bin-boundary-fix
 ```
 
 The source candidate-population summary is a label-free aggregation of only train/calibration rows from the pinned source prediction JSONL. It counts `generatedCandidateCount`, `candidateTargetIds.length`, and `proposedCandidateCount` separately; percentiles use nearest-rank `ceil(p*n)-1`. Candidate recall itself is in the linked P2-A train/calibration evaluator artifacts. The OOF mode reads only calibration labels and does not invoke heldout mode. No source generation, label, ranking, or threshold command for test/temporal was run here.
 
 ## Validation
 
-- Focused evaluator/candidate-audit/confidence-calibration suites: 4 files, 31/31 passed under Node `v24.14.1`.
+- Boundary metadata RED: `PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH pnpm exec vitest run test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts -t 'emits empty bins'` failed because the output had `upperInclusive` but lacked explicit half-open/final-inclusive boundaries. GREEN: `PATH=/Users/daniel.chang/.nvm/versions/node/v24.14.1/bin:$PATH pnpm exec vitest run test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts test/semantic-corpus/phase2-tiered-call-resolution-system1-evaluation.unit.test.ts test/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.unit.test.ts test/semantic-corpus/phase2-tiered-call-resolution-evaluation.unit.test.ts` passed 4 files, 32/32 under Node `v24.14.1`.
 - `pnpm run typecheck`, `pnpm run lint`, and `pnpm run build` passed under Node `v24.14.1`; scoped Prettier and `git diff --check` passed.
 - `CATEGORY_HEAD_REF=HEAD CATEGORY_BASE_REF=origin/main bash scripts/test-quality-gate.sh`: exit 0. Weak assertions are `215 / 7,179` (ceiling 220); category ratchet scans 332 files and improves from base 235 failures to head 234. The new tests add no weak-assertion count over the prior tracked baseline.
 - The current remote workflow has previously counted 19 additional weak assertions under `node_modules/zod`, producing 234 against the 220 ceiling. This is a quality-gate scan-scope issue outside this calibration slice and remains visible for a separate CI fix; the local tracked-tree result above is not presented as a remote pass.
 - `docuvia review origin/main` reports a PR-wide CRITICAL impact over 144 changed files / 582 impacted nodes, with leading findings in earlier graph-store contract and LSP-provider changes. This follow-up changes analysis code/docs and does not touch those findings. `docuvia impact` is based on a stale graph (`fffc91f` against code HEAD `f7a8176b`) and reports incomplete processing (22/854 tracked files not Tier B processed), so it is not fresh impact evidence for this follow-up.
-- The required full pre-push on the resulting commit runs repository formatting, lint, typecheck, build, full tests and the quality gate; its terminal totals will be recorded in the PR update. The train/calibration/OOF reproduction commands above completed with the pinned hashes. The OOF output records `labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`; no test/temporal labels were read and no System One heldout mode ran.
+- The required full pre-push on the resulting commit runs repository formatting, lint, typecheck, build, full tests and the quality gate; its terminal totals will be recorded in the PR update. The train/calibration/OOF reproduction commands above completed under implementation hash `c876602a62b4156771a06f59347d218ed551a407e42cd5600d4070db18863477`. The schema-3 OOF output records `labelSplitsRead: ["calibration"]`, `heldoutModeInvoked: false`; no test/temporal labels were read and no System One heldout mode ran.

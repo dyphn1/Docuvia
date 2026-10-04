@@ -7,3 +7,4 @@ filePath: lib/remote-api/src/register.ts
 # Symbol: anonymous
 
 File: `lib/remote-api/src/register.ts`
+ts`

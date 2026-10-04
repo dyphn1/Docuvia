@@ -2640,19 +2640,19 @@
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis-ranking.ts",
-      "contentHash": "227c552057b0cf19a22ab1b0c8d9b0170d8422c0",
+      "contentHash": "1251f357457dd9388c2957671f0d53d6ad3fad6d",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts",
-      "contentHash": "d3a8dd3dc3d84cbb410cbd1ba6e4c2f400ab3a94",
+      "contentHash": "2a19563b6d27274e5bdb4da9e66fef0905c3392c",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
       "filePath": "lib/core/src/semantic/call-resolution-hypothesis.service.ts",
-      "contentHash": "52f2764edfdeb96bf09fe4bd51e60a8b57a4f0be",
+      "contentHash": "fe4bbdf9fd3c37e92f2738383b50b36b0789b7e8",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
@@ -4685,6 +4685,12 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-calibration-cap-audit.mts",
+      "contentHash": "126a6a9eeb313202f45cd60717c549f897a60518",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
       "contentHash": "871366258ca2bafa71219747a17fb542f7a95acc",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
@@ -4703,10 +4709,52 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation-runner.mts",
+      "contentHash": "35dc9559b95bf4b61bf585fa342ca9c28dd78a80",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.mts",
+      "contentHash": "e0377bfa488a465cbd1f97f5c940ac013b78d4ba",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts",
+      "contentHash": "acd55935a5f518dc9c4609228d264efbcaddcb9f",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-replay.mts",
+      "contentHash": "2525c94b89088c57826d2747a0934e605d435623",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts",
       "contentHash": "24cda56b0eac71769a897a001f35b3cb65f75f75",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evaluation-runner.mts",
+      "contentHash": "b6ecece277a43ddbb64126673c9e27af7b8c32ee",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evaluation.mts",
+      "contentHash": "6857b6b21fee29a2df3295aa68880980b6be0056",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.mts",
+      "contentHash": "ec90e50fb1ad36b225b0bc6455c683e7de523406",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-runner.mts",
@@ -4716,7 +4764,7 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
-      "contentHash": "c5da8ca86be325e5b8a45fe6494a695880bead0f",
+      "contentHash": "00726e68b6c42c9d3c02c992cf04e8f940a57259",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
@@ -4749,6 +4797,12 @@
       "contentHash": "02c76e6a87670b56e2ee64fa889e69eef9b98671",
       "lastTierBProcessedAt": "2026-10-04 01:51:26",
       "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-train-miss-source-audit.mts",
+      "contentHash": "d3bd2113f7dd793060858993faacb4fbcfa6ad8e",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "scripts/semantic-corpus/replay.mts",
@@ -5087,16 +5141,46 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-calibration-cap-audit.unit.test.ts",
+      "contentHash": "ab89393046cf7fbe2cfc1985c3f770acc047a375",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.unit.test.ts",
       "contentHash": "0ec309b74f0834c8b586d99cde7591edbfc5de08",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.unit.test.ts",
+      "contentHash": "679be78090d336805a85602033030c00ba233a1e",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.unit.test.ts",
+      "contentHash": "b50da6415f1411344376c670d1edae05d24f8b25",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
       "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-evaluation.unit.test.ts",
       "contentHash": "cd50119dafeef240d4691a92d6db53ffb0909fbc",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
+    },
+    {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evaluation.unit.test.ts",
+      "contentHash": "c4d659740284224d23a43d99306403e51b82be1d",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
+    },
+    {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.unit.test.ts",
+      "contentHash": "3fa06dc2360c2a9a3b7ccb1491f6f8b700b4f7ad",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-source.unit.test.ts",
@@ -5127,6 +5211,12 @@
       "contentHash": "ef1176596655693c32647159c7279603ac804e6e",
       "lastTierBProcessedAt": "2026-10-04 01:51:26",
       "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
+    },
+    {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-train-miss-source-audit.unit.test.ts",
+      "contentHash": "a6b5cd27a9c997cd5490591982dae3d5b0367af7",
+      "lastTierBProcessedAt": null,
+      "lastTierBCommitSha": null
     },
     {
       "filePath": "test/system1-query-routing-rules.test.ts",
@@ -5165,7 +5255,7 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     }
   ],
-  "lastIngestedSourceSha": "79a6c3d8ebe0de7eae2927ee7c8fb54162bd6866",
+  "lastIngestedSourceSha": "831b67e3a1a4c8e01504d5b9df2d04bccc129a66",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

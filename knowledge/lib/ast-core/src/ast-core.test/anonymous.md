@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/ast-core.test.js#anonymous
+id: lib/ast-core/src/ast-core.test.js#anonymous@L13
 type: symbol
 name: anonymous
 filePath: lib/ast-core/src/ast-core.test.js

@@ -4739,10 +4739,16 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts",
+      "contentHash": "f35744cca84a7ba68a4980d33039b00535417c6c",
+      "lastTierBProcessedAt": "2026-10-04 01:51:26",
+      "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
+    },
+    {
       "filePath": "scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts",
-      "contentHash": "313e144423f30a137fe05596b3ff6f8a9ed1136c",
-      "lastTierBProcessedAt": "2026-10-04 00:38:08",
-      "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
+      "contentHash": "02c76e6a87670b56e2ee64fa889e69eef9b98671",
+      "lastTierBProcessedAt": "2026-10-04 01:51:26",
+      "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
     },
     {
       "filePath": "scripts/semantic-corpus/replay.mts",
@@ -5111,6 +5117,18 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     },
     {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.unit.test.ts",
+      "contentHash": "03a1bca711d20e690ffa56d89b47fdf9ae9cd2b4",
+      "lastTierBProcessedAt": "2026-10-04 01:51:26",
+      "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
+    },
+    {
+      "filePath": "test/semantic-corpus/phase2-tiered-call-resolution-system1-runner.unit.test.ts",
+      "contentHash": "ef1176596655693c32647159c7279603ac804e6e",
+      "lastTierBProcessedAt": "2026-10-04 01:51:26",
+      "lastTierBCommitSha": "7d7dd9391b4b2fe4f4b8f2d8da5e3e14011f6936"
+    },
+    {
       "filePath": "test/system1-query-routing-rules.test.ts",
       "contentHash": "5dc7630b584564e4c75c15ac7a61773071144e26",
       "lastTierBProcessedAt": "2026-10-04 00:38:08",
@@ -5147,7 +5165,7 @@
       "lastTierBCommitSha": "117ca50667329f27cd80a561f39e704f11759a9b"
     }
   ],
-  "lastIngestedSourceSha": "117ca50667329f27cd80a561f39e704f11759a9b",
+  "lastIngestedSourceSha": "79a6c3d8ebe0de7eae2927ee7c8fb54162bd6866",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

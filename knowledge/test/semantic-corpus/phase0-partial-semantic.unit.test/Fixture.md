@@ -1,9 +1,9 @@
 ---
-id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#fixture
+id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#Fixture
 type: symbol
-name: fixture
+name: Fixture
 filePath: test/semantic-corpus/phase0-partial-semantic.unit.test.ts
 ---
-# Symbol: fixture
+# Symbol: Fixture
 
 File: `test/semantic-corpus/phase0-partial-semantic.unit.test.ts`

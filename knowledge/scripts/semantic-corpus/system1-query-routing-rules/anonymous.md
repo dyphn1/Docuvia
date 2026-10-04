@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/system1-query-routing-rules.mts#anonymous@L882
+id: scripts/semantic-corpus/system1-query-routing-rules.mts#anonymous@L959
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/system1-query-routing-rules.mts

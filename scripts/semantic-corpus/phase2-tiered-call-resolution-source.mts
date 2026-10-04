@@ -29,6 +29,11 @@ import {
   type Phase2FactFile,
 } from "./phase2-tiered-call-resolution-support.mjs";
 import type { Phase2EvaluationObservation } from "./phase2-tiered-call-resolution-evaluation.mjs";
+import {
+  createCandidateStageEvidence,
+  type CandidateStageEvidence,
+  type CandidateTargetMapping,
+} from "./phase2-tiered-call-resolution-candidate-stage-evidence.mjs";
 
 export interface Phase2PinnedSnapshot {
   readonly snapshotId: string;
@@ -45,6 +50,7 @@ export interface Phase2SnapshotSourceResult {
   readonly sourceFingerprint: string;
   readonly configurationHash: string;
   readonly observations: readonly Phase2EvaluationObservation[];
+  readonly candidateStageEvidence?: readonly CandidateStageEvidence[];
   readonly sourceFactFileCount: number;
   readonly sourceIndexComplete: boolean;
   readonly ownerInventoryCount: number;
@@ -138,6 +144,34 @@ function addCandidateAliases(
   return { aliases: [...aliases].sort(), unmapped, ambiguous };
 }
 
+function candidateTargetMappingForKey(
+  key: string,
+  byKey: ReadonlyMap<string, CandidateAliasInfo>,
+  aliasesByName: ReadonlyMap<string, number>,
+): CandidateTargetMapping {
+  const info = byKey.get(key);
+  if (!info)
+    return {
+      status: "unmapped",
+      targetId: null,
+      reason: "candidate-key-not-in-pinned-facts",
+    };
+  if (info.aliases.size !== 1 || info.declarationCount !== 1)
+    return {
+      status: "ambiguous",
+      targetId: null,
+      reason: "candidate-key-has-multiple-source-declarations",
+    };
+  const [alias] = info.aliases;
+  if (!alias || aliasesByName.get(alias) !== 1)
+    return {
+      status: "ambiguous",
+      targetId: null,
+      reason: "candidate-alias-is-not-unique-in-pinned-facts",
+    };
+  return { status: "mapped", targetId: alias, reason: null };
+}
+
 export function mapCandidateKeysToUnambiguousAliases(
   keys: readonly string[],
   factRows: readonly Phase2FactFile[],
@@ -228,6 +262,24 @@ function observationWithoutCall(
   };
 }
 
+function candidateStageCallSiteInputHash(
+  source: Phase2CorpusSource,
+  sourceContentHash: string,
+  callSite: AstCallSiteShapeFact | null,
+): string {
+  return canonicalHash({
+    sampleId: source.sampleId,
+    callSiteId: source.callSiteId,
+    filePath: source.filePath,
+    line: source.line,
+    column: source.column,
+    calleeName: source.calleeName,
+    positionStatus: source.positionStatus,
+    sourceContentHash,
+    callSiteShapeFact: callSite,
+  });
+}
+
 function observationFromResult(
   source: Phase2CorpusSource,
   callSite: AstCallSiteShapeFact,
@@ -239,8 +291,13 @@ function observationFromResult(
   >,
   aliasesByKey: ReadonlyMap<string, CandidateAliasInfo>,
   aliasesByName: ReadonlyMap<string, number>,
+  candidateStageContext?: {
+    readonly sourceContentHash: string;
+    readonly callSiteInputHash: string;
+  },
 ): {
   observation: Phase2EvaluationObservation;
+  candidateStageEvidence?: CandidateStageEvidence;
   unmapped: number;
   ambiguous: number;
 } {
@@ -264,6 +321,29 @@ function observationFromResult(
     aliasesByName.get(topAlias) === 1
       ? topAlias
       : null;
+  const candidateStageEvidence = candidateStageContext
+    ? createCandidateStageEvidence(
+        {
+          sampleId: source.sampleId,
+          split: source.split,
+          sourceContentHash: candidateStageContext.sourceContentHash,
+          callSiteInputHash: candidateStageContext.callSiteInputHash,
+          generatedCandidateKeys: result.generatedCandidateKeys,
+          orderedProposalKeys: result.candidates.map(
+            (candidate) => candidate.targetKey,
+          ),
+        },
+        (key) => candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
+      )
+    : undefined;
+  if (
+    candidateStageEvidence &&
+    JSON.stringify(candidateStageEvidence.mappedCandidateTargetIds) !==
+      JSON.stringify(generated.aliases)
+  )
+    throw new Error(
+      `Candidate-stage mapping differs from the pinned v4 target mapping at ${source.sampleId}: evidence=${JSON.stringify(candidateStageEvidence.mappedCandidateTargetIds)}; v4=${JSON.stringify(generated.aliases)}.`,
+    );
   return {
     observation: {
       sampleId: source.sampleId,
@@ -288,6 +368,7 @@ function observationFromResult(
       proposedCandidateCount: result.candidates.length,
       reason: result.reason,
     },
+    ...(candidateStageEvidence ? { candidateStageEvidence } : {}),
     unmapped: generated.unmapped,
     ambiguous: generated.ambiguous,
   };
@@ -382,8 +463,14 @@ export async function processPhase2Snapshot(input: {
   readonly service: ICallResolutionHypothesisService;
   readonly processor: AstProcessingService;
   readonly factsSidecarHash: string;
+  readonly includeCandidateStageEvidence?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
+  if (
+    input.includeCandidateStageEvidence &&
+    input.sourceRows.some((row) => row.split !== "train")
+  )
+    throw new Error("Candidate-stage source replay accepts TRAIN rows only.");
   const sourceDirectory = path.join(
     input.repositoriesDirectory,
     snapshot.sourceDir,
@@ -488,6 +575,7 @@ export async function processPhase2Snapshot(input: {
       ]),
     );
     const observations: Phase2EvaluationObservation[] = [];
+    const candidateStageEvidence: CandidateStageEvidence[] = [];
     const hypothesisLatenciesMs: number[] = [];
     let callShapeMappedCount = 0;
     let callShapeMissingCount = 0;
@@ -500,8 +588,40 @@ export async function processPhase2Snapshot(input: {
         callShapeMaps.get(source.filePath),
         source,
       );
+      const sourceContentHash = sourceHashesByFile.get(source.filePath);
+      if (input.includeCandidateStageEvidence && !sourceContentHash)
+        throw new Error(
+          `TRAIN caller source bytes were not pinned for ${source.filePath}.`,
+        );
+      const candidateStageContext =
+        input.includeCandidateStageEvidence && sourceContentHash
+          ? {
+              sourceContentHash,
+              callSiteInputHash: candidateStageCallSiteInputHash(
+                source,
+                sourceContentHash,
+                callSite ?? null,
+              ),
+            }
+          : undefined;
       if (!callSite || source.positionStatus !== "unique") {
         observations.push(observationWithoutCall(source));
+        if (candidateStageContext) {
+          candidateStageEvidence.push(
+            createCandidateStageEvidence(
+              {
+                sampleId: source.sampleId,
+                split: source.split,
+                sourceContentHash: candidateStageContext.sourceContentHash,
+                callSiteInputHash: candidateStageContext.callSiteInputHash,
+                generatedCandidateKeys: [],
+                orderedProposalKeys: [],
+              },
+              (key) =>
+                candidateTargetMappingForKey(key, aliasesByKey, aliasesByName),
+            ),
+          );
+        }
         callShapeMissingCount++;
         continue;
       }
@@ -516,9 +636,12 @@ export async function processPhase2Snapshot(input: {
         workspaceIndex,
         aliasesByKey,
         aliasesByName,
+        candidateStageContext,
       );
       hypothesisLatenciesMs.push(performance.now() - started);
       observations.push(result.observation);
+      if (result.candidateStageEvidence)
+        candidateStageEvidence.push(result.candidateStageEvidence);
       generatedCandidateCount +=
         result.observation.generatedCandidateCount ?? 0;
       unmappedCandidateCount += result.unmapped;
@@ -530,6 +653,9 @@ export async function processPhase2Snapshot(input: {
       sourceFingerprint: workspaceIndex.sourceFingerprint,
       configurationHash: workspaceIndex.configurationHash,
       observations,
+      ...(input.includeCandidateStageEvidence
+        ? { candidateStageEvidence }
+        : {}),
       sourceFactFileCount: factRows.length,
       sourceIndexComplete: true,
       ownerInventoryCount: factRows.reduce(

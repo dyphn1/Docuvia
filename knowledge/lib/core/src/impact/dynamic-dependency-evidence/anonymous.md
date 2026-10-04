@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/impact/dynamic-dependency-evidence.ts#anonymous@L621
+id: lib/core/src/impact/dynamic-dependency-evidence.ts#anonymous@L304
 type: symbol
 name: anonymous
 filePath: lib/core/src/impact/dynamic-dependency-evidence.ts

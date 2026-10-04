@@ -8,4 +8,3 @@ filePath: lib/core/src/graph/scope-resolver.unit.test.ts
 
 File: `lib/core/src/graph/scope-resolver.unit.test.ts`
 
-

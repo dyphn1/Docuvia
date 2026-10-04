@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts#committed@L368
+id: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts#committed
 type: symbol
 name: committed
 filePath: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/semantic/system1/eval/system1-eval-metrics.ts
 # Symbol: committed
 
 File: `lib/core/src/semantic/system1/eval/system1-eval-metrics.ts`
+.ts`

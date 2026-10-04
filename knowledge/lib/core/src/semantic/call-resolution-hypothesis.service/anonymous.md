@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-hypothesis.service.ts#CallResolutionHypothesisService.anonymous
+id: lib/core/src/semantic/call-resolution-hypothesis.service.ts#CallResolutionHypothesisService.anonymous@L216
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-hypothesis.service.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/call-resolution-hypothesis.service.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-hypothesis.service.ts`
-.ts`

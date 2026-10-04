@@ -22,3 +22,5 @@ docs/gitbook/analysis/tiered-call-resolution-phase2-p2b-v4-family-transfer-evide
 # Keep this machine-readable proposal-stage aggregate byte-identical to the runner output/hash.
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-train-evidence/proposal-filter-stage-train-summary.json
 docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-proposal-filter-stage-train-evidence/proposal-filter-stage-replay-manifest.json
+# Keep this CALIBRATION candidate-cap aggregate byte-identical to runner output.
+docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-calibration-cap-evidence/calibration-cap-summary.json

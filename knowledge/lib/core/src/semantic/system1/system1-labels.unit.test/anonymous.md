@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/system1/system1-labels.unit.test.ts#anonymous@L57
+id: lib/core/src/semantic/system1/system1-labels.unit.test.ts#anonymous@L56
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/system1/system1-labels.unit.test.ts

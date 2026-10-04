@@ -1,5 +1,5 @@
 ---
-id: test/system1-query-routing-rules.test.ts#anonymous@L69
+id: test/system1-query-routing-rules.test.ts#anonymous@L96
 type: symbol
 name: anonymous
 filePath: test/system1-query-routing-rules.test.ts

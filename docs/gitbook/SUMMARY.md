@@ -82,6 +82,7 @@
 - [GRPH-008 Phase 1 — Declared Type Facts](analysis/tiered-call-resolution-phase1-results.md)
 - [GRPH-008 P2-A/P2-B — Snapshot-Scoped Evaluation Correction](analysis/tiered-call-resolution-phase2-snapshot-scope-correction.md)
 - [GRPH-008 P2-A — Direct Import Alias Candidates](analysis/tiered-call-resolution-phase2-p2a-direct-import-alias.md)
+- [GRPH-008 P2-A — TRAIN Candidate-Stage Audit](analysis/tiered-call-resolution-phase2-p2a-candidate-stage-train-audit.md)
 - [GRPH-008 P2-B v4 — System One Train/Calibration Evidence](analysis/tiered-call-resolution-phase2-p2b-v4.md)
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
 - [Roadmap & Open Items](analysis/roadmap-and-open-items.md)

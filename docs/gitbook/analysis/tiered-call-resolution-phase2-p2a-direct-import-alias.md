@@ -38,6 +38,8 @@ No additions occurred for Onyx, Understand-Anything, code-review-graph, Graft, o
 
 The full per-family and per-call-shape distributions, zero-candidate rates, size percentiles, label-denominator counts, and per-site set delta are in the machine-readable [evidence directory](tiered-call-resolution-phase2-p2a-direct-import-alias-evidence/).
 
+The follow-up [TRAIN candidate-stage audit](tiered-call-resolution-phase2-p2a-candidate-stage-train-audit.md) separates raw generated keys, mapped target IDs, and ordered proposals. It finds 7 raw generator misses where call-shape evidence is missing (`calleeKind=unmapped`) and 21 additional uniquely mappable targets lost before the final proposal set; it does not change candidate or ranking behavior.
+
 ## Source cost and provenance
 
 The metric-producing source-only runner processed ten snapshots and 31,578 rows in 60.594 seconds. It parsed 3,426 call-site files and 22 additional unique import-target files, with zero parse failures. The additional targets were Nest (1), Docuvia (2), GitNexus July snapshot (6), and GitNexus September snapshot (13). Combined parser wall time was 11.714 seconds; an isolated per-target timing was not recorded. Hypothesis/index work was 21.129 seconds; measured per-call hypothesis p50/p95 was 0.378/2.304 ms. These are corpus-run timings, not end-to-end request latency or memory measurements.

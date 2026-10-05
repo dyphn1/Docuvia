@@ -7,6 +7,7 @@ import {
   SUPPORTED_LANGUAGES,
   TOKENS,
   type CallResolutionCalibrationRecord,
+  type CallResolutionConfiguredPathAliases,
 } from "@workspace/contracts";
 import { clopperPearsonLowerBound } from "./system1/eval/system1-eval-calibration.js";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
@@ -58,11 +59,13 @@ function indexWorkspace(
     > | null;
   }[],
   sourceIndexComplete = true,
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
 ) {
   return service.indexWorkspace({
     sourceFingerprint,
     sourceIndexComplete,
     sourceFiles,
+    ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
   });
 }
 
@@ -119,6 +122,11 @@ async function hypothesizeCallFromSources(
   files: readonly { filePath: string; code: string }[],
   callerFilePath: string,
   calleeName: string,
+  options: {
+    readonly maxCandidates?: number;
+    readonly sourceIndexComplete?: boolean;
+    readonly configuredPathAliases?: CallResolutionConfiguredPathAliases;
+  } = {},
 ): Promise<CallResolutionHypothesisResultLike> {
   const parsedFiles = await Promise.all(
     files.map(async (file) => ({
@@ -135,7 +143,11 @@ async function hypothesizeCallFromSources(
   if (!caller || !callSite)
     throw new Error(`worker omitted ${calleeName} call in ${callerFilePath}`);
 
-  const service = new CallResolutionHypothesisService();
+  const service = new CallResolutionHypothesisService(
+    options.maxCandidates === undefined
+      ? {}
+      : { maxCandidates: options.maxCandidates },
+  );
   const workspaceIndex = indexWorkspace(
     service,
     "f".repeat(64),
@@ -147,6 +159,8 @@ async function hypothesizeCallFromSources(
       callSiteShapeFacts: data.callSiteShapeFacts,
       declaredTypeFacts: data.declaredTypeFacts ?? null,
     })),
+    options.sourceIndexComplete ?? true,
+    options.configuredPathAliases,
   );
   return service.hypothesize({
     callerFilePath,
@@ -348,6 +362,599 @@ function createAliasWorkspaceInput(
 }
 
 describe("call-resolution hypothesis service", () => {
+  it("[positive] proves a direct explicitly named relative import without calibration", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown as finish } from "./implementation.js";',
+            "export function call(): void { finish(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "finish",
+    );
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      reason: "unique-named-import",
+    });
+    expect(result.status).toBe("ambiguous");
+    expect(result.selected).toBeNull();
+  });
+
+  it("[positive] proves an unaliased direct named import", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown } from "./implementation.js";',
+            "export function call(): void { shutdown(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "shutdown",
+    );
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      reason: "unique-named-import",
+    });
+  });
+
+  it("[positive] proves a direct import despite an unrelated incomplete member inventory", async () => {
+    const targetCode = "export function runTask(): void {}";
+    const callerCode = [
+      'import { runTask as run } from "./implementation.js";',
+      "export function call(): void { run(); }",
+    ].join("\n");
+    const unrelatedCode = [
+      'const dynamicName = "computed";',
+      "export class Unrelated { [dynamicName](): void {} }",
+    ].join("\n");
+    const target = await parseFile("src/implementation.ts", targetCode);
+    const caller = await parseFile("src/caller.ts", callerCode);
+    const unrelated = await parseFile("src/unrelated.ts", unrelatedCode);
+    const incompleteInventories =
+      unrelated.declaredTypeFacts?.ownerInventories.filter(
+        ({ complete }) => !complete,
+      ) ?? [];
+    expect(incompleteInventories.length).toBeGreaterThan(0);
+    const callSite = caller.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "run",
+    );
+    if (!callSite) throw new Error("parser omitted the imported call shape");
+
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "a".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [
+        {
+          filePath: "src/implementation.ts",
+          sourceContentHash: createSha256(targetCode),
+          exports: target.exports,
+          declaredTypeFacts: target.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/caller.ts",
+          sourceContentHash: createSha256(callerCode),
+          imports: caller.imports,
+          callSiteShapeFacts: caller.callSiteShapeFacts,
+          declaredTypeFacts: caller.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/unrelated.ts",
+          sourceContentHash: createSha256(unrelatedCode),
+          declaredTypeFacts: unrelated.declaredTypeFacts!,
+        },
+      ],
+    });
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callerSourceContentHash: createSha256(callerCode),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      reason: "unique-named-import",
+      targetFilePath: "src/implementation.ts",
+    });
+  });
+
+  it("[positive] ignores files outside TS/JS source inventory when proving a named import", async () => {
+    const targetCode = "export function runTask(): void {}";
+    const callerCode = [
+      'import { runTask as run } from "./implementation.js";',
+      "export function call(): void { run(); }",
+    ].join("\n");
+    const target = await parseFile("src/implementation.ts", targetCode);
+    const caller = await parseFile("src/caller.ts", callerCode);
+    const callSite = caller.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "run",
+    );
+    if (!callSite) throw new Error("parser omitted the imported call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "d".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [
+        {
+          filePath: "src/implementation.ts",
+          sourceContentHash: createSha256(targetCode),
+          exports: target.exports,
+          declaredTypeFacts: target.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/caller.ts",
+          sourceContentHash: createSha256(callerCode),
+          imports: caller.imports,
+          callSiteShapeFacts: caller.callSiteShapeFacts,
+          declaredTypeFacts: caller.declaredTypeFacts!,
+        },
+        {
+          filePath: "scripts/unrelated.py",
+          sourceContentHash: "e".repeat(64),
+          imports: [],
+          exports: [],
+          callSiteShapeFacts: null,
+          declaredTypeFacts: null,
+        },
+      ],
+    });
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callerSourceContentHash: createSha256(callerCode),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      targetFilePath: "src/implementation.ts",
+    });
+  });
+
+  it("[positive] proves a unique direct named export from a relative directory index", async () => {
+    const targetCode = "export function runTask(): void {}";
+    const callerCode = [
+      'import { runTask as run } from "./implementation";',
+      "export function call(): void { run(); }",
+    ].join("\n");
+    const target = await parseFile("src/implementation/index.ts", targetCode);
+    const caller = await parseFile("src/caller.ts", callerCode);
+    const callSite = caller.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "run",
+    );
+    if (!callSite) throw new Error("parser omitted the imported call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "b".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [
+        {
+          filePath: "src/implementation/index.ts",
+          sourceContentHash: createSha256(targetCode),
+          exports: target.exports,
+          declaredTypeFacts: target.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/caller.ts",
+          sourceContentHash: createSha256(callerCode),
+          imports: caller.imports,
+          callSiteShapeFacts: caller.callSiteShapeFacts,
+          declaredTypeFacts: caller.declaredTypeFacts!,
+        },
+      ],
+    });
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callerSourceContentHash: createSha256(callerCode),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      targetFilePath: "src/implementation/index.ts",
+    });
+  });
+
+  it("[negative] abstains when a relative directory import has multiple index sources", async () => {
+    const callerCode = [
+      'import { runTask as run } from "./implementation";',
+      "export function call(): void { run(); }",
+    ].join("\n");
+    const targetCode = "export function runTask(): void {}";
+    const tsTarget = await parseFile("src/implementation/index.ts", targetCode);
+    const tsxTarget = await parseFile(
+      "src/implementation/index.tsx",
+      targetCode,
+    );
+    const caller = await parseFile("src/caller.ts", callerCode);
+    const callSite = caller.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "run",
+    );
+    if (!callSite) throw new Error("parser omitted the imported call shape");
+    const service = new CallResolutionHypothesisService();
+    const workspaceIndex = service.indexWorkspace({
+      sourceFingerprint: "c".repeat(64),
+      sourceIndexComplete: true,
+      sourceFiles: [
+        {
+          filePath: "src/implementation/index.ts",
+          sourceContentHash: createSha256(targetCode),
+          exports: tsTarget.exports,
+          declaredTypeFacts: tsTarget.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/implementation/index.tsx",
+          sourceContentHash: createSha256(targetCode),
+          exports: tsxTarget.exports,
+          declaredTypeFacts: tsxTarget.declaredTypeFacts!,
+        },
+        {
+          filePath: "src/caller.ts",
+          sourceContentHash: createSha256(callerCode),
+          imports: caller.imports,
+          callSiteShapeFacts: caller.callSiteShapeFacts,
+          declaredTypeFacts: caller.declaredTypeFacts!,
+        },
+      ],
+    });
+
+    const result = service.hypothesize({
+      callerFilePath: "src/caller.ts",
+      callerSourceContentHash: createSha256(callerCode),
+      callSite,
+      workspaceIndex,
+    });
+
+    expect(result.strictProof.status).toBe("abstained");
+    expect(result.strictProof.targetKey).toBeNull();
+  });
+
+  it("[positive] fingerprints caller, target, and the configured path file for Q1", async () => {
+    const implementation = "export function shutdown(): void {}";
+    const caller = [
+      'import { shutdown as finish } from "@/implementation";',
+      "export function call(): void { finish(); }",
+    ].join("\n");
+    const configuration: CallResolutionConfiguredPathAliases = {
+      configurationFilePath: "tsconfig.json",
+      sourceContentHash: "c".repeat(64),
+      paths: { "@/*": ["./src/*"] },
+      baseUrl: null,
+      extends: [],
+    };
+
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/implementation.ts", code: implementation },
+        { filePath: "src/caller.ts", code: caller },
+      ],
+      "src/caller.ts",
+      "finish",
+      { configuredPathAliases: configuration },
+    );
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      dependencies: expect.arrayContaining([
+        {
+          filePath: "src/caller.ts",
+          contentHash: createSha256(caller),
+        },
+        {
+          filePath: "src/implementation.ts",
+          contentHash: createSha256(implementation),
+        },
+        {
+          filePath: "tsconfig.json",
+          contentHash: "c".repeat(64),
+        },
+      ]),
+    });
+  });
+
+  it("[positive] resolves a configured import to one direct directory index", async () => {
+    const implementation = "export function shutdown(): void {}";
+    const caller = [
+      'import { shutdown as finish } from "@/implementation";',
+      "export function call(): void { finish(); }",
+    ].join("\n");
+    const configuration: CallResolutionConfiguredPathAliases = {
+      configurationFilePath: "tsconfig.json",
+      sourceContentHash: "d".repeat(64),
+      paths: { "@/*": ["./src/*"] },
+      baseUrl: null,
+      extends: [],
+    };
+
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation/index.ts",
+          code: implementation,
+        },
+        { filePath: "src/caller.ts", code: caller },
+      ],
+      "src/caller.ts",
+      "finish",
+      { configuredPathAliases: configuration },
+    );
+
+    expect(result.strictProof).toMatchObject({
+      status: "proven",
+      ruleSignature: "q1:named-import:v1",
+      targetFilePath: "src/implementation/index.ts",
+    });
+  });
+
+  it("[negative] abstains on same-name exported-function collisions", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/other.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown as finish } from "./implementation.js";',
+            "export function call(): void { finish(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "finish",
+    );
+
+    expect(result.strictProof.status).toBe("abstained");
+    expect(result.strictProof.targetKey).toBeNull();
+  });
+
+  it("[state-diff] abstains from Q1 when the candidate list is truncated", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/one.ts",
+          code: "export class One { finish(): void {} }",
+        },
+        {
+          filePath: "src/two.ts",
+          code: "export class Two { finish(): void {} }",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown as finish } from "./implementation.js";',
+            "export function call(): void { finish(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "finish",
+      { maxCandidates: 1 },
+    );
+
+    expect(result.truncated).toBe(true);
+    expect(result.strictProof.status).toBe("abstained");
+  });
+
+  it("[invalid-input] abstains from Q1 when the source index is incomplete", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown as finish } from "./implementation.js";',
+            "export function call(): void { finish(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "finish",
+      { sourceIndexComplete: false },
+    );
+
+    expect(result.strictProof).toMatchObject({
+      status: "abstained",
+      targetKey: null,
+      reason: "incomplete-inventory",
+    });
+  });
+
+  it("[invalid-input] abstains from Q1 for incomplete inventories and non-direct imports", async () => {
+    const files = [
+      {
+        filePath: "src/implementation.ts",
+        code: "export function shutdown(): void {}",
+      },
+      {
+        filePath: "src/barrel.ts",
+        code: 'export { shutdown } from "./implementation.js";',
+      },
+      {
+        filePath: "src/caller.ts",
+        code: [
+          'import { shutdown as finish } from "./barrel.js";',
+          "export function call(): void { finish(); }",
+        ].join("\n"),
+      },
+    ];
+    const incomplete = await hypothesizeCallFromSources(
+      files,
+      "src/caller.ts",
+      "finish",
+      { sourceIndexComplete: false },
+    );
+    const viaBarrel = await hypothesizeCallFromSources(
+      files,
+      "src/caller.ts",
+      "finish",
+    );
+
+    expect(incomplete.strictProof.status).toBe("abstained");
+    expect(viaBarrel.strictProof.status).toBe("abstained");
+    expect(viaBarrel.strictProof.targetKey).toBeNull();
+  });
+
+  it("[invalid-input] abstains when more than one import descriptor binds the local name", async () => {
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "src/implementation.ts",
+          code: "export function shutdown(): void {}",
+        },
+        {
+          filePath: "src/other.ts",
+          code: "export function start(): void {}",
+        },
+        {
+          filePath: "src/caller.ts",
+          code: [
+            'import { shutdown as finish } from "./implementation.js";',
+            'import { start as finish } from "./other.js";',
+            "export function call(): void { finish(); }",
+          ].join("\n"),
+        },
+      ],
+      "src/caller.ts",
+      "finish",
+    );
+
+    expect(result.strictProof.status).toBe("abstained");
+    expect(result.strictProof.targetKey).toBeNull();
+  });
+
+  it("[invalid-input] abstains on dynamic, namespace, non-function, ambiguous-path, and escaping imports", async () => {
+    const implementation = {
+      filePath: "src/implementation.ts",
+      code: "export function shutdown(): void {}",
+    };
+    const scenarios = [
+      {
+        files: [
+          implementation,
+          {
+            filePath: "src/caller.ts",
+            code: [
+              "export async function call(): Promise<void> {",
+              '  const implementation = await import("./implementation.js");',
+              "  implementation.shutdown();",
+              "}",
+            ].join("\n"),
+          },
+        ],
+        calleeName: "shutdown",
+      },
+      {
+        files: [
+          implementation,
+          {
+            filePath: "src/caller.ts",
+            code: [
+              'import * as implementation from "./implementation.js";',
+              "export function call(): void { implementation.shutdown(); }",
+            ].join("\n"),
+          },
+        ],
+        calleeName: "shutdown",
+      },
+      {
+        files: [
+          {
+            filePath: "src/implementation.ts",
+            code: "export const shutdown = (): void => {};",
+          },
+          {
+            filePath: "src/caller.ts",
+            code: [
+              'import { shutdown as finish } from "./implementation.js";',
+              "export function call(): void { finish(); }",
+            ].join("\n"),
+          },
+        ],
+        calleeName: "finish",
+      },
+      {
+        files: [
+          implementation,
+          {
+            filePath: "src/implementation/index.ts",
+            code: "export function shutdown(): void {}",
+          },
+          {
+            filePath: "src/caller.ts",
+            code: [
+              'import { shutdown as finish } from "./implementation";',
+              "export function call(): void { finish(); }",
+            ].join("\n"),
+          },
+        ],
+        calleeName: "finish",
+      },
+      {
+        files: [
+          {
+            filePath: "src/caller.ts",
+            code: [
+              'import { shutdown as finish } from "../../../outside";',
+              "export function call(): void { finish(); }",
+            ].join("\n"),
+          },
+        ],
+        calleeName: "finish",
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const result = await hypothesizeCallFromSources(
+        scenario.files,
+        "src/caller.ts",
+        scenario.calleeName,
+      );
+      expect(result.strictProof.status).toBe("abstained");
+      expect(result.strictProof.targetKey).toBeNull();
+    }
+  });
+
   it("[state-diff] adds a unique direct relative import alias without promoting it", async () => {
     const outcome = await createUniqueDirectAliasOutcome();
 
@@ -1131,7 +1738,7 @@ describe("call-resolution hypothesis service", () => {
     }
   });
 
-  it("[invalid-input] abstains for bare calls whose import and re-export bindings are unavailable", async () => {
+  it("[invalid-input] abstains for bare calls whose import or re-export bindings are unavailable", async () => {
     const serviceFile = {
       filePath: "src/service.ts",
       code: "export function shutdown(): void {}",
@@ -1141,20 +1748,6 @@ describe("call-resolution hypothesis service", () => {
       { filePath: "src/caller.ts", code: callerCode },
     ];
     const scenarios = [
-      {
-        name: "direct imported symbol",
-        files: serviceAndCaller(
-          'import { shutdown } from "./service"; function run() { shutdown(); }',
-        ),
-        calleeName: "shutdown",
-      },
-      {
-        name: "aliased imported symbol",
-        files: serviceAndCaller(
-          'import { shutdown as finish } from "./service"; function run() { finish(); }',
-        ),
-        calleeName: "finish",
-      },
       {
         name: "barrel re-export and import alias",
         files: [

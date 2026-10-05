@@ -199,6 +199,7 @@ export type {
   CallSiteResolutionCandidate,
   CallSiteResolutionDependency,
   CallSiteResolutionRecord,
+  CallSiteResolutionProjectionCallerInput,
   CallSiteResolutionObservationInput,
   CallSiteResolutionObservation,
   CallSiteLspResolutionResult,

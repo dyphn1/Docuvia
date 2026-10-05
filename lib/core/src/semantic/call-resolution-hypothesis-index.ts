@@ -26,9 +26,22 @@ import {
   validateWorkspaceInput,
 } from "./call-resolution-hypothesis-internal.js";
 
+const Q1_SOURCE_EXTENSIONS = new Set([
+  ".ts",
+  ".tsx",
+  ".mts",
+  ".cts",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+]);
+
 export interface IndexedWorkspace {
   readonly handle: CallResolutionHypothesisWorkspaceIndex;
   readonly complete: boolean;
+  /** Completeness of the source-bound program-level declaration set used by Q1. */
+  readonly namedFunctionInventoryComplete: boolean;
   readonly candidatesByMember: ReadonlyMap<
     string,
     readonly CandidateWithoutRank[]
@@ -44,6 +57,11 @@ export interface IndexedWorkspace {
   >;
   readonly factsByFile: ReadonlyMap<string, readonly AstDeclaredTypeFact[]>;
   readonly sourceContentHashByFile: ReadonlyMap<string, string>;
+  readonly sourceFilesByPath: ReadonlyMap<
+    string,
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]
+  >;
+  readonly configuredPathAliases?: CallResolutionConfiguredPathAliases;
   readonly callSiteShapesByFile: ReadonlyMap<
     string,
     readonly AstCallSiteShapeFact[]
@@ -64,6 +82,7 @@ interface MutableCandidate {
 
 interface WorkspaceBuilder {
   complete: boolean;
+  namedFunctionInventoryComplete: boolean;
   duplicateSourcePaths: boolean;
   readonly seenPaths: Set<string>;
   readonly candidates: Map<string, MutableCandidate>;
@@ -249,12 +268,39 @@ function indexDeclarations(
     addCandidate(builder, filePath, facts, declaration);
 }
 
+function generalInventoryIsIncomplete(facts: AstDeclaredTypeFacts): boolean {
+  return (
+    facts.schemaVersion !== AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION ||
+    !["typescript", "tsx", "javascript"].includes(facts.language) ||
+    facts.ownerInventories.some((inventory) => !inventory.complete)
+  );
+}
+
+function namedFunctionInventoryIsIncomplete(
+  source: CallResolutionHypothesisWorkspaceInput["sourceFiles"][number],
+  facts: AstDeclaredTypeFacts,
+): boolean {
+  return (
+    hasQ1SourceFactsExtension(source.filePath) &&
+    (!source.sourceContentHash ||
+      !HASH_PATTERN.test(source.sourceContentHash) ||
+      facts.schemaVersion !== AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION ||
+      !["typescript", "tsx", "javascript"].includes(facts.language) ||
+      facts.declarations.some(
+        ({ kind, owner, unsupportedReason }) =>
+          owner.kind === "program" &&
+          (kind === "unknown" || unsupportedReason !== undefined),
+      ))
+  );
+}
+
 function indexSourceFile(
   builder: WorkspaceBuilder,
   source: CallResolutionHypothesisWorkspaceInput["sourceFiles"][number],
 ): void {
   if (builder.seenPaths.has(source.filePath)) {
     builder.complete = false;
+    builder.namedFunctionInventoryComplete = false;
     builder.duplicateSourcePaths = true;
     return;
   }
@@ -276,18 +322,16 @@ function indexSourceFile(
   const facts = source.declaredTypeFacts;
   if (!facts) {
     builder.complete = false;
+    if (hasQ1SourceFactsExtension(source.filePath))
+      builder.namedFunctionInventoryComplete = false;
     builder.factsByFile.set(source.filePath, []);
     return;
   }
   builder.factsByFile.set(source.filePath, facts.facts);
   builder.declarationsByFile.set(source.filePath, facts.declarations);
-  if (
-    facts.schemaVersion !== AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION ||
-    !["typescript", "tsx", "javascript"].includes(facts.language) ||
-    facts.ownerInventories.some((inventory) => !inventory.complete)
-  ) {
-    builder.complete = false;
-  }
+  if (generalInventoryIsIncomplete(facts)) builder.complete = false;
+  if (namedFunctionInventoryIsIncomplete(source, facts))
+    builder.namedFunctionInventoryComplete = false;
   indexDeclarations(builder, source.filePath, facts);
 }
 
@@ -315,7 +359,11 @@ function freezeCandidate(candidate: MutableCandidate): CandidateWithoutRank {
 function sortedCandidates(builder: WorkspaceBuilder): CandidateWithoutRank[] {
   const candidates = [...builder.candidates.values()].map(freezeCandidate);
   for (const candidate of candidates) {
-    if (!candidate.inventoryComplete) builder.complete = false;
+    if (!candidate.inventoryComplete) {
+      builder.complete = false;
+      if (candidate.owner.kind === "program")
+        builder.namedFunctionInventoryComplete = false;
+    }
   }
   return candidates.sort(
     (left, right) =>
@@ -344,9 +392,14 @@ function normalizedWorkspacePath(filePath: string): string {
   return path.posix.normalize(filePath.replace(/\\/g, "/"));
 }
 
+function hasQ1SourceFactsExtension(filePath: string): boolean {
+  return Q1_SOURCE_EXTENSIONS.has(path.posix.extname(filePath).toLowerCase());
+}
+
 function relativeImportPathCandidates(
   callerFilePath: string,
   modulePath: string,
+  includeDirectoryIndexCandidates = false,
 ): readonly string[] {
   if (!isSupportedRelativeImport(callerFilePath, modulePath)) return [];
   const callerPath = normalizedWorkspacePath(callerFilePath);
@@ -354,7 +407,10 @@ function relativeImportPathCandidates(
     path.posix.join(path.posix.dirname(callerPath), modulePath),
   );
   if (normalized === ".." || normalized.startsWith("../")) return [];
-  return pathCandidatesForNormalizedImport(normalized);
+  return pathCandidatesForNormalizedImport(
+    normalized,
+    includeDirectoryIndexCandidates,
+  );
 }
 
 function isSupportedRelativeImport(
@@ -373,15 +429,25 @@ function isSupportedRelativeImport(
 
 function pathCandidatesForNormalizedImport(
   normalized: string,
+  includeDirectoryIndexCandidates = false,
 ): readonly string[] {
   const extension = path.posix.extname(normalized);
-  if (!extension)
-    return [
+  if (!extension) {
+    const candidates = [
       `${normalized}.ts`,
       `${normalized}.tsx`,
       `${normalized}.js`,
       `${normalized}.jsx`,
     ];
+    if (includeDirectoryIndexCandidates)
+      candidates.push(
+        `${normalized}/index.ts`,
+        `${normalized}/index.tsx`,
+        `${normalized}/index.js`,
+        `${normalized}/index.jsx`,
+      );
+    return candidates;
+  }
   if (extension === ".js")
     return [
       normalized,
@@ -402,14 +468,19 @@ export function resolveDirectRelativeImportPath(
   callerFilePath: string,
   modulePath: string,
   availableFilePaths: readonly string[],
+  includeDirectoryIndexCandidates = false,
 ): string | undefined {
   return resolveUniqueImportPath(
-    relativeImportPathCandidates(callerFilePath, modulePath),
+    relativeImportPathCandidates(
+      callerFilePath,
+      modulePath,
+      includeDirectoryIndexCandidates,
+    ),
     availableFilePaths,
   );
 }
 
-function isWorkspaceBoundSourcePath(filePath: string): boolean {
+export function isWorkspaceBoundSourcePath(filePath: string): boolean {
   return (
     !!filePath &&
     !path.posix.isAbsolute(filePath) &&
@@ -426,6 +497,7 @@ export function resolveDirectConfiguredImportPath(
   modulePath: string,
   availableFilePaths: readonly string[],
   evidence?: CallResolutionConfiguredPathAliases,
+  includeDirectoryIndexCandidates = false,
 ): string | undefined {
   if (
     !evidence ||
@@ -434,7 +506,10 @@ export function resolveDirectConfiguredImportPath(
   )
     return undefined;
   return resolveUniqueImportPath(
-    pathCandidatesForNormalizedImport("src/" + modulePath.slice(2)),
+    pathCandidatesForNormalizedImport(
+      "src/" + modulePath.slice(2),
+      includeDirectoryIndexCandidates,
+    ),
     availableFilePaths,
   );
 }
@@ -836,6 +911,8 @@ function workspaceBuilder(
 ): WorkspaceBuilder {
   return {
     complete: input.sourceIndexComplete && input.sourceFiles.length > 0,
+    namedFunctionInventoryComplete:
+      input.sourceIndexComplete && input.sourceFiles.length > 0,
     duplicateSourcePaths: false,
     seenPaths: new Set(),
     candidates: new Map(),
@@ -893,12 +970,17 @@ export function createIndexedWorkspace(
   return Object.freeze({
     handle,
     complete: builder.complete,
+    namedFunctionInventoryComplete: builder.namedFunctionInventoryComplete,
     candidatesByMember,
     directImportAliasCandidatesByCallerFile,
     memberNamesByTargetKey,
     declarationsByFile: builder.declarationsByFile,
     factsByFile: builder.factsByFile,
     sourceContentHashByFile: builder.sourceContentHashByFile,
+    sourceFilesByPath: new Map(
+      sourceFiles.map((source) => [source.filePath, source]),
+    ),
+    ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
     callSiteShapesByFile: builder.callSiteShapesByFile,
     duplicateSourcePaths: builder.duplicateSourcePaths,
   });

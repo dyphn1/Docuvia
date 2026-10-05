@@ -37,7 +37,10 @@ import {
   filterCandidates,
   rankCandidates,
 } from "./call-resolution-hypothesis-ranking.js";
-import { proveUniqueThisMember } from "./call-resolution-strict-proof.js";
+import {
+  proveUniqueNamedImport,
+  proveUniqueThisMember,
+} from "./call-resolution-strict-proof.js";
 
 export interface CallResolutionCandidateStageTrace extends CandidateFilterStageKeys {
   readonly beforeMaxCandidates: readonly string[];
@@ -155,12 +158,9 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       filtered.candidates,
       this.options,
     );
-    const strictProof = proveUniqueThisMember(
-      request,
-      generated,
-      workspace,
-      truncated,
-    );
+    const strictProof =
+      proveUniqueNamedImport(request, workspace, truncated) ??
+      proveUniqueThisMember(request, generated, workspace, truncated);
     const matchingRecords = matchingCalibrationRecords(
       this.options.calibrationRecords,
       ruleSignature,

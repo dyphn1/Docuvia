@@ -13,6 +13,7 @@ import type {
   AstDeclaredDeclaration,
   AstUtf16Span,
 } from "./declared-type-facts.interfaces.js";
+import type { CallSiteResolutionDependency } from "./graph-store.interfaces.js";
 
 export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
   "declared-member-hypothesis-v6" as const;
@@ -117,6 +118,7 @@ export interface CallResolutionCalibrationRecord {
 
 export type CallResolutionStrictProofReason =
   | "unique-this-owner-member"
+  | "unique-named-import"
   | "incomplete-inventory"
   | "candidate-list-truncated"
   | "unsupported-call-shape"
@@ -136,12 +138,21 @@ export type CallResolutionStrictProof =
       readonly reason: "unique-this-owner-member";
     }
   | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: "q1:named-import:v1";
+      readonly reason: "unique-named-import";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
       readonly status: "abstained";
       readonly targetKey: null;
       readonly ruleSignature: null;
       readonly reason: Exclude<
         CallResolutionStrictProofReason,
-        "unique-this-owner-member"
+        "unique-this-owner-member" | "unique-named-import"
       >;
     };
 

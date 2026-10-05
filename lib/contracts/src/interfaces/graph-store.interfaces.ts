@@ -757,6 +757,13 @@ export interface CallSiteResolutionRecord {
   candidates: CallSiteResolutionCandidate[];
 }
 
+/** ScopeResolver's caller node for the derived `calls` projection. This stays separate from the
+ *  exact enclosing caller identity stored in `CallSiteResolutionRecord.callerNodeKey`. */
+export interface CallSiteResolutionProjectionCallerInput {
+  callSiteKey: string;
+  callerNodeKey: string;
+}
+
 export interface CallSiteResolutionObservationInput {
   callSiteKey: string;
   filePath: string;
@@ -780,6 +787,7 @@ export interface ICallSiteResolutionsRepo {
     projectId: number,
     filePath: string,
     resolutions: CallSiteResolutionRecord[],
+    projectionCallers?: CallSiteResolutionProjectionCallerInput[],
   ): void;
   /** Deletes current per-site resolutions and derived candidates for one file, retaining history. */
   deleteForFile(projectId: number, filePath: string): void;

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   type ICallResolutionHypothesisService,
   type CallResolutionHypothesisWorkspaceIndex,
+  type CallResolutionStrictProof,
   type CallSiteResolutionRecord,
   type CallSiteResolutionObservationInput,
   type ParsedAstFileResult,
@@ -63,7 +64,7 @@ function sameCallShape(call: ParsedCall, shape: CallSiteShape): boolean {
     call.startColumn === shape.startColumn &&
     call.calleeName === shape.calleeName &&
     call.calleeKind === shape.calleeKind &&
-    call.receiverText === shape.receiverText
+    (call.receiverText ?? null) === shape.receiverText
   );
 }
 
@@ -157,6 +158,54 @@ function callerFunctionForCall(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+function callerNodeForCall(
+  result: ParsedAstFileResult,
+  call: ParsedCall,
+  callSite: CallSiteShape,
+  functionNodes: readonly FunctionNodeReference[],
+): FunctionNodeReference | undefined {
+  const matchingCaller = callerFunctionForCall(call, callSite, functionNodes);
+  if (matchingCaller) return matchingCaller;
+
+  const enclosingFunctions = functionNodes.filter(
+    (fn) => fn.startLine <= call.startLine && fn.endLine >= call.startLine,
+  );
+  if (enclosingFunctions.length > 0) {
+    const smallestSpan = Math.min(
+      ...enclosingFunctions.map((fn) => fn.endLine - fn.startLine),
+    );
+    const innermostFunctions = enclosingFunctions.filter(
+      (fn) => fn.endLine - fn.startLine === smallestSpan,
+    );
+    if (innermostFunctions.length !== 1) return undefined;
+
+    // Calls inside callbacks can carry a parameter or local name in sourceFunction
+    // instead of the graph's enclosing function name. The unique smallest AST
+    // function span identifies that caller without trusting the legacy hint.
+    const [innermostFunction] = innermostFunctions;
+    return innermostFunction;
+  }
+  return {
+    nodeKey: result.file,
+    name: result.file,
+    startLine: call.startLine,
+    endLine: call.startLine,
+  };
+}
+
+function namedImportTargetFunction(
+  proof: Extract<
+    CallResolutionStrictProof,
+    { ruleSignature: "q1:named-import:v1" }
+  >,
+  functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
+): FunctionNodeReference | undefined {
+  const matches = (functionNodesByFile.get(proof.targetFilePath) ?? []).filter(
+    (fn) => fn.name === proof.targetName && fn.containerName === undefined,
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 function createCallSiteProof(input: {
   result: ParsedAstFileResult;
   callSite: CallSiteShape;
@@ -165,6 +214,7 @@ function createCallSiteProof(input: {
   sourceFingerprint: string;
   sourceCandidateKey: string;
   ruleSignature: string;
+  strictProof: Extract<CallResolutionStrictProof, { status: "proven" }>;
   callerFunction: FunctionNodeReference;
   targetFunction: FunctionNodeReference;
 }): CallSiteProof {
@@ -176,13 +226,20 @@ function createCallSiteProof(input: {
     sourceFingerprint,
     sourceCandidateKey,
     ruleSignature,
+    strictProof,
     callerFunction,
     targetFunction,
   } = input;
-  const dependencies = [{ filePath: result.file, contentHash: sourceHash }];
+  const dependencies = (
+    "dependencies" in strictProof
+      ? strictProof.dependencies
+      : [{ filePath: result.file, contentHash: sourceHash }]
+  )
+    .slice()
+    .sort((left, right) => left.filePath.localeCompare(right.filePath));
   const dependencyFingerprint = sha256(JSON.stringify(dependencies));
   const evidenceJson = JSON.stringify({
-    kind: "unique-this-owner-member",
+    kind: strictProof.reason,
     sourceFingerprint,
     sourceCandidateKey,
   });
@@ -229,6 +286,7 @@ function proofForCall(
   workspaceIndex: CallResolutionHypothesisWorkspaceIndex,
   result: ParsedAstFileResult,
   functionNodes: readonly FunctionNodeReference[],
+  functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
   call: ParsedCall,
 ): CallSiteProof | undefined {
   const callSite = uniqueCallSiteShape(call, result);
@@ -244,12 +302,16 @@ function proofForCall(
   const { strictProof } = hypothesis;
   if (strictProof.status !== "proven") return undefined;
 
-  const targetFunction = strictTargetFunction(
+  const targetFunction =
+    strictProof.ruleSignature === "q1:named-import:v1"
+      ? namedImportTargetFunction(strictProof, functionNodesByFile)
+      : strictTargetFunction(result, strictProof.targetKey, functionNodes);
+  const callerFunction = callerNodeForCall(
     result,
-    strictProof.targetKey,
+    call,
+    callSite,
     functionNodes,
   );
-  const callerFunction = callerFunctionForCall(call, callSite, functionNodes);
   if (!targetFunction || !callerFunction) return undefined;
 
   return createCallSiteProof({
@@ -260,6 +322,7 @@ function proofForCall(
     sourceFingerprint: hypothesis.sourceFingerprint,
     sourceCandidateKey: strictProof.targetKey,
     ruleSignature: strictProof.ruleSignature,
+    strictProof,
     callerFunction,
     targetFunction,
   });
@@ -270,6 +333,7 @@ export function collectStrictCallSiteProofs(input: {
   workspaceIndex: CallResolutionHypothesisWorkspaceIndex;
   result: ParsedAstFileResult;
   functionNodes: readonly FunctionNodeReference[];
+  functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>;
 }): CallSiteProof[] {
   const proofs: CallSiteProof[] = [];
   for (const call of input.result.data.calls ?? []) {
@@ -278,6 +342,7 @@ export function collectStrictCallSiteProofs(input: {
       input.workspaceIndex,
       input.result,
       input.functionNodes,
+      input.functionNodesByFile,
       call,
     );
     if (proof) proofs.push(proof);

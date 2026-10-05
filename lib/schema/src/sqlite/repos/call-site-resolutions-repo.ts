@@ -16,6 +16,7 @@ import type {
   CallSiteResolutionObservation,
   CallSiteResolutionObservationInput,
   CallSiteResolutionRecord,
+  CallSiteResolutionProjectionCallerInput,
   CallSiteLspResolutionResult,
   CallSiteRuleQuarantine,
   CallSiteVerificationApplyResult,
@@ -106,6 +107,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
     projectId: number,
     filePath: string,
     resolutions: CallSiteResolutionRecord[],
+    projectionCallers: CallSiteResolutionProjectionCallerInput[] = [],
   ): void {
     assertProjectId(projectId);
     assertWorkspacePath(filePath);
@@ -115,6 +117,32 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
     for (const resolution of resolutions) {
       validateResolution(filePath, resolution);
     }
+    if (!Array.isArray(projectionCallers)) {
+      throw invalidInput("Call-site projection callers must be an array");
+    }
+    const resolutionKeys = new Set(
+      resolutions.map(({ callSiteKey }) => callSiteKey),
+    );
+    const projectionCallerKeys = new Set<string>();
+    for (const projectionCaller of projectionCallers) {
+      assertNonEmpty(projectionCaller.callSiteKey, "projection call-site key");
+      assertNonEmpty(
+        projectionCaller.callerNodeKey,
+        "projection caller node key",
+      );
+      if (!resolutionKeys.has(projectionCaller.callSiteKey)) {
+        throw invalidInput(
+          "Call-site projection caller must match a replacement resolution",
+        );
+      }
+      if (projectionCallerKeys.has(projectionCaller.callSiteKey)) {
+        throw invalidInput("Call-site projection caller keys must be unique");
+      }
+      projectionCallerKeys.add(projectionCaller.callSiteKey);
+    }
+    const projectionCallerByCallSite = new Map(
+      projectionCallers.map((caller) => [caller.callSiteKey, caller] as const),
+    );
 
     try {
       this.db
@@ -157,6 +185,11 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
               project_id, call_site_key, ordinal, target_node_key, evidence_json
             ) VALUES (?, ?, ?, ?, ?)`,
           );
+          const insertProjectionCaller = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} (
+              project_id, call_site_key, caller_node_key
+            ) VALUES (?, ?, ?)`,
+          );
           const insertDependency = this.db.prepare(
             `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} (
               project_id, call_site_key, dependency_path, content_hash
@@ -197,6 +230,16 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
                 candidate.ordinal,
                 candidate.targetNodeKey,
                 candidate.evidenceJson,
+              );
+            }
+            const projectionCaller = projectionCallerByCallSite.get(
+              currentResolution.callSiteKey,
+            );
+            if (projectionCaller) {
+              insertProjectionCaller.run(
+                projectId,
+                projectionCaller.callSiteKey,
+                projectionCaller.callerNodeKey,
               );
             }
             for (const dependency of normalizeResolutionDependencies(
@@ -1034,9 +1077,11 @@ function rebuildCallsProjection(
      )
      SELECT DISTINCT caller.id, target.id, ?
      FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+     LEFT JOIN ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} p
+       ON p.project_id = r.project_id AND p.call_site_key = r.call_site_key
      JOIN ${SchemaTables.L2_NODES} caller
        ON caller.${SchemaColumns.PROJECT_ID} = r.project_id
-       AND caller.${SchemaColumns.NODE_KEY} = r.caller_node_key
+       AND caller.${SchemaColumns.NODE_KEY} = COALESCE(p.caller_node_key, r.caller_node_key)
        AND caller.${SchemaColumns.PATH_PATTERNS} = ?
      JOIN ${SchemaTables.L2_NODES} target
        ON target.${SchemaColumns.PROJECT_ID} = r.project_id

@@ -1,5 +1,6 @@
 import {
   type ExternalIncomingLink,
+  type CallSiteResolutionProjectionCallerInput,
   type ICallResolutionHypothesisService,
   type IGraphPersister,
   type IGraphStore,
@@ -8,6 +9,8 @@ import {
   aggregateCallResolution,
   L2NodeTypes,
   LinkTypes,
+  DocuviaError,
+  ErrorCodes,
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
@@ -17,6 +20,7 @@ import {
   isSha256,
   portableCallSiteKeyForCall,
   sourceManifestFingerprint,
+  type CallSiteProof,
   type FunctionNodeReference,
 } from "./call-resolution-graph-projection.js";
 
@@ -486,8 +490,7 @@ export class GraphPersisterService implements IGraphPersister {
     let updatedCount = 0;
 
     for (const result of parsedResults) {
-      const sourceFileId = fileIdMap.get(result.file);
-      if (!sourceFileId) continue;
+      const sourceFileId = fileIdMap.get(result.file)!;
 
       const counters = newCallResolutionCounters();
       this.linkParsedResultRelations(
@@ -515,7 +518,7 @@ export class GraphPersisterService implements IGraphPersister {
     return updatedCount;
   }
 
-  /** Persists only the narrow source-bound Q3 proof for a complete source index. ScopeResolver
+  /** Persists only source-bound Q1/Q3 proofs for a complete source index. ScopeResolver
    *  links are initially written unchanged; the per-site projection replaces a proved site, then
    *  the legacy proposal edges for every other site are restored inside the same transaction. */
   private persistStrictCallSiteProofs(
@@ -555,37 +558,86 @@ export class GraphPersisterService implements IGraphPersister {
         declaredTypeFacts: result.data.declaredTypeFacts ?? null,
       })),
     });
+    const nodeKeyById = new Map<number, string>(
+      store.graph
+        .getAllNodes()
+        .flatMap((node) =>
+          node.project_id === projectId && node.node_key
+            ? [[node.id, node.node_key] as const]
+            : [],
+        ),
+    );
 
     for (const result of parsedResults) {
-      const proofs = collectStrictCallSiteProofs({
-        service,
-        workspaceIndex,
-        result,
-        functionNodes: functionNodeRefsByFile.get(result.file) ?? [],
-      });
-      if (proofs.length === 0) continue;
-
-      repo.replaceForFile(
-        projectId,
-        result.file,
-        proofs.map(({ resolution }) => resolution),
-      );
-      for (const proof of proofs) {
-        repo.appendObservation(projectId, proof.strictObservation);
-      }
-
-      const provenKeys = new Set(proofs.map(({ callSiteKey }) => callSiteKey));
-      this.restoreScopeResolverCallsForUnprovenSites(
+      this.persistStrictCallSiteProofsForFile(
         store,
-        resolver,
+        repo,
+        service,
+        projectId,
         result,
-        fileIdMap.get(result.file),
-        symbolIdMap.get(result.file),
+        workspaceIndex,
+        functionNodeRefsByFile,
         fileIdMap,
         symbolIdMap,
-        provenKeys,
+        nodeKeyById,
+        resolver,
       );
     }
+  }
+
+  private persistStrictCallSiteProofsForFile(
+    store: IGraphStore,
+    repo: NonNullable<IGraphStore["callSiteResolutions"]>,
+    service: ICallResolutionHypothesisService,
+    projectId: number,
+    result: ParsedAstFileResult,
+    workspaceIndex: ReturnType<
+      ICallResolutionHypothesisService["indexWorkspace"]
+    >,
+    functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    nodeKeyById: ReadonlyMap<number, string>,
+    resolver: ScopeResolver,
+  ): void {
+    const proofs = collectStrictCallSiteProofs({
+      service,
+      workspaceIndex,
+      result,
+      functionNodes: functionNodeRefsByFile.get(result.file) ?? [],
+      functionNodesByFile: functionNodeRefsByFile,
+    });
+    if (proofs.length === 0) return;
+
+    const sourceFileId = fileIdMap.get(result.file)!;
+    const projectionCallers = this.projectionCallersForProofs(
+      result,
+      proofs,
+      sourceFileId,
+      symbolIdMap.get(result.file),
+      nodeKeyById,
+    );
+    repo.replaceForFile(
+      projectId,
+      result.file,
+      proofs.map(({ resolution }) => resolution),
+      projectionCallers,
+    );
+    for (const proof of proofs) {
+      repo.appendObservation(projectId, proof.strictObservation);
+    }
+
+    const provenKeys = new Set(proofs.map(({ callSiteKey }) => callSiteKey));
+    this.restoreScopeResolverCallsForUnprovenSites(
+      store,
+      resolver,
+      result,
+      sourceFileId,
+      symbolIdMap.get(result.file),
+      fileIdMap,
+      symbolIdMap,
+      provenKeys,
+    );
   }
 
   private restoreScopeResolverCallsForUnprovenSites(
@@ -623,6 +675,43 @@ export class GraphPersisterService implements IGraphPersister {
         },
       );
     }
+  }
+
+  private projectionCallersForProofs(
+    result: ParsedAstFileResult,
+    proofs: readonly CallSiteProof[],
+    sourceFileId: number,
+    sourceSymbols: Map<string, number> | undefined,
+    nodeKeyById: ReadonlyMap<number, string>,
+  ): CallSiteResolutionProjectionCallerInput[] {
+    const callBySiteKey = new Map(
+      (result.data.calls ?? []).flatMap((call) => {
+        const callSiteKey = portableCallSiteKeyForCall(result, call);
+        return callSiteKey ? [[callSiteKey, call] as const] : [];
+      }),
+    );
+    return proofs.map(({ callSiteKey }) => {
+      const call = callBySiteKey.get(callSiteKey);
+      if (!call) {
+        throw new DocuviaError(
+          ErrorCodes.CALL_RESOLUTION_PROJECTION_SOURCE_MISSING,
+          `Strict proof call site ${callSiteKey} has no parsed call`,
+        );
+      }
+      const sourceNodeId = this.resolveSourceNodeId(
+        sourceSymbols,
+        call.sourceFunction,
+        sourceFileId,
+      );
+      const callerNodeKey = nodeKeyById.get(sourceNodeId);
+      if (!callerNodeKey) {
+        throw new DocuviaError(
+          ErrorCodes.CALL_RESOLUTION_PROJECTION_SOURCE_MISSING,
+          `ScopeResolver caller node ${sourceNodeId} has no portable key`,
+        );
+      }
+      return { callSiteKey, callerNodeKey };
+    });
   }
 
   private linkParsedResultRelations(

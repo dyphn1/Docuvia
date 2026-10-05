@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic.mts#fileExists@L512
+id: scripts/semantic-corpus/phase0-partial-semantic.mts#fileExists@L552
 type: symbol
 name: fileExists
 filePath: scripts/semantic-corpus/phase0-partial-semantic.mts

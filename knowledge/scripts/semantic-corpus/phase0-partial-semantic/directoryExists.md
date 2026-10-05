@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic.mts#directoryExists@L552
+id: scripts/semantic-corpus/phase0-partial-semantic.mts#directoryExists@L592
 type: symbol
 name: directoryExists
 filePath: scripts/semantic-corpus/phase0-partial-semantic.mts

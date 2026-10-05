@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic.mts#readDirectory@L575
+id: scripts/semantic-corpus/phase0-partial-semantic.mts#canonicalPathIdentity
 type: symbol
-name: readDirectory
+name: canonicalPathIdentity
 filePath: scripts/semantic-corpus/phase0-partial-semantic.mts
 ---
-# Symbol: readDirectory
+# Symbol: canonicalPathIdentity
 
 File: `scripts/semantic-corpus/phase0-partial-semantic.mts`

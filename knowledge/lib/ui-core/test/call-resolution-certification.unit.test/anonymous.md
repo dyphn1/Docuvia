@@ -7,4 +7,3 @@ filePath: lib/ui-core/test/call-resolution-certification.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/test/call-resolution-certification.unit.test.ts`
-.ts`

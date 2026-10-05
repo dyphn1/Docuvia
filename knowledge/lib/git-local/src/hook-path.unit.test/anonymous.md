@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/hook-path.unit.test.ts#anonymous@L40
+id: lib/git-local/src/hook-path.unit.test.ts#anonymous@L38
 type: symbol
 name: anonymous
 filePath: lib/git-local/src/hook-path.unit.test.ts

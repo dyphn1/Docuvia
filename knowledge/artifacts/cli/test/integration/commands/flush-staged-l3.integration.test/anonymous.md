@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/flush-staged-l3.integration.test.ts#anonymous@L255
+id: artifacts/cli/test/integration/commands/flush-staged-l3.integration.test.ts#anonymous@L184
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/flush-staged-l3.integration.test.ts

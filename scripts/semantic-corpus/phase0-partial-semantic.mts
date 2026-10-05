@@ -158,6 +158,33 @@ function normalizeExternalPath(filePath: string): string {
   return `outside-snapshot/${path.basename(absolute)}`;
 }
 
+function canonicalPathIdentity(
+  filePath: string,
+  useCaseSensitiveFileNames: boolean,
+): string {
+  const normalized = path.posix.normalize(filePath.replace(/\\/g, "/"));
+  return useCaseSensitiveFileNames ? normalized : normalized.toLowerCase();
+}
+
+/** Return the sole path with the same TypeScript-host file identity. */
+export function uniqueCanonicalPathMatch(
+  paths: readonly string[],
+  filePath: string,
+  useCaseSensitiveFileNames: boolean,
+): string | undefined {
+  const identity = canonicalPathIdentity(filePath, useCaseSensitiveFileNames);
+  let match: string | undefined;
+  for (const candidate of paths) {
+    if (
+      canonicalPathIdentity(candidate, useCaseSensitiveFileNames) !== identity
+    )
+      continue;
+    if (match !== undefined) return undefined;
+    match = candidate;
+  }
+  return match;
+}
+
 function definitionRef(
   root: string,
   requestedRoot: string,
@@ -338,6 +365,11 @@ export function createPartialSemanticProject(
   const root = ts.sys.realpath?.(requestedRoot) ?? requestedRoot;
 
   const snapshotFiles = normalizedSnapshotFiles(options.snapshotFiles);
+  const snapshotFileIdentities = new Set(
+    [...snapshotFiles].map((filePath) =>
+      canonicalPathIdentity(filePath, ts.sys.useCaseSensitiveFileNames),
+    ),
+  );
   const verifiedSnapshotFiles = new Map<string, string>();
   for (const file of snapshotFiles) {
     const inspection = inspectSnapshotPath(root, file);
@@ -498,6 +530,14 @@ export function createPartialSemanticProject(
       return relative !== null && verifiedSnapshotFiles.has(relative);
     })
     .sort();
+  const rootFileRelativePaths: string[] = [];
+  const rootFileNameByRelativePath = new Map<string, string>();
+  for (const fileName of rootFiles) {
+    const relative = relativeSnapshotPath(fileName);
+    if (relative === null) continue;
+    rootFileRelativePaths.push(relative);
+    rootFileNameByRelativePath.set(relative, fileName);
+  }
   const compilerOptions: ts.CompilerOptions = {
     ...parsed.options,
     noResolve: true,
@@ -673,9 +713,23 @@ export function createPartialSemanticProject(
       const relative = relativePath(root, absolute);
       if (relative === null)
         return emptyResult("unsupported", "source-path-escapes-snapshot");
-      if (!snapshotFiles.has(relative) || !rootFiles.includes(absolute))
+      const rootFileRelativePath = uniqueCanonicalPathMatch(
+        rootFileRelativePaths,
+        relative,
+        ts.sys.useCaseSensitiveFileNames,
+      );
+      const rootFileName =
+        rootFileRelativePath === undefined
+          ? undefined
+          : rootFileNameByRelativePath.get(rootFileRelativePath);
+      if (
+        !snapshotFileIdentities.has(
+          canonicalPathIdentity(relative, ts.sys.useCaseSensitiveFileNames),
+        ) ||
+        !rootFileName
+      )
         return emptyResult("unsupported", "source-file-not-in-partial-project");
-      const sourceFile = program.getSourceFile(absolute);
+      const sourceFile = program.getSourceFile(rootFileName);
       if (!sourceFile)
         return emptyResult("unsupported", "source-file-not-in-partial-program");
       if (site.offsetUtf16 >= sourceFile.text.length)

@@ -11,6 +11,7 @@ import path from "node:path";
 import ts from "typescript";
 import {
   classifyPartialSemanticDefinitions,
+  uniqueCanonicalPathMatch,
   createPartialSemanticProject,
   type PartialSemanticCallSite,
   type PartialSemanticProject,
@@ -79,6 +80,25 @@ function withProject<T>(
 }
 
 describe("Phase 0 TypeScript PartialSemantic measurement helper", () => {
+  it("[boundary] matches Windows file names with TypeScript host path semantics", () => {
+    const rootFile = "C:\\Users\\Work\\Repo\\src\\Caller.ts";
+    const queriedFile = "c:/users/work/repo/SRC/caller.ts";
+
+    expect(uniqueCanonicalPathMatch([rootFile], queriedFile, false)).toBe(
+      rootFile,
+    );
+    expect(uniqueCanonicalPathMatch([rootFile], queriedFile, true)).toEqual(
+      undefined,
+    );
+    expect(
+      uniqueCanonicalPathMatch(
+        [rootFile, "C:/USERS/WORK/REPO/SRC/CALLER.TS"],
+        queriedFile,
+        false,
+      ),
+    ).toEqual(undefined);
+  });
+
   it("[happy] opens the actual PartialSemantic mode and returns root-file definitions", () => {
     const caller = `import { invokeMe } from "./target";\ninvokeMe();\n`;
     const source = fixture({

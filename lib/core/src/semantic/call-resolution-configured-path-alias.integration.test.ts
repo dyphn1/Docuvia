@@ -85,6 +85,40 @@ async function fixture(
 }
 
 describe("configured named-import candidate evidence", () => {
+  it("[stress] preserves candidates across 64 independent configuration snapshots", async () => {
+    const { input, request, targetKey } = await fixture();
+    const service = new CallResolutionHypothesisService();
+    const results = Array.from({ length: 64 }, (_, index) => {
+      const workspaceIndex = service.indexWorkspace({
+        ...input,
+        configuredPathAliases: {
+          ...configuration(),
+          sourceContentHash: index.toString(16).padStart(64, "0"),
+        },
+      });
+      return service.hypothesize({ ...request, workspaceIndex });
+    });
+    const expectedKeys = results[0]!.generatedCandidateKeys;
+    expect(expectedKeys).toContain(targetKey);
+    expect(expectedKeys).toHaveLength(2);
+    expect(
+      results.map(({ generatedCandidateKeys }) => generatedCandidateKeys),
+    ).toEqual(Array.from({ length: 64 }, () => expectedKeys));
+    expect(
+      new Set(results.map(({ sourceFingerprint }) => sourceFingerprint)).size,
+    ).toBe(64);
+    expect(
+      new Set(results.map(({ featureInputHash }) => featureInputHash)).size,
+    ).toBe(64);
+    expect(
+      results.map(({ status, selected }) => ({ status, selected })),
+    ).toEqual(
+      Array.from({ length: 64 }, () => ({
+        status: "ambiguous",
+        selected: null,
+      })),
+    );
+  });
   it("[invalid-input] abstains when the same export name has multiple descriptors", async () => {
     const { input, request, targetKey } = await fixture();
     const target = input.sourceFiles[0]!;

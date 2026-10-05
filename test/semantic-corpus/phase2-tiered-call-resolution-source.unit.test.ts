@@ -9,6 +9,7 @@ import {
 } from "../../lib/contracts/src/index.js";
 import { candidateTargetKeyForDeclaration } from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
 import {
+  directImportTargetPaths,
   mapCandidateKeysToUnambiguousAliases,
   validateFactsAgainstSnapshot,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts";
@@ -76,6 +77,31 @@ function makeFactRow(
 }
 
 describe("Phase 2 source candidate identity", () => {
+  it("[happy] includes unaliased direct named-import targets for opt-in Q1 audits", () => {
+    const callFiles = [
+      {
+        file: "src/caller.ts",
+        data: {
+          imports: [
+            {
+              localName: "run",
+              originalName: "run",
+              modulePath: "./implementation.js",
+            },
+          ],
+        },
+      },
+    ];
+    const facts = [makeFactRow("src/implementation.ts", "c".repeat(64), [])];
+
+    expect(directImportTargetPaths(callFiles, facts)).toEqual([]);
+    expect(
+      directImportTargetPaths(callFiles, facts, undefined, {
+        includeUnaliasedNamedImports: true,
+      }),
+    ).toEqual(["src/implementation.ts"]);
+  });
+
   it("[happy][state-diff] maps a unique named arrow candidate to its corpus target ID", () => {
     const declaration = makeDeclaration("run", 11, 40);
     const key = candidateTargetKeyForDeclaration("src/worker.ts", declaration);

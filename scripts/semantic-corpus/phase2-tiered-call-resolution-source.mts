@@ -443,11 +443,19 @@ export function importsForDefaultImportCapability(
   );
 }
 
-function directAliasTargetPaths(
-  callFiles: readonly ParsedAstFileResult[],
+interface ImportTargetSourceFile {
+  readonly file: string;
+  readonly data: { readonly imports: readonly AstImportDescriptor[] };
+}
+
+export function directImportTargetPaths(
+  callFiles: readonly ImportTargetSourceFile[],
   factRows: readonly Phase2FactFile[],
   configuredPathAliases?: CallResolutionConfiguredPathAliases,
-  includeCombinedDefaultImports = false,
+  options: {
+    readonly includeCombinedDefaultImports?: boolean;
+    readonly includeUnaliasedNamedImports?: boolean;
+  } = {},
 ): string[] {
   const factsByPath = new Map<string, Phase2FactFile[]>();
   for (const row of factRows) {
@@ -464,7 +472,7 @@ function directAliasTargetPaths(
       descriptors.push(descriptor);
       importsByLocalName.set(descriptor.localName, descriptors);
     }
-    for (const [localName, descriptors] of importsByLocalName) {
+    for (const descriptors of importsByLocalName.values()) {
       if (descriptors.length !== 1) continue;
       const descriptor = descriptors[0];
       const isCombinedDefaultImport =
@@ -474,11 +482,13 @@ function directAliasTargetPaths(
         !descriptor ||
         descriptor.viaReexport ||
         descriptor.isTypeOnly ||
-        (isCombinedDefaultImport && !includeCombinedDefaultImports) ||
+        (isCombinedDefaultImport &&
+          options.includeCombinedDefaultImports !== true) ||
         (!isCombinedDefaultImport &&
           (descriptor.originalName === "*" ||
             descriptor.originalName === "default" ||
-            descriptor.localName === descriptor.originalName))
+            (descriptor.localName === descriptor.originalName &&
+              options.includeUnaliasedNamedImports !== true)))
       )
         continue;
       const targetPath =
@@ -599,6 +609,8 @@ export async function processPhase2Snapshot(input: {
   readonly includeConfiguredPathAliases?: boolean;
   /** Discover one exact workspace-local target for a combined default import when requested. */
   readonly includeCombinedDefaultImportTargets?: boolean;
+  /** Parse direct named-import targets, including unaliased imports, for Q1 audits. */
+  readonly includeStrictNamedImportTargets?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
   if (
@@ -660,11 +672,16 @@ export async function processPhase2Snapshot(input: {
       discovered,
     );
     const callSourcePaths = new Set(discovered.map(({ file }) => file));
-    const aliasTargetPaths = directAliasTargetPaths(
+    const aliasTargetPaths = directImportTargetPaths(
       parsedCallFiles.parsed,
       factRows,
       configuredPathAliases,
-      input.includeCombinedDefaultImportTargets,
+      {
+        includeCombinedDefaultImports:
+          input.includeCombinedDefaultImportTargets ?? false,
+        includeUnaliasedNamedImports:
+          input.includeStrictNamedImportTargets ?? false,
+      },
     ).filter((filePath) => !callSourcePaths.has(filePath));
     const factRowsByPath = new Map<string, Phase2FactFile[]>();
     for (const row of factRows) {

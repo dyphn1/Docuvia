@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/call-resolution-graph-projection.ts#anonymous@L51
+id: lib/core/src/graph/call-resolution-graph-projection.ts#anonymous@L175
 type: symbol
 name: anonymous
 filePath: lib/core/src/graph/call-resolution-graph-projection.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/graph/call-resolution-graph-projection.ts
 # Symbol: anonymous
 
 File: `lib/core/src/graph/call-resolution-graph-projection.ts`
-

@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase2-default-import-graph-parity.mts#anonymous@L92
+id: scripts/semantic-corpus/phase2-default-import-graph-parity.mts#anonymous@L97
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase2-default-import-graph-parity.mts

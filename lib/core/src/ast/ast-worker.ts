@@ -13,7 +13,7 @@ import {
   SUPPORTED_LANGUAGES,
   type AstImportDescriptor,
   type AstDeclaredTypeLanguage,
-  type AstExportKind,
+  type AstExportDescriptor,
   type AstDeclaredTypeFacts,
   type AstCallSiteShapeFacts,
   type SupportedLanguage,
@@ -72,7 +72,7 @@ export interface AstParseResponse {
   error?: string;
   data?: {
     imports: ImportDescriptor[];
-    exports: Array<{ name: string; type: AstExportKind }>;
+    exports: AstExportDescriptor[];
     functions: Array<{
       name: string;
       startLine: number;
@@ -521,13 +521,60 @@ function directExportDescriptors(root: Node): AstExtractionResult["exports"] {
 function directExportForStatement(
   statement: Node,
 ): AstExtractionResult["exports"] {
-  if (
-    statement.type !== "export_statement" ||
-    /^export\s+default\b/u.test(statement.text)
-  )
-    return [];
+  if (statement.type !== "export_statement") return [];
+  if (/^export\s+default\b/u.test(statement.text))
+    return [directDefaultExportDescriptor(statement)];
   const declaration = statement.childForFieldName("declaration");
   return declaration ? directExportForDeclaration(declaration) : [];
+}
+
+function directDefaultExportDescriptor(statement: Node): AstExportDescriptor {
+  const directFunctionSyntax =
+    /^export\s+default\s+(?:async\s+)?function(?:\s|\*|\()/u.test(
+      statement.text,
+    );
+  const defaultDeclarationNodes = [
+    ...statement.descendantsOfType("function_declaration"),
+    ...statement.descendantsOfType("generator_function_declaration"),
+    ...statement.descendantsOfType("function_expression"),
+    ...statement.descendantsOfType("generator_function"),
+    ...statement.descendantsOfType("class_declaration"),
+    ...statement.descendantsOfType("abstract_class_declaration"),
+  ].filter((node): node is Node => node !== null);
+  const declaration =
+    statement.childForFieldName("declaration") ??
+    defaultDeclarationNodes.sort(
+      (left, right) => left.startIndex - right.startIndex,
+    )[0];
+  if (
+    declaration &&
+    directFunctionSyntax &&
+    [
+      "function_declaration",
+      "generator_function_declaration",
+      "function_expression",
+      "generator_function",
+    ].includes(declaration.type)
+  )
+    return {
+      name: "default",
+      type: "function",
+      declarationSpan: {
+        start: declaration.startIndex,
+        end: declaration.endIndex,
+      },
+    };
+
+  const isClass =
+    declaration?.type === "class_declaration" ||
+    declaration?.type === "abstract_class_declaration";
+  return {
+    name: "default",
+    type: isClass ? "class" : "other",
+    declarationSpan: declaration
+      ? { start: declaration.startIndex, end: declaration.endIndex }
+      : { start: statement.startIndex, end: statement.endIndex },
+  };
 }
 
 function directExportForDeclaration(

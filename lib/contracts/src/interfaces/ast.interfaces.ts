@@ -1,11 +1,15 @@
 import type { DiscoveredFile } from "./discovery.interfaces.js";
-import type { AstDeclaredTypeFacts } from "./declared-type-facts.interfaces.js";
+import type {
+  AstDeclaredTypeFacts,
+  AstUtf16Span,
+} from "./declared-type-facts.interfaces.js";
 import type { AstCallSiteShapeFacts } from "./call-site-shape-facts.interfaces.js";
 
 export const AstExportKinds = {
   FUNCTION: "function",
   CLASS: "class",
   VARIABLE: "variable",
+  OTHER: "other",
 } as const;
 export type AstExportKind =
   (typeof AstExportKinds)[keyof typeof AstExportKinds];
@@ -21,11 +25,20 @@ export interface AstImportDescriptor {
   viaReexport?: boolean;
   /** True for TS `import type` and `import { type X }` bindings. */
   isTypeOnly?: boolean;
+  /** True only for the default binding in an ordinary `import X, { y }` statement. */
+  isCombinedDefaultImport?: boolean;
+}
+
+export interface AstExportDescriptor {
+  readonly name: string;
+  readonly type: AstExportKind;
+  /** Exact declaration span for a direct `export default function` descriptor. */
+  readonly declarationSpan?: AstUtf16Span;
 }
 
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
-  exports: Array<{ name: string; type: AstExportKind }>;
+  exports: AstExportDescriptor[];
   functions: Array<{
     name: string;
     startLine: number;

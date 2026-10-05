@@ -2,7 +2,10 @@ import type {
   AstCallSiteShapeFact,
   AstCallSiteShapeFacts,
 } from "./call-site-shape-facts.interfaces.js";
-import type { AstExportKind, AstImportDescriptor } from "./ast.interfaces.js";
+import type {
+  AstExportDescriptor,
+  AstImportDescriptor,
+} from "./ast.interfaces.js";
 import type {
   AstDeclaredTypeFacts,
   AstDeclaredTypeOwner,
@@ -12,7 +15,7 @@ import type {
 } from "./declared-type-facts.interfaces.js";
 
 export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
-  "declared-member-hypothesis-v5" as const;
+  "declared-member-hypothesis-v6" as const;
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
@@ -33,10 +36,7 @@ export interface CallResolutionHypothesisSourceFile {
   /** Parser-derived direct imports from the same source bytes; absent means unavailable. */
   readonly imports?: readonly AstImportDescriptor[];
   /** Parser-derived exports from the same source bytes; absent means unavailable. */
-  readonly exports?: readonly {
-    readonly name: string;
-    readonly type: AstExportKind;
-  }[];
+  readonly exports?: readonly AstExportDescriptor[];
   /** Parser output from the same source bytes; strict proofs verify callSite membership here. */
   readonly callSiteShapeFacts?: AstCallSiteShapeFacts | null;
   /** Missing facts make the workspace candidate inventory incomplete. */

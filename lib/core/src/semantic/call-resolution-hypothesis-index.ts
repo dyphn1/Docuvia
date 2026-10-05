@@ -409,6 +409,17 @@ export function resolveDirectRelativeImportPath(
   );
 }
 
+function isWorkspaceBoundSourcePath(filePath: string): boolean {
+  return (
+    !!filePath &&
+    !path.posix.isAbsolute(filePath) &&
+    !/^[a-zA-Z]:[\\/]/u.test(filePath) &&
+    !filePath.includes("\\") &&
+    path.posix.normalize(filePath) === filePath &&
+    !filePath.split("/").some((part) => part === ".." || part === ".")
+  );
+}
+
 /** Resolve the explicitly supported root-local mapping without guessing module semantics. */
 export function resolveDirectConfiguredImportPath(
   callerFilePath: string,
@@ -583,6 +594,11 @@ function resolveImportedAliasCandidate(
   if (descriptors.length !== 1) return undefined;
   const [descriptor] = descriptors;
   if (!descriptor || !isSupportedAliasDescriptor(descriptor)) return undefined;
+  if (
+    descriptor.isCombinedDefaultImport &&
+    !isWorkspaceBoundSourcePath(caller.filePath)
+  )
+    return undefined;
   const relativeTargetPath = resolveDirectRelativeImportPath(
     caller.filePath,
     descriptor.modulePath,
@@ -615,6 +631,30 @@ function uniqueImportedCandidate(
 ): CandidateWithoutRank | undefined {
   const target = sourceByPath.get(targetPath);
   if (!target || !isHashBoundExportSource(target)) return undefined;
+  if (importedName === "default")
+    return isWorkspaceBoundSourcePath(targetPath)
+      ? uniqueDirectDefaultFunctionCandidate(
+          targetPath,
+          target,
+          candidatesByFileAndName,
+        )
+      : undefined;
+  return uniqueNamedImportedCandidate(
+    targetPath,
+    importedName,
+    target,
+    candidatesByFileAndName,
+    relativeImport,
+  );
+}
+
+function uniqueNamedImportedCandidate(
+  targetPath: string,
+  importedName: string,
+  target: AliasSourceFile,
+  candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+  relativeImport: boolean,
+): CandidateWithoutRank | undefined {
   if (!hasUniqueDirectExport(target, importedName)) return undefined;
   const candidates =
     candidatesByFileAndName.get(targetPath + "\0" + importedName) ?? [];
@@ -626,6 +666,125 @@ function uniqueImportedCandidate(
   )
     return undefined;
   return candidate;
+}
+
+function uniqueDirectDefaultFunctionCandidate(
+  targetPath: string,
+  target: AliasSourceFile,
+  candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+): CandidateWithoutRank | undefined {
+  const directDefault = directDefaultFunction(target);
+  if (!directDefault) return undefined;
+  if (directDefault.declaration.name)
+    return namedDefaultFunctionCandidate(
+      targetPath,
+      directDefault,
+      candidatesByFileAndName,
+    );
+  return anonymousDefaultFunctionCandidate(targetPath, directDefault);
+}
+
+interface DirectDefaultFunction {
+  readonly declaration: AstDeclaredDeclaration;
+  readonly declarationSpan: { readonly start: number; readonly end: number };
+  readonly facts: AstDeclaredTypeFacts;
+}
+
+function directDefaultFunction(
+  target: AliasSourceFile,
+): DirectDefaultFunction | undefined {
+  const declarationSpan = directDefaultFunctionSpan(target.exports);
+  const facts = target.declaredTypeFacts;
+  if (!declarationSpan || !facts) return undefined;
+
+  const declarations = facts.declarations.filter((declaration) =>
+    matchesDirectDefaultFunction(declaration, declarationSpan),
+  );
+  const [declaration] = declarations;
+  if (declarations.length !== 1 || !declaration) return undefined;
+  return {
+    declaration,
+    declarationSpan,
+    facts,
+  };
+}
+
+function directDefaultFunctionSpan(
+  exports: AliasSourceFile["exports"],
+): { readonly start: number; readonly end: number } | undefined {
+  const defaults = exports?.filter(({ name }) => name === "default");
+  if (defaults?.length !== 1) return undefined;
+  const [descriptor] = defaults;
+  return descriptor?.type === "function"
+    ? descriptor.declarationSpan
+    : undefined;
+}
+
+function matchesDirectDefaultFunction(
+  declaration: AstDeclaredDeclaration,
+  declarationSpan: { readonly start: number; readonly end: number },
+): boolean {
+  return (
+    declaration.owner.kind === "program" &&
+    isSupportedDefaultFunctionDeclaration(declaration) &&
+    declaration.declarationSpan.start === declarationSpan.start &&
+    declaration.declarationSpan.end === declarationSpan.end
+  );
+}
+
+function isSupportedDefaultFunctionDeclaration(
+  declaration: AstDeclaredDeclaration,
+): boolean {
+  return (
+    (declaration.kind === "function" ||
+      declaration.kind === "function-expression") &&
+    !declaration.unsupportedReason
+  );
+}
+
+function namedDefaultFunctionCandidate(
+  targetPath: string,
+  directDefault: DirectDefaultFunction,
+  candidatesByFileAndName: ReadonlyMap<string, readonly CandidateWithoutRank[]>,
+): CandidateWithoutRank | undefined {
+  const name = directDefault.declaration.name;
+  if (!name) return undefined;
+  const candidates = (
+    candidatesByFileAndName.get(targetPath + "\0" + name) ?? []
+  ).filter(
+    (candidate) =>
+      candidate.owner.kind === "program" &&
+      candidate.declarations.length === 1 &&
+      candidate.declarations[0]?.declarationSpan.start ===
+        directDefault.declarationSpan.start &&
+      candidate.declarations[0]?.declarationSpan.end ===
+        directDefault.declarationSpan.end,
+  );
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function anonymousDefaultFunctionCandidate(
+  targetPath: string,
+  directDefault: DirectDefaultFunction,
+): CandidateWithoutRank {
+  const { declaration, declarationSpan, facts } = directDefault;
+  return deepFreeze({
+    targetKey: targetKey(
+      targetPath,
+      declaration.owner,
+      "default",
+      false,
+      declarationSpan,
+    ),
+    filePath: targetPath,
+    owner: declaration.owner,
+    memberName: "default",
+    isStatic: false,
+    declarationSpans: [declaration.declarationSpan],
+    declarations: [declaration],
+    sourceLanguage: facts.language,
+    inventoryComplete: true,
+  });
 }
 
 function isUniqueConfiguredFunction(
@@ -647,6 +806,9 @@ function isSupportedAliasDescriptor(descriptor: AstImportDescriptor): boolean {
     !descriptor.viaReexport &&
     !descriptor.isTypeOnly &&
     descriptor.originalName !== "*" &&
+    (descriptor.originalName !== "default"
+      ? !descriptor.isCombinedDefaultImport
+      : descriptor.isCombinedDefaultImport === true) &&
     descriptor.localName !== descriptor.originalName
   );
 }

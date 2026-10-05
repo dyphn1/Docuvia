@@ -241,7 +241,14 @@ export class GraphPersisterService implements IGraphPersister {
       // check misses them.
       if (result.data.variables)
         locals.push(...result.data.variables.map((v) => v.name));
-      resolver.registerFile(result.file, result.data.imports || [], [], locals);
+      resolver.registerFile(
+        result.file,
+        (result.data.imports || []).filter(
+          (descriptor) => !descriptor.isCombinedDefaultImport,
+        ),
+        [],
+        locals,
+      );
     }
   }
 

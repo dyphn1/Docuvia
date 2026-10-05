@@ -42,8 +42,13 @@ import {
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const SOURCE =
   "evaluate/results/semantic-corpus/v1/phase2-p2a-direct-import-alias-final-source-reproduction";
-const OUTPUT =
+const ALIAS_OUTPUT =
   "evaluate/results/semantic-corpus/v1/phase2-p2a-v5-configured-alias-impact";
+const DEFAULT_IMPORT_OUTPUT =
+  "evaluate/results/semantic-corpus/v1/phase2-p2a-v6-default-import-impact";
+const ALIAS_REPLAY = `${ALIAS_OUTPUT}/configured-alias-paired-replay.jsonl`;
+const ALIAS_REPLAY_SHA256 =
+  "c1147a42d82855d50c59e8ddd2a2215d91c58de805536d3dcce51e232c0cbc64";
 const PINS = {
   predictionManifest:
     "de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e",
@@ -69,6 +74,7 @@ const PINS = {
   },
 } as const;
 type Split = "train" | "calibration";
+type CorpusSplit = Split | "test" | "temporal";
 
 export function assertFeaturePopulation(
   rows: readonly { sampleId: string; split: string }[],
@@ -231,7 +237,7 @@ function evidenceKind(captured: ReturnType<typeof capturedEvidence>) {
 }
 type ReplayRow = {
   sampleId: string;
-  split: Split;
+  split: CorpusSplit;
   repoFamily: string;
   calleeKind: string;
   evidenceKind: string;
@@ -252,10 +258,16 @@ function memberships(before: readonly string[], after: readonly string[]) {
 }
 
 async function run(): Promise<void> {
-  if (process.argv.length !== 2)
+  const defaultImportMode =
+    process.argv.length === 3 && process.argv[2] === "--default-import";
+  if (
+    process.argv.length !== (defaultImportMode ? 3 : 2) ||
+    (process.argv.length === 3 && !defaultImportMode)
+  )
     throw new Error(
-      "Pinned TRAIN/CALIBRATION runner accepts no split/path overrides.",
+      "Runner accepts only the optional --default-import mode; split/path overrides are forbidden.",
     );
+  const output = defaultImportMode ? DEFAULT_IMPORT_OUTPUT : ALIAS_OUTPUT;
   const manifest = JSON.parse(
     pinnedBytes(
       `${SOURCE}/candidate-prediction-manifest.json`,
@@ -276,28 +288,61 @@ async function run(): Promise<void> {
     manifest.splitCounts.calibration !== PINS.calibration.count
   )
     throw new Error("Expected source-only pinned v4 population differs.");
+  const sliceA = defaultImportMode
+    ? JSON.parse(
+        readFileSync(
+          path.join(
+            ROOT,
+            `${ALIAS_OUTPUT}/configured-alias-impact-summary.json`,
+          ),
+          "utf8",
+        ),
+      )
+    : null;
+  const implementationBase = defaultImportMode
+    ? sliceA.implementationFiles
+    : priorReplay.replay.implementationFiles;
   const implementationFiles = Object.fromEntries(
     [
       ...new Set([
-        ...Object.keys(priorReplay.replay.implementationFiles),
+        ...Object.keys(implementationBase),
         "lib/contracts/src/index.ts",
+        ...(defaultImportMode
+          ? [
+              "lib/contracts/src/interfaces/ast.interfaces.ts",
+              "lib/ast-core/src/core/edge-computer.ts",
+              "lib/core/src/ast/ast-worker.ts",
+              "lib/core/src/ast/declared-type-facts.ts",
+            ]
+          : []),
       ]),
     ].map((file) => [file, sha256(readFileSync(path.join(ROOT, file)))]),
   );
   const changedImplementationPaths = Object.keys(implementationFiles).filter(
-    (file) =>
-      implementationFiles[file] !==
-      priorReplay.replay.implementationFiles[file],
+    (file) => implementationFiles[file] !== implementationBase[file],
   );
-  const allowedChanges = new Set([
-    "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts",
-    "lib/contracts/src/index.ts",
-    "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
-    "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
-  ]);
+  const allowedChanges = new Set(
+    defaultImportMode
+      ? [
+          "lib/contracts/src/interfaces/ast.interfaces.ts",
+          "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts",
+          "lib/contracts/src/index.ts",
+          "lib/ast-core/src/core/edge-computer.ts",
+          "lib/core/src/ast/ast-worker.ts",
+          "lib/core/src/ast/declared-type-facts.ts",
+          "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
+          "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
+        ]
+      : [
+          "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts",
+          "lib/contracts/src/index.ts",
+          "lib/core/src/semantic/call-resolution-hypothesis-index.ts",
+          "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
+        ],
+  );
   if (changedImplementationPaths.some((file) => !allowedChanges.has(file)))
     throw new Error(
-      "Feature A changed an implementation outside its contract/index/source boundary.",
+      "The feature changed an implementation outside its pinned contract/index/source boundary.",
     );
   const sourceHashes = verifyPhase1SourceSidecars();
   if (
@@ -317,19 +362,26 @@ async function run(): Promise<void> {
   )
     .toString("utf8")
     .split(/\r?\n/u);
-  const predictions: Record<Split, Phase2EvaluationObservation[]> = {
+  const predictions: Record<CorpusSplit, Phase2EvaluationObservation[]> = {
     train: [],
     calibration: [],
+    test: [],
+    temporal: [],
   };
-  const sources: Record<Split, Phase2CorpusSource[]> = {
+  const sources: Record<CorpusSplit, Phase2CorpusSource[]> = {
     train: [],
     calibration: [],
+    test: [],
+    temporal: [],
   };
   const ids: Record<Split, Set<string>> = {
     train: new Set(),
     calibration: new Set(),
   };
-  for (const split of ["train", "calibration"] as const) {
+  const sourceSplits: readonly CorpusSplit[] = defaultImportMode
+    ? ["train", "calibration", "test", "temporal"]
+    : ["train", "calibration"];
+  for (const split of sourceSplits) {
     predictions[split] = parseJsonlRowsForSplit<Phase2EvaluationObservation>(
       predictionLines,
       split,
@@ -338,18 +390,34 @@ async function run(): Promise<void> {
       sourceLines,
       split,
     ).sort((a, b) => a.sampleId.localeCompare(b.sampleId));
-    ids[split] = new Set(predictions[split].map((row) => row.sampleId));
-    assertFeaturePopulation(predictions[split], split, ids[split]);
-    assertFeaturePopulation(sources[split], split, ids[split]);
+    const splitIds = new Set(predictions[split].map((row) => row.sampleId));
     if (
-      ids[split].size !== PINS[split].count ||
-      canonicalHash(
-        split === "train"
-          ? [...ids[split]].sort((a, b) => a.localeCompare(b))
-          : [...ids[split]].sort(),
-      ) !== PINS[split].ids
+      splitIds.size !== predictions[split].length ||
+      sources[split].length !== predictions[split].length ||
+      new Set(sources[split].map((row) => row.sampleId)).size !==
+        splitIds.size ||
+      sources[split].some((row) => !splitIds.has(row.sampleId)) ||
+      predictions[split].some((row) => row.split !== split)
     )
-      throw new Error(`Complete ${split} population changed.`);
+      throw new Error(
+        `Complete unique ${split} source-only population changed.`,
+      );
+    if (split === "train" || split === "calibration") {
+      ids[split] = splitIds;
+      assertFeaturePopulation(predictions[split], split, ids[split]);
+      assertFeaturePopulation(sources[split], split, ids[split]);
+      if (
+        ids[split].size !== PINS[split].count ||
+        canonicalHash(
+          split === "train"
+            ? [...ids[split]].sort((a, b) => a.localeCompare(b))
+            : [...ids[split]].sort(),
+        ) !== PINS[split].ids
+      )
+        throw new Error(`Complete ${split} population changed.`);
+    } else if (splitIds.size !== manifest.splitCounts[split]) {
+      throw new Error(`Complete ${split} source-only population changed.`);
+    }
   }
   const specification = JSON.parse(
     pinnedBytes(
@@ -363,7 +431,46 @@ async function run(): Promise<void> {
       PINS.collectionReport,
     ).toString("utf8"),
   );
-  const allSources = [...sources.train, ...sources.calibration];
+  const allSources = [
+    ...sources.train,
+    ...sources.calibration,
+    ...sources.test,
+    ...sources.temporal,
+  ];
+  if (
+    defaultImportMode &&
+    (allSources.length !== manifest.predictionRows ||
+      new Set(allSources.map((source) => source.sampleId)).size !==
+        allSources.length)
+  )
+    throw new Error(
+      "Expected the complete 31,578 source-only corpus population.",
+    );
+  const allPredictions = [
+    ...predictions.train,
+    ...predictions.calibration,
+    ...predictions.test,
+    ...predictions.temporal,
+  ];
+  const pinnedAliasRows = new Map<string, ReplayRow>();
+  if (defaultImportMode) {
+    const priorBytes = readFileSync(path.join(ROOT, ALIAS_REPLAY));
+    if (sha256(priorBytes) !== ALIAS_REPLAY_SHA256)
+      throw new Error("Pinned Slice A source-only replay changed.");
+    for (const line of priorBytes.toString("utf8").split(/\r?\n/u)) {
+      if (!line) continue;
+      const row = JSON.parse(line) as ReplayRow;
+      if (pinnedAliasRows.has(row.sampleId))
+        throw new Error("Pinned Slice A replay contains duplicate sample IDs.");
+      pinnedAliasRows.set(row.sampleId, row);
+    }
+    for (const split of ["train", "calibration"] as const) {
+      const priorRows = [...pinnedAliasRows.values()].filter(
+        (row) => row.split === split,
+      );
+      assertFeaturePopulation(priorRows, split, ids[split]);
+    }
+  }
   const selectedSnapshots = new Set(
     allSources.map((source) => source.snapshotId),
   );
@@ -398,15 +505,15 @@ async function run(): Promise<void> {
       sourceIndexComplete: false,
       sourceFiles: [],
     }).configurationHash;
-  const byPinned = new Map(
-    [...predictions.train, ...predictions.calibration].map((row) => [
-      row.sampleId,
-      row,
-    ]),
-  );
+  const byPinned = new Map(allPredictions.map((row) => [row.sampleId, row]));
   const replayRows: ReplayRow[] = [],
     snapshotEvidence: Record<string, unknown>[] = [];
-  const tempRoot = mkdtempSync(path.join(tmpdir(), "docuvia-v5-alias-"));
+  const tempRoot = mkdtempSync(
+    path.join(
+      tmpdir(),
+      defaultImportMode ? "docuvia-v6-default-" : "docuvia-v5-alias-",
+    ),
+  );
   try {
     for (const snapshot of snapshots) {
       const snapshotSources = allSources.filter(
@@ -424,7 +531,7 @@ async function run(): Promise<void> {
       const results: Phase2SnapshotSourceResult[] = [];
       for (const [index, service] of services.entries()) {
         process.stdout.write(
-          `[configured-alias] ${index === 0 ? "baseline" : "feature"} ${snapshot.snapshotId}\n`,
+          `[${defaultImportMode ? "default-import" : "configured-alias"}] ${index === 0 ? (defaultImportMode ? "slice-a-baseline" : "baseline") : "feature"} ${snapshot.snapshotId}\n`,
         );
         const result = await processPhase2Snapshot({
           snapshot,
@@ -435,7 +542,8 @@ async function run(): Promise<void> {
           service,
           processor: makeAstProcessor(),
           factsSidecarHash: PINS.facts,
-          includeConfiguredPathAliases: index === 1,
+          includeConfiguredPathAliases: defaultImportMode || index === 1,
+          includeCombinedDefaultImportTargets: defaultImportMode && index === 1,
         });
         if (
           result.snapshotHash !== snapshot.snapshotHash ||
@@ -445,14 +553,18 @@ async function run(): Promise<void> {
           throw new Error("Paired source/configuration provenance differs.");
         results.push(result);
       }
-      const pinnedFingerprint = manifest.sourceFingerprints.find(
-        (item: { snapshotId: string }) =>
-          item.snapshotId === snapshot.snapshotId,
-      );
-      if (
-        results[0]!.sourceFingerprint !== pinnedFingerprint?.sourceFingerprint
-      )
-        throw new Error("No-config source fingerprint differs from pinned v4.");
+      if (!defaultImportMode) {
+        const pinnedFingerprint = manifest.sourceFingerprints.find(
+          (item: { snapshotId: string }) =>
+            item.snapshotId === snapshot.snapshotId,
+        );
+        if (
+          results[0]!.sourceFingerprint !== pinnedFingerprint?.sourceFingerprint
+        )
+          throw new Error(
+            "No-config source fingerprint differs from pinned v4.",
+          );
+      }
       const baselineObservations = new Map(
         results[0]!.observations.map((row) => [row.sampleId, row]),
       );
@@ -460,13 +572,14 @@ async function run(): Promise<void> {
       for (const source of snapshotSources) {
         const pinned = byPinned.get(source.sampleId)!,
           baselineObservation = baselineObservations.get(source.sampleId)!;
-        // v5 intentionally changes rule signatures; every remaining no-config decision field must reproduce v4.
+        // Slice A intentionally changes rule signatures; every remaining no-config decision field reproduces v4.
         if (
+          !defaultImportMode &&
           candidateObservationDecisionFingerprint(pinned) !==
-          candidateObservationDecisionFingerprint({
-            ...baselineObservation,
-            ruleSignature: pinned.ruleSignature,
-          })
+            candidateObservationDecisionFingerprint({
+              ...baselineObservation,
+              ruleSignature: pinned.ruleSignature,
+            })
         )
           throw new Error(`No-config v4 decision changed: ${source.sampleId}.`);
         const captures = services.map((service) =>
@@ -489,6 +602,23 @@ async function run(): Promise<void> {
         const [baseline, feature] = captures.map((capture) =>
           capturedEvidence(capture, mapKey),
         );
+        if (
+          defaultImportMode &&
+          (source.split === "train" || source.split === "calibration")
+        ) {
+          const prior = pinnedAliasRows.get(source.sampleId);
+          if (
+            !prior ||
+            canonicalHash(prior.source) !== canonicalHash(source) ||
+            canonicalHash(prior.feature.rawKeys) !==
+              canonicalHash(baseline!.rawKeys) ||
+            canonicalHash(prior.feature.proposalKeys) !==
+              canonicalHash(baseline!.proposalKeys)
+          )
+            throw new Error(
+              `Current Slice A baseline differs from its pinned replay: ${source.sampleId}.`,
+            );
+        }
         const rawDelta = memberships(baseline!.rawKeys, feature!.rawKeys),
           proposalDelta = memberships(
             baseline!.proposalKeys,
@@ -496,15 +626,14 @@ async function run(): Promise<void> {
           );
         if (
           !rawDelta.existingOrderPreserved ||
-          !proposalDelta.existingOrderPreserved ||
-          rawDelta.removed.length !== 0
+          !proposalDelta.existingOrderPreserved
         )
           throw new Error(
             "Existing candidate order or raw memberships changed.",
           );
         replayRows.push({
           sampleId: source.sampleId,
-          split: source.split as Split,
+          split: source.split as CorpusSplit,
           repoFamily: source.repoFamily,
           calleeKind: baselineObservation.calleeKind ?? "unmapped",
           evidenceKind: evidenceKind(baseline!),
@@ -665,6 +794,35 @@ async function run(): Promise<void> {
         },
       ];
     });
+    const targetRows =
+      defaultImportMode && split === "calibration"
+        ? rows.filter(
+            (row) =>
+              row.source.filePath ===
+                "src/app/report/[scan_id]/page.test.tsx" &&
+              [111, 128, 150].includes(row.source.line) &&
+              row.source.calleeName === "ReportPage",
+          )
+        : [];
+    if (defaultImportMode && split === "calibration") {
+      if (targetRows.length !== 3)
+        throw new Error(
+          "Expected the three audited CALIBRATION default-import rows.",
+        );
+      for (const row of targetRows) {
+        const gold = goldById.get(row.sampleId) ?? [];
+        if (
+          gold.length !== 1 ||
+          row.baseline.rawMapped.includes(gold[0]!) ||
+          row.baseline.proposalMapped.includes(gold[0]!) ||
+          !row.feature.rawMapped.includes(gold[0]!) ||
+          !row.feature.proposalMapped.includes(gold[0]!)
+        )
+          throw new Error(
+            `Audited default-import row did not gain its unique gold candidate: ${row.sampleId}.`,
+          );
+      }
+    }
     splitResults[split] = {
       sampleIdsHash: PINS[split].ids,
       labelRowsHash,
@@ -708,26 +866,106 @@ async function run(): Promise<void> {
           0,
         ),
       },
+      ...(defaultImportMode && split === "calibration"
+        ? {
+            auditedDefaultImportRows: targetRows.map((row) => ({
+              sampleId: row.sampleId,
+              source: {
+                filePath: row.source.filePath,
+                line: row.source.line,
+                column: row.source.column,
+                calleeName: row.source.calleeName,
+              },
+              goldTargetKey: goldById.get(row.sampleId)?.[0] ?? null,
+              baselineHasGoldRaw: false,
+              baselineHasGoldProposal: false,
+              featureHasGoldRaw: true,
+              featureHasGoldProposal: true,
+              featureCandidateKeyCount: row.feature.rawKeys.length,
+              featureProposalKeyCount: row.feature.proposalKeys.length,
+              featureCallBinding:
+                row.feature.callSiteFact?.calleeBinding ?? null,
+            })),
+          }
+        : {}),
       changedRows,
     };
   }
+  const allMembershipChanges = (rows: readonly ReplayRow[]) => {
+    const deltas = rows.map((row) => ({
+      raw: memberships(row.baseline.rawKeys, row.feature.rawKeys),
+      proposal: memberships(
+        row.baseline.proposalKeys,
+        row.feature.proposalKeys,
+      ),
+    }));
+    return {
+      rowsCompared: rows.length,
+      changedRows: deltas.filter(
+        ({ raw, proposal }) =>
+          raw.added.length +
+            raw.removed.length +
+            proposal.added.length +
+            proposal.removed.length >
+          0,
+      ).length,
+      rawAdded: deltas.reduce((count, { raw }) => count + raw.added.length, 0),
+      rawRemoved: deltas.reduce(
+        (count, { raw }) => count + raw.removed.length,
+        0,
+      ),
+      proposalAdded: deltas.reduce(
+        (count, { proposal }) => count + proposal.added.length,
+        0,
+      ),
+      proposalRemoved: deltas.reduce(
+        (count, { proposal }) => count + proposal.removed.length,
+        0,
+      ),
+    };
+  };
   const replayFile = path.join(
     ROOT,
-    OUTPUT,
-    "configured-alias-paired-replay.jsonl",
+    output,
+    defaultImportMode
+      ? "default-import-paired-replay.jsonl"
+      : "configured-alias-paired-replay.jsonl",
   );
   writeJsonl(replayFile, replayRows);
-  writeJson(path.join(ROOT, OUTPUT, "configured-alias-impact-summary.json"), {
+  const summaryFile = path.join(
+    ROOT,
+    output,
+    defaultImportMode
+      ? "default-import-impact-summary.json"
+      : "configured-alias-impact-summary.json",
+  );
+  writeJson(summaryFile, {
     schemaVersion: 1,
-    measurement: "phase2-p2a-v5-configured-alias-impact/1",
+    measurement: defaultImportMode
+      ? "phase2-p2a-v6-default-import-impact/1"
+      : "phase2-p2a-v5-configured-alias-impact/1",
     dataBoundary: {
       labelSplits: ["train", "calibration"],
       labelLoader: "labelsForSplitIsolated",
       heldoutLabelsRead: false,
+      systemOneArtifactsRead: false,
       runCCorpusManifestRead: false,
       allSitesDenominator: true,
       unscorableAndExcludedRowsRetained: true,
       trainSevenDirectCapabilityRowsNotMerged: true,
+      ...(defaultImportMode
+        ? {
+            sourceOnlyRowsCompared: replayRows.length,
+            sourceOnlySplitCounts: {
+              train: predictions.train.length,
+              calibration: predictions.calibration.length,
+              test: predictions.test.length,
+              temporal: predictions.temporal.length,
+            },
+            sourceOnlyMembershipChanges: allMembershipChanges(replayRows),
+            baselineSliceAReplaySha256: ALIAS_REPLAY_SHA256,
+          }
+        : {}),
     },
     candidateGeneratorVersion: CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
     rankingPolicyVersion: CALL_RESOLUTION_RANKING_POLICY_VERSION,
@@ -743,14 +981,26 @@ async function run(): Promise<void> {
     changedImplementationPaths,
     snapshots: snapshotEvidence,
     replay: {
-      path: OUTPUT + "/configured-alias-paired-replay.jsonl",
+      path:
+        output +
+        (defaultImportMode
+          ? "/default-import-paired-replay.jsonl"
+          : "/configured-alias-paired-replay.jsonl"),
       sha256: sha256(readFileSync(replayFile)),
       rows: replayRows.length,
     },
     splits: splitResults,
   });
+  if (defaultImportMode)
+    writeJson(path.join(ROOT, output, "default-import-impact-artifacts.json"), {
+      summaryPath: output + "/default-import-impact-summary.json",
+      summarySha256: sha256(readFileSync(summaryFile)),
+      replayPath: output + "/default-import-paired-replay.jsonl",
+      replaySha256: sha256(readFileSync(replayFile)),
+      pinnedSliceAReplaySha256: ALIAS_REPLAY_SHA256,
+    });
   process.stdout.write(
-    `[configured-alias] completed ${replayRows.length} isolated TRAIN/CALIBRATION rows\n`,
+    `[${defaultImportMode ? "default-import" : "configured-alias"}] completed ${replayRows.length} source-only rows\n`,
   );
 }
 if (

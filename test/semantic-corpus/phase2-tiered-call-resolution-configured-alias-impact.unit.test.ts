@@ -3,8 +3,30 @@ import {
   assertFeaturePopulation,
   measureFeatureCandidateSets,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-configured-alias-impact.mjs";
+import { importsForDefaultImportCapability } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-source.mjs";
 
 describe("TRAIN/CAL configured alias impact measurement", () => {
+  it("[boundary] replays Slice A without combined defaults and enables them only in Slice B", () => {
+    const named = {
+      localName: "metadata",
+      originalName: "metadata",
+      modulePath: "./page",
+    };
+    const combinedDefault = {
+      localName: "ReportPage",
+      originalName: "default",
+      modulePath: "./page",
+      isCombinedDefaultImport: true,
+    };
+    const descriptors = [named, combinedDefault];
+
+    expect(importsForDefaultImportCapability(descriptors)).toEqual([named]);
+    expect(importsForDefaultImportCapability(descriptors, true)).toEqual(
+      descriptors,
+    );
+    expect(descriptors).toHaveLength(2);
+  });
+
   it("[happy] measures all sites including unscorable and empty candidate sets", () => {
     expect(
       measureFeatureCandidateSets([

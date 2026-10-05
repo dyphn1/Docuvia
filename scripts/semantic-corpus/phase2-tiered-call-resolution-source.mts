@@ -415,13 +415,18 @@ function observationFromResult(
 function workspaceSourceFiles(
   factRows: readonly Phase2FactFile[],
   parsedByFile: ReadonlyMap<string, ParsedAstFileResult>,
+  excludeCombinedDefaultImports = false,
 ): CallResolutionHypothesisWorkspaceInput["sourceFiles"] {
   return factRows.map(({ filePath, fileContentSha256, declaredTypeFacts }) => {
     const data = parsedByFile.get(filePath)?.data;
+    const imports = importsForDefaultImportCapability(
+      data?.imports,
+      !excludeCombinedDefaultImports,
+    );
     return {
       filePath,
       sourceContentHash: fileContentSha256,
-      imports: data?.imports,
+      imports,
       exports: data?.exports,
       callSiteShapeFacts: data?.callSiteShapeFacts ?? null,
       declaredTypeFacts,
@@ -429,10 +434,20 @@ function workspaceSourceFiles(
   });
 }
 
+export function importsForDefaultImportCapability(
+  imports: readonly AstImportDescriptor[] | undefined,
+  enabled = false,
+): readonly AstImportDescriptor[] | undefined {
+  return imports?.filter(
+    (descriptor) => enabled || descriptor.isCombinedDefaultImport !== true,
+  );
+}
+
 function directAliasTargetPaths(
   callFiles: readonly ParsedAstFileResult[],
   factRows: readonly Phase2FactFile[],
   configuredPathAliases?: CallResolutionConfiguredPathAliases,
+  includeCombinedDefaultImports = false,
 ): string[] {
   const factsByPath = new Map<string, Phase2FactFile[]>();
   for (const row of factRows) {
@@ -452,13 +467,18 @@ function directAliasTargetPaths(
     for (const [localName, descriptors] of importsByLocalName) {
       if (descriptors.length !== 1) continue;
       const descriptor = descriptors[0];
+      const isCombinedDefaultImport =
+        descriptor?.isCombinedDefaultImport === true &&
+        descriptor.originalName === "default";
       if (
         !descriptor ||
         descriptor.viaReexport ||
         descriptor.isTypeOnly ||
-        descriptor.originalName === "*" ||
-        descriptor.originalName === "default" ||
-        descriptor.localName === descriptor.originalName
+        (isCombinedDefaultImport && !includeCombinedDefaultImports) ||
+        (!isCombinedDefaultImport &&
+          (descriptor.originalName === "*" ||
+            descriptor.originalName === "default" ||
+            descriptor.localName === descriptor.originalName))
       )
         continue;
       const targetPath =
@@ -473,7 +493,12 @@ function directAliasTargetPaths(
           availablePaths,
           configuredPathAliases,
         );
-      if (!targetPath || (factsByPath.get(targetPath)?.length ?? 0) !== 1)
+      if (
+        !targetPath ||
+        path.posix.isAbsolute(targetPath) ||
+        targetPath.startsWith("../") ||
+        (factsByPath.get(targetPath)?.length ?? 0) !== 1
+      )
         continue;
       if (isDiscoverableSourceFile(targetPath)) targets.add(targetPath);
     }
@@ -572,6 +597,8 @@ export async function processPhase2Snapshot(input: {
   readonly includeProposalFilterStageEvidence?: boolean;
   /** Add source-bound configuration facts without changing the replay eligibility or runtime policy. */
   readonly includeConfiguredPathAliases?: boolean;
+  /** Discover one exact workspace-local target for a combined default import when requested. */
+  readonly includeCombinedDefaultImportTargets?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
   if (
@@ -637,6 +664,7 @@ export async function processPhase2Snapshot(input: {
       parsedCallFiles.parsed,
       factRows,
       configuredPathAliases,
+      input.includeCombinedDefaultImportTargets,
     ).filter((filePath) => !callSourcePaths.has(filePath));
     const factRowsByPath = new Map<string, Phase2FactFile[]>();
     for (const row of factRows) {
@@ -692,7 +720,11 @@ export async function processPhase2Snapshot(input: {
     const workspaceIndex = input.service.indexWorkspace({
       sourceFingerprint,
       sourceIndexComplete: true,
-      sourceFiles: workspaceSourceFiles(factRows, parsedByFile),
+      sourceFiles: workspaceSourceFiles(
+        factRows,
+        parsedByFile,
+        !input.includeCombinedDefaultImportTargets,
+      ),
       ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
     });
     const callShapeMaps = new Map(

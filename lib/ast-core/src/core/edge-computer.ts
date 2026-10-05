@@ -53,6 +53,8 @@ export interface ParsedImportDescriptor {
   viaReexport?: boolean;
   /** True for TS `import type` and `import { type X }` bindings. */
   isTypeOnly?: boolean;
+  /** True only for the default binding in an ordinary `import X, { y }` statement. */
+  isCombinedDefaultImport?: boolean;
 }
 
 /**
@@ -62,9 +64,9 @@ export interface ParsedImportDescriptor {
  * the same data into the opaque `${modulePath}::${originalName}` string format EdgeComputer
  * expects (kept only for that consumer's backward compatibility).
  *
- * `originalName: "*"` marks namespace/default/whole-module bindings that don't resolve to a
- * single named symbol (e.g. `import * as X`, Python dotted `import a.b.c`, C's `#include`) —
- * callers (ScopeResolver.resolveCall) treat "*" as "fall back to the call name itself".
+ * `originalName: "*"` marks namespace, standalone default, and whole-module bindings that don't
+ * resolve to a single named symbol. A default binding in `import X, { y }` is marked explicitly
+ * as `originalName: "default"` so source-bound call resolution can handle only that narrow form.
  */
 export function parseImportDescriptors(
   importStatements: Node[],
@@ -133,8 +135,15 @@ function collectTsJsImportDescriptors(
   const statementIsTypeOnly = /^import\s+type\b/u.test(stmt.text.trimStart());
   if (collectNamespaceImport(stmt, srcText, statementIsTypeOnly, descriptors))
     return;
-  if (collectNamedImport(stmt, srcText, statementIsTypeOnly, descriptors))
+  if (collectNamedImport(stmt, srcText, statementIsTypeOnly, descriptors)) {
+    collectCombinedDefaultImport(
+      stmt,
+      srcText,
+      statementIsTypeOnly,
+      descriptors,
+    );
     return;
+  }
   collectDefaultImport(stmt, srcText, statementIsTypeOnly, descriptors);
 }
 
@@ -195,6 +204,58 @@ function collectNamedImportSpecifier(
       ? { isTypeOnly: true }
       : {}),
   });
+}
+
+function collectCombinedDefaultImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
+  const defaultName = combinedDefaultImportName(stmt);
+  if (
+    !defaultName ||
+    !hasNamedImportClause(stmt) ||
+    !hasNamedImportSpecifier(stmt)
+  )
+    return;
+  descriptors.push({
+    localName: defaultName,
+    originalName: "default",
+    modulePath,
+    isCombinedDefaultImport: true,
+    ...(isTypeOnly ? { isTypeOnly: true } : {}),
+  });
+}
+
+function combinedDefaultImportName(stmt: Node): string | undefined {
+  const importClause = stmt.descendantsOfType("import_clause")[0];
+  const clauseChildren = (importClause?.namedChildren ?? []).filter(
+    (child): child is Node => child !== null,
+  );
+  const defaultBinding = clauseChildren.find(
+    (child) => child.type === "identifier",
+  );
+  const sourceDefaultName = stmt.text
+    .trimStart()
+    .match(
+      /^import\s+(?:type\s+)?([$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*)\s*,\s*\{/u,
+    )?.[1];
+  return defaultBinding?.text ?? sourceDefaultName;
+}
+
+function hasNamedImportClause(stmt: Node): boolean {
+  const importClause = stmt.descendantsOfType("import_clause")[0];
+  const children = importClause?.namedChildren ?? [];
+  if (children.some((child) => child?.type === "named_imports")) return true;
+  return /^import\s+(?:type\s+)?[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*\s*,\s*\{/u.test(
+    stmt.text.trimStart(),
+  );
+}
+
+function hasNamedImportSpecifier(stmt: Node): boolean {
+  const namedImports = stmt.descendantsOfType("named_imports")[0];
+  return Boolean(namedImports?.descendantsOfType("import_specifier").length);
 }
 
 function collectDefaultImport(
@@ -643,6 +704,9 @@ export function buildScopeMap(
 ): Map<string, string> {
   const scopeMap = new Map<string, string>();
   for (const d of parseImportDescriptors(importStatements)) {
+    // Combined-default descriptors exist only for source-bound candidate generation. Keep the
+    // legacy EdgeComputer projection byte-for-byte stable for graph consumers.
+    if (d.isCombinedDefaultImport) continue;
     scopeMap.set(
       d.localName,
       d.originalName === WILDCARD_IMPORT_MARKER

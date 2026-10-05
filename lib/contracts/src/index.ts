@@ -104,6 +104,7 @@ export type {
 export type { IDiscoverableSourceFileProvider } from "./interfaces/discovery.interfaces.js";
 export type {
   AstExportKind,
+  AstExportDescriptor,
   AstImportDescriptor,
   ParsedAstFileData,
   ParsedAstFileResult,

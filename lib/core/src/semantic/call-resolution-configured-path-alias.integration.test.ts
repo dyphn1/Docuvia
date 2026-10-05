@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   SUPPORTED_LANGUAGES,
   ErrorCodes,
+  CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   type CallResolutionConfiguredPathAliases,
 } from "@workspace/contracts";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
@@ -181,7 +182,7 @@ describe("configured named-import candidate evidence", () => {
       reason: "uncalibrated-signature",
       candidateSetComplete: false,
       strictProof: { status: "abstained" },
-      candidateGeneratorVersion: "declared-member-hypothesis-v5",
+      candidateGeneratorVersion: CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
     });
     expect(withConfig.configurationHash).toBe(withoutConfig.configurationHash);
     expect(withoutConfig.sourceFingerprint).toBe(

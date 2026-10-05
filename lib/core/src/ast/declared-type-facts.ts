@@ -893,6 +893,16 @@ function isFunctionValueMember(node: Node): boolean {
   return false;
 }
 
+function isAnonymousDirectDefaultFunction(node: Node): boolean {
+  return (
+    node.type === "function_expression" &&
+    node.parent?.type === "export_statement" &&
+    /^export\s+default\s+(?:async\s+)?function(?:\s|\*|\()/u.test(
+      node.parent.text,
+    )
+  );
+}
+
 function compareFacts(a: AstDeclaredTypeFact, b: AstDeclaredTypeFact): number {
   return (
     a.declarationSpan.start - b.declarationSpan.start ||
@@ -953,7 +963,10 @@ export function extractDeclaredTypeFacts(
       }
     }
 
-    if (FREE_CALLABLE_NODE_TYPES.has(node.type) && !isFunctionValueMember(node))
+    if (
+      FREE_CALLABLE_NODE_TYPES.has(node.type) &&
+      (!isFunctionValueMember(node) || isAnonymousDirectDefaultFunction(node))
+    )
       declarations.push(freeCallableDeclaration(node));
   });
 

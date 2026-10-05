@@ -221,6 +221,152 @@ describe("parseImportDescriptors", () => {
     ]);
   });
 
+  it("[happy] identifies the default binding only in a combined default-plus-named import", () => {
+    const combined: FakeSpec = {
+      type: "import_statement",
+      text: 'import ReportPage, { generateMetadata } from "./page";',
+      descendants: {
+        string: [{ type: "string", text: '"./page"' }],
+        namespace_import: [],
+        named_imports: [
+          {
+            type: "named_imports",
+            descendants: {
+              import_specifier: [
+                {
+                  type: "import_specifier",
+                  fields: {
+                    name: { type: "identifier", text: "generateMetadata" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        import_clause: [
+          {
+            type: "import_clause",
+            namedChildren: [
+              { type: "identifier", text: "ReportPage" },
+              { type: "named_imports", text: "{ generateMetadata }" },
+            ],
+          },
+        ],
+      },
+    };
+    const typeOnly: FakeSpec = {
+      ...combined,
+      text: 'import type ReportPage, { Metadata } from "./page";',
+      descendants: {
+        ...combined.descendants,
+        named_imports: [
+          {
+            type: "named_imports",
+            descendants: {
+              import_specifier: [
+                {
+                  type: "import_specifier",
+                  fields: { name: { type: "identifier", text: "Metadata" } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(parseImportDescriptors([makeNode(combined)])).toEqual([
+      {
+        localName: "generateMetadata",
+        originalName: "generateMetadata",
+        modulePath: "./page",
+      },
+      {
+        localName: "ReportPage",
+        originalName: "default",
+        modulePath: "./page",
+        isCombinedDefaultImport: true,
+      },
+    ]);
+    expect(parseImportDescriptors([makeNode(typeOnly)])).toContainEqual({
+      localName: "ReportPage",
+      originalName: "default",
+      modulePath: "./page",
+      isCombinedDefaultImport: true,
+      isTypeOnly: true,
+    });
+  });
+
+  it("[boundary] keeps standalone, namespace, and named default aliases out of the combined-default form", () => {
+    const standalone: FakeSpec = {
+      type: "import_statement",
+      text: "import ReportPage from './page';",
+      descendants: {
+        string: [{ type: "string", text: "'./page'" }],
+        namespace_import: [],
+        named_imports: [],
+        identifier: [{ type: "identifier", text: "ReportPage" }],
+      },
+    };
+    const namespace: FakeSpec = {
+      type: "import_statement",
+      text: "import ReportPage, * as page from './page';",
+      descendants: {
+        string: [{ type: "string", text: "'./page'" }],
+        namespace_import: [
+          {
+            type: "namespace_import",
+            descendants: { identifier: [{ type: "identifier", text: "page" }] },
+          },
+        ],
+        named_imports: [],
+      },
+    };
+    const namedDefaultAlias: FakeSpec = {
+      type: "import_statement",
+      text: 'import { default as ReportPage, metadata } from "./page";',
+      descendants: {
+        string: [{ type: "string", text: '"./page"' }],
+        namespace_import: [],
+        named_imports: [
+          {
+            type: "named_imports",
+            descendants: {
+              import_specifier: [
+                {
+                  type: "import_specifier",
+                  fields: {
+                    name: { type: "identifier", text: "default" },
+                    alias: { type: "identifier", text: "ReportPage" },
+                  },
+                },
+                {
+                  type: "import_specifier",
+                  fields: { name: { type: "identifier", text: "metadata" } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+
+    expect(parseImportDescriptors([makeNode(standalone)])).toEqual([
+      { localName: "ReportPage", originalName: "*", modulePath: "./page" },
+    ]);
+    expect(parseImportDescriptors([makeNode(namespace)])).toEqual([
+      { localName: "page", originalName: "*", modulePath: "./page" },
+    ]);
+    expect(parseImportDescriptors([makeNode(namedDefaultAlias)])).toEqual([
+      {
+        localName: "ReportPage",
+        originalName: "default",
+        modulePath: "./page",
+      },
+      { localName: "metadata", originalName: "metadata", modulePath: "./page" },
+    ]);
+  });
+
   it("Python: from x import y", () => {
     const spec: FakeSpec = {
       type: "import_from_statement",
@@ -285,6 +431,48 @@ describe("parseImportDescriptors", () => {
 });
 
 describe("buildScopeMap (behavior-preserving wrapper over parseImportDescriptors)", () => {
+  it("[happy] keeps candidate-only combined defaults out of the legacy scope map", () => {
+    const combined: FakeSpec = {
+      type: "import_statement",
+      text: 'import ReportPage, { generateMetadata } from "./page";',
+      descendants: {
+        string: [{ type: "string", text: '"./page"' }],
+        namespace_import: [],
+        named_imports: [
+          {
+            type: "named_imports",
+            descendants: {
+              import_specifier: [
+                {
+                  type: "import_specifier",
+                  fields: {
+                    name: { type: "identifier", text: "generateMetadata" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        import_clause: [
+          {
+            type: "import_clause",
+            namedChildren: [
+              { type: "identifier", text: "ReportPage" },
+              { type: "named_imports", text: "{ generateMetadata }" },
+            ],
+          },
+        ],
+      },
+    };
+
+    const map = buildScopeMap([makeNode(combined)], "");
+
+    expect(map).toEqual(
+      new Map([["generateMetadata", "./page::generateMetadata"]]),
+    );
+    expect(map.has("ReportPage")).toBe(false);
+  });
+
   it("encodes named-import descriptors as `${modulePath}::${originalName}` (matches original hand-written implementation's output)", () => {
     const named: FakeSpec = {
       type: "import_statement",

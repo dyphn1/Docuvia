@@ -115,7 +115,9 @@ export class GraphPersisterService implements IGraphPersister {
     for (const result of parsedResults) {
       resolver.registerFile(
         result.file,
-        result.data.imports ?? [],
+        (result.data.imports ?? []).filter(
+          (descriptor) => !descriptor.isCombinedDefaultImport,
+        ),
         [],
         localSymbols(result),
       );
@@ -132,6 +134,7 @@ export class GraphPersisterService implements IGraphPersister {
     if (!sourceId) return;
 
     for (const descriptor of result.data.imports ?? []) {
+      if (descriptor.isCombinedDefaultImport) continue;
       this.linkValueImport(store, resolver, result, sourceId, descriptor);
     }
   }
@@ -208,6 +211,7 @@ export class GraphPersisterService implements IGraphPersister {
     if (!sourceId) return;
 
     for (const descriptor of result.data.imports ?? []) {
+      if (descriptor.isCombinedDefaultImport) continue;
       if (CHILD_PROCESS_MODULES.has(descriptor.modulePath)) {
         this.linkChildProcessDescriptor(
           store,

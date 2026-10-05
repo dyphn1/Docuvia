@@ -151,8 +151,25 @@ async function hypothesize(
 
 const q2Signature = CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE;
 
+function requireQ2Proof(result: Awaited<ReturnType<typeof hypothesize>>) {
+  const proof = result.strictProof;
+  if (proof.status !== "proven" || proof.ruleSignature !== q2Signature)
+    throw new Error("Expected a proven Q2 re-export target");
+  return proof;
+}
+
+function dependencyHash(
+  proof: ReturnType<typeof requireQ2Proof>,
+  filePath: string,
+): string | null {
+  return (
+    proof.dependencies.find((dependency) => dependency.filePath === filePath)
+      ?.contentHash ?? null
+  );
+}
+
 describe("call-resolution strict Q2 re-export proof", () => {
-  it("proves one named re-export hop, preserves the imported symbol, and fingerprints the chain", async () => {
+  it("[happy] proves one named re-export hop, preserves the imported symbol, and fingerprints the chain", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export function work(): void {}",
@@ -183,7 +200,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     expect(result.selected).toBeNull();
   });
 
-  it("proves multi-hop renamed exports by tracing each file-symbol pair", async () => {
+  it("[happy] proves multi-hop renamed exports by tracing each file-symbol pair", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export function canonical(): void {}",
@@ -228,7 +245,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     });
   });
 
-  it("proves one unambiguous export-star path", async () => {
+  it("[happy] proves one unambiguous export-star path", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export function work(): void {}",
@@ -249,7 +266,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     });
   });
 
-  it("does not resolve a default import through an export-star barrel", async () => {
+  it("[invalid-input] does not resolve a default import through an export-star barrel", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export default function worker(): void {}",
@@ -265,7 +282,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     expect(result.strictProof?.reason).toBe("unresolved-call-binding");
   });
 
-  it("proves a local re-export of one imported binding", async () => {
+  it("[happy] proves a local re-export of one imported binding", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export function work(): void {}",
@@ -289,7 +306,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     });
   });
 
-  it("proves a trivially unique named re-export of a default function", async () => {
+  it("[happy] proves a trivially unique named re-export of a default function", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export default function worker(): void {}",
@@ -310,7 +327,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     });
   });
 
-  it("includes the path configuration in a proof that uses configured aliases", async () => {
+  it("[happy] includes the path configuration in a proof that uses configured aliases", async () => {
     const implementation = {
       filePath: "src/impl.ts",
       code: "export function work(): void {}",
@@ -343,7 +360,7 @@ describe("call-resolution strict Q2 re-export proof", () => {
     });
   });
 
-  it("accepts exactly sixteen re-export hops", async () => {
+  it("[happy][stress] accepts exactly sixteen re-export hops", async () => {
     const files = barrelChain(16);
     const caller = callerFrom("./barrel-0.js");
     const result = await hypothesize([...files, caller]);
@@ -353,6 +370,136 @@ describe("call-resolution strict Q2 re-export proof", () => {
       targetKey: "src/impl.ts#function:7:31#work",
       ruleSignature: q2Signature,
     });
+  });
+
+  it("[happy][stress] proves a target across many sibling re-exports and fingerprints each branch", async () => {
+    const siblingFiles = Array.from({ length: 24 }, (_, index) => ({
+      filePath: "src/siblings/sibling-" + index + ".ts",
+      code: "export function sibling" + index + "(): void {}",
+    }));
+    const siblingBarrelLines = Array.from(
+      { length: siblingFiles.length },
+      (_, index) => 'export * from "./siblings/sibling-' + index + '.js";',
+    );
+    const implementation = {
+      filePath: "src/impl.ts",
+      code: "export function work(): void {}",
+    };
+    const barrel = {
+      filePath: "src/barrel.ts",
+      code: [...siblingBarrelLines, 'export * from "./impl.js";'].join("\n"),
+    };
+    const caller = callerFrom("./barrel.js");
+    const result = await hypothesize([
+      ...siblingFiles,
+      implementation,
+      barrel,
+      caller,
+    ]);
+    const proof = requireQ2Proof(result);
+
+    expect({
+      status: proof.status,
+      targetKey: proof.targetKey,
+      ruleSignature: proof.ruleSignature,
+      reason: proof.reason,
+      targetFilePath: proof.targetFilePath,
+      targetName: proof.targetName,
+      dependencyPaths: proof.dependencies.map(({ filePath }) => filePath),
+    }).toEqual({
+      status: "proven",
+      targetKey: "src/impl.ts#function:7:31#work",
+      ruleSignature: q2Signature,
+      reason: "unique-named-import",
+      targetFilePath: "src/impl.ts",
+      targetName: "work",
+      dependencyPaths: [
+        "src/barrel.ts",
+        "src/caller.ts",
+        "src/impl.ts",
+        ...siblingFiles.map(({ filePath }) => filePath).sort(),
+      ],
+    });
+  });
+
+  it("[happy][state-diff] changes the proven target and intermediate dependency hash after a barrel edit", async () => {
+    const firstImplementation = {
+      filePath: "src/first.ts",
+      code: "export function alpha(): void {}",
+    };
+    const secondImplementation = {
+      filePath: "src/second.ts",
+      code: "export function beta(): void {}",
+    };
+    const barrel = {
+      filePath: "src/barrel.ts",
+      code: 'export { middleName as publicWork } from "./middle.js";',
+    };
+    const middleBefore = {
+      filePath: "src/middle.ts",
+      code: 'export { alpha as middleName } from "./first.js";',
+    };
+    const middleAfter = {
+      ...middleBefore,
+      code: 'export { beta as middleName } from "./second.js";',
+    };
+    const caller = callerFrom("./barrel.js", "publicWork");
+    const before = await hypothesize([
+      firstImplementation,
+      secondImplementation,
+      barrel,
+      middleBefore,
+      caller,
+    ]);
+    const after = await hypothesize([
+      firstImplementation,
+      secondImplementation,
+      barrel,
+      middleAfter,
+      caller,
+    ]);
+    const beforeProof = requireQ2Proof(before);
+    const afterProof = requireQ2Proof(after);
+
+    expect([
+      {
+        status: beforeProof.status,
+        targetKey: beforeProof.targetKey,
+        ruleSignature: beforeProof.ruleSignature,
+        reason: beforeProof.reason,
+        targetFilePath: beforeProof.targetFilePath,
+        targetName: beforeProof.targetName,
+        middleDependencyHash: dependencyHash(beforeProof, "src/middle.ts"),
+      },
+      {
+        status: afterProof.status,
+        targetKey: afterProof.targetKey,
+        ruleSignature: afterProof.ruleSignature,
+        reason: afterProof.reason,
+        targetFilePath: afterProof.targetFilePath,
+        targetName: afterProof.targetName,
+        middleDependencyHash: dependencyHash(afterProof, "src/middle.ts"),
+      },
+    ]).toEqual([
+      {
+        status: "proven",
+        targetKey: "src/first.ts#function:7:32#alpha",
+        ruleSignature: q2Signature,
+        reason: "unique-named-import",
+        targetFilePath: "src/first.ts",
+        targetName: "alpha",
+        middleDependencyHash: sha256(middleBefore.code),
+      },
+      {
+        status: "proven",
+        targetKey: "src/second.ts#function:7:31#beta",
+        ruleSignature: q2Signature,
+        reason: "unique-named-import",
+        targetFilePath: "src/second.ts",
+        targetName: "beta",
+        middleDependencyHash: sha256(middleAfter.code),
+      },
+    ]);
   });
 
   const cycleFiles = [
@@ -554,97 +701,97 @@ describe("call-resolution strict Q2 re-export proof", () => {
 
   it.each([
     {
-      name: "abstains on a cycle in a file-symbol chain",
+      name: "[invalid-input] abstains on a cycle in a file-symbol chain",
       files: cycleFiles,
       reason: "unresolved-call-binding",
       options: {},
     },
     {
-      name: "abstains when the chain exceeds sixteen hops",
+      name: "[invalid-input][stress] abstains when the chain exceeds sixteen hops",
       files: depth17Files,
       reason: "unresolved-call-binding",
       options: {},
     },
     {
-      name: "does not fall back to a barrel when a re-export dead-ends",
+      name: "[invalid-input][error-handling] does not fall back to a barrel when a re-export dead-ends",
       files: deadEndFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains when two export-star sources provide the imported name",
+      name: "[invalid-input] abstains when two export-star sources provide the imported name",
       files: multipleStarFiles,
       reason: "no-unique-owner-candidate",
       options: {},
     },
     {
-      name: "abstains when a direct declaration conflicts with ambiguous stars",
+      name: "[invalid-input] abstains when a direct declaration conflicts with ambiguous stars",
       files: conflictingStarFiles,
       reason: "no-unique-owner-candidate",
       options: {},
     },
     {
-      name: "abstains when a default re-export is not unique",
+      name: "[invalid-input] abstains when a default re-export is not unique",
       files: ambiguousDefaultFiles,
       reason: "no-unique-owner-candidate",
       options: {},
     },
     {
-      name: "abstains when a local re-export binding is ambiguous",
+      name: "[invalid-input] abstains when a local re-export binding is ambiguous",
       files: ambiguousLocalBindingFiles,
       reason: "no-unique-owner-candidate",
       options: {},
     },
     {
-      name: "abstains on namespace re-exports",
+      name: "[invalid-input] abstains on namespace re-exports",
       files: namespaceFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains on type-only re-exports",
+      name: "[invalid-input] abstains on type-only re-exports",
       files: typeOnlyFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains when import resolution escapes the workspace",
+      name: "[invalid-input] abstains when import resolution escapes the workspace",
       files: escapingFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains on unsupported package specifiers",
+      name: "[invalid-input] abstains on unsupported package specifiers",
       files: unsupportedSpecifierFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains when module-path resolution has two source files",
+      name: "[invalid-input] abstains when module-path resolution has two source files",
       files: ambiguousPathFiles,
       reason: "unsupported-call-shape",
       options: {},
     },
     {
-      name: "abstains when a file on the chain lacks complete re-export facts",
+      name: "[invalid-input][error-handling] abstains when a file on the chain lacks complete re-export facts",
       files: incompleteChainFiles,
       reason: "incomplete-inventory",
       options: { incompleteReexportInventoryFile: "src/barrel.ts" },
     },
     {
-      name: "abstains when the final file lacks complete re-export facts",
+      name: "[invalid-input][error-handling] abstains when the final file lacks complete re-export facts",
       files: incompleteTargetFiles,
       reason: "incomplete-inventory",
       options: { incompleteReexportInventoryFile: "src/impl.ts" },
     },
     {
-      name: "abstains when the candidate list is truncated",
+      name: "[invalid-input][stress] abstains when the candidate list is truncated",
       files: truncatedFiles,
       reason: "candidate-list-truncated",
       options: { maxCandidates: 1 },
     },
     {
-      name: "abstains when the final target name collides in the workspace",
+      name: "[invalid-input] abstains when the final target name collides in the workspace",
       files: collisionFiles,
       reason: "no-unique-owner-candidate",
       options: {},

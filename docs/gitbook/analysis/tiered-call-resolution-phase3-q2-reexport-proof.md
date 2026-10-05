@@ -38,10 +38,10 @@ node --max-old-space-size=4096 --import tsx scripts/semantic-corpus/phase3-q2-re
 
 | Artifact                          | SHA-256                                                            |
 | --------------------------------- | ------------------------------------------------------------------ |
-| TRAIN/CALIBRATION audit JSON      | `70241701395d53aacaa5c1431e55046a8ec8668ecafa6da27c07d6f58d538a9d` |
+| TRAIN/CALIBRATION audit JSON      | `3cbe9c286ed1d88b9a335359f3ccfd6e289186953d6b9fac43cfb46b3597a3d4` |
 | Whole-source parity JSONL         | `1f19d19898354dba9cc07bd92f26372d393eb2aef49ef9bac336d27f83409b2d` |
 | Whole-source input manifest       | `1f916de93c41ddefc4f54faead613c125d0d360576dfe005bd31838516b4b2e5` |
-| Frozen implementation bundle      | `2d0bae1aa6ed374c70790b53a3f4c216f76bfa02516a6756c0c45eb442f07e10` |
+| Frozen implementation bundle      | `84d59c1e779a38d568c8e876e317f9046bc1da674c614e2f6b8e8502469e8c38` |
 | Pinned `callsites.jsonl`          | `b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362` |
 | Pinned declared-type facts pass A | `ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e` |
 | TRAIN label records               | `d32a13e929f7678a36f35a86a2a598cd0aa86b23421aea5a70a3562791e4ddcc` |

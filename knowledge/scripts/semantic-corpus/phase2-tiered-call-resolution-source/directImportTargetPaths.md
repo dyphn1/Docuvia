@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts#directAliasTargetPaths
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts#directImportTargetPaths
 type: symbol
-name: directAliasTargetPaths
+name: directImportTargetPaths
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts
 ---
-# Symbol: directAliasTargetPaths
+# Symbol: directImportTargetPaths
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts`

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts#anonymous@L76
+id: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts#anonymous@L63
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts`
-

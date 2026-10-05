@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/impact-eval-honesty.phase0.unit.test.ts#anonymous@L359
+id: artifacts/cli/test/support/impact-eval-honesty.phase0.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/support/impact-eval-honesty.phase0.unit.test.ts

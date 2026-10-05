@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
 import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import {
+  parseReexportDescriptors,
   parseImportDescriptors,
   loadDefaultRegistry,
 } from "@workspace/ast-core";
@@ -12,6 +13,7 @@ import {
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
   type AstImportDescriptor,
+  type AstReexportDescriptor,
   type AstDeclaredTypeLanguage,
   type AstExportDescriptor,
   type AstDeclaredTypeFacts,
@@ -73,6 +75,7 @@ export interface AstParseResponse {
   data?: {
     imports: ImportDescriptor[];
     exports: AstExportDescriptor[];
+    reexports?: AstReexportDescriptor[];
     functions: Array<{
       name: string;
       startLine: number;
@@ -647,6 +650,7 @@ function extractAstData(
   const decisions: string[] = [];
   const imports: ImportDescriptor[] = [];
   const exports: AstExtractionResult["exports"] = [];
+  let reexports: AstReexportDescriptor[] | undefined;
   const functions: AstExtractionResult["functions"] = [];
   const classes: AstExtractionResult["classes"] = [];
   const variables: NonNullable<AstExtractionResult["variables"]> = [];
@@ -660,6 +664,12 @@ function extractAstData(
 
     try {
       exports.push(...directExportDescriptors(tree.rootNode));
+      if (
+        language === SUPPORTED_LANGUAGES.TYPESCRIPT ||
+        language === SUPPORTED_LANGUAGES.JAVASCRIPT
+      ) {
+        reexports = parseReexportDescriptors(tree.rootNode);
+      }
       const classNodes = collectClassNodes(tree, provider, classes);
       const functionNodes = collectFunctionNodes(
         tree,
@@ -691,6 +701,7 @@ function extractAstData(
   return {
     imports,
     exports,
+    ...(reexports === undefined ? {} : { reexports }),
     functions,
     classes,
     variables,

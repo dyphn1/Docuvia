@@ -9,6 +9,7 @@ import {
   CallSiteResolutionClasses,
   CallSiteResolutionObservationSources,
   CallSiteVerificationStatuses,
+  CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   createPortableCallSiteKey,
 } from "@workspace/contracts";
 import { candidateTargetKeyForDeclaration } from "../semantic/call-resolution-hypothesis-index.js";
@@ -196,7 +197,11 @@ function callerNodeForCall(
 function namedImportTargetFunction(
   proof: Extract<
     CallResolutionStrictProof,
-    { ruleSignature: "q1:named-import:v1" }
+    {
+      ruleSignature:
+        | "q1:named-import:v1"
+        | typeof CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE;
+    }
   >,
   functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
 ): FunctionNodeReference | undefined {
@@ -303,7 +308,8 @@ function proofForCall(
   if (strictProof.status !== "proven") return undefined;
 
   const targetFunction =
-    strictProof.ruleSignature === "q1:named-import:v1"
+    strictProof.ruleSignature === "q1:named-import:v1" ||
+    strictProof.ruleSignature === CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE
       ? namedImportTargetFunction(strictProof, functionNodesByFile)
       : strictTargetFunction(result, strictProof.targetKey, functionNodes);
   const callerFunction = callerNodeForCall(

@@ -106,6 +106,7 @@ export type {
   AstExportKind,
   AstExportDescriptor,
   AstImportDescriptor,
+  AstReexportDescriptor,
   ParsedAstFileData,
   ParsedAstFileResult,
   AstParseFailure,
@@ -161,6 +162,7 @@ export type {
 } from "./interfaces/call-resolution-hypothesis.interfaces.js";
 export {
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+  CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   CALL_RESOLUTION_RANKING_POLICY_VERSION,
   CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
 } from "./interfaces/call-resolution-hypothesis.interfaces.js";

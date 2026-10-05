@@ -1,4 +1,5 @@
 import { Node } from "web-tree-sitter";
+import type { AstReexportDescriptor } from "@workspace/contracts";
 import { AstEvent } from "../sink.js";
 import { AstEventType } from "../constants/ast-event-constants.js";
 import { TreeSitterNodeTypes } from "../constants/tree-sitter-node-types.js";
@@ -309,6 +310,113 @@ function collectTsJsExportFromDescriptors(
       viaReexport: true,
     });
   }
+}
+
+function reexportModulePath(statement: Node): string | undefined {
+  const sourceNode = statement.childForFieldName("source");
+  return sourceNode ? sourceNode.text.replace(/^['"]|['"]$/gu, "") : undefined;
+}
+
+function isTypeOnlyReexport(statement: Node, specifier?: Node): boolean {
+  return (
+    /^export\s+type\b/u.test(statement.text.trimStart()) ||
+    (specifier !== undefined &&
+      /^type(?:\s|$)/u.test(specifier.text.trimStart()))
+  );
+}
+
+function parseExportSpecifier(
+  statement: Node,
+  modulePath: string | undefined,
+  specifier: Node,
+): AstReexportDescriptor | null {
+  const nameNode = specifier.childForFieldName("name");
+  if (!nameNode) return null;
+  const aliasNode = specifier.childForFieldName("alias");
+  const isTypeOnly = isTypeOnlyReexport(statement, specifier);
+  const exportedName = aliasNode?.text ?? nameNode.text;
+  if (modulePath !== undefined)
+    return {
+      kind: "named",
+      exportedName,
+      importedName: nameNode.text,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
+    };
+  return {
+    kind: "local",
+    exportedName,
+    localName: nameNode.text,
+    ...(isTypeOnly ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseExportClause(
+  statement: Node,
+  modulePath: string | undefined,
+): AstReexportDescriptor[] | null {
+  const exportClause = statement.descendantsOfType("export_clause")[0];
+  if (!exportClause) return null;
+  return exportClause
+    .descendantsOfType("export_specifier")
+    .flatMap((specifier) => {
+      if (!specifier) return [];
+      const descriptor = parseExportSpecifier(statement, modulePath, specifier);
+      return descriptor ? [descriptor] : [];
+    });
+}
+
+function parseNamespaceReexport(
+  statement: Node,
+  modulePath: string,
+): AstReexportDescriptor | null {
+  const namespaceName = statement.text
+    .trimStart()
+    .match(
+      /^export\s+(?:type\s+)?\*\s+as\s+([$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*)/u,
+    )?.[1];
+  if (!namespaceName) return null;
+  return {
+    kind: "namespace",
+    exportedName: namespaceName,
+    modulePath,
+    ...(isTypeOnlyReexport(statement) ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseStarReexport(
+  statement: Node,
+  modulePath: string,
+): AstReexportDescriptor | null {
+  if (!/^export\s+(?:type\s+)?\*\s+from\b/u.test(statement.text.trimStart()))
+    return null;
+  return {
+    kind: "star",
+    exportedName: "*",
+    modulePath,
+    ...(isTypeOnlyReexport(statement) ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseReexportStatement(statement: Node): AstReexportDescriptor[] {
+  const modulePath = reexportModulePath(statement);
+  const exportClause = parseExportClause(statement, modulePath);
+  if (exportClause) return exportClause;
+  if (modulePath === undefined) return [];
+  const namespace = parseNamespaceReexport(statement, modulePath);
+  if (namespace) return [namespace];
+  const star = parseStarReexport(statement, modulePath);
+  return star ? [star] : [];
+}
+
+/** Extracts TS/JS export-clause syntax without adding synthetic import bindings. */
+export function parseReexportDescriptors(root: Node): AstReexportDescriptor[] {
+  const descriptors: AstReexportDescriptor[] = [];
+  for (const statement of root.namedChildren) {
+    if (statement?.type !== TreeSitterNodeTypes.EXPORT_STATEMENT) continue;
+    descriptors.push(...parseReexportStatement(statement));
+  }
+  return descriptors;
 }
 
 function collectPythonFromStatementDescriptors(

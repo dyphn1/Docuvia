@@ -1762,6 +1762,7 @@ describe("call-resolution hypothesis service", () => {
           },
         ],
         calleeName: "finish",
+        reason: "incomplete-inventory",
       },
       {
         name: "namespace import member call",
@@ -1769,6 +1770,7 @@ describe("call-resolution hypothesis service", () => {
           'import * as service from "./service"; function run() { service.shutdown(); }',
         ),
         calleeName: "shutdown",
+        reason: "unresolved-call-binding",
       },
     ] as const;
 
@@ -1780,9 +1782,7 @@ describe("call-resolution hypothesis service", () => {
       );
       expect(result.strictProof.status, scenario.name).toBe("abstained");
       expect(result.strictProof.targetKey, scenario.name).toBeNull();
-      expect(result.strictProof.reason, scenario.name).toBe(
-        "unresolved-call-binding",
-      );
+      expect(result.strictProof.reason, scenario.name).toBe(scenario.reason);
     }
   });
 

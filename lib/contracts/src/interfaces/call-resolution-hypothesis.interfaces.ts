@@ -5,6 +5,7 @@ import type {
 import type {
   AstExportDescriptor,
   AstImportDescriptor,
+  AstReexportDescriptor,
 } from "./ast.interfaces.js";
 import type {
   AstDeclaredTypeFacts,
@@ -20,6 +21,8 @@ export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
+export const CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE =
+  "q2:reexport-trace:v1" as const;
 
 /** Source-bound configuration facts; unsupported mappings do not enrich candidates. */
 export interface CallResolutionConfiguredPathAliases {
@@ -38,6 +41,8 @@ export interface CallResolutionHypothesisSourceFile {
   readonly imports?: readonly AstImportDescriptor[];
   /** Parser-derived exports from the same source bytes; absent means unavailable. */
   readonly exports?: readonly AstExportDescriptor[];
+  /** Parser-derived TS/JS re-export syntax from the same bytes; absent means unavailable. */
+  readonly reexports?: readonly AstReexportDescriptor[];
   /** Parser output from the same source bytes; strict proofs verify callSite membership here. */
   readonly callSiteShapeFacts?: AstCallSiteShapeFacts | null;
   /** Missing facts make the workspace candidate inventory incomplete. */
@@ -141,6 +146,15 @@ export type CallResolutionStrictProof =
       readonly status: "proven";
       readonly targetKey: string;
       readonly ruleSignature: "q1:named-import:v1";
+      readonly reason: "unique-named-import";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE;
       readonly reason: "unique-named-import";
       readonly targetFilePath: string;
       readonly targetName: string;

@@ -41,6 +41,7 @@ import {
   proveUniqueNamedImport,
   proveUniqueThisMember,
 } from "./call-resolution-strict-proof.js";
+import { proveUniqueReexportedNamedImport } from "./call-resolution-reexport-proof.js";
 
 export interface CallResolutionCandidateStageTrace extends CandidateFilterStageKeys {
   readonly beforeMaxCandidates: readonly string[];
@@ -158,9 +159,22 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       filtered.candidates,
       this.options,
     );
+    const namedImportProof = proveUniqueNamedImport(
+      request,
+      workspace,
+      truncated,
+    );
+    const reexportProof = proveUniqueReexportedNamedImport(
+      request,
+      workspace,
+      truncated,
+    );
     const strictProof =
-      proveUniqueNamedImport(request, workspace, truncated) ??
-      proveUniqueThisMember(request, generated, workspace, truncated);
+      namedImportProof?.status === "proven"
+        ? namedImportProof
+        : (reexportProof ??
+          namedImportProof ??
+          proveUniqueThisMember(request, generated, workspace, truncated));
     const matchingRecords = matchingCalibrationRecords(
       this.options.calibrationRecords,
       ruleSignature,

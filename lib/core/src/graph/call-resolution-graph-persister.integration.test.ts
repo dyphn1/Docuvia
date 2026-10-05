@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   createPortableCallSiteKey,
   type ParsedAstFileResult,
 } from "@workspace/contracts";
@@ -309,6 +310,217 @@ describe("GraphPersister call-resolution integration", () => {
       source: "src/caller.ts#call",
       target: "src/implementation.ts#shutdown",
     });
+  });
+
+  it("[positive][state-diff] persists Q2 chain dependencies and reconstructs the proof after delete/reparse", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-q2-call-resolution-"),
+    );
+    store = await GraphStore.open({
+      dbPath: path.join(tempDir, ".docuvia", "local.db"),
+    });
+    const projectId = store.projects.insert({
+      name: "q2-call-resolution",
+      repoUrl: "file:///q2-call-resolution",
+    }).id;
+    const sources = [
+      {
+        file: "src/impl.ts",
+        code: "export function work(): void {}",
+      },
+      {
+        file: "src/barrel.ts",
+        code: 'export { work as publicWork } from "./impl.js";',
+      },
+      {
+        file: "src/caller.ts",
+        code: [
+          'import { publicWork as run } from "./barrel.js";',
+          "export function caller(): void { run(); }",
+        ].join("\n"),
+      },
+    ];
+    const parsedResults: ParsedAstFileResult[] = [];
+    for (const source of sources) {
+      parsedResults.push(
+        await parseAndWriteSource(tempDir, "q2-call-resolution", source),
+      );
+    }
+    const persist = () =>
+      new GraphPersisterService(new CallResolutionHypothesisService()).persist({
+        store: store!,
+        workspaceRoot: tempDir!,
+        projectId,
+        parsedResults,
+        sourceIndexComplete: true,
+        tags: [],
+      });
+    const caller = parsedResults.find(({ file }) => file === "src/caller.ts");
+    if (!caller) throw new Error("Q2 caller parse result is missing");
+    const callSite = caller.data.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "run",
+    );
+    if (!callSite)
+      throw new Error("AST worker omitted the Q2 imported call site");
+
+    await persist();
+    const expectedKey = createPortableCallSiteKey({
+      filePath: caller.file,
+      sourceContentHash: caller.hash,
+      startLine: callSite.startLine,
+      startColumn: callSite.startColumn,
+      calleeKind: callSite.calleeKind,
+      calleeName: callSite.calleeName,
+    });
+    const dependencies = [
+      {
+        filePath: "src/barrel.ts",
+        contentHash: createHash("sha256")
+          .update(sources[1]!.code, "utf8")
+          .digest("hex"),
+      },
+      { filePath: "src/caller.ts", contentHash: caller.hash },
+      {
+        filePath: "src/impl.ts",
+        contentHash: createHash("sha256")
+          .update(sources[0]!.code, "utf8")
+          .digest("hex"),
+      },
+    ];
+    const dependencyFingerprint = createHash("sha256")
+      .update(JSON.stringify(dependencies), "utf8")
+      .digest("hex");
+    const getQ2Resolution = () =>
+      store?.callSiteResolutions
+        ?.getForFile(projectId, caller.file)
+        .find(({ callSiteKey }) => callSiteKey === expectedKey);
+
+    expect(getQ2Resolution()).toMatchObject({
+      callSiteKey: expectedKey,
+      resolutionClass: "proven",
+      selectedTargetNodeKey: "src/impl.ts#work",
+      ruleSignature: CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+      dependencies,
+      dependencyFingerprint,
+    });
+    expect(projectedCallKeys()).toContainEqual({
+      source: "src/caller.ts#caller",
+      target: "src/impl.ts#work",
+    });
+
+    store.callSiteResolutions?.deleteForFile(projectId, caller.file);
+    expect(getQ2Resolution()).toEqual(undefined);
+    await persist();
+
+    expect(getQ2Resolution()).toMatchObject({
+      callSiteKey: expectedKey,
+      selectedTargetNodeKey: "src/impl.ts#work",
+      ruleSignature: CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+      dependencies,
+      dependencyFingerprint,
+    });
+    expect(
+      store.callSiteResolutions?.invalidateChangedDependencies(projectId, [
+        {
+          filePath: "src/barrel.ts",
+          contentHash: "e".repeat(64),
+        },
+      ]),
+    ).toBe(1);
+    expect(getQ2Resolution()).toMatchObject({ isStale: true });
+    expect(projectedCallKeys()).not.toContainEqual({
+      source: "src/caller.ts#caller",
+      target: "src/impl.ts#work",
+    });
+  });
+
+  it("[positive][projection] keeps ScopeResolver callback attribution while storing the exact Q2 caller", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-q2-anonymous-caller-"),
+    );
+    store = await GraphStore.open({
+      dbPath: path.join(tempDir, ".docuvia", "local.db"),
+    });
+    const projectId = store.projects.insert({
+      name: "q2-anonymous-caller",
+      repoUrl: "file:///q2-anonymous-caller",
+    }).id;
+    const sources = [
+      {
+        file: "src/impl.ts",
+        code: "export function finish(): void {}",
+      },
+      {
+        file: "src/barrel.ts",
+        code: 'export { finish } from "./impl.js";',
+      },
+      {
+        file: "src/caller.ts",
+        code: [
+          'import { finish } from "./barrel.js";',
+          "export function handler(): void {",
+          "  Promise.resolve().then(() => {",
+          "    finish();",
+          "  });",
+          "}",
+        ].join("\n"),
+      },
+    ];
+    const parsedResults: ParsedAstFileResult[] = [];
+    for (const source of sources) {
+      parsedResults.push(
+        await parseAndWriteSource(tempDir, "q2-anonymous-caller", source),
+      );
+    }
+
+    await new GraphPersisterService(
+      new CallResolutionHypothesisService(),
+    ).persist({
+      store,
+      workspaceRoot: tempDir,
+      projectId,
+      parsedResults,
+      sourceIndexComplete: true,
+      tags: [],
+    });
+
+    const caller = parsedResults.find(({ file }) => file === "src/caller.ts");
+    if (!caller) throw new Error("Q2 callback caller parse result is missing");
+    const callSite = caller.data.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "finish",
+    );
+    if (!callSite)
+      throw new Error("AST worker omitted the Q2 callback call site");
+    const callSiteKey = createPortableCallSiteKey({
+      filePath: caller.file,
+      sourceContentHash: caller.hash,
+      startLine: callSite.startLine,
+      startColumn: callSite.startColumn,
+      calleeKind: callSite.calleeKind,
+      calleeName: callSite.calleeName,
+    });
+    const resolution = store.callSiteResolutions
+      ?.getForFile(projectId, caller.file)
+      .find(({ callSiteKey: key }) => key === callSiteKey);
+
+    expect(resolution).toMatchObject({
+      callSiteKey,
+      callerNodeKey: "src/caller.ts#anonymous",
+      selectedTargetNodeKey: "src/impl.ts#finish",
+      ruleSignature: CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+    });
+    expect(projectedCallKeys()).toEqual([
+      {
+        source: "src/caller.ts",
+        target: "src/impl.ts#finish",
+      },
+    ]);
   });
 
   it("[positive][projection] keeps ScopeResolver callback attribution while storing the exact Q1 caller", async () => {

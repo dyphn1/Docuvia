@@ -14,6 +14,33 @@ export const AstExportKinds = {
 export type AstExportKind =
   (typeof AstExportKinds)[keyof typeof AstExportKinds];
 
+export type AstReexportDescriptor =
+  | {
+      readonly kind: "named";
+      readonly exportedName: string;
+      readonly importedName: string;
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "star";
+      readonly exportedName: "*";
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "namespace";
+      readonly exportedName: string;
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "local";
+      readonly exportedName: string;
+      readonly localName: string;
+      readonly isTypeOnly?: boolean;
+    };
+
 export interface AstImportDescriptor {
   localName: string;
   originalName: string;
@@ -39,6 +66,8 @@ export interface AstExportDescriptor {
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
   exports: AstExportDescriptor[];
+  /** TS/JS export-clause syntax kept separate from imports so ScopeResolver inputs stay stable. */
+  reexports?: AstReexportDescriptor[];
   functions: Array<{
     name: string;
     startLine: number;

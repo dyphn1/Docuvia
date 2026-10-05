@@ -129,6 +129,81 @@ describe("typescript fixture: real tree-sitter parse (Steps 4-6)", () => {
  * ast-worker.ts now produces a real, parsed ImportDescriptor via
  * @workspace/ast-core's parseImportDescriptors() instead.
  */
+describe("typescript fixture: strict re-export syntax facts", () => {
+  it("records named, renamed, local, star, namespace, and type-only re-exports without changing imports", async () => {
+    const response = await buildParseResponse({
+      taskId: "strict-reexport-facts",
+      filePath: "src/barrel.ts",
+      code: [
+        'import { helper as localHelper } from "./impl.js";',
+        'export { run as publicRun } from "./impl.js";',
+        "export { localHelper as renamedHelper };",
+        'export * from "./more.js";',
+        'export * as namespaceTools from "./namespace.js";',
+        'export type { TypeOnly } from "./types.js";',
+      ].join("\n"),
+      language: "typescript",
+    });
+    if (!response.success || !response.data)
+      throw new Error(
+        response.error ?? "AST worker omitted re-export fixture data",
+      );
+
+    const data = response.data as unknown as {
+      readonly reexports?: unknown;
+    };
+    expect(data.reexports).toEqual([
+      {
+        kind: "named",
+        exportedName: "publicRun",
+        importedName: "run",
+        modulePath: "./impl.js",
+      },
+      {
+        kind: "local",
+        exportedName: "renamedHelper",
+        localName: "localHelper",
+      },
+      {
+        kind: "star",
+        exportedName: "*",
+        modulePath: "./more.js",
+      },
+      {
+        kind: "namespace",
+        exportedName: "namespaceTools",
+        modulePath: "./namespace.js",
+      },
+      {
+        kind: "named",
+        exportedName: "TypeOnly",
+        importedName: "TypeOnly",
+        modulePath: "./types.js",
+        isTypeOnly: true,
+      },
+    ]);
+    expect(response.data.imports).toEqual([
+      {
+        localName: "localHelper",
+        originalName: "helper",
+        modulePath: "./impl.js",
+      },
+      {
+        localName: "publicRun",
+        originalName: "run",
+        modulePath: "./impl.js",
+        viaReexport: true,
+      },
+      {
+        localName: "TypeOnly",
+        originalName: "TypeOnly",
+        modulePath: "./types.js",
+        viaReexport: true,
+      },
+    ]);
+  });
+});
+
 const IMPORT_SRC = `
 import { helper } from "./b";
 function main() { helper(); }

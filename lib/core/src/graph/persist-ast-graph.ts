@@ -518,7 +518,7 @@ export class GraphPersisterService implements IGraphPersister {
     return updatedCount;
   }
 
-  /** Persists only source-bound Q1/Q3 proofs for a complete source index. ScopeResolver
+  /** Persists only source-bound Q1/Q2/Q3 proofs for a complete source index. ScopeResolver
    *  links are initially written unchanged; the per-site projection replaces a proved site, then
    *  the legacy proposal edges for every other site are restored inside the same transaction. */
   private persistStrictCallSiteProofs(
@@ -554,6 +554,7 @@ export class GraphPersisterService implements IGraphPersister {
         sourceContentHash: result.hash,
         imports: result.data.imports ?? [],
         exports: result.data.exports ?? [],
+        reexports: result.data.reexports,
         callSiteShapeFacts: result.data.callSiteShapeFacts ?? null,
         declaredTypeFacts: result.data.declaredTypeFacts ?? null,
       })),

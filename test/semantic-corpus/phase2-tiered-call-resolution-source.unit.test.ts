@@ -6,11 +6,15 @@ import {
   AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION,
   type AstDeclaredDeclaration,
   type AstDeclaredTypeFacts,
+  type AstImportDescriptor,
+  type AstReexportDescriptor,
 } from "../../lib/contracts/src/index.js";
 import { candidateTargetKeyForDeclaration } from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
 import {
   directImportTargetPaths,
   mapCandidateKeysToUnambiguousAliases,
+  reexportTargetPaths,
+  reexportTargetsForFrontier,
   validateFactsAgainstSnapshot,
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts";
 import type { Phase2FactFile } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-support.mjs";
@@ -164,5 +168,118 @@ describe("Phase 2 source candidate identity", () => {
         ]),
       ]),
     ).toThrow("Phase 1 facts are stale for src/worker.ts.");
+  });
+});
+
+describe("phase 2 re-export source discovery", () => {
+  it("[happy] follows named, star, and unambiguous local re-exports only", () => {
+    const factRows = [
+      "src/barrel.ts",
+      "src/impl.ts",
+      "src/more.ts",
+      "src/local.ts",
+      "src/ns.ts",
+      "src/types.ts",
+    ].map((filePath) => ({ filePath })) as unknown as Phase2FactFile[];
+    const imports: AstImportDescriptor[] = [
+      {
+        localName: "localBinding",
+        originalName: "work",
+        modulePath: "./local.js",
+      },
+    ];
+    const reexports: AstReexportDescriptor[] = [
+      {
+        kind: "named",
+        exportedName: "publicWork",
+        importedName: "work",
+        modulePath: "./impl.js",
+      },
+      {
+        kind: "star",
+        exportedName: "*",
+        modulePath: "./more.js",
+      },
+      {
+        kind: "local",
+        exportedName: "renamedLocal",
+        localName: "localBinding",
+      },
+      {
+        kind: "namespace",
+        exportedName: "namespaceTools",
+        modulePath: "./ns.js",
+      },
+      {
+        kind: "named",
+        exportedName: "TypeOnly",
+        importedName: "TypeOnly",
+        modulePath: "./types.js",
+        isTypeOnly: true,
+      },
+    ];
+
+    expect(
+      reexportTargetPaths(
+        [{ file: "src/barrel.ts", data: { imports, reexports } }],
+        factRows,
+      ),
+    ).toEqual(["src/impl.ts", "src/local.ts", "src/more.ts"]);
+  });
+
+  it("[invalid-input][error-handling] abstains when module resolution has two extension candidates", () => {
+    const factRows = ["src/barrel.ts", "src/impl.ts", "src/impl.tsx"].map(
+      (filePath) => ({ filePath }),
+    ) as unknown as Phase2FactFile[];
+    const reexports: AstReexportDescriptor[] = [
+      {
+        kind: "named",
+        exportedName: "work",
+        importedName: "work",
+        modulePath: "./impl.js",
+      },
+    ];
+
+    expect(
+      reexportTargetPaths(
+        [{ file: "src/barrel.ts", data: { reexports } }],
+        factRows,
+      ),
+    ).toEqual([]);
+  });
+
+  it("[happy][state-diff] expands a cached call-source intermediate into its downstream barrel", () => {
+    const factRows = ["src/intermediate.ts", "src/leaf.ts"].map((filePath) => ({
+      filePath,
+    })) as unknown as Phase2FactFile[];
+    const parsedByPath = new Map([
+      [
+        "src/intermediate.ts",
+        {
+          file: "src/intermediate.ts",
+          data: {
+            reexports: [
+              {
+                kind: "named",
+                exportedName: "publicWork",
+                importedName: "work",
+                modulePath: "./leaf.js",
+              } satisfies AstReexportDescriptor,
+            ],
+          },
+        },
+      ],
+    ]);
+    const expanded = new Set<string>();
+
+    expect(
+      reexportTargetsForFrontier(
+        ["src/intermediate.ts"],
+        parsedByPath,
+        expanded,
+        factRows,
+      ),
+    ).toEqual(["src/leaf.ts"]);
+    expect([...expanded]).toEqual(["src/intermediate.ts"]);
   });
 });

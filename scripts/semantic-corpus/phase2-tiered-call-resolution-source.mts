@@ -5,6 +5,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   isDiscoverableSourceFile,
   type AstImportDescriptor,
+  type AstReexportDescriptor,
   type AstCallSiteShapeFact,
   type AstDeclaredDeclaration,
   type CallResolutionConfiguredPathAliases,
@@ -428,6 +429,7 @@ function workspaceSourceFiles(
       sourceContentHash: fileContentSha256,
       imports,
       exports: data?.exports,
+      reexports: data?.reexports,
       callSiteShapeFacts: data?.callSiteShapeFacts ?? null,
       declaredTypeFacts,
     };
@@ -514,6 +516,89 @@ export function directImportTargetPaths(
     }
   }
   return [...targets].sort();
+}
+
+/** Resolve one bounded layer of syntax-confirmed re-export dependencies. */
+interface ParsedReexportSource {
+  readonly file: string;
+  readonly data: {
+    readonly imports?: readonly AstImportDescriptor[];
+    readonly reexports?: readonly AstReexportDescriptor[];
+  };
+}
+
+export function reexportTargetPaths(
+  parsedFiles: readonly ParsedReexportSource[],
+  factRows: readonly Phase2FactFile[],
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
+): string[] {
+  const factsByPath = new Map<string, Phase2FactFile[]>();
+  for (const row of factRows) {
+    const matches = factsByPath.get(row.filePath) ?? [];
+    matches.push(row);
+    factsByPath.set(row.filePath, matches);
+  }
+  const availablePaths = factRows.map(({ filePath }) => filePath);
+  const targets = new Set<string>();
+  for (const parsed of parsedFiles) {
+    const modulePaths = new Set<string>();
+    for (const descriptor of parsed.data.reexports ?? []) {
+      if (descriptor.isTypeOnly || descriptor.kind === "namespace") continue;
+      if (descriptor.kind === "named" || descriptor.kind === "star") {
+        modulePaths.add(descriptor.modulePath);
+        continue;
+      }
+      const bindings = (parsed.data.imports ?? []).filter(
+        (binding) => binding.localName === descriptor.localName,
+      );
+      if (
+        bindings.length === 1 &&
+        !bindings[0]?.viaReexport &&
+        !bindings[0]?.isTypeOnly &&
+        bindings[0]?.originalName !== "*"
+      )
+        modulePaths.add(bindings[0].modulePath);
+    }
+    for (const modulePath of modulePaths) {
+      const targetPath =
+        resolveDirectRelativeImportPath(
+          parsed.file,
+          modulePath,
+          availablePaths,
+        ) ??
+        resolveDirectConfiguredImportPath(
+          parsed.file,
+          modulePath,
+          availablePaths,
+          configuredPathAliases,
+        );
+      if (
+        targetPath &&
+        (factsByPath.get(targetPath)?.length ?? 0) === 1 &&
+        isDiscoverableSourceFile(targetPath)
+      )
+        targets.add(targetPath);
+    }
+  }
+  return [...targets].sort();
+}
+
+/** Expand each parsed source on the frontier once, including already-parsed call sources. */
+export function reexportTargetsForFrontier(
+  frontierPaths: readonly string[],
+  parsedByPath: ReadonlyMap<string, ParsedReexportSource>,
+  expandedPaths: Set<string>,
+  factRows: readonly Phase2FactFile[],
+  configuredPathAliases?: CallResolutionConfiguredPathAliases,
+): string[] {
+  const parsedSources = frontierPaths.flatMap((filePath) => {
+    if (expandedPaths.has(filePath)) return [];
+    const parsed = parsedByPath.get(filePath);
+    if (!parsed) return [];
+    expandedPaths.add(filePath);
+    return [parsed];
+  });
+  return reexportTargetPaths(parsedSources, factRows, configuredPathAliases);
 }
 
 /** Parse exact root configuration bytes once; inheritance and unsupported shapes stay unavailable. */
@@ -672,7 +757,7 @@ export async function processPhase2Snapshot(input: {
       discovered,
     );
     const callSourcePaths = new Set(discovered.map(({ file }) => file));
-    const aliasTargetPaths = directImportTargetPaths(
+    const importTargetPaths = directImportTargetPaths(
       parsedCallFiles.parsed,
       factRows,
       configuredPathAliases,
@@ -682,7 +767,10 @@ export async function processPhase2Snapshot(input: {
         includeUnaliasedNamedImports:
           input.includeStrictNamedImportTargets ?? false,
       },
-    ).filter((filePath) => !callSourcePaths.has(filePath));
+    );
+    const aliasTargetPaths = importTargetPaths.filter(
+      (filePath) => !callSourcePaths.has(filePath),
+    );
     const factRowsByPath = new Map<string, Phase2FactFile[]>();
     for (const row of factRows) {
       const matches = factRowsByPath.get(row.filePath) ?? [];
@@ -705,18 +793,86 @@ export async function processPhase2Snapshot(input: {
           discoveredAliasTargets,
         )
       : { parsed: [], failures: [] };
-    const parseWallMs = performance.now() - parseStarted;
-    const parsedByFile = new Map<string, ParsedAstFileResult>(
+    const parsedReexportTargets: ParsedAstFileResult[] = [];
+    const discoveredReexportTargets: Array<{
+      file: string;
+      hash: string;
+      code: string;
+    }> = [];
+    const reexportTargetFailures = [] as typeof parsedAliasTargets.failures;
+    const parsedByPath = new Map(
       [...parsedCallFiles.parsed, ...parsedAliasTargets.parsed].map((row) => [
         row.file,
         row,
       ]),
     );
+    const attemptedTargetPaths = new Set([
+      ...callSourcePaths,
+      ...parsedAliasTargets.parsed.map(({ file }) => file),
+    ]);
+    const expandedReexportPaths = new Set<string>();
+    if (input.includeStrictNamedImportTargets) {
+      let frontier = reexportTargetPaths(
+        [
+          ...parsedAliasTargets.parsed,
+          ...parsedCallFiles.parsed.filter(({ file }) =>
+            importTargetPaths.includes(file),
+          ),
+        ],
+        factRows,
+        configuredPathAliases,
+      );
+      while (frontier.length > 0) {
+        const nextPaths = frontier.filter((filePath) => {
+          if (parsedByPath.has(filePath) || attemptedTargetPaths.has(filePath))
+            return false;
+          attemptedTargetPaths.add(filePath);
+          return true;
+        });
+        const discoveredBatch = nextPaths.flatMap((filePath) => {
+          const [expected] = factRowsByPath.get(filePath) ?? [];
+          if (!expected || (factRowsByPath.get(filePath)?.length ?? 0) !== 1)
+            return [];
+          const source = sourceBytesForPath(input.temporaryDirectory, filePath);
+          if (!source) return [];
+          if (source.hash !== expected.fileContentSha256)
+            throw new Error(`Re-export source hash differs for ${filePath}.`);
+          return [source];
+        });
+        if (discoveredBatch.length > 0) {
+          discoveredReexportTargets.push(...discoveredBatch);
+          const parsedBatch = await input.processor.processFiles(
+            input.temporaryDirectory,
+            discoveredBatch,
+          );
+          parsedReexportTargets.push(...parsedBatch.parsed);
+          for (const parsed of parsedBatch.parsed)
+            parsedByPath.set(parsed.file, parsed);
+          reexportTargetFailures.push(...parsedBatch.failures);
+        }
+        frontier = reexportTargetsForFrontier(
+          frontier,
+          parsedByPath,
+          expandedReexportPaths,
+          factRows,
+          configuredPathAliases,
+        );
+      }
+    }
+    const parseWallMs = performance.now() - parseStarted;
+    const parsedByFile = new Map<string, ParsedAstFileResult>(
+      [
+        ...parsedCallFiles.parsed,
+        ...parsedAliasTargets.parsed,
+        ...parsedReexportTargets,
+      ].map((row) => [row.file, row]),
+    );
     const sourceHashesByFile = new Map(
-      [...discovered, ...discoveredAliasTargets].map(({ file, hash }) => [
-        file,
-        hash,
-      ]),
+      [
+        ...discovered,
+        ...discoveredAliasTargets,
+        ...discoveredReexportTargets,
+      ].map(({ file, hash }) => [file, hash]),
     );
     const factsByFile = new Map(
       factRows.map((row) => [row.filePath, row.declaredTypeFacts]),
@@ -730,9 +886,11 @@ export async function processPhase2Snapshot(input: {
         filePath,
         fileContentSha256,
       })),
-      parsedInputs: [...discovered, ...discoveredAliasTargets].map(
-        ({ file, hash }) => ({ file, hash }),
-      ),
+      parsedInputs: [
+        ...discovered,
+        ...discoveredAliasTargets,
+        ...discoveredReexportTargets,
+      ].map(({ file, hash }) => ({ file, hash })),
     });
     const workspaceIndex = input.service.indexWorkspace({
       sourceFingerprint,
@@ -888,9 +1046,12 @@ export async function processPhase2Snapshot(input: {
       unmappedCandidateCount,
       ambiguousCandidateMappingCount,
       parsedCallFileCount: parsedCallFiles.parsed.length,
-      parsedImportTargetFileCount: parsedAliasTargets.parsed.length,
+      parsedImportTargetFileCount:
+        parsedAliasTargets.parsed.length + parsedReexportTargets.length,
       parseFailureCount:
-        parsedCallFiles.failures.length + parsedAliasTargets.failures.length,
+        parsedCallFiles.failures.length +
+        parsedAliasTargets.failures.length +
+        reexportTargetFailures.length,
       parseWallMs,
       hypothesisWallMs: performance.now() - hypothesisStarted,
       hypothesisLatenciesMs,

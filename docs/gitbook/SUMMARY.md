@@ -78,6 +78,7 @@
 ## 📊 Analysis
 
 - [Tiered Call Resolution Implementation Plan](analysis/tiered-call-resolution-implementation-plan.md)
+- [GRPH-008 Phase 5 — Snapshot and user-facing outputs](analysis/tiered-call-resolution-phase5-snapshot-output.md)
 - [GRPH-008 Phase 3 — Q1 named-import proof audit](analysis/tiered-call-resolution-phase3-q1-named-import-proof.md)
 - [GRPH-008 Phase 3 — Dependency invalidation](analysis/tiered-call-resolution-phase3-invalidation.md)
 - [GRPH-008 Phase 0 — Measurement Gate](analysis/tiered-call-resolution-phase0-results.md)

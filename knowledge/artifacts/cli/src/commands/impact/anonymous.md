@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/impact.ts#anonymous@L61
+id: artifacts/cli/src/commands/impact.ts#anonymous@L86
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/impact.ts

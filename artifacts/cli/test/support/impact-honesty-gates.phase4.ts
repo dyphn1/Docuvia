@@ -222,11 +222,17 @@ function errorViolations(report: ImpactHonestyReport): Phase4GateViolation[] {
   const knownDefectCheckpoints = new Set(
     report.knownDefects.map((defect) => defect.checkpoint),
   );
-  const errorIds = report.slices
-    .flatMap((slice) => slice.errorCaseIds)
-    .filter(
-      (caseId) => !knownDefectCheckpoints.has(phase4RecordCaseId(caseId)),
-    );
+  const allErrorIds = [
+    ...new Set(
+      report.slices
+        .flatMap((slice) => slice.errorCaseIds)
+        .map((caseId) => phase4RecordCaseId(caseId)),
+    ),
+  ].sort();
+  const errorIds = allErrorIds.filter(
+    (caseId) => !knownDefectCheckpoints.has(caseId),
+  );
+  const droppedErrorIds = allErrorIds.length - errorIds.length;
   const legacyErrors = report.metrics.legacyPositiveRegression.errors;
   const confirmedErrors = report.metrics.confirmedDependencyAccuracy.errors;
   return errorIds.length === 0 && legacyErrors === 0 && confirmedErrors === 0
@@ -236,7 +242,7 @@ function errorViolations(report: ImpactHonestyReport): Phase4GateViolation[] {
           PHASE4_GATE_IDS.ERROR_CASES,
           PHASE4_REPORT_SCOPE,
           errorIds,
-          `errors=${String(Math.max(errorIds.length, legacyErrors, confirmedErrors))}; dropped=${String(report.errors.length - errorIds.length)}`,
+          `errors=${String(Math.max(errorIds.length, legacyErrors, confirmedErrors))}; dropped=${String(droppedErrorIds)}`,
         ),
       ];
 }

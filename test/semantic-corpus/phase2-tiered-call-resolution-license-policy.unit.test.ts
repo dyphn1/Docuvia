@@ -10,7 +10,7 @@ const ONYX_REPO = "github.com/onyx-dot-app/onyx";
 const ALLOWED_REPO = "github.com/nestjs/nest";
 
 describe("phase 2 evaluation license policy", () => {
-  it("records every evaluation repository and excludes the disallowed corpus", () => {
+  it("[happy] records every evaluation repository and excludes the disallowed corpus", () => {
     expect(EVALUATION_REPOSITORY_LICENSE_POLICY[ONYX_REPO]).toBe("allowed");
     expect(
       EVALUATION_REPOSITORY_LICENSE_POLICY[
@@ -31,7 +31,7 @@ describe("phase 2 evaluation license policy", () => {
     expect(isExcludedLicensePath(ONYX_REPO, filePath)).toBe(true);
   });
 
-  it("does not treat an ee name outside an ee directory as excluded", () => {
+  it("[boundary] does not treat an ee name outside an ee directory as excluded", () => {
     expect(isExcludedLicensePath(ONYX_REPO, "src/enterprise/module.ts")).toBe(
       false,
     );
@@ -40,7 +40,7 @@ describe("phase 2 evaluation license policy", () => {
     );
   });
 
-  it("filters a sample when the caller or any positive target is excluded", () => {
+  it("[invalid-input] filters a sample when the caller or any positive target is excluded", () => {
     expect(
       classifyEvaluationRowLicense({
         repoId: ONYX_REPO,
@@ -64,7 +64,7 @@ describe("phase 2 evaluation license policy", () => {
     ).toBe("allowed");
   });
 
-  it("fails closed when excluded or unknown rows reach an evaluation split", () => {
+  it("[error-handling] fails closed when excluded or unknown rows reach an evaluation split", () => {
     expect(() =>
       assertEvaluationRowAllowed({
         repoId: ONYX_REPO,

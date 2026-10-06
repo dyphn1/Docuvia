@@ -36,7 +36,7 @@ function rankedCandidate(
 }
 
 describe("ordered evidence v1 peer-member ranking", () => {
-  it("keeps partial peer overlap from adding uncalibrated rank weight", () => {
+  it("[boundary] keeps partial peer overlap from adding uncalibrated rank weight", () => {
     expect(
       rankedCandidate(["open", "close", "flush"], ["open", "close"]),
     ).toMatchObject({ rankScore: 1, rankingSignals: ["same-directory"] });
@@ -46,7 +46,7 @@ describe("ordered evidence v1 peer-member ranking", () => {
     });
   });
 
-  it("preserves the existing full same-binding peer evidence", () => {
+  it("[happy] preserves the existing full same-binding peer evidence", () => {
     expect(rankedCandidate(["open", "close"], ["open", "close"])).toMatchObject(
       {
         rankScore: 21,
@@ -57,7 +57,7 @@ describe("ordered evidence v1 peer-member ranking", () => {
 });
 
 describe("name-only exported candidates", () => {
-  it("does not accept a name-only target even when a signature is calibrated", () => {
+  it("[invalid-input] does not accept a name-only target even when a signature is calibrated", () => {
     const candidate = {
       targetKey: "target-key",
       filePath: "src/target.ts",
@@ -83,5 +83,28 @@ describe("name-only exported candidates", () => {
         confidenceLowerBound: 0.99,
       } as CallResolutionCalibrationRecord),
     ).toMatchObject({ status: "ambiguous", reason: "uncalibrated-signature" });
+  });
+});
+
+describe("fail-closed resolution decisions", () => {
+  it("[error-handling] abstains with a reason when no proposal survives or the list was truncated", () => {
+    expect(decideResolution([], false, false, true, undefined)).toMatchObject({
+      status: "ambiguous",
+      selected: null,
+      reason: "no-supported-candidates",
+    });
+
+    const candidate = {
+      targetKey: "target-key",
+      declarations: [{ kind: "function", owner: { kind: "program" } }],
+      rankScore: 1,
+    } as unknown as import("@workspace/contracts").CallResolutionHypothesisCandidate;
+    expect(
+      decideResolution([candidate], true, false, true, undefined),
+    ).toMatchObject({
+      status: "ambiguous",
+      selected: null,
+      reason: "candidate-list-truncated",
+    });
   });
 });

@@ -81,16 +81,22 @@ function rateProblem(name: string, value: unknown): string | null {
     : `${name} value does not match its numerator/denominator`;
 }
 
-function forbiddenReportTermInKey(
-  key: string,
+export function phase4ForbiddenReportTermInLabel(
+  label: string,
 ): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
-  const normalized = key.toLowerCase();
+  const normalized = label.toLowerCase();
   const compact = normalized.replace(/[^a-z0-9]+/g, "");
   return PHASE4_FORBIDDEN_REPORT_TERMS.find((term) => {
     const normalizedTerm = term.toLowerCase();
     const compactTerm = normalizedTerm.replace(/[^a-z0-9]+/g, "");
     return normalized.includes(normalizedTerm) || compact.includes(compactTerm);
   });
+}
+
+function forbiddenReportTermInKey(
+  key: string,
+): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
+  return phase4ForbiddenReportTermInLabel(key);
 }
 
 function forbiddenReportTermInMetricKeys(

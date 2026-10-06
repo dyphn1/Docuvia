@@ -1,9 +1,9 @@
 /** Deterministic CI Markdown and JSON rendering for the Phase 4 report. */
 
 import {
-  PHASE4_FORBIDDEN_REPORT_TERMS,
   PHASE4_GATE_IDS,
   PHASE4_REPORT_SCOPE,
+  phase4ForbiddenReportTermInLabel,
   phase4GateViolations,
   phase4ReportFormatViolations,
   type Phase4GateViolation,
@@ -90,12 +90,9 @@ function markdownMetricLabels(markdown: string): string[] {
 export function phase4MarkdownFormatViolations(
   markdown: string,
 ): Phase4GateViolation[] {
-  const labels = markdownMetricLabels(markdown).map((label) =>
-    label.toLowerCase(),
-  );
-  const forbidden = PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
-    labels.some((label) => label.includes(term)),
-  );
+  const forbidden = markdownMetricLabels(markdown)
+    .map((label) => phase4ForbiddenReportTermInLabel(label))
+    .find((term) => term !== undefined);
   return forbidden
     ? [
         {

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker.language-cache.unit.test.ts#anonymous@L30
+id: lib/core/src/ast/ast-worker.language-cache.unit.test.ts#anonymous@L54
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker.language-cache.unit.test.ts

@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts#candidateRecallBucket
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts#CandidateRecallBucket
 type: symbol
-name: candidateRecallBucket
+name: CandidateRecallBucket
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts
 ---
-# Symbol: candidateRecallBucket
+# Symbol: CandidateRecallBucket
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts`

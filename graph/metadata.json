@@ -4679,6 +4679,18 @@
       "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
     },
     {
+      "filePath": "scripts/semantic-corpus/certification-evaluate.mts",
+      "contentHash": "00c3c155818a40b37c54a9c59385365144c6290b",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/certification-proof-scope.mts",
+      "contentHash": "1308d8f267d9c7bf3508820e27c718ffe44b89aa",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
       "filePath": "scripts/semantic-corpus/checker.mts",
       "contentHash": "e791916ac6e8a6086863dc85db5a875617eee36a",
       "lastTierBProcessedAt": "2026-10-05 14:51:02",
@@ -4686,9 +4698,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/collect.mts",
-      "contentHash": "29a16bdb4fada537a1b28f6db88f96841f55eb18",
-      "lastTierBProcessedAt": "2026-10-05 14:51:02",
-      "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
+      "contentHash": "886fc1cf8e37758cc7300e5834857b842357fc81",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
     },
     {
       "filePath": "scripts/semantic-corpus/lsp-count-proxy.mjs",
@@ -4707,6 +4719,12 @@
       "contentHash": "7dac9d5f915d5421c147b686146ce2b51a52163c",
       "lastTierBProcessedAt": "2026-10-05 14:51:02",
       "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/parity-utils.mts",
+      "contentHash": "ff61523774c159ff148d8a67723a3324b9a0a9b2",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
     },
     {
       "filePath": "scripts/semantic-corpus/phase0-partial-semantic-replay.mts",
@@ -4896,9 +4914,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase3-q1-named-import-whole-source-parity.mts",
-      "contentHash": "8665aae5f352224e9e2f304097486fe3b2410c6c",
-      "lastTierBProcessedAt": "2026-10-05 20:51:55",
-      "lastTierBCommitSha": "d29f0ebf0fab2619b05eb8647eff9eae88c87071"
+      "contentHash": "cfe4e4ae166dd1c2416f3c737be4377c4e4fb257",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
     },
     {
       "filePath": "scripts/semantic-corpus/phase3-q2-reexport-proof-audit.mts",
@@ -4908,9 +4926,9 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase3-q2-reexport-whole-source-parity.mts",
-      "contentHash": "0f6bd9a2007a3e7acb005777ea111a96f074a975",
-      "lastTierBProcessedAt": "2026-10-05 23:12:20",
-      "lastTierBCommitSha": "b3fa1e3be1f5f5df2b7b9b5d36344a3a006c3dec"
+      "contentHash": "17ded4a04c68d2074ce682980c3d4491395a5d48",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
     },
     {
       "filePath": "scripts/semantic-corpus/phase3-q3-receiver-proof-audit.mts",
@@ -4920,9 +4938,21 @@
     },
     {
       "filePath": "scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts",
-      "contentHash": "904905a25dec1fe04b293f1b59aebf5d47c49cc8",
-      "lastTierBProcessedAt": "2026-10-06 03:28:25",
-      "lastTierBCommitSha": "9a7232957e69bdbf7b9232b7a1fce9078e89dd47"
+      "contentHash": "36785b5715a617128fb51ce9618efc5b11bec791",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/prelabel-collect.mts",
+      "contentHash": "6fdd46a834ba52455b0cead2e99b7fcad2824a56",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
+      "filePath": "scripts/semantic-corpus/prelabel-manifest.mts",
+      "contentHash": "230a0c798a6af94800a27f956ceec26cf9bd6843",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
     },
     {
       "filePath": "scripts/semantic-corpus/replay.mts",
@@ -5219,6 +5249,12 @@
       "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
     },
     {
+      "filePath": "test/semantic-corpus/certification-proof-scope.unit.test.ts",
+      "contentHash": "95fb87741a133c9d888d8b9ac00cdfa83e1a8949",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
       "filePath": "test/semantic-corpus/phase0-partial-semantic-replay.unit.test.ts",
       "contentHash": "ac7bf1c0ad2f7084e1db187dfe3b87da6d4a8c85",
       "lastTierBProcessedAt": "2026-10-05 14:51:02",
@@ -5357,6 +5393,18 @@
       "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
     },
     {
+      "filePath": "test/semantic-corpus/phase3-whole-source-parity.unit.test.ts",
+      "contentHash": "6c7240789d483cc07673d6631ae606c702c5da1a",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
+      "filePath": "test/semantic-corpus/prelabel-manifest.unit.test.ts",
+      "contentHash": "9e1b1ae542019e356a7d298a56e7f013e5668d42",
+      "lastTierBProcessedAt": "2026-10-06 10:50:57",
+      "lastTierBCommitSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc"
+    },
+    {
       "filePath": "test/system1-query-routing-rules.test.ts",
       "contentHash": "5dc7630b584564e4c75c15ac7a61773071144e26",
       "lastTierBProcessedAt": "2026-10-05 14:51:02",
@@ -5393,7 +5441,7 @@
       "lastTierBCommitSha": "9ad485c10272584f05679698ec5309d8c2daecad"
     }
   ],
-  "lastIngestedSourceSha": "63cbe205731d2b1eb7276ceeba604d7a5bad2214",
+  "lastIngestedSourceSha": "4f8b7e32c9311d9a82e6a163796818eca99fb3bc",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

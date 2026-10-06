@@ -639,6 +639,32 @@ describe("Phase 4 hard gates", () => {
     ).toEqual([]);
   });
 
+  it("[invalid-input] renders failing gate lines when case ids contain forbidden-score words", () => {
+    const legacyB = legacyResult("legacy-b");
+    const report = buildImpactHonestyReport(
+      input({
+        legacy: {
+          ...input().legacy,
+          declaredCaseIds: ["overall-fanout-negative", "legacy-b"],
+          results: [legacyB],
+          aggregate: aggregateCases([legacyB]),
+        },
+      }),
+    );
+
+    expect(phase4GateViolations(report)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gateId: PHASE4_GATE_IDS.CASE_INVENTORY,
+          caseIds: ["overall-fanout-negative"],
+        }),
+      ]),
+    );
+    const rendered = renderImpactHonestyReport(report);
+    expect(rendered.markdown).toContain("cases=overall-fanout-negative:");
+    expect(phase4MarkdownFormatViolations(rendered.markdown)).toEqual([]);
+  });
+
   it("[error-handling] renderer rejects blended scores and missing denominators", () => {
     const report = buildImpactHonestyReport(input());
     const blended = {

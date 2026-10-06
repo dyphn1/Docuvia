@@ -81,7 +81,9 @@ function rateProblem(name: string, value: unknown): string | null {
     : `${name} value does not match its numerator/denominator`;
 }
 
-function forbiddenReportTermInKey(key: string): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
+function forbiddenReportTermInKey(
+  key: string,
+): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
   const normalized = key.toLowerCase();
   return PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
     normalized.includes(term),

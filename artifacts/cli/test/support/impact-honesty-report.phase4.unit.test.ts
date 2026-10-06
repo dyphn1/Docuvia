@@ -716,9 +716,7 @@ describe("Phase 4 hard gates", () => {
     expect(() =>
       assertImpactHonestyMarkdownFormat("## Overall accuracy"),
     ).toThrow(new RegExp(PHASE4_GATE_IDS.REPORT_FORMAT));
-    expect(
-      phase4MarkdownFormatViolations("- aggregateAccuracy: 1"),
-    ).toEqual([
+    expect(phase4MarkdownFormatViolations("- aggregateAccuracy: 1")).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
     expect(

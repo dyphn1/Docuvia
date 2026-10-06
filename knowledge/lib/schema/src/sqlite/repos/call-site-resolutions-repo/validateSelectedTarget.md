@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts#markSignatureAmbiguous
+id: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts#validateSelectedTarget
 type: symbol
-name: markSignatureAmbiguous
+name: validateSelectedTarget
 filePath: lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts
 ---
-# Symbol: markSignatureAmbiguous
+# Symbol: validateSelectedTarget
 
 File: `lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts`

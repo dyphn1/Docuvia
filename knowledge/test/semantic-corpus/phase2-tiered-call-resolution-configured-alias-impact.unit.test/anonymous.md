@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase2-tiered-call-resolution-configured-alias-impact.unit.test.ts#anonymous@L8
+id: test/semantic-corpus/phase2-tiered-call-resolution-configured-alias-impact.unit.test.ts#anonymous@L74
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase2-tiered-call-resolution-configured-alias-impact.unit.test.ts
@@ -7,4 +7,3 @@ filePath: test/semantic-corpus/phase2-tiered-call-resolution-configured-alias-im
 # Symbol: anonymous
 
 File: `test/semantic-corpus/phase2-tiered-call-resolution-configured-alias-impact.unit.test.ts`
-

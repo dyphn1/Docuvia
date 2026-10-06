@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts#anonymous@L973
+id: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts#makeLspResult
 type: symbol
-name: anonymous
+name: makeLspResult
 filePath: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts
 ---
-# Symbol: anonymous
+# Symbol: makeLspResult
 
 File: `lib/schema/src/sqlite/call-site-resolutions.integration.test.ts`

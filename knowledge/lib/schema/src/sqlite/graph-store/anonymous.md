@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#GraphStore.anonymous@L334
+id: lib/schema/src/sqlite/graph-store.ts#GraphStore.anonymous@L336
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/graph-store.ts

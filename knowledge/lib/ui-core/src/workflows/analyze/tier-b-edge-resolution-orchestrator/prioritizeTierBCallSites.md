@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts#anonymous@L910
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts#prioritizeTierBCallSites
 type: symbol
-name: anonymous
+name: prioritizeTierBCallSites
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts
 ---
-# Symbol: anonymous
+# Symbol: prioritizeTierBCallSites
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts`

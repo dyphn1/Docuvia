@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/system1/system1-syntax.ts#CallReceiverFacts
+id: lib/core/src/semantic/system1/system1-syntax.ts#callArgumentHints
 type: symbol
-name: CallReceiverFacts
+name: callArgumentHints
 filePath: lib/core/src/semantic/system1/system1-syntax.ts
 ---
-# Symbol: CallReceiverFacts
+# Symbol: callArgumentHints
 
 File: `lib/core/src/semantic/system1/system1-syntax.ts`

@@ -173,7 +173,7 @@ describe("Phase 2 discovery contract hardening", () => {
     expect(result.skippedOversized).toEqual([]);
   });
 
-  it("file discovery only-indexed mode excludes dirty and untracked paths from the output", async () => {
+  it("[happy] file discovery only-indexed mode excludes dirty and untracked paths and preserves the tracked Git blob hash", async () => {
     const git = makeMockGitProvider({
       isGitRepository: vi.fn().mockResolvedValue(true),
       listTrackedFilesWithBlobHash: vi

@@ -128,7 +128,10 @@ export interface ParsedAstFileData {
 
 export interface ParsedAstFileResult {
   file: string;
+  /** Existing hybrid discovery hash persisted to project_files (Git blob SHA for clean tracked files, source SHA-256 otherwise). */
   hash: string;
+  /** SHA-256 of the exact UTF-8 source passed to the parser; used for source-bound proof identities, not persisted as project_files.content_hash. */
+  sourceContentHash?: string;
   data: ParsedAstFileData;
   /** Language detected for this file (e.g. "typescript"), or undefined if none of the registered language providers matched its extension. */
   language?: string;

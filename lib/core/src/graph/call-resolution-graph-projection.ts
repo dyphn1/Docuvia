@@ -62,12 +62,20 @@ export function isSha256(value: string): boolean {
   return SHA256_PATTERN.test(value);
 }
 
+/** Returns the parser-input hash used by proof bindings, falling back only for legacy callers whose existing hash is already SHA-256. */
+export function sourceContentHashForProof(result: ParsedAstFileResult): string {
+  return result.sourceContentHash ?? result.hash;
+}
+
 export function sourceManifestFingerprint(
   parsedResults: readonly ParsedAstFileResult[],
   sourceIndexComplete: boolean,
 ): string {
   const manifest = parsedResults
-    .map(({ file, hash }) => ({ file, hash }))
+    .map((result) => ({
+      file: result.file,
+      hash: sourceContentHashForProof(result),
+    }))
     .sort(
       (left, right) =>
         left.file.localeCompare(right.file) ||
@@ -117,10 +125,11 @@ export function portableCallSiteKeyForCall(
   result: ParsedAstFileResult,
   call: ParsedCall,
 ): string | undefined {
-  if (!isSha256(result.hash)) return undefined;
+  const sourceHash = sourceContentHashForProof(result);
+  if (!isSha256(sourceHash)) return undefined;
   const shape = uniqueCallSiteShape(call, result);
   return shape
-    ? portableCallSiteKey(result.file, result.hash, shape)
+    ? portableCallSiteKey(result.file, sourceHash, shape)
     : undefined;
 }
 
@@ -334,7 +343,7 @@ function proofForCall(
   const callSite = uniqueCallSiteShape(call, result);
   if (!callSite) return undefined;
 
-  const sourceHash = result.hash;
+  const sourceHash = sourceContentHashForProof(result);
   const hypothesis = service.hypothesize({
     callerFilePath: result.file,
     callerSourceContentHash: sourceHash,

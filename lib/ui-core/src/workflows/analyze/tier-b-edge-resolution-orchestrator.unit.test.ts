@@ -166,7 +166,7 @@ describe("resolveEdgesForLanguageBuckets() -- N>1 dispatch/merge (multi-language
     expect(result.fullyDegraded).toBe(false);
   });
 
-  it("keeps aggregate unavailableReason byte-identical when every language bucket degraded (fullyDegraded) -- single degraded language stays verbatim", async () => {
+  it("[error-handling] keeps aggregate unavailableReason byte-identical when every language bucket degraded (fullyDegraded) -- single degraded language stays verbatim", async () => {
     const tsFiles: TierBQueueEntry[] = [
       { file: "a.ts", commitSha: "sha1" },
       { file: "b.ts", commitSha: "sha1" },
@@ -286,7 +286,7 @@ describe("resolveEdgesForLanguageBuckets() -- N>1 dispatch/merge (multi-language
     expect(result.fullyDegraded).toBe(false);
   });
 
-  it("merges a provider outcome whose edges array exceeds the call-stack spread limit without RangeError (uncapped --lsp-timeout=0 batch regression)", async () => {
+  it("[stress] merges a provider outcome whose edges array exceeds the call-stack spread limit without RangeError (uncapped --lsp-timeout=0 batch regression)", async () => {
     // V8 throws `RangeError: Maximum call stack size exceeded` when a >~125k-element array is
     // spread into a `push(...)` call -- an uncapped `--lsp-timeout=0` full-repo batch can resolve
     // that many edges in one bucket, so the orchestrator must merge with a bounded loop, not a
@@ -339,6 +339,43 @@ describe("resolveEdgesForLanguageBuckets() -- N>1 dispatch/merge (multi-language
  * three of the plan's own listed success-criterion cases.
  */
 describe("resolveEdgesForLanguageBuckets() -- TypeScript-only callsByFile population (issue #11 plan A, Slice 3, Phase 2.2)", () => {
+  it("[happy] keeps unchanged clean tracked files in callsByFile when project_files stores the Git blob SHA", async () => {
+    const blobSha = "a".repeat(40);
+    const tsFiles: TierBQueueEntry[] = [
+      { file: "src/clean.ts", commitSha: "sha1" },
+    ];
+    const { store } = makeStore({
+      callSitesByFile: new Map([
+        [
+          "src/clean.ts",
+          [{ targetFunction: "render", startLine: 2, startColumn: 4 }],
+        ],
+      ]),
+      projectFileHashes: [{ filePath: "src/clean.ts", contentHash: blobSha }],
+    });
+    const git = makeGit({
+      blobHashes: new Map([["src/clean.ts", blobSha]]),
+    });
+    const tsResolveEdges = vi
+      .fn()
+      .mockResolvedValue({ edges: [], filesProcessed: [], filesFailed: [] });
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () =>
+        makeProvider(tsResolveEdges, "typescript-language-server"),
+    }));
+
+    await resolveEdgesForLanguageBuckets(
+      { typescript: tsFiles },
+      { workspaceRoot, logger: createMockLogger(), store, git },
+    );
+
+    expect(tsResolveEdges.mock.calls[0][0].callsByFile).toEqual({
+      "src/clean.ts": [
+        { targetFunction: "render", startLine: 2, startColumn: 4 },
+      ],
+    });
+  });
+
   it("populates callsByFile for the TypeScript bucket only -- the Python bucket gets callsByFile: undefined and store.callSites.getForFiles is never even queried with its files", async () => {
     const tsFiles: TierBQueueEntry[] = [
       { file: "a.ts", commitSha: "sha1" },
@@ -393,7 +430,7 @@ describe("resolveEdgesForLanguageBuckets() -- TypeScript-only callsByFile popula
     expect(getForFilesSpy.mock.calls[0][1]).toEqual(["a.ts", "b.ts"]);
   });
 
-  it("D5 staleness guard: a TS file whose live content hash disagrees with the persisted project_files.content_hash is omitted from callsByFile (falls through to reverse for that file only)", async () => {
+  it("[invalid-input][state-diff] D5 staleness guard: a TS file whose live content hash disagrees with the persisted project_files.content_hash is omitted from callsByFile (falls through to reverse for that file only)", async () => {
     const tsFiles: TierBQueueEntry[] = [
       { file: "a.ts", commitSha: "sha1" },
       { file: "b.ts", commitSha: "sha1" },

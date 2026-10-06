@@ -19,6 +19,7 @@ import {
   collectStrictCallSiteProofs,
   isSha256,
   portableCallSiteKeyForCall,
+  sourceContentHashForProof,
   sourceManifestFingerprint,
   type CallSiteProof,
   type FunctionNodeReference,
@@ -538,7 +539,9 @@ export class GraphPersisterService implements IGraphPersister {
       !service ||
       !sourceIndexComplete ||
       parsedResults.length === 0 ||
-      parsedResults.some((result) => !isSha256(result.hash))
+      parsedResults.some(
+        (result) => !isSha256(sourceContentHashForProof(result)),
+      )
     ) {
       return;
     }
@@ -551,7 +554,7 @@ export class GraphPersisterService implements IGraphPersister {
       sourceIndexComplete,
       sourceFiles: parsedResults.map((result) => ({
         filePath: result.file,
-        sourceContentHash: result.hash,
+        sourceContentHash: sourceContentHashForProof(result),
         imports: result.data.imports ?? [],
         exports: result.data.exports ?? [],
         reexports: result.data.reexports,

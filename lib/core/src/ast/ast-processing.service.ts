@@ -1,4 +1,5 @@
 import os from "os";
+import { createHash } from "node:crypto";
 import { AstWorkerCrashError, type IASTWorkerPool } from "./ast-worker-pool.js";
 import type {
   AstParseFailure,
@@ -9,7 +10,12 @@ import type {
   ParsedAstFileResult,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { SUPPORTED_LANGUAGES } from "@workspace/contracts";
+import {
+  ENCODING_HEX,
+  HASH_ALGO_SHA256,
+  SUPPORTED_LANGUAGES,
+  UTF8_ENCODING,
+} from "@workspace/contracts";
 import { detectLanguageForFile } from "../utils/language-detection.js";
 import { AstMessages } from "./ast-constants.js";
 
@@ -90,6 +96,9 @@ export class AstProcessingService implements IAstProcessor {
             result: {
               file: item.file,
               hash: item.hash,
+              sourceContentHash: createHash(HASH_ALGO_SHA256)
+                .update(item.code, UTF8_ENCODING)
+                .digest(ENCODING_HEX),
               data: res.data,
               language: detectLanguageForFile(item.file),
             },

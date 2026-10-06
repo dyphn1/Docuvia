@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createHash } from "node:crypto";
 import type { DiscoveredFile } from "@workspace/contracts";
 import { AstProcessingService } from "./ast-processing.service.js";
 import { AstWorkerCrashError, type IASTWorkerPool } from "./ast-worker-pool.js";
@@ -68,6 +69,28 @@ describe("AstProcessingService.processFiles()", () => {
 
     expect(result.parsed.length).toBe(3);
     expect(result.failures).toEqual([]);
+  });
+
+  it("[happy] preserves the discovered hash and adds a SHA-256 hash of parser source", async () => {
+    const code = 'export const value = "proof source";\n';
+    const gitBlobHash = "a".repeat(40);
+    const pool = makeFakePool(async () => ({
+      taskId: "t",
+      success: true,
+      data: emptyData,
+    }));
+    const service = new AstProcessingService(pool);
+
+    const result = await service.processFiles("/workspace", [
+      { file: "src/a.ts", hash: gitBlobHash, code },
+    ]);
+
+    expect(result.parsed[0]).toMatchObject({
+      hash: gitBlobHash,
+      sourceContentHash: createHash("sha256")
+        .update(code, "utf8")
+        .digest("hex"),
+    });
   });
 
   it("moves a file to 'failures' with its error message when pool.parse resolves with success:false", async () => {

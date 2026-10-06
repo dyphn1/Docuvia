@@ -31,7 +31,7 @@ import {
 // TDD-SOURCE: issue #508 Phase 4 honest CI report and hard regression gates
 // TDD-SOURCE: issue #549 report-format gate must inspect metric labels, not data values
 // TDD-SOURCE: issue #550 canonical Phase 4 case ids across legacy report collections
-// TDD-SOURCE: issue #551 error dropped count excludes missing cases
+// TDD-SOURCE: issue #551 error dropped count excludes missing cases and tracks exemptions
 // TDD-SOURCE: docs/ai_plans/acceptance_508-phase4-honest-ci-report.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase4.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase0.md

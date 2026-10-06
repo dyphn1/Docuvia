@@ -81,7 +81,15 @@ The 34 replaced targets are listed below; repeated source locations are grouped 
 
 ## Tests and remaining Phase 3 gaps
 
-The 30 Q3 integration tests cover direct and inherited proof cases, imports and aliases, overload/abstract/collision abstentions, unions, intersections, generics, optional chaining, mutation, mixins, workspace escapes, depth 16/17, base-file invalidation, unrelated incomplete workspace facts, and anonymous-callback caller projection. The focused run passed 30 Q3 tests and 8 Phase 2 source-helper tests.
+The 32 Q3 integration tests cover direct and inherited proof cases, imports and aliases, overload/abstract/collision abstentions, unions, intersections, generics, optional chaining, mutation, mixins, workspace escapes, unbound type names, aliases to interfaces, depth 16/17, base-file invalidation, unrelated incomplete workspace facts, and anonymous-callback caller projection.
+
+### Existing safety-contract reconciliation
+
+Three earlier abstention expectations were superseded only where the input now satisfies the explicit Q3 contract. The “type name alone” case declares `class Logger` in the same file and annotates `logger: Logger`; Q3 checks that unique declaration and hashes the caller file. The alias case resolves `LoggerAlias` to that same unique class, and the inheritance case resolves an explicitly annotated `Logger` through one same-file `extends` chain to `Base.close`. The graph-persister case likewise annotates `other: Service` where `Service` is a same-file class, so it now records a typed-receiver proof. The prior abstention intent remains covered by negatives for an unbound name, an alias to an interface, a same-name declaration collision, an unsupported typed re-export, and an interface-typed parameter; the graph projection keeps the legacy edge for the interface case.
+
+The configured-path candidate fingerprint expectation is computed after removing the Q3-only `q3ReceiverFacts` and `receiverOptional` sidecars. Those parser inputs changed with Q3, while candidate identity intentionally excludes them, so the candidate source fingerprint remains stable without a new hash literal.
+
+The focused reviewer regression run passed 91 tests across the Q3 service, graph-persister, configured-path-alias, and Q3 receiver integration files. The separate Phase 2 source-helper run passed 8 tests.
 
 The inherited-`this` rule has no pinned TRAIN/CALIBRATION observations. All signatures remain uncalibrated and Tier B still runs. Inferred/factory returns, structural typing, interface dispatch, JSDoc, and broader language coverage remain outside these rules. The Phase 3 exit gate and certification requirements remain open; this is not authority to skip verification or certify a signature.
 
@@ -94,14 +102,16 @@ node --max-old-space-size=4096 --import tsx scripts/semantic-corpus/phase3-q3-re
 node --max-old-space-size=4096 --import tsx scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts --snapshot-root /private/tmp/docuvia-q3-source-HEAD-7c51356f2398061ab44a08c4b31b576f4c4bafd7 --out /private/tmp/docuvia-phase3-q3-whole-source-parity.jsonl
 ```
 
-| Artifact or input                 | SHA-256                                                            |
-| --------------------------------- | ------------------------------------------------------------------ |
-| TRAIN/CALIBRATION audit JSON      | `714556c1951fdd59f7899f53b7427ac03bba3cf3b729add993a01cf3d0bad4e5` |
-| Whole-source parity JSONL         | `3fd6b07322a4435e2a8fa617e18c124da5d23424b76c6cb5cc5d26a22e0506c7` |
-| Whole-source input manifest       | `56e6f7b7584ac897d1f8e10b1b2f4e2d266c9fd581b8cb934592de364d3c17f0` |
-| Q3 implementation file set        | `3064fafff6b9c587ddab39058dfd804e32f9da2a6a489c812cd2a3cca13a74e6` |
-| Pinned `callsites.jsonl`          | `b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362` |
-| Pinned declared-type facts pass A | `ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e` |
-| Candidate prediction manifest     | `de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e` |
-| TRAIN label records               | `d32a13e929f7678a36f35a86a2a598cd0aa86b23421aea5a70a3562791e4ddcc` |
-| CALIBRATION label records         | `b629b3fbab15c1d3bb62c70874e6f20efd518191a214f6bafce974a52e948af9` |
+The audit JSON and implementation-and-regression file-set hashes were refreshed after the safety-contract test reconciliation. Corpus counts and proof behavior are unchanged; the audited input set includes the Q3 integration test file.
+
+| Artifact or input                         | SHA-256                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| TRAIN/CALIBRATION audit JSON              | `5b374b8924973285efa587e637104ce78a19b8dcb5ca069b6149affcbe14e837` |
+| Whole-source parity JSONL                 | `3fd6b07322a4435e2a8fa617e18c124da5d23424b76c6cb5cc5d26a22e0506c7` |
+| Whole-source input manifest               | `56e6f7b7584ac897d1f8e10b1b2f4e2d266c9fd581b8cb934592de364d3c17f0` |
+| Q3 implementation and regression file set | `7151b13c5e250ca18744ab31ca67e442a971e67ae1f7d2474eec45c74a466c2a` |
+| Pinned `callsites.jsonl`                  | `b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362` |
+| Pinned declared-type facts pass A         | `ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e` |
+| Candidate prediction manifest             | `de7dc8ec977ac316addce6263fcdb9e3190ceed84a4cc8b7e7506f2a04f5ad9e` |
+| TRAIN label records                       | `d32a13e929f7678a36f35a86a2a598cd0aa86b23421aea5a70a3562791e4ddcc` |
+| CALIBRATION label records                 | `b629b3fbab15c1d3bb62c70874e6f20efd518191a214f6bafce974a52e948af9` |

@@ -661,17 +661,63 @@ describe("GraphPersister call-resolution integration", () => {
     });
   });
 
-  it("[invalid-input][error-handling][state-diff] abstains for a non-class receiver and keeps the legacy edge", async () => {
+  it("[happy][state-diff] proves an explicitly class-typed parameter receiver", async () => {
     const code =
       "class Service { close(): void {} call(other: Service): void { other.close(); } }";
+    const { filePath, projectId, sourceContentHash } =
+      await persistSource(code);
+
+    const resolutions = store?.callSiteResolutions?.getForFile(
+      projectId,
+      filePath,
+    );
+    expect(
+      resolutions?.map(
+        ({
+          resolutionClass,
+          ruleSignature,
+          selectedTargetNodeKey,
+          callerNodeKey,
+          dependencies,
+        }) => ({
+          resolutionClass,
+          ruleSignature,
+          selectedTargetNodeKey,
+          callerNodeKey,
+          dependencies: dependencies.map(({ filePath: dependencyPath }) => ({
+            filePath: dependencyPath,
+            contentHash: sourceContentHash,
+          })),
+        }),
+      ),
+    ).toEqual([
+      {
+        resolutionClass: "proven",
+        ruleSignature: "q3:typed-receiver:v1",
+        selectedTargetNodeKey: `${filePath}#Service.close`,
+        callerNodeKey: `${filePath}#Service.call`,
+        dependencies: [{ filePath, contentHash: sourceContentHash }],
+      },
+    ]);
+    expect(projectedCallKeys()).toContainEqual({
+      source: `${filePath}#Service.call`,
+      target: `${filePath}#Service.close`,
+    });
+  });
+
+  it("[invalid-input][error-handling][state-diff] abstains for an interface-typed receiver and keeps the legacy edge", async () => {
+    const code = [
+      "interface Service { close(): void }",
+      "class Client { close(): void {} call(other: Service): void { other.close(); } }",
+    ].join("\n");
     const { filePath, projectId } = await persistSource(code);
 
     expect(store?.callSiteResolutions?.getForFile(projectId, filePath)).toEqual(
       [],
     );
     expect(projectedCallKeys()).toContainEqual({
-      source: `${filePath}#Service.call`,
-      target: `${filePath}#Service.close`,
+      source: `${filePath}#Client.call`,
+      target: `${filePath}#Client.close`,
     });
   });
 

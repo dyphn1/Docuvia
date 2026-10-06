@@ -1,5 +1,6 @@
 /** Versioned, source-only facts extracted from TypeScript/JavaScript syntax. */
 export const AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION = 1 as const;
+export const AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION = 1 as const;
 
 export type AstDeclaredTypeLanguage = "typescript" | "tsx" | "javascript";
 
@@ -102,4 +103,44 @@ export interface AstDeclaredTypeFacts {
   readonly facts: readonly AstDeclaredTypeFact[];
   readonly declarations: readonly AstDeclaredDeclaration[];
   readonly ownerInventories: readonly AstDeclaredOwnerInventory[];
+  /** Proof-only additions are versioned separately and ignored by candidate ranking. */
+  readonly q3ReceiverFacts?: AstQ3ReceiverFacts;
+}
+
+/** A simple, syntax-only type alias relation used only by strict Q3 proofs. */
+export interface AstQ3TypeAliasFact {
+  readonly name: string;
+  readonly typeName: string;
+  readonly declarationSpan: AstUtf16Span;
+  readonly typeSpan: AstUtf16Span;
+  readonly owner: AstDeclaredTypeOwner;
+  readonly scopeSpan: AstUtf16Span;
+  readonly genericTypeParameterNames: readonly string[];
+  readonly isExported: boolean;
+}
+
+export interface AstQ3ClassDeclarationFact {
+  readonly kind: "class" | "interface";
+  readonly name: string;
+  readonly declarationSpan: AstUtf16Span;
+  readonly scopeSpan: AstUtf16Span;
+  readonly genericTypeParameterNames: readonly string[];
+}
+
+/** A `new C()` local binding with its declaration kind and source-local writes. */
+export interface AstQ3NewReceiverBindingFact {
+  readonly name: string;
+  readonly typeName: string;
+  readonly declarationSpan: AstUtf16Span;
+  readonly scopeSpan: AstUtf16Span;
+  readonly bindingKind: "const" | "let" | "var";
+  readonly isReassigned: boolean;
+}
+
+/** Additive proof-only syntax facts; never used to rank or calibrate candidates. */
+export interface AstQ3ReceiverFacts {
+  readonly schemaVersion: typeof AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION;
+  readonly classes: readonly AstQ3ClassDeclarationFact[];
+  readonly typeAliases: readonly AstQ3TypeAliasFact[];
+  readonly newReceiverBindings: readonly AstQ3NewReceiverBindingFact[];
 }

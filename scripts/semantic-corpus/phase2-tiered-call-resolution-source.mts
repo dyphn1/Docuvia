@@ -417,6 +417,7 @@ function workspaceSourceFiles(
   factRows: readonly Phase2FactFile[],
   parsedByFile: ReadonlyMap<string, ParsedAstFileResult>,
   excludeCombinedDefaultImports = false,
+  includeQ3ReceiverFacts = false,
 ): CallResolutionHypothesisWorkspaceInput["sourceFiles"] {
   return factRows.map(({ filePath, fileContentSha256, declaredTypeFacts }) => {
     const data = parsedByFile.get(filePath)?.data;
@@ -424,6 +425,9 @@ function workspaceSourceFiles(
       data?.imports,
       !excludeCombinedDefaultImports,
     );
+    const q3ReceiverFacts = includeQ3ReceiverFacts
+      ? data?.declaredTypeFacts?.q3ReceiverFacts
+      : undefined;
     return {
       filePath,
       sourceContentHash: fileContentSha256,
@@ -431,7 +435,9 @@ function workspaceSourceFiles(
       exports: data?.exports,
       reexports: data?.reexports,
       callSiteShapeFacts: data?.callSiteShapeFacts ?? null,
-      declaredTypeFacts,
+      declaredTypeFacts: q3ReceiverFacts
+        ? { ...declaredTypeFacts, q3ReceiverFacts }
+        : declaredTypeFacts,
     };
   });
 }
@@ -457,6 +463,7 @@ export function directImportTargetPaths(
   options: {
     readonly includeCombinedDefaultImports?: boolean;
     readonly includeUnaliasedNamedImports?: boolean;
+    readonly includeTypeOnlyImports?: boolean;
   } = {},
 ): string[] {
   const factsByPath = new Map<string, Phase2FactFile[]>();
@@ -483,7 +490,7 @@ export function directImportTargetPaths(
       if (
         !descriptor ||
         descriptor.viaReexport ||
-        descriptor.isTypeOnly ||
+        (descriptor.isTypeOnly && options.includeTypeOnlyImports !== true) ||
         (isCombinedDefaultImport &&
           options.includeCombinedDefaultImports !== true) ||
         (!isCombinedDefaultImport &&
@@ -531,6 +538,7 @@ export function reexportTargetPaths(
   parsedFiles: readonly ParsedReexportSource[],
   factRows: readonly Phase2FactFile[],
   configuredPathAliases?: CallResolutionConfiguredPathAliases,
+  options: { readonly includeTypeOnlyReexports?: boolean } = {},
 ): string[] {
   const factsByPath = new Map<string, Phase2FactFile[]>();
   for (const row of factRows) {
@@ -543,7 +551,11 @@ export function reexportTargetPaths(
   for (const parsed of parsedFiles) {
     const modulePaths = new Set<string>();
     for (const descriptor of parsed.data.reexports ?? []) {
-      if (descriptor.isTypeOnly || descriptor.kind === "namespace") continue;
+      if (
+        (descriptor.isTypeOnly && options.includeTypeOnlyReexports !== true) ||
+        descriptor.kind === "namespace"
+      )
+        continue;
       if (descriptor.kind === "named" || descriptor.kind === "star") {
         modulePaths.add(descriptor.modulePath);
         continue;
@@ -554,7 +566,8 @@ export function reexportTargetPaths(
       if (
         bindings.length === 1 &&
         !bindings[0]?.viaReexport &&
-        !bindings[0]?.isTypeOnly &&
+        (!bindings[0]?.isTypeOnly ||
+          options.includeTypeOnlyReexports === true) &&
         bindings[0]?.originalName !== "*"
       )
         modulePaths.add(bindings[0].modulePath);
@@ -590,6 +603,7 @@ export function reexportTargetsForFrontier(
   expandedPaths: Set<string>,
   factRows: readonly Phase2FactFile[],
   configuredPathAliases?: CallResolutionConfiguredPathAliases,
+  options: { readonly includeTypeOnlyReexports?: boolean } = {},
 ): string[] {
   const parsedSources = frontierPaths.flatMap((filePath) => {
     if (expandedPaths.has(filePath)) return [];
@@ -598,7 +612,12 @@ export function reexportTargetsForFrontier(
     expandedPaths.add(filePath);
     return [parsed];
   });
-  return reexportTargetPaths(parsedSources, factRows, configuredPathAliases);
+  return reexportTargetPaths(
+    parsedSources,
+    factRows,
+    configuredPathAliases,
+    options,
+  );
 }
 
 /** Parse exact root configuration bytes once; inheritance and unsupported shapes stay unavailable. */
@@ -696,6 +715,8 @@ export async function processPhase2Snapshot(input: {
   readonly includeCombinedDefaultImportTargets?: boolean;
   /** Parse direct named-import targets, including unaliased imports, for Q1 audits. */
   readonly includeStrictNamedImportTargets?: boolean;
+  /** Parse Q3 receiver-type imports and attach proof-only facts from exact parsed source bytes. */
+  readonly includeQ3ReceiverFacts?: boolean;
 }): Promise<Phase2SnapshotSourceResult> {
   const { snapshot } = input;
   if (
@@ -766,6 +787,7 @@ export async function processPhase2Snapshot(input: {
           input.includeCombinedDefaultImportTargets ?? false,
         includeUnaliasedNamedImports:
           input.includeStrictNamedImportTargets ?? false,
+        includeTypeOnlyImports: input.includeQ3ReceiverFacts ?? false,
       },
     );
     const aliasTargetPaths = importTargetPaths.filter(
@@ -821,7 +843,24 @@ export async function processPhase2Snapshot(input: {
         ],
         factRows,
         configuredPathAliases,
+        { includeTypeOnlyReexports: input.includeQ3ReceiverFacts ?? false },
       );
+      if (input.includeQ3ReceiverFacts) {
+        frontier = [
+          ...new Set([
+            ...frontier,
+            ...directImportTargetPaths(
+              [...parsedCallFiles.parsed, ...parsedAliasTargets.parsed],
+              factRows,
+              configuredPathAliases,
+              {
+                includeUnaliasedNamedImports: true,
+                includeTypeOnlyImports: true,
+              },
+            ),
+          ]),
+        ];
+      }
       while (frontier.length > 0) {
         const nextPaths = frontier.filter((filePath) => {
           if (parsedByPath.has(filePath) || attemptedTargetPaths.has(filePath))
@@ -839,24 +878,39 @@ export async function processPhase2Snapshot(input: {
             throw new Error(`Re-export source hash differs for ${filePath}.`);
           return [source];
         });
+        let parsedFrontier: ParsedAstFileResult[] = [];
         if (discoveredBatch.length > 0) {
           discoveredReexportTargets.push(...discoveredBatch);
           const parsedBatch = await input.processor.processFiles(
             input.temporaryDirectory,
             discoveredBatch,
           );
+          parsedFrontier = parsedBatch.parsed;
           parsedReexportTargets.push(...parsedBatch.parsed);
           for (const parsed of parsedBatch.parsed)
             parsedByPath.set(parsed.file, parsed);
           reexportTargetFailures.push(...parsedBatch.failures);
         }
-        frontier = reexportTargetsForFrontier(
+        const nextReexports = reexportTargetsForFrontier(
           frontier,
           parsedByPath,
           expandedReexportPaths,
           factRows,
           configuredPathAliases,
+          { includeTypeOnlyReexports: input.includeQ3ReceiverFacts ?? false },
         );
+        const nextImports = input.includeQ3ReceiverFacts
+          ? directImportTargetPaths(
+              parsedFrontier,
+              factRows,
+              configuredPathAliases,
+              {
+                includeUnaliasedNamedImports: true,
+                includeTypeOnlyImports: true,
+              },
+            )
+          : [];
+        frontier = [...new Set([...nextReexports, ...nextImports])];
       }
     }
     const parseWallMs = performance.now() - parseStarted;
@@ -899,6 +953,7 @@ export async function processPhase2Snapshot(input: {
         factRows,
         parsedByFile,
         !input.includeCombinedDefaultImportTargets,
+        input.includeQ3ReceiverFacts ?? false,
       ),
       ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
     });

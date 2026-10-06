@@ -10,6 +10,10 @@ import {
   CallSiteResolutionObservationSources,
   CallSiteVerificationStatuses,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE,
   createPortableCallSiteKey,
 } from "@workspace/contracts";
 import { candidateTargetKeyForDeclaration } from "../semantic/call-resolution-hypothesis-index.js";
@@ -32,8 +36,23 @@ type ParsedCall = NonNullable<ParsedAstFileResult["data"]["calls"]>[number];
 type CallSiteShape = NonNullable<
   ParsedAstFileResult["data"]["callSiteShapeFacts"]
 >["callSites"][number];
+type Q3ReceiverRuleSignature =
+  | typeof CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE
+  | typeof CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE
+  | typeof CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE
+  | typeof CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE;
+type Q3ReceiverProof = Extract<
+  CallResolutionStrictProof,
+  { ruleSignature: Q3ReceiverRuleSignature }
+>;
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const Q3_RECEIVER_RULE_SIGNATURES = new Set<string>([
+  CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE,
+]);
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
@@ -211,6 +230,24 @@ function namedImportTargetFunction(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+function q3TargetFunction(
+  proof: Q3ReceiverProof,
+  functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
+): FunctionNodeReference | undefined {
+  const matches = (functionNodesByFile.get(proof.targetFilePath) ?? []).filter(
+    (fn) =>
+      fn.name === proof.targetName &&
+      fn.containerName === proof.targetOwnerName,
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function isQ3ReceiverProof(
+  proof: Extract<CallResolutionStrictProof, { status: "proven" }>,
+): proof is Q3ReceiverProof {
+  return Q3_RECEIVER_RULE_SIGNATURES.has(proof.ruleSignature);
+}
+
 function createCallSiteProof(input: {
   result: ParsedAstFileResult;
   callSite: CallSiteShape;
@@ -307,9 +344,10 @@ function proofForCall(
   const { strictProof } = hypothesis;
   if (strictProof.status !== "proven") return undefined;
 
-  const targetFunction =
-    strictProof.ruleSignature === "q1:named-import:v1" ||
-    strictProof.ruleSignature === CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE
+  const targetFunction = isQ3ReceiverProof(strictProof)
+    ? q3TargetFunction(strictProof, functionNodesByFile)
+    : strictProof.ruleSignature === "q1:named-import:v1" ||
+        strictProof.ruleSignature === CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE
       ? namedImportTargetFunction(strictProof, functionNodesByFile)
       : strictTargetFunction(result, strictProof.targetKey, functionNodes);
   const callerFunction = callerNodeForCall(

@@ -40,6 +40,8 @@ export interface AstCallSiteShapeFact {
   readonly calleeKind: "bare" | "member" | "this" | "arg-chain";
   readonly receiverText: string | null;
   readonly receiverBinding: AstCallReceiverBinding | null;
+  /** True when optional chaining appears in the callee expression; absent in older facts. */
+  readonly receiverOptional?: boolean;
   /** Exact syntax-scope binding for bare calls; only `import` enables alias enrichment. */
   readonly calleeBinding: AstCallCalleeBinding | null;
   readonly lexicalScopeSpan: AstUtf16Span;

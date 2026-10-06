@@ -1,6 +1,7 @@
 import type { Node } from "web-tree-sitter";
 import {
   AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION,
+  AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION,
   type AstDeclaredCallableArity,
   type AstDeclaredDeclaration,
   type AstDeclaredDeclarationKind,
@@ -13,6 +14,9 @@ import {
   type AstDeclaredTypeOwnerKind,
   type AstDeclaredUnsupportedReason,
   type AstDeclaredVisibility,
+  type AstQ3ClassDeclarationFact,
+  type AstQ3NewReceiverBindingFact,
+  type AstQ3TypeAliasFact,
   type AstUtf16Span,
 } from "@workspace/contracts";
 
@@ -430,6 +434,18 @@ function typeFactForReturn(node: Node): AstDeclaredTypeFact | null {
 }
 
 function typeFactForInitializer(node: Node): AstDeclaredTypeFact | null {
+  const constructor = newInitializerConstructor(node);
+  if (!constructor) return null;
+  return makeFact(
+    "new-initializer",
+    declarationBindingName(node),
+    constructor,
+    node,
+    node,
+  );
+}
+
+function newInitializerConstructor(node: Node): Node | null {
   if (
     node.type !== "variable_declarator" &&
     node.type !== "public_field_definition" &&
@@ -444,17 +460,133 @@ function typeFactForInitializer(node: Node): AstDeclaredTypeFact | null {
     value.childForFieldName("type_arguments")
   )
     return null;
-  const constructor = simpleTypeReference(
-    value.childForFieldName("constructor"),
+  return simpleTypeReference(value.childForFieldName("constructor"));
+}
+
+function typeAliasFactForDeclaration(node: Node): AstQ3TypeAliasFact | null {
+  if (node.type !== "type_alias_declaration" || node.hasError) return null;
+  const name = node.childForFieldName("name");
+  const typeNode = simpleTypeReference(node.childForFieldName("value"));
+  if (
+    !name ||
+    !SIMPLE_NAME_NODE_TYPES.has(name.type) ||
+    !typeNode ||
+    isShadowedTypeParameter(typeNode, typeNode.text)
+  )
+    return null;
+  return {
+    name: name.text,
+    typeName: typeNode.text,
+    declarationSpan: span(node),
+    typeSpan: span(typeNode),
+    owner: nearestOwner(node.parent),
+    scopeSpan: lexicalScope(node.parent ?? node),
+    genericTypeParameterNames: typeParameterNames(node),
+    isExported: node.parent?.type === "export_statement",
+  };
+}
+
+function q3ClassDeclarationFact(node: Node): AstQ3ClassDeclarationFact | null {
+  const kind =
+    node.type === "interface_declaration"
+      ? "interface"
+      : node.type === "class_declaration" ||
+          node.type === "abstract_class_declaration"
+        ? "class"
+        : null;
+  const name = directName(node);
+  if (!kind || !name) return null;
+  return {
+    kind,
+    name,
+    declarationSpan: span(node),
+    scopeSpan: lexicalScope(node.parent ?? node),
+    genericTypeParameterNames: typeParameterNames(node),
+  };
+}
+
+function newBindingKind(node: Node): "const" | "let" | "var" | null {
+  if (node.type !== "variable_declarator") return null;
+  const declaration = node.parent;
+  if (!declaration) return null;
+  const match = /^(const|let|var)\b/u.exec(declaration.text);
+  return match?.[1] === "const" || match?.[1] === "let" || match?.[1] === "var"
+    ? match[1]
+    : null;
+}
+
+function writeTarget(node: Node): Node | null {
+  if (
+    node.type === "assignment_expression" ||
+    node.type === "augmented_assignment_expression"
+  )
+    return node.childForFieldName("left");
+  if (node.type === "for_in_statement" || node.type === "for_of_statement")
+    return node.childForFieldName("left");
+  if (node.type === "update_expression")
+    return (
+      namedChildren(node).find((child) =>
+        SIMPLE_NAME_NODE_TYPES.has(child.type),
+      ) ?? null
+    );
+  return null;
+}
+
+function collectSimpleWritePositions(
+  root: Node,
+): ReadonlyMap<string, readonly number[]> {
+  const positions = new Map<string, number[]>();
+  walk(root, (node) => {
+    const target = writeTarget(node);
+    if (target && SIMPLE_NAME_NODE_TYPES.has(target.type) && target.text) {
+      const writes = positions.get(target.text) ?? [];
+      writes.push(node.startIndex);
+      positions.set(target.text, writes);
+    }
+  });
+  return positions;
+}
+
+function hasBindingWrite(
+  writesByName: ReadonlyMap<string, readonly number[]>,
+  name: string,
+  scope: AstUtf16Span,
+  declarationEnd: number,
+): boolean {
+  return (writesByName.get(name) ?? []).some(
+    (position) => position > declarationEnd && position <= scope.end,
   );
-  if (!constructor) return null;
-  return makeFact(
-    "new-initializer",
-    declarationBindingName(node),
-    constructor,
-    node,
-    node,
-  );
+}
+
+function q3NewReceiverBindingFact(
+  node: Node,
+  writesByName: ReadonlyMap<string, readonly number[]>,
+): AstQ3NewReceiverBindingFact | null {
+  const typeNode = newInitializerConstructor(node);
+  const nameNode = node.childForFieldName("name");
+  const bindingKind = newBindingKind(node);
+  if (
+    !typeNode ||
+    !nameNode ||
+    !SIMPLE_NAME_NODE_TYPES.has(nameNode.type) ||
+    !bindingKind
+  )
+    return null;
+  const scopeNode = varDeclarationScope(node) ?? lexicalScope(node);
+  const scopeSpan = scopeNode;
+  return {
+    name: nameNode.text,
+    typeName: typeNode.text,
+    declarationSpan: span(node),
+    scopeSpan,
+    bindingKind,
+    isReassigned: hasBindingWrite(
+      writesByName,
+      nameNode.text,
+      scopeSpan,
+      nameNode.endIndex,
+    ),
+  };
 }
 
 function typeFactsForHeritage(
@@ -922,6 +1054,77 @@ function compareDeclarations(
   );
 }
 
+interface MutableDeclaredFacts {
+  readonly facts: AstDeclaredTypeFact[];
+  readonly declarations: AstDeclaredDeclaration[];
+  readonly ownerInventories: AstDeclaredOwnerInventory[];
+  readonly q3Classes: AstQ3ClassDeclarationFact[];
+  readonly q3TypeAliases: AstQ3TypeAliasFact[];
+  readonly q3NewReceiverBindings: AstQ3NewReceiverBindingFact[];
+  readonly visitedOwners: Set<string>;
+}
+
+function appendNodeTypeFacts(
+  node: Node,
+  language: AstDeclaredTypeLanguage,
+  writePositionsByName: ReadonlyMap<string, readonly number[]>,
+  accumulator: MutableDeclaredFacts,
+): void {
+  const annotationFact = typeFactForDeclaration(node, language);
+  if (annotationFact) accumulator.facts.push(annotationFact);
+  const returnFact = typeFactForReturn(node);
+  if (returnFact) accumulator.facts.push(returnFact);
+  const initializerFact = typeFactForInitializer(node);
+  if (initializerFact) accumulator.facts.push(initializerFact);
+  const q3TypeAlias = typeAliasFactForDeclaration(node);
+  if (q3TypeAlias) accumulator.q3TypeAliases.push(q3TypeAlias);
+  const q3Class = q3ClassDeclarationFact(node);
+  if (q3Class) accumulator.q3Classes.push(q3Class);
+  const q3NewReceiverBinding = q3NewReceiverBindingFact(
+    node,
+    writePositionsByName,
+  );
+  if (q3NewReceiverBinding)
+    accumulator.q3NewReceiverBindings.push(q3NewReceiverBinding);
+  accumulator.facts.push(...typeFactsForHeritage(node, language));
+}
+
+function appendOwnerInventory(
+  node: Node,
+  accumulator: MutableDeclaredFacts,
+): void {
+  if (!INVENTORY_OWNER_NODE_TYPES.has(node.type)) return;
+  const key = `${node.startIndex}:${node.endIndex}:${node.type}`;
+  if (accumulator.visitedOwners.has(key)) return;
+  accumulator.visitedOwners.add(key);
+  const collected = collectOwnerInventory(node);
+  accumulator.ownerInventories.push(collected.inventory);
+  accumulator.declarations.push(...collected.declarations);
+}
+
+function appendFreeCallableDeclaration(
+  node: Node,
+  accumulator: MutableDeclaredFacts,
+): void {
+  if (
+    !FREE_CALLABLE_NODE_TYPES.has(node.type) ||
+    (isFunctionValueMember(node) && !isAnonymousDirectDefaultFunction(node))
+  )
+    return;
+  accumulator.declarations.push(freeCallableDeclaration(node));
+}
+
+function collectDeclaredFactsForNode(
+  node: Node,
+  language: AstDeclaredTypeLanguage,
+  writePositionsByName: ReadonlyMap<string, readonly number[]>,
+  accumulator: MutableDeclaredFacts,
+): void {
+  appendNodeTypeFacts(node, language, writePositionsByName, accumulator);
+  appendOwnerInventory(node, accumulator);
+  appendFreeCallableDeclaration(node, accumulator);
+}
+
 /**
  * Extract explicit TS/JS type syntax and a separate declaration/member inventory. The result
  * contains no graph IDs, parser allocation IDs, source hashes, or inferred type relationships.
@@ -942,33 +1145,29 @@ export function extractDeclaredTypeFacts(
   const facts: AstDeclaredTypeFact[] = [];
   const declarations: AstDeclaredDeclaration[] = [];
   const ownerInventories: AstDeclaredOwnerInventory[] = [];
+  const q3Classes: AstQ3ClassDeclarationFact[] = [];
+  const q3TypeAliases: AstQ3TypeAliasFact[] = [];
+  const q3NewReceiverBindings: AstQ3NewReceiverBindingFact[] = [];
+  const writePositionsByName = collectSimpleWritePositions(root);
   const visitedOwners = new Set<string>();
+  const accumulator: MutableDeclaredFacts = {
+    facts,
+    declarations,
+    ownerInventories,
+    q3Classes,
+    q3TypeAliases,
+    q3NewReceiverBindings,
+    visitedOwners,
+  };
 
-  walk(root, (node) => {
-    const annotationFact = typeFactForDeclaration(node, language);
-    if (annotationFact) facts.push(annotationFact);
-    const returnFact = typeFactForReturn(node);
-    if (returnFact) facts.push(returnFact);
-    const initializerFact = typeFactForInitializer(node);
-    if (initializerFact) facts.push(initializerFact);
-    facts.push(...typeFactsForHeritage(node, language));
-
-    if (INVENTORY_OWNER_NODE_TYPES.has(node.type)) {
-      const key = `${node.startIndex}:${node.endIndex}:${node.type}`;
-      if (!visitedOwners.has(key)) {
-        visitedOwners.add(key);
-        const collected = collectOwnerInventory(node);
-        ownerInventories.push(collected.inventory);
-        declarations.push(...collected.declarations);
-      }
-    }
-
-    if (
-      FREE_CALLABLE_NODE_TYPES.has(node.type) &&
-      (!isFunctionValueMember(node) || isAnonymousDirectDefaultFunction(node))
-    )
-      declarations.push(freeCallableDeclaration(node));
-  });
+  walk(root, (node) =>
+    collectDeclaredFactsForNode(
+      node,
+      language,
+      writePositionsByName,
+      accumulator,
+    ),
+  );
 
   facts.sort(compareFacts);
   declarations.sort(compareDeclarations);
@@ -977,6 +1176,13 @@ export function extractDeclaredTypeFacts(
       a.owner.span.start - b.owner.span.start ||
       a.owner.kind.localeCompare(b.owner.kind),
   );
+  q3TypeAliases.sort(
+    (a, b) => a.declarationSpan.start - b.declarationSpan.start,
+  );
+  q3Classes.sort((a, b) => a.declarationSpan.start - b.declarationSpan.start);
+  q3NewReceiverBindings.sort(
+    (a, b) => a.declarationSpan.start - b.declarationSpan.start,
+  );
 
   return {
     schemaVersion: AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION,
@@ -984,5 +1190,11 @@ export function extractDeclaredTypeFacts(
     facts,
     declarations,
     ownerInventories,
+    q3ReceiverFacts: {
+      schemaVersion: AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION,
+      classes: q3Classes,
+      typeAliases: q3TypeAliases,
+      newReceiverBindings: q3NewReceiverBindings,
+    },
   };
 }

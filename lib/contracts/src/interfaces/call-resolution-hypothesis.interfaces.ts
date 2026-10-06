@@ -23,6 +23,14 @@ export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
 export const CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE =
   "q2:reexport-trace:v1" as const;
+export const CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE =
+  "q3:super-call:v1" as const;
+export const CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE =
+  "q3:this-inherited:v1" as const;
+export const CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE =
+  "q3:typed-receiver:v1" as const;
+export const CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE =
+  "q3:new-receiver:v1" as const;
 
 /** Source-bound configuration facts; unsupported mappings do not enrich candidates. */
 export interface CallResolutionConfiguredPathAliases {
@@ -124,6 +132,10 @@ export interface CallResolutionCalibrationRecord {
 export type CallResolutionStrictProofReason =
   | "unique-this-owner-member"
   | "unique-named-import"
+  | "unique-super-base-member"
+  | "unique-inherited-this-member"
+  | "unique-typed-receiver-member"
+  | "unique-new-receiver-member"
   | "incomplete-inventory"
   | "candidate-list-truncated"
   | "unsupported-call-shape"
@@ -161,12 +173,57 @@ export type CallResolutionStrictProof =
       readonly dependencies: readonly CallSiteResolutionDependency[];
     }
   | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE;
+      readonly reason: "unique-super-base-member";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly targetOwnerName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE;
+      readonly reason: "unique-inherited-this-member";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly targetOwnerName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE;
+      readonly reason: "unique-typed-receiver-member";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly targetOwnerName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
+      readonly status: "proven";
+      readonly targetKey: string;
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE;
+      readonly reason: "unique-new-receiver-member";
+      readonly targetFilePath: string;
+      readonly targetName: string;
+      readonly targetOwnerName: string;
+      readonly dependencies: readonly CallSiteResolutionDependency[];
+    }
+  | {
       readonly status: "abstained";
       readonly targetKey: null;
       readonly ruleSignature: null;
       readonly reason: Exclude<
         CallResolutionStrictProofReason,
-        "unique-this-owner-member" | "unique-named-import"
+        | "unique-this-owner-member"
+        | "unique-named-import"
+        | "unique-super-base-member"
+        | "unique-inherited-this-member"
+        | "unique-typed-receiver-member"
+        | "unique-new-receiver-member"
       >;
     };
 

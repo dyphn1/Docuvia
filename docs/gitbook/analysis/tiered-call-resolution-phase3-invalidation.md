@@ -1,6 +1,6 @@
 # GRPH-008 Phase 3: Dependency invalidation
 
-This closes the source-change invalidation gap for the current Q1/Q2 proof slices. It does not change ScopeResolver, proof selection policy, Tier B eligibility, calibration, or test/temporal labels.
+This closes the source-change invalidation gap for the current Q1/Q2 proof slices and supports the explicit Q3 receiver dependencies documented in [Phase 3 Q3 receiver proofs](tiered-call-resolution-phase3-q3-receiver-proof.md). It does not change ScopeResolver, proof selection policy, Tier B eligibility, calibration, or test/temporal labels.
 
 ## Workflow wiring
 
@@ -16,7 +16,7 @@ The code is in `lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts:126`, `
 
 The workflow tests cover a changed target, a Q2 barrel edit, a configured `tsconfig` path edit, an unrelated one-file edit, and invalidation errors before persistence. SQLite integration tests cover hash changes and deletion, unrelated-path no-churn, shared collapsed edges after an LSP contradiction, stale Tier B responses, bounded batches, and rollback when projection rebuilding fails. Full-ingestion and hydration tests assert invalidation occurs before source replacement. The focused run passed 102 tests across five files.
 
-Q1 and Q2 are implemented for their current strict proof slices. Broader Q3 receiver forms and the remaining proof-shape cases stay open in the Phase 3 gap table. Delta invalidation deliberately chooses safe over-invalidation over treating an incomplete index as complete.
+Q1 and Q2 are implemented for their current strict proof slices, as are the bounded explicit Q3 receiver rules. Broader proof shapes and the remaining Phase 3 exit and certification gates stay open in the [Phase 3 gap table](tiered-call-resolution-phase3-q1-named-import-proof.md#phase-3-gap-audit). Delta invalidation deliberately chooses safe over-invalidation over treating an incomplete index as complete.
 
 ## One-file delta cost
 

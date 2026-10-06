@@ -8,7 +8,6 @@ import {
 } from "@workspace/contracts";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import { candidateTargetKeyForDeclaration } from "./call-resolution-hypothesis-index.js";
-import { hash } from "./call-resolution-hypothesis-internal.js";
 import { CallResolutionHypothesisService } from "./call-resolution-hypothesis.service.js";
 
 let pool: AstWorkerPool;
@@ -83,6 +82,31 @@ async function fixture(
     callSite,
   };
   return { input, request, targetKey };
+}
+
+type FixtureInput = Awaited<ReturnType<typeof fixture>>["input"];
+
+function withoutQ3OnlyFingerprintFacts(input: FixtureInput): FixtureInput {
+  return {
+    ...input,
+    sourceFiles: input.sourceFiles.map((source) => {
+      const declaredTypeFacts = source.declaredTypeFacts
+        ? (({ q3ReceiverFacts: _q3ReceiverFacts, ...facts }) => facts)(
+            source.declaredTypeFacts,
+          )
+        : source.declaredTypeFacts;
+      const callSiteShapeFacts = source.callSiteShapeFacts
+        ? {
+            ...source.callSiteShapeFacts,
+            callSites: source.callSiteShapeFacts.callSites.map(
+              ({ receiverOptional: _receiverOptional, ...callSite }) =>
+                callSite,
+            ),
+          }
+        : source.callSiteShapeFacts;
+      return { ...source, declaredTypeFacts, callSiteShapeFacts };
+    }),
+  };
 }
 
 describe("configured named-import candidate evidence", () => {
@@ -185,11 +209,14 @@ describe("configured named-import candidate evidence", () => {
       candidateGeneratorVersion: CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
     });
     expect(withConfig.configurationHash).toBe(withoutConfig.configurationHash);
-    expect(withoutConfig.sourceFingerprint).toBe(
-      hash({
-        manifestFingerprint: input.sourceFingerprint,
-        sourceFiles: input.sourceFiles,
-      }),
+    const withoutQ3OnlyFacts = service.hypothesize({
+      ...request,
+      workspaceIndex: service.indexWorkspace(
+        withoutQ3OnlyFingerprintFacts(input),
+      ),
+    });
+    expect(withoutConfig.sourceFingerprint).toEqual(
+      withoutQ3OnlyFacts.sourceFingerprint,
     );
   });
 

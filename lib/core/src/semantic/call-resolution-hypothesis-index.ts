@@ -924,6 +924,31 @@ function workspaceBuilder(
   };
 }
 
+function candidateSourceFilesForFingerprint(
+  sourceFiles: CallResolutionHypothesisWorkspaceInput["sourceFiles"],
+): CallResolutionHypothesisWorkspaceInput["sourceFiles"] {
+  return sourceFiles.map((source) => {
+    const declaredTypeFacts = source.declaredTypeFacts
+      ? (({ q3ReceiverFacts: _q3ReceiverFacts, ...facts }) => facts)(
+          source.declaredTypeFacts,
+        )
+      : source.declaredTypeFacts;
+    const callSiteShapeFacts = source.callSiteShapeFacts
+      ? {
+          ...source.callSiteShapeFacts,
+          callSites: source.callSiteShapeFacts.callSites.map(
+            ({ receiverOptional: _receiverOptional, ...callSite }) => callSite,
+          ),
+        }
+      : source.callSiteShapeFacts;
+    return {
+      ...source,
+      declaredTypeFacts,
+      callSiteShapeFacts,
+    };
+  });
+}
+
 export function createIndexedWorkspace(
   input: CallResolutionHypothesisWorkspaceInput,
   configurationHash: string,
@@ -936,7 +961,7 @@ export function createIndexedWorkspace(
       : deepFreeze(structuredClone(input.configuredPathAliases));
   const boundSourceFingerprint = hash({
     manifestFingerprint: input.sourceFingerprint,
-    sourceFiles,
+    sourceFiles: candidateSourceFilesForFingerprint(sourceFiles),
     ...(configuredPathAliases === undefined ? {} : { configuredPathAliases }),
   });
   const builder = workspaceBuilder(input);
@@ -1087,10 +1112,12 @@ export function hashFeatureInput(
   candidates: readonly CallResolutionHypothesisCandidate[],
   receiverFact: AstDeclaredTypeFact | undefined,
 ): string {
+  const { receiverOptional: _receiverOptional, ...candidateCallSite } =
+    request.callSite;
   return hash({
     sourceFingerprint: workspace.handle.sourceFingerprint,
     callerFilePath: request.callerFilePath,
-    callSite: request.callSite,
+    callSite: candidateCallSite,
     receiverTypeFact: receiverFact ?? null,
     candidateSetComplete: workspace.complete,
     duplicateSourcePaths: workspace.duplicateSourcePaths,

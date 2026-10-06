@@ -106,6 +106,37 @@ describe("Phase 2 source candidate identity", () => {
     ).toEqual(["src/implementation.ts"]);
   });
 
+  it("[happy][state-diff] includes type-only imports only for Q3 receiver audits", () => {
+    const callFiles = [
+      {
+        file: "src/caller.ts",
+        data: {
+          imports: [
+            {
+              localName: "Service",
+              originalName: "Service",
+              modulePath: "./service.js",
+              isTypeOnly: true,
+            },
+          ],
+        },
+      },
+    ];
+    const facts = [makeFactRow("src/service.ts", "c".repeat(64), [])];
+
+    expect(
+      directImportTargetPaths(callFiles, facts, undefined, {
+        includeUnaliasedNamedImports: true,
+      }),
+    ).toEqual([]);
+    expect(
+      directImportTargetPaths(callFiles, facts, undefined, {
+        includeUnaliasedNamedImports: true,
+        includeTypeOnlyImports: true,
+      }),
+    ).toEqual(["src/service.ts"]);
+  });
+
   it("[happy][state-diff] maps a unique named arrow candidate to its corpus target ID", () => {
     const declaration = makeDeclaration("run", 11, 40);
     const key = candidateTargetKeyForDeclaration("src/worker.ts", declaration);

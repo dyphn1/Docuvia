@@ -125,11 +125,16 @@ export type {
   AstDeclaredTypeLanguage,
   AstDeclaredTypeOwner,
   AstDeclaredTypeOwnerKind,
+  AstQ3NewReceiverBindingFact,
+  AstQ3ClassDeclarationFact,
+  AstQ3ReceiverFacts,
+  AstQ3TypeAliasFact,
   AstDeclaredUnsupportedReason,
   AstDeclaredVisibility,
   AstUtf16Span,
 } from "./interfaces/declared-type-facts.interfaces.js";
 export { AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
+export { AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
 export type {
   AstCallCalleeBinding,
   AstCallArgumentKind,
@@ -163,6 +168,10 @@ export type {
 export {
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
   CALL_RESOLUTION_RANKING_POLICY_VERSION,
   CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
 } from "./interfaces/call-resolution-hypothesis.interfaces.js";

@@ -19,7 +19,12 @@ const MAX_REEXPORT_DEPTH = 16;
 
 type AbstentionReason = Exclude<
   CallResolutionStrictProof["reason"],
-  "unique-this-owner-member" | "unique-named-import"
+  | "unique-this-owner-member"
+  | "unique-named-import"
+  | "unique-super-base-member"
+  | "unique-inherited-this-member"
+  | "unique-typed-receiver-member"
+  | "unique-new-receiver-member"
 >;
 
 interface TraceTarget {

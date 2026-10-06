@@ -1637,7 +1637,7 @@ describe("call-resolution hypothesis service", () => {
     });
   });
 
-  it("[invalid-input] does not prove a typed receiver from its type name alone", async () => {
+  it("[happy] proves a typed receiver bound to one same-file class", async () => {
     const code =
       "class Logger { close(): void {} } function run(logger: Logger): void { logger.close(); }";
     const callerFile = await parseFile("src/caller.ts", code);
@@ -1664,15 +1664,32 @@ describe("call-resolution hypothesis service", () => {
       workspaceIndex,
     });
 
+    const closeDeclaration = callerFile.declaredTypeFacts?.declarations.find(
+      (declaration) =>
+        declaration.kind === "method" && declaration.name === "close",
+    );
+    if (!closeDeclaration)
+      throw new Error("AST worker omitted the same-file class method");
+    const targetKey = candidateTargetKeyForDeclaration(
+      "src/caller.ts",
+      closeDeclaration,
+    );
+    if (!targetKey) throw new Error("Could not key the same-file class method");
     expect(result.strictProof).toEqual({
-      status: "abstained",
-      targetKey: null,
-      ruleSignature: null,
-      reason: "unresolved-type-binding",
+      status: "proven",
+      targetKey,
+      ruleSignature: "q3:typed-receiver:v1",
+      reason: "unique-typed-receiver-member",
+      targetFilePath: "src/caller.ts",
+      targetName: "close",
+      targetOwnerName: "Logger",
+      dependencies: [
+        { filePath: "src/caller.ts", contentHash: sourceContentHash },
+      ],
     });
   });
 
-  it("[invalid-input] abstains for aliases, collisions, imports, re-exports and inheritance", async () => {
+  it("[happy][invalid-input] proves same-file class bindings and abstains on collision or unsupported re-export", async () => {
     const abstainedForUnresolvedType = {
       status: "abstained",
       targetKey: null,
@@ -1688,6 +1705,12 @@ describe("call-resolution hypothesis service", () => {
             code: "class Logger { close(): void {} } type LoggerAlias = Logger; function run(logger: LoggerAlias) { logger.close(); }",
           },
         ],
+        expected: {
+          status: "proven",
+          targetFilePath: "src/caller.ts",
+          targetOwnerName: "Logger",
+          dependencyPaths: ["src/caller.ts"],
+        },
       },
       {
         name: "same-name declaration collision",
@@ -1697,6 +1720,7 @@ describe("call-resolution hypothesis service", () => {
             code: "class Logger { close(): void {} } function outer() { class Logger { close(): void {} } function run(logger: Logger) { logger.close(); } }",
           },
         ],
+        expected: { status: "abstained" },
       },
       {
         name: "import alias across a re-export",
@@ -1714,6 +1738,7 @@ describe("call-resolution hypothesis service", () => {
             code: 'import { PublicLogger as LocalLogger } from "./barrel"; function run(logger: LocalLogger) { logger.close(); }',
           },
         ],
+        expected: { status: "abstained" },
       },
       {
         name: "inherited receiver member",
@@ -1723,6 +1748,12 @@ describe("call-resolution hypothesis service", () => {
             code: "class Base { close(): void {} } class Logger extends Base {} function run(logger: Logger) { logger.close(); }",
           },
         ],
+        expected: {
+          status: "proven",
+          targetFilePath: "src/caller.ts",
+          targetOwnerName: "Base",
+          dependencyPaths: ["src/caller.ts"],
+        },
       },
     ] as const;
 
@@ -1732,9 +1763,39 @@ describe("call-resolution hypothesis service", () => {
         "src/caller.ts",
         "close",
       );
-      expect(result.strictProof, scenario.name).toEqual(
-        abstainedForUnresolvedType,
-      );
+      if (scenario.expected.status === "abstained") {
+        expect(result.strictProof, scenario.name).toEqual(
+          abstainedForUnresolvedType,
+        );
+        continue;
+      }
+      const proof = result.strictProof;
+      expect(proof.status, scenario.name).toEqual("proven");
+      if (
+        proof.status !== "proven" ||
+        proof.ruleSignature !== "q3:typed-receiver:v1"
+      )
+        throw new Error(`${scenario.name}: expected a typed receiver proof`);
+      expect(
+        {
+          ruleSignature: proof.ruleSignature,
+          reason: proof.reason,
+          targetFilePath: proof.targetFilePath,
+          targetName: proof.targetName,
+          targetOwnerName: proof.targetOwnerName,
+          dependencyPaths: proof.dependencies
+            .map(({ filePath }) => filePath)
+            .sort(),
+        },
+        scenario.name,
+      ).toEqual({
+        ruleSignature: "q3:typed-receiver:v1",
+        reason: "unique-typed-receiver-member",
+        targetFilePath: scenario.expected.targetFilePath,
+        targetName: "close",
+        targetOwnerName: scenario.expected.targetOwnerName,
+        dependencyPaths: scenario.expected.dependencyPaths,
+      });
     }
   });
 

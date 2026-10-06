@@ -729,6 +729,13 @@ function pendingForCall(
   const scope = lexicalScope(call, root);
   const binding = resolveReceiverBinding(record.receiverText, call, indexes);
   const callBinding = calleeBinding(record, call, indexes);
+  const argumentsStart = call.childForFieldName("arguments")?.startIndex;
+  const calleeSource = call.text.slice(
+    0,
+    argumentsStart === undefined
+      ? call.text.length
+      : argumentsStart - call.startIndex,
+  );
   const fact: Omit<AstCallSiteShapeFact, "peerMemberNames"> = {
     startLine: record.startLine,
     startColumn: record.startColumn,
@@ -736,6 +743,7 @@ function pendingForCall(
     calleeKind: record.calleeKind ?? "bare",
     receiverText: record.receiverText ?? null,
     receiverBinding: binding,
+    receiverOptional: calleeSource.includes("?."),
     calleeBinding: callBinding,
     lexicalScopeSpan: span(scope),
     callerType: callerType(call),

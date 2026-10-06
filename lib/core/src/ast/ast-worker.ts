@@ -604,7 +604,7 @@ function directClassExportDescriptor(
   )
     return undefined;
   const name = declaration.childForFieldName("name");
-  return name?.type === "identifier"
+  return name && ["identifier", "type_identifier"].includes(name.type)
     ? { name: name.text, type: "class" }
     : undefined;
 }

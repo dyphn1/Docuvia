@@ -13,6 +13,7 @@ import {
   type IndexedWorkspace,
 } from "./call-resolution-hypothesis-index.js";
 import { HASH_PATTERN, hash } from "./call-resolution-hypothesis-internal.js";
+import { proveUniqueQ3Receiver } from "./call-resolution-q3-receiver-proof.js";
 
 const NAMED_IMPORT_RULE = "q1:named-import:v1" as const;
 
@@ -567,30 +568,38 @@ export function proveUniqueThisMember(
   workspace: IndexedWorkspace,
   truncated: boolean,
 ): CallResolutionStrictProof {
-  const preconditionAbstention = thisMemberPreconditionAbstention(
-    request,
-    workspace,
-    truncated,
-  );
-  if (preconditionAbstention) return preconditionAbstention;
+  if (hasSupportedThisShape(request.callSite)) {
+    const preconditionAbstention = thisMemberPreconditionAbstention(
+      request,
+      workspace,
+      truncated,
+    );
+    if (preconditionAbstention) return preconditionAbstention;
 
-  const ownerCandidates = candidates.filter((candidate) =>
-    isExactOwnerCandidate(candidate, request),
-  );
-  if (ownerCandidates.length !== 1) return abstain("no-unique-owner-candidate");
-
-  const [candidate] = ownerCandidates;
-  if (!candidate) return abstain("no-unique-owner-candidate");
-  if (!hasOneConcreteOwnerMethod(candidate, request.callSite.callerType)) {
-    return abstain("ambiguous-owner-declaration");
+    const ownerCandidates = candidates.filter((candidate) =>
+      isExactOwnerCandidate(candidate, request),
+    );
+    if (ownerCandidates.length > 0) {
+      if (ownerCandidates.length !== 1)
+        return abstain("no-unique-owner-candidate");
+      const candidate = ownerCandidates[0];
+      if (!candidate) return abstain("no-unique-owner-candidate");
+      if (!hasOneConcreteOwnerMethod(candidate, request.callSite.callerType))
+        return abstain("ambiguous-owner-declaration");
+      if (!candidate.inventoryComplete) return abstain("incomplete-inventory");
+      return {
+        status: "proven",
+        targetKey: candidate.targetKey,
+        ruleSignature: SINGLE_CANDIDATE_THIS_RULE,
+        reason: "unique-this-owner-member",
+      };
+    }
   }
-  if (!candidate?.inventoryComplete) return abstain("incomplete-inventory");
-  return {
-    status: "proven",
-    targetKey: candidate.targetKey,
-    ruleSignature: SINGLE_CANDIDATE_THIS_RULE,
-    reason: "unique-this-owner-member",
-  };
+
+  return (
+    proveUniqueQ3Receiver(request, workspace, truncated) ??
+    proveUnsupportedCallShape(request, workspace)
+  );
 }
 
 export function proveUniqueNamedImport(
@@ -604,7 +613,12 @@ export function proveUniqueNamedImport(
 function abstain(
   reason: Exclude<
     CallResolutionStrictProof["reason"],
-    "unique-this-owner-member" | "unique-named-import"
+    | "unique-this-owner-member"
+    | "unique-named-import"
+    | "unique-super-base-member"
+    | "unique-inherited-this-member"
+    | "unique-typed-receiver-member"
+    | "unique-new-receiver-member"
   >,
 ): CallResolutionStrictProof {
   return {

@@ -721,6 +721,11 @@ describe("Phase 4 hard gates", () => {
     ).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
+    expect(
+      phase4MarkdownFormatViolations("- aggregate_accuracy: 1"),
+    ).toEqual([
+      expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
+    ]);
   });
 
   it("[state-diff] replay mismatch is reported by its named gate", () => {

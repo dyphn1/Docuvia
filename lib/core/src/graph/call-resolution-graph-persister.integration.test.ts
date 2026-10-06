@@ -304,7 +304,10 @@ describe("GraphPersister call-resolution integration", () => {
           contentHash: "e".repeat(64),
         },
       ]),
-    ).toBe(1);
+    ).toEqual({
+      invalidatedCount: 1,
+      affectedFilePaths: [caller.file],
+    });
     expect(getQ1Resolution()).toMatchObject({ isStale: true });
     expect(projectedCallKeys()).not.toContainEqual({
       source: "src/caller.ts#call",
@@ -429,7 +432,10 @@ describe("GraphPersister call-resolution integration", () => {
           contentHash: "e".repeat(64),
         },
       ]),
-    ).toBe(1);
+    ).toEqual({
+      invalidatedCount: 1,
+      affectedFilePaths: [caller.file],
+    });
     expect(getQ2Resolution()).toMatchObject({ isStale: true });
     expect(projectedCallKeys()).not.toContainEqual({
       source: "src/caller.ts#caller",

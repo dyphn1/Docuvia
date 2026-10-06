@@ -285,6 +285,14 @@ describe("HydrationService.hydrate()", () => {
         withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
+    const invalidation = vi.fn(() => ({
+      invalidatedCount: 2,
+      affectedFilePaths: ["src/caller.ts"],
+    }));
+    Object.defineProperty(store, "callSiteResolutions", {
+      configurable: true,
+      value: { invalidateAll: invalidation },
+    });
     const service = new HydrationService(git);
 
     const result = await service.hydrate("/workspace", store);
@@ -300,6 +308,9 @@ describe("HydrationService.hydrate()", () => {
     expect(store.meta.set).toHaveBeenCalledWith(
       GitConstants.META_KEY_KNOWLEDGE_TIP_SHA,
       "know-1",
+    );
+    expect(invalidation).toHaveBeenCalledWith(
+      GitConstants.DEFAULT_LOCAL_PROJECT_ID,
     );
     expect(result).toEqual({
       hydrated: true,

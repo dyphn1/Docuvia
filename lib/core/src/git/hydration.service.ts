@@ -357,6 +357,7 @@ export class HydrationService implements IHydrationService {
 
     const bulkResult = await store.withWriteLock(async () => {
       const projectId = this.restoreSnapshotMetadata(store, metadata);
+      store.callSiteResolutions?.invalidateAll(projectId);
       this.restoreSnapshotCallSites(store, projectId, metadata, callSites);
 
       const loaded = store.graph.bulkLoadGraph({

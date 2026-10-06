@@ -63,6 +63,9 @@ export async function runFullIngestion(deps: {
   });
 
   const project = await seedProjectRow(store.projects, git, workspaceRoot);
+  await store.withWriteLock(() => {
+    store.callSiteResolutions?.invalidateAll(project.id);
+  });
 
   const discoveryResult = await runDiscoveryPipeline({
     configScanner,

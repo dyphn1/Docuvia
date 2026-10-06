@@ -732,6 +732,12 @@ export interface CallSiteResolutionDependency {
   contentHash: string | null;
 }
 
+/** Caller files whose collapsed calls projections were rebuilt by an atomic invalidation pass. */
+export interface CallSiteResolutionInvalidationResult {
+  invalidatedCount: number;
+  affectedFilePaths: string[];
+}
+
 /** Current content-scoped resolution for one call site. Candidates are normalized separately. */
 export interface CallSiteResolutionRecord {
   callSiteKey: string;
@@ -806,7 +812,9 @@ export interface ICallSiteResolutionsRepo {
   invalidateChangedDependencies(
     projectId: number,
     changedDependencies: CallSiteResolutionDependency[],
-  ): number;
+  ): CallSiteResolutionInvalidationResult;
+  /** Marks every current resolution stale before a full graph replacement or hydration. */
+  invalidateAll(projectId: number): CallSiteResolutionInvalidationResult;
   /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
   appendObservation(
     projectId: number,

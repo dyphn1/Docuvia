@@ -13,6 +13,7 @@ import type {
   CallSiteResolutionCandidate,
   CallSiteResolutionClass,
   CallSiteResolutionDependency,
+  CallSiteResolutionInvalidationResult,
   CallSiteResolutionObservation,
   CallSiteResolutionObservationInput,
   CallSiteResolutionRecord,
@@ -39,6 +40,8 @@ const CALL_SITE_RESOLUTIONS_ERRORS = {
     `Failed to read call-site observations for ${filePath} in project ${projectId}`,
   INVALIDATE_DEPENDENCIES_FAILED: (projectId: number) =>
     `Failed to invalidate call-site resolutions for changed dependencies in project ${projectId}`,
+  INVALIDATE_ALL_FAILED: (projectId: number) =>
+    `Failed to invalidate all call-site resolutions in project ${projectId}`,
   APPLY_TIER_B_RESULTS_FAILED: (projectId: number) =>
     `Failed to apply Tier B verification results for project ${projectId}`,
   READ_RULE_QUARANTINES_FAILED: (projectId: number) =>
@@ -470,10 +473,12 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
   invalidateChangedDependencies(
     projectId: number,
     changedDependencies: CallSiteResolutionDependency[],
-  ): number {
+  ): CallSiteResolutionInvalidationResult {
     assertProjectId(projectId);
     const dependencies = normalizeChangedDependencies(changedDependencies);
-    if (dependencies.length === 0) return 0;
+    if (dependencies.length === 0) {
+      return { invalidatedCount: 0, affectedFilePaths: [] };
+    }
 
     try {
       return this.db
@@ -523,13 +528,54 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           for (const filePath of affectedFiles) {
             rebuildCallsProjection(this.db, projectId, filePath);
           }
-          return newlyStale;
+          return {
+            invalidatedCount: newlyStale,
+            affectedFilePaths: [...affectedFiles].sort(comparePaths),
+          };
         })
         .immediate();
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_DEPENDENCIES_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  invalidateAll(projectId: number): CallSiteResolutionInvalidationResult {
+    assertProjectId(projectId);
+    try {
+      return this.db
+        .transaction(() => {
+          const affectedFilePaths = (
+            this.db
+              .prepare(
+                `SELECT DISTINCT file_path
+                 FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+                 WHERE project_id = ? AND is_stale = 0`,
+              )
+              .all(projectId) as Array<{ file_path: string }>
+          )
+            .map(({ file_path: filePath }) => filePath)
+            .sort(comparePaths);
+          const invalidatedCount = this.db
+            .prepare(
+              `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
+               SET is_stale = 1
+               WHERE project_id = ? AND is_stale = 0`,
+            )
+            .run(projectId).changes;
+          for (const filePath of affectedFilePaths) {
+            rebuildCallsProjection(this.db, projectId, filePath);
+          }
+          return { invalidatedCount, affectedFilePaths };
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_ALL_FAILED(projectId),
         err,
       );
     }

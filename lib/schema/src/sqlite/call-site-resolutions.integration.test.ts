@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import DatabaseConstructor from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
@@ -934,13 +935,13 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       {
         ...resolution(staleKey, []),
         dependencies: [
-          { filePath: "src/dependency.ts", contentHash: "e".repeat(64) },
+          { filePath: "src/target.ts", contentHash: "e".repeat(64) },
         ],
       },
       {
         ...resolution(freshKey, []),
         dependencies: [
-          { filePath: "src/dependency.ts", contentHash: "f".repeat(64) },
+          { filePath: "src/target.ts", contentHash: "f".repeat(64) },
         ],
       },
     ]);
@@ -963,9 +964,12 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
 
     expect(
       store.callSiteResolutions.invalidateChangedDependencies(projectId, [
-        { filePath: "src/dependency.ts", contentHash: "f".repeat(64) },
+        { filePath: "src/target.ts", contentHash: "f".repeat(64) },
       ]),
-    ).toBe(1);
+    ).toEqual({
+      invalidatedCount: 1,
+      affectedFilePaths: ["src/caller.ts"],
+    });
     expect(
       store.callSiteResolutions
         .getForFile(projectId, "src/caller.ts")
@@ -987,9 +991,343 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
 
     expect(
       store.callSiteResolutions.invalidateChangedDependencies(projectId, [
-        { filePath: "src/dependency.ts", contentHash: "a".repeat(64) },
+        { filePath: "src/target.ts", contentHash: null },
       ]),
-    ).toBe(1);
+    ).toEqual({
+      invalidatedCount: 1,
+      affectedFilePaths: ["src/caller.ts"],
+    });
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
+  it("[error-handling][state-diff] rolls back invalidation when projection rebuilding fails", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    const callSiteKey = portableKey("transactional-invalidation");
+    const stableCallSiteKey = portableKey("transactional-stable-site");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], {
+        dependencies: [
+          { filePath: "src/target.ts", contentHash: "e".repeat(64) },
+        ],
+      }),
+      resolution(stableCallSiteKey, [], {
+        dependencies: [
+          { filePath: "src/stable.ts", contentHash: "a".repeat(64) },
+        ],
+      }),
+    ]);
+
+    const raw = new DatabaseConstructor(
+      path.join(tmpDir, ".docuvia", "local.db"),
+    );
+    try {
+      raw.exec(
+        `CREATE TRIGGER fail_call_projection_rebuild
+         BEFORE INSERT ON node_links
+         WHEN NEW.link_type = 'calls'
+         BEGIN
+           SELECT RAISE(ABORT, 'forced projection failure');
+         END;`,
+      );
+    } finally {
+      raw.close();
+    }
+
+    expect(() =>
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        { filePath: "src/target.ts", contentHash: "f".repeat(64) },
+      ]),
+    ).toThrowError(
+      `Failed to invalidate call-site resolutions for changed dependencies in project ${projectId}`,
+    );
+
+    const cleanup = new DatabaseConstructor(
+      path.join(tmpDir, ".docuvia", "local.db"),
+    );
+    try {
+      cleanup.exec("DROP TRIGGER fail_call_projection_rebuild;");
+    } finally {
+      cleanup.close();
+    }
+
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ isStale }) => isStale),
+    ).toEqual([false, false]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+  });
+
+  it("[state-diff] keeps an LSP-disproved target while another current site still selects it", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "alternate",
+      pathPatterns: ["src/alternate.ts"],
+      nodeKey: "src/alternate.ts#run",
+    });
+    const disprovedKey = portableKey("lsp-disproved-site");
+    const currentKey = portableKey("current-sibling-site");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(disprovedKey, [], { ruleSignature: "disproved-rule-v1" }),
+      resolution(currentKey, [], { ruleSignature: "current-rule-v1" }),
+    ]);
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+        {
+          callSiteKey: disprovedKey,
+          sourceContentHash: "d".repeat(64),
+          ruleSignature: "disproved-rule-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          expectedTargetNodeKey: "src/target.ts#run",
+          resolutionClass: "proven",
+          verificationMode: "tier-b",
+          outcome: "unique-local",
+          targetNodeKey: "src/alternate.ts#run",
+        },
+      ]),
+    ).toEqual({
+      updatedCallSiteKeys: [disprovedKey],
+      affectedFilePaths: ["src/caller.ts"],
+      quarantinedRuleSignatures: ["disproved-rule-v1"],
+    });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ ruleSignature, resolutionClass, selectedTargetNodeKey }) => ({
+          ruleSignature,
+          resolutionClass,
+          selectedTargetNodeKey,
+        })),
+    ).toEqual([
+      {
+        ruleSignature: "current-rule-v1",
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/target.ts#run",
+      },
+      {
+        ruleSignature: "disproved-rule-v1",
+        resolutionClass: "ambiguous",
+        selectedTargetNodeKey: null,
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+  });
+
+  it("[state-diff] ignores a Tier B result after dependency invalidation made its site stale", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    const callSiteKey = portableKey("late-tier-b-site");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], {
+        dependencies: [
+          { filePath: "src/target.ts", contentHash: "e".repeat(64) },
+        ],
+      }),
+    ]);
+    store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+      { filePath: "src/target.ts", contentHash: "f".repeat(64) },
+    ]);
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+        {
+          callSiteKey,
+          sourceContentHash: "d".repeat(64),
+          ruleSignature: "rule-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          expectedTargetNodeKey: "src/target.ts#run",
+          resolutionClass: "proven",
+          verificationMode: "tier-b",
+          outcome: "unique-local",
+          targetNodeKey: "src/target.ts#run",
+        },
+      ]),
+    ).toEqual({
+      updatedCallSiteKeys: [],
+      affectedFilePaths: [],
+      quarantinedRuleSignatures: [],
+    });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ isStale, verificationStatus }) => ({
+          isStale,
+          verificationStatus,
+        })),
+    ).toEqual([{ isStale: true, verificationStatus: "unverified" }]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
+  it("[stress] invalidates a bounded batch of dependency-bound sites in one caller projection", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    const callSiteKeys = Array.from({ length: 32 }, (_, index) =>
+      portableKey(`stress-${index}`),
+    );
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      callSiteKeys.map((callSiteKey) =>
+        resolution(callSiteKey, [], {
+          dependencies: [
+            { filePath: "src/target.ts", contentHash: "e".repeat(64) },
+          ],
+        }),
+      ),
+    );
+
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        { filePath: "src/target.ts", contentHash: "f".repeat(64) },
+      ]),
+    ).toEqual({
+      invalidatedCount: 32,
+      affectedFilePaths: ["src/caller.ts"],
+    });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ isStale }) => isStale),
+    ).toEqual(Array.from({ length: 32 }, () => true));
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
+  it("[state-diff] leaves proof rows and projections unchanged for an unrelated dependency path", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    const callSiteKey = portableKey("unrelated-path");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], {
+        dependencies: [
+          { filePath: "src/target.ts", contentHash: "e".repeat(64) },
+        ],
+      }),
+    ]);
+
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        { filePath: "src/unrelated.ts", contentHash: "f".repeat(64) },
+      ]),
+    ).toEqual({ invalidatedCount: 0, affectedFilePaths: [] });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ isStale }) => isStale),
+    ).toEqual([false]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+    ]);
+  });
+
+  it("[state-diff] invalidates every current proof before a full source replacement", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#run",
+    });
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(portableKey("full-invalidation-a"), []),
+      resolution(portableKey("full-invalidation-b"), []),
+    ]);
+
+    expect(store.callSiteResolutions.invalidateAll(projectId)).toEqual({
+      invalidatedCount: 2,
+      affectedFilePaths: ["src/caller.ts"],
+    });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ isStale }) => isStale),
+    ).toEqual([true, true]);
     expect(
       store.graph
         .getOutgoingRelations(callerId)
@@ -1034,8 +1372,8 @@ function resolution(
   };
 }
 
-function portableKey(digit: string): string {
-  return `call-site:v1:${digit.repeat(64)}`;
+function portableKey(seed: string): string {
+  return `call-site:v1:${createHash("sha256").update(seed).digest("hex")}`;
 }
 
 function siteKey(

@@ -200,6 +200,7 @@ export type {
   CallSiteResolutionObservationSource,
   CallSiteResolutionCandidate,
   CallSiteResolutionDependency,
+  CallSiteResolutionInvalidationResult,
   CallSiteResolutionRecord,
   CallSiteResolutionProjectionCallerInput,
   CallSiteResolutionObservationInput,

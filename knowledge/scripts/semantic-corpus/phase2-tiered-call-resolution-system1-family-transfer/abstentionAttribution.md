@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts#chooseThreshold
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts#abstentionAttribution
 type: symbol
-name: chooseThreshold
+name: abstentionAttribution
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts
 ---
-# Symbol: chooseThreshold
+# Symbol: abstentionAttribution
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mts`

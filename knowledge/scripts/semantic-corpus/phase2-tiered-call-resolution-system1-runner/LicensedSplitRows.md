@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts#labelsFor
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts#licensedSplitRows
 type: symbol
-name: labelsFor
+name: licensedSplitRows
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts
 ---
-# Symbol: labelsFor
+# Symbol: licensedSplitRows
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mts`

@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/semantic-corpus-audit.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/semantic-corpus-audit.unit.test.ts`
-

@@ -54,6 +54,8 @@ export interface AstImportDescriptor {
   isTypeOnly?: boolean;
   /** True only for the default binding in an ordinary `import X, { y }` statement. */
   isCombinedDefaultImport?: boolean;
+  /** True for an ordinary standalone `import X from "..."` default binding. */
+  isDefaultImport?: boolean;
 }
 
 export interface AstExportDescriptor {

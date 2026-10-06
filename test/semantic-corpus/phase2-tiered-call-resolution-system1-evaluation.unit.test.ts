@@ -188,6 +188,41 @@ describe("P2-B System One selection evaluation", () => {
     });
   });
 
+  it("[happy] keeps the site precision floor separate from the 90% duplicate-group floor", () => {
+    const observations = [] as Phase2EvaluationObservation[];
+    const labels = [] as Phase2EvaluationLabel[];
+    for (let index = 0; index < 1000; index++) {
+      const id = `site-${index}`;
+      const duplicateGroup = `duplicate-${index % 100}`;
+      observations.push(
+        observation(id, duplicateGroup, {
+          topRankScore: 10,
+          ...(index < 5 ? { topTargetId: "src/wrong.ts#run" } : {}),
+        }),
+      );
+      labels.push(label(id, duplicateGroup));
+    }
+
+    const result = selectSystemOneThreshold(
+      observations,
+      labels,
+      aliases,
+      0.995,
+      0.9,
+    );
+
+    expect(result).toMatchObject({
+      thresholdScore: 10,
+      targetAcceptedPrecision: 0.995,
+      targetDuplicateGroupPrecision: 0.9,
+      metrics: {
+        selectedSiteCount: 1000,
+        acceptedSitePrecision: 0.995,
+        duplicateGroupPrecision: 0.95,
+      },
+    });
+  });
+
   it("[invalid-input][error-handling] rejects any threshold-selection labels outside calibration", () => {
     const row = observation("heldout", "group-heldout", { split: "test" });
     const heldout = label("heldout", "group-heldout", { split: "test" });

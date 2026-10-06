@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2b-initial-candidate-miss-taxonomy/1",
+  "scope": "Aggregate-only summary of the initial user-provided run-c audit and the post-v7 replay.",
+  "initialMissCount": 28,
+  "initialPatterns": [
+    {
+      "pattern": "named-and-default-import-aliases",
+      "missCount": 19,
+      "fix": "Resolve local import binding to its exported declaration name before candidate lookup.",
+      "coveredByPostChangeTests": true
+    },
+    {
+      "pattern": "class-qualified-static-call-outside-candidate-bound",
+      "missCount": 8,
+      "fix": "Restrict candidates to the syntactically resolved imported or local class before proposal bounding.",
+      "coveredByPostChangeTests": true
+    },
+    {
+      "pattern": "aliased-decorator-import",
+      "missCount": 1,
+      "fix": "Resolve decorator import alias to exported declaration name before candidate lookup.",
+      "coveredByPostChangeTests": true
+    }
+  ],
+  "postChange": {
+    "trainResolvedSiteCount": 13485,
+    "generatedCandidateListMissCount": 7,
+    "generatedCandidateListMissCallShape": "unmapped",
+    "generatedCandidateListMissClassification": "unsupported tagged-template tag syntax; no Tier A candidates generated",
+    "boundedProposalMissCount": 38,
+    "boundedProposalMemberMissCount": 31,
+    "boundedProposalUnmappedMissCount": 7,
+    "heldoutRowsIncluded": false
+  },
+  "provenance": "Counts in initialPatterns are from the user-provided initial run-c summary. Post-change counts are aggregate metrics from candidate-recall-train.json. This file intentionally contains no sample IDs, source rows, snapshot identifiers, or hashes."
+}

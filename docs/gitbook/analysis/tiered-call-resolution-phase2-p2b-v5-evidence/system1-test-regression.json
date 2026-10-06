@@ -1,0 +1,999 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-system1-heldout-regression/2",
+  "split": "test",
+  "evaluatedAt": "2026-10-06T20:05:33.220Z",
+  "calibrationFreezeArtifactSha256": "8b9a2bcd48332c3f3a8eadf24283c76c074c59e33e913a8cc6a8837da8e745bb",
+  "calibrationInputFingerprint": "c638e174e19305986cafd1720ed20894f23da2a06d83baa8621fdc4cf7357adb",
+  "sourcePredictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+  "sourceSplitAssignmentHash": "29b380be346baf59351b74aa9cdfa9442189df6ae16bacea3b5806d9bdefb3dc",
+  "licenseExcludedEnterprisePathSampleCount": 3,
+  "wrongAcceptDiagnostics": {
+    "count": 95,
+    "byCallShapeAndReason": [
+      {
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "count": 86
+      },
+      {
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "count": 9
+      }
+    ],
+    "wrongAccepts": [
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/admin/billing/BillingDetailsView.tsx:255:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/admin/billing/page.test.tsx#claimLicense",
+        "positiveTargetIds": ["src/lib/billing/svc.ts#claimLicense"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/admin/billing/BillingDetailsView.tsx:473:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/admin/billing/page.test.tsx#claimLicense",
+        "positiveTargetIds": ["src/lib/billing/svc.ts#claimLicense"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/admin/billing/page.tsx:200:18",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/admin/billing/page.test.tsx#claimLicense",
+        "positiveTargetIds": ["src/lib/billing/svc.ts#claimLicense"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/admin/billing/page.tsx:295:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/admin/billing/page.test.tsx#claimLicense",
+        "positiveTargetIds": ["src/lib/billing/svc.ts#claimLicense"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/admin/billing/page.tsx:340:4",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/admin/billing/page.test.tsx#claimLicense",
+        "positiveTargetIds": ["src/lib/billing/svc.ts#claimLicense"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/app/settings/usage/UsageSettings.tsx:157:31",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count"],
+        "topRankScore": 10,
+        "selectedTargetId": "src/lib/utils.ts#formatTokens",
+        "positiveTargetIds": ["src/lib/format.ts#formatTokenCount"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/app/settings/usage/UsageSettings.tsx:160:31",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count"],
+        "topRankScore": 10,
+        "selectedTargetId": "src/lib/utils.ts#formatTokens",
+        "positiveTargetIds": ["src/lib/format.ts#formatTokenCount"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/app/settings/usage/UsageSettings.tsx:164:33",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count"],
+        "topRankScore": 10,
+        "selectedTargetId": "src/lib/utils.ts#formatTokens",
+        "positiveTargetIds": ["src/lib/format.ts#formatTokenCount"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/app/settings/usage/UsageSettings.tsx:168:33",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count"],
+        "topRankScore": 10,
+        "selectedTargetId": "src/lib/utils.ts#formatTokens",
+        "positiveTargetIds": ["src/lib/format.ts#formatTokenCount"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/components/ChatPanel.tsx:234:6",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/components/CraftInputBar.test.tsx#useUploadFilesContext",
+        "positiveTargetIds": [
+          "src/app/craft/contexts/UploadFilesContext.tsx#useUploadFilesContext"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/components/CraftInputBar.tsx:108:10",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/components/CraftInputBar.test.tsx#useUploadFilesContext",
+        "positiveTargetIds": [
+          "src/app/craft/contexts/UploadFilesContext.tsx#useUploadFilesContext"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/components/CraftInputBar.tsx:112:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/components/CraftInputBar.test.tsx#useCraftMcpServers",
+        "positiveTargetIds": ["src/lib/mcp/hooks.ts#useCraftMcpServers"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/components/setup-requests/SetupCard.tsx:78:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/components/setup-requests/SetupCard.test.tsx#postConnectAppDecision",
+        "positiveTargetIds": [
+          "src/app/craft/services/externalAppsService.ts#postConnectAppDecision"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/hooks/useBuildSessionController.ts:45:27",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/hooks/useBuildSessionController.test.tsx#useLLMProviders",
+        "positiveTargetIds": ["src/lib/languageModels/hooks.ts#useLLMProviders"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/v1/apps/connectableApps.ts:99:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/v1/apps/page.test.tsx#disconnectUserFromApp",
+        "positiveTargetIds": [
+          "src/app/craft/services/externalAppsService.ts#disconnectUserFromApp"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/v1/tasks/components/PreApprovalSummary.tsx:30:6",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/v1/tasks/components/PreApprovalSummary.test.tsx#useCraftMcpServers",
+        "positiveTargetIds": ["src/lib/mcp/hooks.ts#useCraftMcpServers"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/v1/tasks/components/ScheduleTaskForm.tsx:220:53",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/v1/tasks/components/ScheduleTaskForm.test.tsx#updateScheduledTask",
+        "positiveTargetIds": [
+          "src/app/craft/v1/tasks/api.ts#updateScheduledTask"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/craft/v1/tasks/components/ScheduleTaskForm.tsx:240:16",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/app/craft/v1/tasks/components/ScheduleTaskForm.test.tsx#createScheduledTask",
+        "positiveTargetIds": [
+          "src/app/craft/v1/tasks/api.ts#createScheduledTask"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/app/nrf/NRFPage.tsx:129:19",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [],
+        "topRankScore": 0,
+        "selectedTargetId": "src/lib/hooks.ts#LlmManager.updateCurrentLlm",
+        "positiveTargetIds": ["src/lib/hooks.ts#updateCurrentLlm"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/hooks/useMultiModelChat.ts:135:19",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["explicit-receiver-type"],
+        "topRankScore": 100,
+        "selectedTargetId": "src/lib/hooks.ts#LlmManager.updateCurrentLlm",
+        "positiveTargetIds": ["src/lib/hooks.ts#updateCurrentLlm"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/hooks/useMultiModelChat.ts:152:19",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["explicit-receiver-type"],
+        "topRankScore": 100,
+        "selectedTargetId": "src/lib/hooks.ts#LlmManager.updateCurrentLlm",
+        "positiveTargetIds": ["src/lib/hooks.ts#updateCurrentLlm"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/auth/components.tsx:141:48",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/auth/components.test.tsx#useCaptcha",
+        "positiveTargetIds": ["src/lib/hooks/useCaptcha.ts#useCaptcha"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/auth/components.tsx:295:30",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/auth/components.test.tsx#useCaptcha",
+        "positiveTargetIds": ["src/lib/hooks/useCaptcha.ts#useCaptcha"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/hooks.ts:469:6",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/hooks.llmManager.test.tsx#useLLMProviders",
+        "positiveTargetIds": ["src/lib/languageModels/hooks.ts#useLLMProviders"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/projects/hooks.ts:39:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/projects/providers.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/projects/providers.tsx:142:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/projects/providers.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/projects/providers.tsx:174:23",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/projects/providers.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/tools/hooks.ts:404:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/tools/toolConfiguration.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/tools/hooks.ts:405:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/lib/tools/toolConfiguration.test.tsx#useActiveAgent",
+        "positiveTargetIds": ["src/lib/agents/hooks.ts#useActiveAgent"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/tools/hooks.ts:415:38",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [
+          "same-binding-peer-members",
+          "compatible-argument-count",
+          "same-directory"
+        ],
+        "topRankScore": 31,
+        "selectedTargetId": "src/lib/tools/toolConfiguration.test.tsx#chat",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#AppPosition.chat"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/tools/hooks.ts:418:32",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [
+          "same-binding-peer-members",
+          "compatible-argument-count",
+          "same-directory"
+        ],
+        "topRankScore": 31,
+        "selectedTargetId": "src/lib/tools/toolConfiguration.test.tsx#agent",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#AppPosition.agent"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/lib/tools/hooks.ts:422:34",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [
+          "same-binding-peer-members",
+          "compatible-argument-count",
+          "same-directory"
+        ],
+        "topRankScore": 31,
+        "selectedTargetId": "src/lib/tools/toolConfiguration.test.tsx#project",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#AppPosition.project"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/providers/ProductGatingWrapper.tsx:11:19",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/providers/UserProvider.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/providers/SettingsProvider.tsx:19:20",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/providers/UserProvider.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/providers/UserProvider.tsx:98:4",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/providers/UserProvider.test.tsx#useAuthTypeMetadata",
+        "positiveTargetIds": ["src/lib/auth/hooks.ts#useAuthTypeMetadata"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/providers/UserProvider.tsx:99:30",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/providers/UserProvider.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:182:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#updateMCPServerStatus",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#updateMCPServerStatus"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:294:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#updateMCPServerStatus",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#updateMCPServerStatus"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:297:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#refreshMCPServerTools",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#refreshMCPServerTools"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:321:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#updateMCPServerStatus",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#updateMCPServerStatus"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:36:6",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#useAdminMcpServers",
+        "positiveTargetIds": ["src/lib/mcp/hooks.ts#useAdminMcpServers"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:390:14",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#refreshMCPServerTools",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#refreshMCPServerTools"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:83:16",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#updateMCPServerStatus",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#updateMCPServerStatus"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/actions/MCPPageContent.tsx:95:16",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/actions/MCPPageContent.test.tsx#refreshMCPServerTools",
+        "positiveTargetIds": ["src/lib/mcp/svc.ts#refreshMCPServerTools"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/cards/SkillCard.tsx:65:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/cards/SkillCard.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/input/AppInputBar.tsx:202:8",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/input/MicrophoneButton.test.tsx#useVoiceMode",
+        "positiveTargetIds": [
+          "src/providers/VoiceModeProvider.tsx#useVoiceMode"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/input/MicrophoneButton.tsx:68:6",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/input/MicrophoneButton.test.tsx#useVoiceMode",
+        "positiveTargetIds": [
+          "src/providers/VoiceModeProvider.tsx#useVoiceMode"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/modals/skills/CreateSkillModal.tsx:65:29",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/modals/skills/CreateSkillModal.test.tsx#inspectSkillBundle",
+        "positiveTargetIds": ["src/lib/skills/api.ts#inspectSkillBundle"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AccountPopover.tsx:207:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AccountPopover.tsx:209:30",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AccountPopover.tsx:254:50",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#isUserSettings",
+        "positiveTargetIds": [
+          "src/lib/position/hooks.ts#AppPosition.isUserSettings"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AccountPopover.tsx:52:19",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AdminSidebar.tsx:54:19",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AppSidebar.tsx:218:31",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/AppSidebar.tsx:496:27",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/ChatButton.tsx:106:24",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/ChatButton.tsx:107:29",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/sections/sidebar/ChatSearchCommandMenu.tsx:80:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/sections/sidebar/AccountPopover.test.tsx#useAppPosition",
+        "positiveTargetIds": ["src/lib/position/hooks.ts#useAppPosition"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/CostOverridesPanel.tsx:104:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/CostOverridesPanel.test.tsx#upsertCostOverride",
+        "positiveTargetIds": [
+          "src/lib/languageModels/costOverrides.ts#upsertCostOverride"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/CostOverridesPanel.tsx:112:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/CostOverridesPanel.test.tsx#refreshCostOverrides",
+        "positiveTargetIds": [
+          "src/lib/languageModels/costOverrides.ts#refreshCostOverrides"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/CostOverridesPanel.tsx:242:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/CostOverridesPanel.test.tsx#refreshCostOverrides",
+        "positiveTargetIds": [
+          "src/lib/languageModels/costOverrides.ts#refreshCostOverrides"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/CostOverridesPanel.tsx:64:27",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/CostOverridesPanel.test.tsx#useAdminLLMProviders",
+        "positiveTargetIds": [
+          "src/lib/languageModels/hooks.ts#useAdminLLMProviders"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/SecurityHardeningPage.tsx:181:28",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/SystemUsagePanel.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/SSOProvidersPage.tsx:74:19",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/SystemUsagePanel.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/admin/SystemUsagePanel.tsx:165:22",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/admin/SystemUsagePanel.test.tsx#useSettings",
+        "positiveTargetIds": ["src/lib/settings/hooks.ts#useSettings"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/AppPage.tsx:411:19",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [],
+        "topRankScore": 0,
+        "selectedTargetId": "src/lib/hooks.ts#LlmManager.updateCurrentLlm",
+        "positiveTargetIds": ["src/lib/hooks.ts#updateCurrentLlm"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SettingsPage.tsx:1349:31",
+        "callShape": "member",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": [],
+        "topRankScore": 0,
+        "selectedTargetId": "src/lib/hooks.ts#LlmManager.updateCurrentLlm",
+        "positiveTargetIds": ["src/lib/hooks.ts#updateCurrentLlm"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillEditorPage.tsx:137:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillEditorPage.test.tsx#getSkillCreationDraft",
+        "positiveTargetIds": [
+          "src/lib/skills/creationDraft.ts#getSkillCreationDraft"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillEditorPage.tsx:213:31",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillEditorPage.test.tsx#discardSkillCreationDraft",
+        "positiveTargetIds": [
+          "src/lib/skills/creationDraft.ts#discardSkillCreationDraft"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillEditorPage.tsx:263:30",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillEditorPage.test.tsx#createCustomSkillFromEditor",
+        "positiveTargetIds": [
+          "src/lib/skills/api.ts#createCustomSkillFromEditor"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillEditorPage.tsx:274:21",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillEditorPage.test.tsx#discardSkillCreationDraft",
+        "positiveTargetIds": [
+          "src/lib/skills/creationDraft.ts#discardSkillCreationDraft"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillEditorPage.tsx:432:12",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillEditorPage.test.tsx#deleteUserSkill",
+        "positiveTargetIds": ["src/lib/skills/api.ts#deleteUserSkill"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillsPage.tsx:128:33",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillsPage.test.tsx#setSkillEnabled",
+        "positiveTargetIds": ["src/lib/skills/api.ts#setSkillEnabled"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::src/views/SkillsPage.tsx:437:26",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "src/views/SkillsPage.test.tsx#stageSkillCreationDraft",
+        "positiveTargetIds": [
+          "src/lib/skills/creationDraft.ts#stageSkillCreationDraft"
+        ]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_file_uploads.spec.ts:106:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_file_uploads.spec.ts:132:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_file_uploads.spec.ts:155:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_file_uploads.spec.ts:234:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_file_uploads.spec.ts:295:35",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:140:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:159:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:178:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:197:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:224:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:245:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:261:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:561:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:594:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/chat_message_rendering.spec.ts:613:37",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:15:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:258:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:277:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:347:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:371:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      },
+      {
+        "sampleId": "github.com/onyx-dot-app/onyx@e0de28315672::tests/e2e/chat/input_bar_behaviors.spec.ts:69:42",
+        "callShape": "bare",
+        "reason": "selected-by-calibrated-threshold",
+        "topRankingSignals": ["compatible-argument-count", "same-directory"],
+        "topRankScore": 11,
+        "selectedTargetId": "tests/e2e/chat/file_preview_modal.spec.ts#buildMockStream",
+        "positiveTargetIds": ["tests/e2e/utils/chatMock.ts#buildMockStream"]
+      }
+    ]
+  },
+  "status": "exposed-regression-only; not tuning or certification data",
+  "metrics": {
+    "split": "test",
+    "eligibleSiteCount": 6039,
+    "scorableLabelSiteCount": 5264,
+    "unscorableLabelSiteCount": 775,
+    "rawTop1CorrectCount": 4372,
+    "rawTop1": 0.7239609206822322,
+    "selectedSiteCount": 4345,
+    "coverage": 0.7194899817850637,
+    "abstentionCount": 1694,
+    "abstentionRate": 0.28051001821493626,
+    "selectedCorrectSiteCount": 4250,
+    "acceptedSitePrecision": 0.9781357882623706,
+    "endToEndTop1": 0.703758900480212,
+    "acceptedDuplicateGroupCount": 4125,
+    "correctAcceptedDuplicateGroupCount": 4033,
+    "duplicateGroupPrecision": 0.9776969696969697,
+    "selectedIncompleteInventorySiteCount": 4345,
+    "familyMacroRawTop1": 0.7239609206822322,
+    "worstFamilyRawTop1": 0.7239609206822322,
+    "familyMacroEndToEndTop1": 0.703758900480212,
+    "worstFamilyEndToEndTop1": 0.703758900480212,
+    "families": [
+      {
+        "name": "onyx-dot-app/onyx",
+        "eligibleSiteCount": 6039,
+        "rawTop1CorrectCount": 4372,
+        "selectedSiteCount": 4345,
+        "selectedCorrectSiteCount": 4250,
+        "rawTop1": 0.7239609206822322,
+        "acceptedSitePrecision": 0.9781357882623706,
+        "endToEndTop1": 0.703758900480212
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "arg-chain",
+        "eligibleSiteCount": 5,
+        "rawTop1CorrectCount": 5,
+        "selectedSiteCount": 0,
+        "selectedCorrectSiteCount": 0,
+        "rawTop1": 1,
+        "acceptedSitePrecision": null,
+        "endToEndTop1": 0
+      },
+      {
+        "name": "bare",
+        "eligibleSiteCount": 4752,
+        "rawTop1CorrectCount": 3666,
+        "selectedSiteCount": 3752,
+        "selectedCorrectSiteCount": 3666,
+        "rawTop1": 0.7714646464646465,
+        "acceptedSitePrecision": 0.9770788912579957,
+        "endToEndTop1": 0.7714646464646465
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 1282,
+        "rawTop1CorrectCount": 701,
+        "selectedSiteCount": 593,
+        "selectedCorrectSiteCount": 584,
+        "rawTop1": 0.546801872074883,
+        "acceptedSitePrecision": 0.984822934232715,
+        "endToEndTop1": 0.45553822152886114
+      }
+    ]
+  }
+}

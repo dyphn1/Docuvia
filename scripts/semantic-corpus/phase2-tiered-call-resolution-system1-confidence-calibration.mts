@@ -14,6 +14,7 @@ import {
 const DEFAULT_FOLD_COUNT = 5;
 const DEFAULT_BIN_COUNT = 10;
 const DEFAULT_TARGET_ACCEPTED_PRECISION = 0.9;
+const DEFAULT_TARGET_DUPLICATE_GROUP_PRECISION = 0.9;
 const METHOD = "equal-duplicate-group-weighted-beta-smoothed-isotonic-v1";
 const SHAPE_MAP_MIN_TRAINING_GROUPS = 50;
 const SHAPE_MAP_MIN_SCORE_LEVELS = 5;
@@ -22,6 +23,7 @@ export interface SystemOneCalibrationQualityOptions {
   readonly foldCount?: number;
   readonly binCount?: number;
   readonly targetAcceptedPrecision?: number;
+  readonly targetDuplicateGroupPrecision?: number;
 }
 
 interface EligibleRow {
@@ -163,14 +165,15 @@ interface CallShapeSensitivity {
 }
 
 export interface SystemOneCalibrationQualityResult {
-  readonly schemaVersion: 3;
-  readonly measurement: "phase2-p2b-system1-calibration-quality-oof/3";
+  readonly schemaVersion: 4;
+  readonly measurement: "phase2-p2b-system1-calibration-quality-oof/4";
   readonly split: "calibration";
   readonly method: string;
   readonly probabilityMeaning: string;
   readonly foldCount: number;
   readonly binCount: number;
   readonly targetAcceptedPrecision: number;
+  readonly targetDuplicateGroupPrecision: number;
   readonly eligibleSiteCount: number;
   readonly eligibleDuplicateGroupCount: number;
   readonly scorableEligibleSiteCount: number;
@@ -204,6 +207,7 @@ interface Options {
   readonly foldCount: number;
   readonly binCount: number;
   readonly targetAcceptedPrecision: number;
+  readonly targetDuplicateGroupPrecision: number;
 }
 
 function sha256(value: string): string {
@@ -223,6 +227,9 @@ function validateOptions(options: SystemOneCalibrationQualityOptions): Options {
   const binCount = options.binCount ?? DEFAULT_BIN_COUNT;
   const targetAcceptedPrecision =
     options.targetAcceptedPrecision ?? DEFAULT_TARGET_ACCEPTED_PRECISION;
+  const targetDuplicateGroupPrecision =
+    options.targetDuplicateGroupPrecision ??
+    DEFAULT_TARGET_DUPLICATE_GROUP_PRECISION;
   if (!Number.isInteger(foldCount) || foldCount < 2 || foldCount > 10)
     throw new Error("Calibration fold count must be an integer in [2, 10].");
   if (!Number.isInteger(binCount) || binCount < 2 || binCount > 50)
@@ -230,10 +237,18 @@ function validateOptions(options: SystemOneCalibrationQualityOptions): Options {
   if (
     !Number.isFinite(targetAcceptedPrecision) ||
     targetAcceptedPrecision <= 0 ||
-    targetAcceptedPrecision > 1
+    targetAcceptedPrecision > 1 ||
+    !Number.isFinite(targetDuplicateGroupPrecision) ||
+    targetDuplicateGroupPrecision <= 0 ||
+    targetDuplicateGroupPrecision > 1
   )
-    throw new Error("Target accepted precision must be in (0, 1].");
-  return { foldCount, binCount, targetAcceptedPrecision };
+    throw new Error("Precision targets must be in (0, 1].");
+  return {
+    foldCount,
+    binCount,
+    targetAcceptedPrecision,
+    targetDuplicateGroupPrecision,
+  };
 }
 
 export function assignDuplicateGroupFolds(
@@ -832,6 +847,7 @@ function applyFold(
     trainingLabels,
     aliases,
     options.targetAcceptedPrecision,
+    options.targetDuplicateGroupPrecision,
   );
   const trainingRows = allRows.filter(
     (row) => folds.get(row.label.duplicateGroup) !== foldIndex,
@@ -1027,8 +1043,8 @@ export function evaluateSystemOneCalibrationQualityOof(
   const selectedSiteCount = selectedRowsOnly.length;
   const abstentionCount = baseRows.length - selectedSiteCount;
   return {
-    schemaVersion: 3,
-    measurement: "phase2-p2b-system1-calibration-quality-oof/3",
+    schemaVersion: 4,
+    measurement: "phase2-p2b-system1-calibration-quality-oof/4",
     split: "calibration",
     method: METHOD,
     probabilityMeaning:
@@ -1036,6 +1052,7 @@ export function evaluateSystemOneCalibrationQualityOof(
     foldCount: effectiveFoldCount,
     binCount: options.binCount,
     targetAcceptedPrecision: options.targetAcceptedPrecision,
+    targetDuplicateGroupPrecision: options.targetDuplicateGroupPrecision,
     eligibleSiteCount: baseRows.length,
     eligibleDuplicateGroupCount: new Set(
       baseRows.map(({ label }) => label.duplicateGroup),

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 4,
+  "measurement": "phase2-p2b-system1-selection/4",
+  "split": "calibration",
+  "frozenAt": "2026-10-06T20:05:13.715Z",
+  "candidateGeneratorVersion": "declared-member-hypothesis-v7",
+  "rankingPolicyVersion": "ordered-evidence-v1",
+  "configurationHash": "83dfd953f1ad2c7afccd166dfa47a94ec0dba36fc40b60d0ee8fcb5e7492c5bb",
+  "sourceFactsSha256": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87",
+  "sourceInputHashes": {
+    "callsites.jsonl": "ee757c0d9cddfc4628d9ab89b1c79bf653c0bc3f0f66ae474a87df5685407bce",
+    "declared-type-facts-pass-a.jsonl": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87"
+  },
+  "sourcePredictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+  "sourcePredictionManifestSha256": "de4b0573b1e6c3134156a083568843cfc80aa97e90927ead2f0a79ab030f32de",
+  "sourceImplementationHash": "27bb8f869ea9b664e78170ff25b84e66ae93b5684b873ebe47cb16301c45b286",
+  "systemOneImplementationHash": "05396cc509aa134eb50afd7d773308016d28a4bd3d59a02475b7fc5af8c38867",
+  "runnerImplementationHash": "6968f33dc603061f64dd1bd6b2d4e4b10b8b47a7ebe850ab90481e392b970164",
+  "sourceSplitAssignmentHash": "29b380be346baf59351b74aa9cdfa9442189df6ae16bacea3b5806d9bdefb3dc",
+  "sourceSplitCounts": {
+    "train": 13496,
+    "calibration": 2966,
+    "test": 6042,
+    "temporal": 0
+  },
+  "candidateOracleMappingScope": "snapshotId+repoId",
+  "snapshotScopedOracleMappingHash": "bf6b303fe926abf288b3d34248e4b728f68dc72d582cac3947359755781c5589",
+  "snapshotScopedUniqueAliasCount": 59175,
+  "calibrationLabelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+  "calibrationInputFingerprint": "c638e174e19305986cafd1720ed20894f23da2a06d83baa8621fdc4cf7357adb",
+  "calibrationRuleSignatureSetHash": "97c95b31df95b990431d4c3b1081b9745a0c73746b35ec845dc5e2deefa7d3cb",
+  "calibrationRuleSignatureCount": 234,
+  "rankerDevelopmentPolicy": "Existing deterministic ordered-evidence ranker; train is descriptive development only, with no learned weight fitting.",
+  "trainDevelopmentArtifactSha256": "4b2fae089a9d0d1e4c3ae2c647b007da6be9514442f3332eef1752d853f9b3c5",
+  "trainDevelopmentLabelRowsHash": "4983b8bd52ca2c8048fd5fc9a5f4b8efdb6f7d48843740044e097e7901f9f62a",
+  "thresholdSelectionPolicy": "Choose maximum calibration all-eligible-site coverage subject to accepted-site precision >= 0.995 and duplicate-group precision >= 0.90; incomplete candidate sets are allowed, ties/truncation/unsupported/unmapped top targets abstain.",
+  "targetAcceptedPrecision": 0.995,
+  "targetDuplicateGroupPrecision": 0.9,
+  "thresholdScore": 0,
+  "thresholdSelectionReason": "selected-max-coverage",
+  "thresholdCandidateCount": 9,
+  "thresholdQualifyingCount": 9,
+  "calibrationMetrics": {
+    "split": "calibration",
+    "eligibleSiteCount": 2966,
+    "scorableLabelSiteCount": 2766,
+    "unscorableLabelSiteCount": 200,
+    "rawTop1CorrectCount": 2692,
+    "rawTop1": 0.9076196898179366,
+    "selectedSiteCount": 2682,
+    "coverage": 0.904248145650708,
+    "abstentionCount": 284,
+    "abstentionRate": 0.09575185434929198,
+    "selectedCorrectSiteCount": 2675,
+    "acceptedSitePrecision": 0.9973900074571216,
+    "endToEndTop1": 0.901888064733648,
+    "acceptedDuplicateGroupCount": 2458,
+    "correctAcceptedDuplicateGroupCount": 2436,
+    "duplicateGroupPrecision": 0.9910496338486574,
+    "selectedIncompleteInventorySiteCount": 2682,
+    "familyMacroRawTop1": 0.9173049197098788,
+    "worstFamilyRawTop1": 0.8652643547470154,
+    "familyMacroEndToEndTop1": 0.912082635262466,
+    "worstFamilyEndToEndTop1": 0.8573052870949404,
+    "families": [
+      {
+        "name": "403errors/repomind",
+        "eligibleSiteCount": 1207,
+        "rawTop1CorrectCount": 1170,
+        "selectedSiteCount": 1174,
+        "selectedCorrectSiteCount": 1167,
+        "rawTop1": 0.9693454846727423,
+        "acceptedSitePrecision": 0.9940374787052811,
+        "endToEndTop1": 0.9668599834299917
+      },
+      {
+        "name": "Egonex-AI/Understand-Anything",
+        "eligibleSiteCount": 1759,
+        "rawTop1CorrectCount": 1522,
+        "selectedSiteCount": 1508,
+        "selectedCorrectSiteCount": 1508,
+        "rawTop1": 0.8652643547470154,
+        "acceptedSitePrecision": 1,
+        "endToEndTop1": 0.8573052870949404
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "bare",
+        "eligibleSiteCount": 2222,
+        "rawTop1CorrectCount": 2001,
+        "selectedSiteCount": 2008,
+        "selectedCorrectSiteCount": 2001,
+        "rawTop1": 0.9005400540054005,
+        "acceptedSitePrecision": 0.9965139442231076,
+        "endToEndTop1": 0.9005400540054005
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 744,
+        "rawTop1CorrectCount": 691,
+        "selectedSiteCount": 674,
+        "selectedCorrectSiteCount": 674,
+        "rawTop1": 0.928763440860215,
+        "acceptedSitePrecision": 1,
+        "endToEndTop1": 0.9059139784946236
+      }
+    ]
+  },
+  "licenseExcludedEnterprisePathSampleCount": 0
+}

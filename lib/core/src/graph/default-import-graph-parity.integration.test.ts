@@ -109,9 +109,13 @@ describe("default import graph parity", () => {
       ...result,
       data: {
         ...result.data,
-        imports: (result.data.imports ?? []).filter(
-          (descriptor) => !descriptor.isCombinedDefaultImport,
-        ),
+        // The legacy graph payload predates this parser-only default-binding marker.
+        imports: (result.data.imports ?? [])
+          .filter((descriptor) => !descriptor.isCombinedDefaultImport)
+          .map(
+            ({ isDefaultImport: _isDefaultImport, ...descriptor }) =>
+              descriptor,
+          ),
         exports: (result.data.exports ?? []).filter(
           (descriptor) => descriptor.name !== "default",
         ),

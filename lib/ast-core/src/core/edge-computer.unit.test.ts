@@ -217,7 +217,12 @@ describe("parseImportDescriptors", () => {
     };
     const result = parseImportDescriptors([makeNode(spec)]);
     expect(result).toEqual([
-      { localName: "Foo", originalName: "*", modulePath: "bar" },
+      {
+        localName: "Foo",
+        originalName: "*",
+        modulePath: "bar",
+        isDefaultImport: true,
+      },
     ]);
   });
 
@@ -352,7 +357,12 @@ describe("parseImportDescriptors", () => {
     };
 
     expect(parseImportDescriptors([makeNode(standalone)])).toEqual([
-      { localName: "ReportPage", originalName: "*", modulePath: "./page" },
+      {
+        localName: "ReportPage",
+        originalName: "*",
+        modulePath: "./page",
+        isDefaultImport: true,
+      },
     ]);
     expect(parseImportDescriptors([makeNode(namespace)])).toEqual([
       { localName: "page", originalName: "*", modulePath: "./page" },

@@ -42,7 +42,7 @@ function certifiedTrack(): CallResolutionCertificationArtifact["signatures"][num
 function artifactBytes(): string {
   const artifact: CallResolutionCertificationArtifact = {
     schemaVersion: CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
-    policyVersion: "sha256-callsite-rule-class-v1",
+    policyVersion: "sha256-callsite-rule-v2",
     frozenAt: "2026-01-01T00:00:00.000Z",
     labelsOpenedAt: "2026-01-02T00:00:00.000Z",
     resultsRecordedAt: "2026-01-03T00:00:00.000Z",

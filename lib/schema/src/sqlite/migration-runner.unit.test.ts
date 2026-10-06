@@ -310,6 +310,7 @@ describe("applyMigrations", () => {
       "0014_call_site_resolution_dependencies.sql",
       "0015_call_site_rule_quarantines.sql",
       "0016_call_site_projection_callers.sql",
+      "0017_verified_call_site_targets.sql",
     ]);
   });
 
@@ -372,9 +373,180 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(16);
+    expect(migrationRows).toHaveLength(17);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);
+  });
+
+  it("[state-diff] preserves current resolution and supporting data across the target-selection table rebuild", () => {
+    const legacyMigrationsDir = path.join(
+      path.dirname(dbPath),
+      "migrations-before-phase4",
+    );
+    fs.mkdirSync(legacyMigrationsDir);
+    for (const filename of fs
+      .readdirSync(MIGRATIONS_DIR)
+      .filter(
+        (entry) =>
+          entry.endsWith(".sql") &&
+          entry !== "0017_verified_call_site_targets.sql",
+      )) {
+      fs.copyFileSync(
+        path.join(MIGRATIONS_DIR, filename),
+        path.join(legacyMigrationsDir, filename),
+      );
+    }
+
+    db.pragma("foreign_keys = ON");
+    applyMigrations(db, legacyMigrationsDir);
+    const projectId = Number(
+      db
+        .prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)")
+        .run("migration-preservation", "file:///migration-preservation")
+        .lastInsertRowid,
+    );
+    const callSiteKey = "call-site:v1:migration-preservation";
+    db.prepare(
+      `INSERT INTO call_site_resolutions (
+        project_id, call_site_key, identity_version, file_path,
+        source_content_hash, start_line, start_column, callee_kind,
+        callee_name, caller_node_key, resolution_class,
+        selected_target_node_key, confidence, resolver, rule_signature,
+        dependency_fingerprint, verification_status, verified_target_node_key,
+        is_stale
+      ) VALUES (?, ?, 1, ?, ?, 4, 5, 'identifier', 'run', ?, 'proven', ?, NULL,
+                'strict-proof', 'rule-v1', ?, 'unverified', NULL, 0)`,
+    ).run(
+      projectId,
+      callSiteKey,
+      "src/caller.ts",
+      "a".repeat(64),
+      "src/caller.ts#caller",
+      "src/target.ts#run",
+      "b".repeat(64),
+    );
+    db.prepare(
+      `INSERT INTO call_site_resolution_candidates
+        (project_id, call_site_key, ordinal, target_node_key, evidence_json)
+       VALUES (?, ?, 0, ?, '{}')`,
+    ).run(projectId, callSiteKey, "src/target.ts#run");
+    db.prepare(
+      `INSERT INTO call_site_resolution_dependencies
+        (project_id, call_site_key, dependency_path, content_hash)
+       VALUES (?, ?, ?, ?)`,
+    ).run(projectId, callSiteKey, "src/target.ts", "c".repeat(64));
+    db.prepare(
+      `INSERT INTO call_site_resolution_projection_callers
+        (project_id, call_site_key, caller_node_key)
+       VALUES (?, ?, ?)`,
+    ).run(projectId, callSiteKey, "src/scope-caller.ts#caller");
+    db.prepare(
+      `INSERT INTO call_site_resolution_observations (
+        project_id, call_site_key, file_path, source_content_hash, source,
+        resolution_class, target_node_key, resolver, rule_signature, evidence_json
+      ) VALUES (?, ?, ?, ?, 'strict-proof', 'proven', ?, 'strict-proof',
+                'rule-v1', '{}')`,
+    ).run(
+      projectId,
+      callSiteKey,
+      "src/caller.ts",
+      "a".repeat(64),
+      "src/target.ts#run",
+    );
+    db.prepare(
+      `INSERT INTO call_site_rule_quarantines (
+        project_id, rule_signature, policy_version, reason, call_site_key,
+        source_content_hash, expected_target_node_key, observed_target_node_key
+      ) VALUES (?, 'other-rule-v1', 'sha256-callsite-rule-v2',
+                'tier-b-target-mismatch', ?, ?, ?, ?)`,
+    ).run(
+      projectId,
+      callSiteKey,
+      "a".repeat(64),
+      "src/expected.ts#run",
+      "src/observed.ts#run",
+    );
+
+    applyMigrations(db, MIGRATIONS_DIR);
+
+    expect(
+      db
+        .prepare(
+          `SELECT call_site_key, resolution_class, selected_target_node_key,
+                  rule_signature, verification_status
+           FROM call_site_resolutions WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([
+      {
+        call_site_key: callSiteKey,
+        resolution_class: "proven",
+        selected_target_node_key: "src/target.ts#run",
+        rule_signature: "rule-v1",
+        verification_status: "unverified",
+      },
+    ]);
+    expect(
+      db
+        .prepare(
+          `SELECT ordinal, target_node_key, evidence_json
+           FROM call_site_resolution_candidates WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([
+      {
+        ordinal: 0,
+        target_node_key: "src/target.ts#run",
+        evidence_json: "{}",
+      },
+    ]);
+    expect(
+      db
+        .prepare(
+          `SELECT dependency_path, content_hash
+           FROM call_site_resolution_dependencies WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([
+      { dependency_path: "src/target.ts", content_hash: "c".repeat(64) },
+    ]);
+    expect(
+      db
+        .prepare(
+          `SELECT caller_node_key
+           FROM call_site_resolution_projection_callers WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([{ caller_node_key: "src/scope-caller.ts#caller" }]);
+    expect(
+      db
+        .prepare(
+          `SELECT source, resolution_class, target_node_key
+           FROM call_site_resolution_observations WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([
+      {
+        source: "strict-proof",
+        resolution_class: "proven",
+        target_node_key: "src/target.ts#run",
+      },
+    ]);
+    expect(
+      db
+        .prepare(
+          `SELECT rule_signature, reason, observed_target_node_key
+           FROM call_site_rule_quarantines WHERE project_id = ?`,
+        )
+        .all(projectId),
+    ).toEqual([
+      {
+        rule_signature: "other-rule-v1",
+        reason: "tier-b-target-mismatch",
+        observed_target_node_key: "src/observed.ts#run",
+      },
+    ]);
+    expect(db.pragma("foreign_key_check")).toEqual([]);
   });
 });

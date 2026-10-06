@@ -104,7 +104,9 @@ export interface EdgeResolutionCallSite {
   /** The exact source bytes whose portable identity was checked by the caller. */
   sourceContentHash?: string;
   /** Current selected target at the same call-site key and source hash. */
-  expectedTargetNodeKey?: string;
+  expectedTargetNodeKey?: string | null;
+  /** Workspace-local effective class after quarantine overlay; `resolutionClass` stays source truth. */
+  effectiveResolutionClass?: CallSiteResolutionClass;
   /** `canary` is a deterministic sample of an already-certified proven signature. */
   verificationMode?: "tier-b" | "canary";
 }
@@ -114,7 +116,7 @@ export interface CallResolutionCanaryRequestMetadata {
   policyVersion: string;
   sampleRate: number;
   stratification: "rule-signature";
-  hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"];
+  hashInputFields: ["callSiteKey", "ruleSignature"];
   selectedCallSiteKeysByRuleSignature: Record<string, string[]>;
   ruleOverriddenCallSiteKeysByRuleSignature: Record<string, string[]>;
 }

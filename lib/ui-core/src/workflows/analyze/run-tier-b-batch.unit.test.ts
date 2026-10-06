@@ -213,6 +213,302 @@ beforeEach(() => {
 });
 
 describe("runTierBBatch() (§8, D1-D6)", () => {
+  it("[state-diff] sends zero-certified sites to Tier B in resolution-class priority order", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-class-priority-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "caller.ts"),
+      "export function caller() {\n  proven();\n  likely();\n  unresolved();\n  ambiguous();\n}\n",
+    );
+
+    const sourceContentHash = "8".repeat(64);
+    const filePath = "caller.ts";
+    const callSites = [
+      { targetFunction: "proven", startLine: 1, startColumn: 2 },
+      { targetFunction: "likely", startLine: 2, startColumn: 2 },
+      { targetFunction: "unresolved", startLine: 3, startColumn: 2 },
+      { targetFunction: "ambiguous", startLine: 4, startColumn: 2 },
+    ];
+    const makeResolution = (
+      startLine: number,
+      calleeName: string,
+      resolutionClass: CallSiteResolutionRecord["resolutionClass"],
+    ): CallSiteResolutionRecord => ({
+      callSiteKey: createPortableCallSiteKey({
+        filePath,
+        sourceContentHash,
+        startLine,
+        startColumn: 2,
+        calleeKind: "bare",
+        calleeName,
+      }),
+      identityVersion: 1,
+      filePath,
+      sourceContentHash,
+      startLine,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName,
+      callerNodeKey: "caller.ts#caller",
+      resolutionClass,
+      selectedTargetNodeKey:
+        resolutionClass === "proven" || resolutionClass === "likely"
+          ? `targets.ts#${calleeName}`
+          : null,
+      confidence: resolutionClass === "likely" ? 0.75 : null,
+      resolver: "strict-proof",
+      ruleSignature: `${resolutionClass}-rule-v1`,
+      dependencyFingerprint: "9".repeat(64),
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    });
+    const resolutions = [
+      makeResolution(1, "proven", "proven"),
+      makeResolution(2, "likely", "likely"),
+      makeResolution(3, "unresolved", "unresolved"),
+      makeResolution(4, "ambiguous", "ambiguous"),
+    ];
+    const { store, fake } = makeStore(
+      [],
+      [{ filePath, contentHash: sourceContentHash }],
+    );
+    store.callSites.getForFiles = vi.fn(() => new Map([[filePath, callSites]]));
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(() => resolutions),
+      },
+    });
+    appendTierBQueueEntries(store, [{ file: filePath, commitSha: HEAD_SHA }]);
+
+    let request: EdgeResolutionRequest | undefined;
+    const provider: IEdgeResolutionProvider = {
+      name: "class-priority-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (value) => {
+        request = value;
+        return {
+          edges: [],
+          filesProcessed: value.files,
+          filesFailed: [],
+        };
+      }),
+    };
+    registerProvider(provider);
+
+    try {
+      const result = await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () => new Map([[filePath, sourceContentHash]]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+        callResolutionCanary: {
+          certification: loadCallResolutionCertificationArtifact(
+            undefined,
+            undefined,
+          ),
+        },
+      });
+
+      expect(provider.resolveEdges).toHaveBeenCalledTimes(1);
+      expect(request).toBeDefined();
+      const receivedRequest = request!;
+      const scheduledSites = receivedRequest.callsByFile?.[filePath] ?? [];
+      expect(receivedRequest.files).toEqual([filePath]);
+      expect(
+        scheduledSites.map(({ targetFunction }) => targetFunction),
+      ).toEqual(["unresolved", "ambiguous", "likely", "proven"]);
+      expect(
+        scheduledSites.map(({ verificationMode }) => verificationMode),
+      ).toEqual(["tier-b", "tier-b", "tier-b", "tier-b"]);
+      expect(
+        scheduledSites.map(
+          ({ expectedTargetNodeKey }) => expectedTargetNodeKey,
+        ),
+      ).toEqual([null, null, "targets.ts#likely", "targets.ts#proven"]);
+      expect(receivedRequest.callResolutionCanary).toEqual({
+        policyVersion: "sha256-callsite-rule-v2",
+        sampleRate: 0.1,
+        stratification: "rule-signature",
+        hashInputFields: ["callSiteKey", "ruleSignature"],
+        selectedCallSiteKeysByRuleSignature: {},
+        ruleOverriddenCallSiteKeysByRuleSignature: {},
+      });
+      expect(result.filesProcessed).toBe(1);
+      expect(fake.tierBProcessed).toEqual([
+        { projectId: 1, filePath, commitSha: HEAD_SHA },
+      ]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("[state-diff] keeps local quarantine ambiguous and records Tier B evidence without an external policy", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-unconfigured-policy-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "caller.ts"),
+      "export function caller() {\n  run();\n}\n",
+    );
+
+    const filePath = "caller.ts";
+    const sourceContentHash = "a".repeat(64);
+    const callSiteKey = createPortableCallSiteKey({
+      filePath,
+      sourceContentHash,
+      startLine: 1,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName: "run",
+    });
+    const resolution: CallSiteResolutionRecord = {
+      callSiteKey,
+      identityVersion: 1,
+      filePath,
+      sourceContentHash,
+      startLine: 1,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName: "run",
+      callerNodeKey: "caller.ts#caller",
+      resolutionClass: "unresolved",
+      selectedTargetNodeKey: null,
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature: "unresolved-rule-v1",
+      dependencyFingerprint: "b".repeat(64),
+      dependencies: [],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    };
+    const { store } = makeStore(
+      [],
+      [{ filePath, contentHash: sourceContentHash }],
+    );
+    store.callSites.getForFiles = vi.fn(
+      () =>
+        new Map([
+          [filePath, [{ targetFunction: "run", startLine: 1, startColumn: 2 }]],
+        ]),
+    );
+    const applyTierBVerificationResults = vi.fn();
+    Object.defineProperty(store, "callSiteResolutions", {
+      value: {
+        getForFile: vi.fn(() => [resolution]),
+        getQuarantinedRuleSignatures: vi.fn(() => ["unresolved-rule-v1"]),
+        applyTierBVerificationResults,
+      },
+    });
+    appendTierBQueueEntries(store, [{ file: filePath, commitSha: HEAD_SHA }]);
+
+    let request: EdgeResolutionRequest | undefined;
+    const provider: IEdgeResolutionProvider = {
+      name: "unconfigured-policy-provider",
+      configure: vi.fn(),
+      checkAvailability: vi.fn(async () => ({ available: true })),
+      resolveEdges: vi.fn(async (value) => {
+        request = value;
+        const site = value.callsByFile?.[filePath]?.[0];
+        return {
+          edges: [],
+          filesProcessed: value.files,
+          filesFailed: [],
+          callSiteResults: site
+            ? [
+                {
+                  callSiteKey: site.callSiteKey!,
+                  sourceContentHash: site.sourceContentHash!,
+                  ruleSignature: site.ruleSignature!,
+                  verificationPolicyVersion: site.verificationPolicyVersion!,
+                  expectedTargetNodeKey: site.expectedTargetNodeKey ?? null,
+                  resolutionClass: site.resolutionClass!,
+                  verificationMode: site.verificationMode!,
+                  outcome: "unique-local" as const,
+                  targetNodeKey: "targets.ts#run",
+                },
+              ]
+            : [],
+        };
+      }),
+    };
+    registerProvider(provider);
+
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit({
+          listTrackedFilesWithBlobHash: vi.fn(
+            async () => new Map([[filePath, sourceContentHash]]),
+          ),
+          listUntrackedFiles: vi.fn(async () => []),
+          listModifiedFiles: vi.fn(async () => []),
+        }),
+        knowledgeGit: makeKnowledgeGit(),
+      });
+
+      expect(request?.callsByFile?.[filePath]).toEqual([
+        {
+          targetFunction: "run",
+          startLine: 1,
+          startColumn: 2,
+          callSiteKey,
+          ruleSignature: "unresolved-rule-v1",
+          resolutionClass: "unresolved",
+          effectiveResolutionClass: "ambiguous",
+          verificationPolicyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
+          sourceContentHash,
+          expectedTargetNodeKey: null,
+          verificationMode: "tier-b",
+        },
+      ]);
+      expect(request?.callResolutionCanary).toEqual({
+        policyVersion: "sha256-callsite-rule-v2",
+        sampleRate: 0.1,
+        stratification: "rule-signature",
+        hashInputFields: ["callSiteKey", "ruleSignature"],
+        selectedCallSiteKeysByRuleSignature: {},
+        ruleOverriddenCallSiteKeysByRuleSignature: {},
+      });
+      expect(applyTierBVerificationResults).toHaveBeenCalledWith(1, [
+        {
+          callSiteKey,
+          sourceContentHash,
+          ruleSignature: "unresolved-rule-v1",
+          verificationPolicyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
+          expectedTargetNodeKey: null,
+          resolutionClass: "unresolved",
+          verificationMode: "tier-b",
+          outcome: "unique-local",
+          targetNodeKey: "targets.ts#run",
+        },
+      ]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it("no-ops on an empty queue without touching the provider", async () => {
     const providerFactory = vi.fn();
     docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
@@ -246,7 +542,7 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
 });
 
 describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g)", () => {
-  it("[happy] schedules ambiguous, unresolved and unsupported call sites before proven and likely by stable signature groups, while uncertified proven still reaches Tier B", async () => {
+  it("[happy] schedules ambiguous and unresolved before likely and proven groups, while uncertified proven still reaches Tier B", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -349,8 +645,8 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         "unresolved.ts",
         "unsupported.ts",
         "ambiguous-z.ts",
-        "proven.ts",
         "likely.ts",
+        "proven.ts",
       ]);
     } finally {
       fs.rmSync(workspaceRoot, { recursive: true, force: true });
@@ -382,7 +678,9 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     );
 
     const mixedSourceHash = "c".repeat(64);
-    const ruleOnlySourceHash = "a".repeat(64);
+    // Under v2, this deterministic key falls outside the 50% sample and keeps
+    // the full-file non-canary skip assertion meaningful.
+    const ruleOnlySourceHash = "f".repeat(64);
     const invalidEvidenceSourceHash = "d".repeat(64);
     const mismatchedSourceHash = "e".repeat(64);
     const coverageSourceHash = "f".repeat(64);
@@ -649,6 +947,22 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
             verificationMode: "canary",
           },
           {
+            targetFunction: "ruleOnly",
+            startLine: 2,
+            startColumn: 2,
+            callSiteKey: createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 2,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
+            ruleSignature: "cert-rule-v1",
+            resolutionClass: "proven",
+            verificationMode: "canary",
+          },
+          {
             targetFunction: "uncertified",
             startLine: 3,
             startColumn: 2,
@@ -667,12 +981,21 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         ],
       });
       expect(receivedRequest.callResolutionCanary).toMatchObject({
-        policyVersion: "sha256-callsite-rule-class-v1",
+        policyVersion: "sha256-callsite-rule-v2",
         sampleRate: 0.5,
         stratification: "rule-signature",
-        hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"],
+        // Classification controls whether a site is eligible for skipping; it is not a canary hash dimension.
+        hashInputFields: ["callSiteKey", "ruleSignature"],
         selectedCallSiteKeysByRuleSignature: {
           "cert-rule-v1": [
+            createPortableCallSiteKey({
+              filePath: "mixed.ts",
+              sourceContentHash: mixedSourceHash,
+              startLine: 2,
+              startColumn: 2,
+              calleeKind: "bare",
+              calleeName: "ruleOnly",
+            }),
             createPortableCallSiteKey({
               filePath: "mixed.ts",
               sourceContentHash: mixedSourceHash,
@@ -685,14 +1008,6 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         },
         ruleOverriddenCallSiteKeysByRuleSignature: {
           "cert-rule-v1": [
-            createPortableCallSiteKey({
-              filePath: "mixed.ts",
-              sourceContentHash: mixedSourceHash,
-              startLine: 2,
-              startColumn: 2,
-              calleeKind: "bare",
-              calleeName: "ruleOnly",
-            }),
             createPortableCallSiteKey({
               filePath: "rule-only.ts",
               sourceContentHash: ruleOnlySourceHash,
@@ -887,7 +1202,7 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         callSiteKey: records[0].callSiteKey,
         sourceContentHash,
         ruleSignature: records[0].ruleSignature,
-        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        verificationPolicyVersion: "sha256-callsite-rule-v2",
         expectedTargetNodeKey: records[0].selectedTargetNodeKey!,
         resolutionClass: "proven",
         verificationMode: "canary",
@@ -898,7 +1213,7 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
         callSiteKey: records[1].callSiteKey,
         sourceContentHash,
         ruleSignature: records[1].ruleSignature,
-        verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+        verificationPolicyVersion: "sha256-callsite-rule-v2",
         expectedTargetNodeKey: records[1].selectedTargetNodeKey!,
         resolutionClass: "proven",
         verificationMode: "canary",

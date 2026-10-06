@@ -125,7 +125,7 @@ type VerifiedCallSiteRequest = EdgeResolutionCallSite & {
   resolutionClass: NonNullable<EdgeResolutionCallSite["resolutionClass"]>;
   verificationPolicyVersion: string;
   verificationMode: "tier-b" | "canary";
-  expectedTargetNodeKey: string;
+  expectedTargetNodeKey: string | null;
 };
 
 type ForwardDefinitionResponse =
@@ -144,14 +144,17 @@ function hasCallSiteVerificationIdentity(
     callSite.callSiteKey,
     callSite.ruleSignature,
     callSite.verificationPolicyVersion,
-    callSite.expectedTargetNodeKey,
   ];
   const hasRequiredStrings = requiredStrings.every(isNonEmptyString);
+  const hasExpectedTarget =
+    callSite.expectedTargetNodeKey === null ||
+    isNonEmptyString(callSite.expectedTargetNodeKey);
   const hasResolutionShape = Boolean(
     callSite.resolutionClass && callSite.verificationMode,
   );
   return (
     hasRequiredStrings &&
+    hasExpectedTarget &&
     /^[\da-f]{64}$/i.test(callSite.sourceContentHash ?? "") &&
     hasResolutionShape
   );

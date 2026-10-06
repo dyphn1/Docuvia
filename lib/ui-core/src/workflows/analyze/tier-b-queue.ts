@@ -11,8 +11,8 @@ const CALL_RESOLUTION_TIER_B_PRIORITY: Readonly<Record<string, number>> = {
   unresolved: 0,
   unsupported: 0,
   external: 0,
-  proven: 1,
-  likely: 2,
+  likely: 1,
+  proven: 2,
 };
 
 function isTierBQueueEntry(entry: unknown): entry is TierBQueueEntry {

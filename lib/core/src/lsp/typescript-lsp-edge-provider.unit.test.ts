@@ -1405,7 +1405,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
       sourceContentHash,
       ruleSignature: "rule-v1",
       resolutionClass: "proven",
-      verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+      verificationPolicyVersion: "sha256-callsite-rule-v2",
       expectedTargetNodeKey,
       verificationMode: "canary",
     });
@@ -1470,6 +1470,80 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
         },
       ]),
     );
+  });
+
+  it("[state-diff] records a unique local target when the original site had no selected target", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        const name = params.textDocument.uri === aUri ? "main" : "bar";
+        return [
+          {
+            name,
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 2, 1),
+            selectionRange: range(0, 16, 0, 19),
+          },
+        ];
+      }
+      if (method === LspMethods.DEFINITION) {
+        return { uri: bUri, range: range(0, 16, 0, 19) };
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+    const provider = createTypescriptProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+    const sourceContentHash = "c".repeat(64);
+    const callSiteKey = createPortableCallSiteKey({
+      filePath: "a.ts",
+      sourceContentHash,
+      startLine: 1,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName: "unknown",
+    });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+      callsByFile: {
+        "a.ts": [
+          {
+            targetFunction: "unknown",
+            startLine: 1,
+            startColumn: 2,
+            callSiteKey,
+            sourceContentHash,
+            ruleSignature: "unresolved-rule-v1",
+            resolutionClass: "unresolved",
+            effectiveResolutionClass: "ambiguous",
+            verificationPolicyVersion: "sha256-callsite-rule-v2",
+            expectedTargetNodeKey: null,
+            verificationMode: "tier-b",
+          },
+        ],
+      },
+    });
+
+    expect(outcome.edges).toEqual([]);
+    expect(outcome.callSiteResults).toEqual([
+      {
+        callSiteKey,
+        sourceContentHash,
+        ruleSignature: "unresolved-rule-v1",
+        verificationPolicyVersion: "sha256-callsite-rule-v2",
+        expectedTargetNodeKey: null,
+        resolutionClass: "unresolved",
+        verificationMode: "tier-b",
+        outcome: "unique-local",
+        targetNodeKey: "b.ts#bar",
+      },
+    ]);
   });
 
   it("resolves a cross-file symbol-level calls edge from an AST-seeded call site via textDocument/definition, and does not run the reverse references scan on the forward-seeded file", async () => {

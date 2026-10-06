@@ -77,7 +77,9 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toThrow(/likely class requires confidence/);
   });
 
-  it("[state-diff][error-handling] quarantines a contradicted signature and makes future rows ambiguous", () => {
+  // Phase 4 requires quarantine to stay local: source resolution rows retain their class and
+  // LSP observation, while the scheduling path overlays affected signatures as ambiguous.
+  it("[state-diff][error-handling] quarantines a contradicted signature without rewriting source rows", () => {
     const callerId = store.graph.insertNode({
       projectId,
       name: "caller",
@@ -102,7 +104,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       pathPatterns: ["src/expected.ts"],
       nodeKey: "src/expected.ts#run",
     });
-    store.graph.insertNode({
+    const observedTargetId = store.graph.insertNode({
       projectId,
       name: "observed",
       pathPatterns: ["src/observed.ts"],
@@ -208,7 +210,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       callSiteKey: callerKey,
       sourceContentHash: "d".repeat(64),
       ruleSignature: signature,
-      verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+      verificationPolicyVersion: "sha256-callsite-rule-v2",
       expectedTargetNodeKey: "src/expected.ts#run",
       resolutionClass: "proven",
       verificationMode: "tier-b",
@@ -236,13 +238,13 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       )[0],
     }).toMatchObject({
       applied: {
-        updatedCallSiteKeys: [callerKey, otherKey],
+        updatedCallSiteKeys: [callerKey],
         affectedFilePaths: ["src/caller.ts", "src/other.ts"],
         quarantinedRuleSignatures: [signature],
       },
       futureResolution: {
-        resolutionClass: "ambiguous",
-        selectedTargetNodeKey: null,
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/expected.ts#run",
         verificationStatus: "unverified",
         verifiedTargetNodeKey: null,
       },
@@ -255,7 +257,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toMatchObject([
       {
         ruleSignature: signature,
-        policyVersion: "sha256-callsite-rule-class-v1",
+        policyVersion: "sha256-callsite-rule-v2",
         reason: "tier-b-target-mismatch",
         callSiteKey: callerKey,
         expectedTargetNodeKey: "src/expected.ts#run",
@@ -266,8 +268,8 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       store.callSiteResolutions.getForFile(projectId, "src/caller.ts"),
     ).toMatchObject([
       {
-        resolutionClass: "ambiguous",
-        selectedTargetNodeKey: null,
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/observed.ts#run",
         verificationStatus: "contradicted",
         verifiedTargetNodeKey: "src/observed.ts#run",
       },
@@ -276,8 +278,8 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       store.callSiteResolutions.getForFile(projectId, "src/other.ts"),
     ).toMatchObject([
       {
-        resolutionClass: "ambiguous",
-        selectedTargetNodeKey: null,
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/expected.ts#run",
         verificationStatus: "unverified",
         verifiedTargetNodeKey: null,
       },
@@ -286,10 +288,20 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       store.callSiteResolutions.getObservations(projectId, "src/caller.ts"),
     ).toHaveLength(2);
     expect(
+      store.callSiteResolutions.getObservations(projectId, "src/other.ts"),
+    ).toEqual([]);
+    expect(
       store.graph
         .getOutgoingRelations(callerId)
         .filter(({ linkType }) => linkType === "calls"),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        id: observedTargetId,
+        name: "observed",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
     expect(
       store.graph
         .getOutgoingRelations(otherCallerId)
@@ -355,6 +367,84 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toEqual([]);
   });
 
+  it("[state-diff][error-handling] does not quarantine non-unique or non-local LSP outcomes", () => {
+    const outcomes = [
+      "timeout",
+      "no-result",
+      "external",
+      "multi-location",
+    ] as const;
+    const records = outcomes.map((outcome, index) => {
+      const callSiteKey = siteKey(`src/${outcome}-${index}.ts`);
+      const filePath = `src/${outcome}-${index}.ts`;
+      store.callSiteResolutions.replaceForFile(projectId, filePath, [
+        resolution(callSiteKey, [], {
+          filePath,
+          ruleSignature: `invalid-outcome-${outcome}-v1`,
+          selectedTargetNodeKey: "src/expected.ts#run",
+        }),
+      ]);
+      return {
+        callSiteKey,
+        filePath,
+        outcome,
+        result: {
+          callSiteKey,
+          sourceContentHash: "d".repeat(64),
+          ruleSignature: `invalid-outcome-${outcome}-v1`,
+          verificationPolicyVersion: "sha256-callsite-rule-v2",
+          expectedTargetNodeKey: "src/expected.ts#run",
+          resolutionClass: "proven" as const,
+          verificationMode: "tier-b" as const,
+          outcome,
+        },
+      };
+    });
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(
+        projectId,
+        records.map(({ result }) => result),
+      ),
+    ).toEqual({
+      updatedCallSiteKeys: [],
+      affectedFilePaths: [],
+      quarantinedRuleSignatures: [],
+    });
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([]);
+    for (const { filePath } of records) {
+      expect(
+        store.callSiteResolutions
+          .getForFile(projectId, filePath)
+          .map(
+            ({
+              resolutionClass,
+              selectedTargetNodeKey,
+              verificationStatus,
+            }) => ({
+              resolutionClass,
+              selectedTargetNodeKey,
+              verificationStatus,
+            }),
+          ),
+      ).toEqual([
+        {
+          resolutionClass: "proven",
+          selectedTargetNodeKey: "src/expected.ts#run",
+          verificationStatus: "unverified",
+        },
+      ]);
+    }
+    expect(
+      records.map(
+        ({ filePath }) =>
+          store.callSiteResolutions.getObservations(projectId, filePath).length,
+      ),
+    ).toEqual([1, 1, 1, 1]);
+  });
+
   it("[error-handling] rolls back signature quarantine, observations and projection together", () => {
     const callerId = store.graph.insertNode({
       projectId,
@@ -368,7 +458,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       pathPatterns: ["src/expected.ts"],
       nodeKey: "src/expected.ts#run",
     });
-    store.graph.insertNode({
+    const observedTargetId = store.graph.insertNode({
       projectId,
       name: "observed",
       pathPatterns: ["src/observed.ts"],
@@ -390,7 +480,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       callSiteKey,
       sourceContentHash: "d".repeat(64),
       ruleSignature: signature,
-      verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+      verificationPolicyVersion: "sha256-callsite-rule-v2",
       expectedTargetNodeKey: "src/expected.ts#run",
       resolutionClass: "proven",
       verificationMode: "canary",
@@ -479,7 +569,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
           callSiteKey: records[index].callSiteKey,
           sourceContentHash: records[index].sourceContentHash,
           ruleSignature: records[index].ruleSignature,
-          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-v2",
           expectedTargetNodeKey: records[index].selectedTargetNodeKey!,
           resolutionClass: "proven" as const,
           verificationMode: "canary" as const,
@@ -1079,7 +1169,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ]);
   });
 
-  it("[state-diff] keeps an LSP-disproved target while another current site still selects it", () => {
+  it("[state-diff] selects the contradicted LSP target while a sibling keeps the old collapsed edge", () => {
     const callerId = store.graph.insertNode({
       projectId,
       name: "caller",
@@ -1092,7 +1182,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
       pathPatterns: ["src/target.ts"],
       nodeKey: "src/target.ts#run",
     });
-    store.graph.insertNode({
+    const alternateId = store.graph.insertNode({
       projectId,
       name: "alternate",
       pathPatterns: ["src/alternate.ts"],
@@ -1111,7 +1201,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
           callSiteKey: disprovedKey,
           sourceContentHash: "d".repeat(64),
           ruleSignature: "disproved-rule-v1",
-          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-v2",
           expectedTargetNodeKey: "src/target.ts#run",
           resolutionClass: "proven",
           verificationMode: "tier-b",
@@ -1127,21 +1217,147 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     expect(
       store.callSiteResolutions
         .getForFile(projectId, "src/caller.ts")
-        .map(({ ruleSignature, resolutionClass, selectedTargetNodeKey }) => ({
-          ruleSignature,
-          resolutionClass,
-          selectedTargetNodeKey,
-        })),
+        .map(
+          ({
+            ruleSignature,
+            resolutionClass,
+            selectedTargetNodeKey,
+            verificationStatus,
+          }) => ({
+            ruleSignature,
+            resolutionClass,
+            selectedTargetNodeKey,
+            verificationStatus,
+          }),
+        ),
     ).toEqual([
       {
         ruleSignature: "current-rule-v1",
         resolutionClass: "proven",
         selectedTargetNodeKey: "src/target.ts#run",
+        verificationStatus: "unverified",
       },
       {
         ruleSignature: "disproved-rule-v1",
-        resolutionClass: "ambiguous",
+        // The source resolution class remains the proof's original fact. Local quarantine
+        // exposes it as ambiguous to scheduling while the selected target follows unique LSP.
+        resolutionClass: "proven",
+        selectedTargetNodeKey: "src/alternate.ts#run",
+        verificationStatus: "contradicted",
+      },
+    ]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls")
+        .sort((left, right) => left.id - right.id),
+    ).toEqual([
+      { id: targetId, name: "target", type: "module", linkType: "calls" },
+      {
+        id: alternateId,
+        name: "alternate",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+  });
+
+  it("[state-diff] lets a unique local Tier B result select an unresolved site's target", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/unresolved-caller.ts"],
+      nodeKey: "src/unresolved-caller.ts#caller",
+    });
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "verified target",
+      pathPatterns: ["src/verified-target.ts"],
+      nodeKey: "src/verified-target.ts#run",
+    });
+    const filePath = "src/unresolved-caller.ts";
+    const callSiteKey = siteKey(filePath);
+    store.callSiteResolutions.replaceForFile(projectId, filePath, [
+      resolution(callSiteKey, [], {
+        filePath,
+        callerNodeKey: `${filePath}#caller`,
+        resolutionClass: "unresolved",
         selectedTargetNodeKey: null,
+        ruleSignature: "unresolved-rule-v1",
+      }),
+    ]);
+    store.callSiteResolutions.appendObservation(projectId, {
+      callSiteKey,
+      filePath,
+      sourceContentHash: "d".repeat(64),
+      source: "scope-resolver",
+      resolutionClass: "unresolved",
+      targetNodeKey: null,
+      ruleSignature: "unresolved-rule-v1",
+      evidenceJson: "{}",
+    });
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+        {
+          callSiteKey,
+          sourceContentHash: "d".repeat(64),
+          ruleSignature: "unresolved-rule-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-v2",
+          expectedTargetNodeKey: null,
+          resolutionClass: "unresolved",
+          verificationMode: "tier-b",
+          outcome: "unique-local",
+          targetNodeKey: "src/verified-target.ts#run",
+        },
+      ]),
+    ).toEqual({
+      updatedCallSiteKeys: [callSiteKey],
+      affectedFilePaths: [filePath],
+      quarantinedRuleSignatures: [],
+    });
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, filePath)
+        .map(
+          ({
+            resolutionClass,
+            selectedTargetNodeKey,
+            verificationStatus,
+            verifiedTargetNodeKey,
+          }) => ({
+            resolutionClass,
+            selectedTargetNodeKey,
+            verificationStatus,
+            verifiedTargetNodeKey,
+          }),
+        ),
+    ).toEqual([
+      {
+        resolutionClass: "unresolved",
+        selectedTargetNodeKey: "src/verified-target.ts#run",
+        verificationStatus: "verified",
+        verifiedTargetNodeKey: "src/verified-target.ts#run",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions
+        .getObservations(projectId, filePath)
+        .map(({ source, resolutionClass, targetNodeKey }) => ({
+          source,
+          resolutionClass,
+          targetNodeKey,
+        })),
+    ).toEqual([
+      {
+        source: "scope-resolver",
+        resolutionClass: "unresolved",
+        targetNodeKey: null,
+      },
+      {
+        source: "tier-b",
+        resolutionClass: "unresolved",
+        targetNodeKey: "src/verified-target.ts#run",
       },
     ]);
     expect(
@@ -1149,7 +1365,144 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
         .getOutgoingRelations(callerId)
         .filter(({ linkType }) => linkType === "calls"),
     ).toEqual([
-      { id: targetId, name: "target", type: "module", linkType: "calls" },
+      {
+        id: targetId,
+        name: "verified target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+  });
+
+  it("[state-diff] replaces a selected target only after the collapsed caller edge has no remaining sites", () => {
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const oldTargetId = store.graph.insertNode({
+      projectId,
+      name: "old target",
+      pathPatterns: ["src/old-target.ts"],
+      nodeKey: "src/old-target.ts#run",
+    });
+    const newTargetId = store.graph.insertNode({
+      projectId,
+      name: "new target",
+      pathPatterns: ["src/new-target.ts"],
+      nodeKey: "src/new-target.ts#run",
+    });
+    const filePath = "src/caller.ts";
+    const firstKey = portableKey("first-likely-site");
+    const secondKey = portableKey("second-likely-site");
+    const oldTargetNodeKey = "src/old-target.ts#run";
+    const newTargetNodeKey = "src/new-target.ts#run";
+    store.callSiteResolutions.replaceForFile(projectId, filePath, [
+      resolution(firstKey, [], {
+        filePath,
+        startLine: 2,
+        resolutionClass: "likely",
+        selectedTargetNodeKey: oldTargetNodeKey,
+        confidence: 0.75,
+        ruleSignature: "likely-first-v1",
+      }),
+      resolution(secondKey, [], {
+        filePath,
+        startLine: 3,
+        resolutionClass: "likely",
+        selectedTargetNodeKey: oldTargetNodeKey,
+        confidence: 0.75,
+        ruleSignature: "likely-second-v1",
+      }),
+    ]);
+
+    const makeLspResult = (
+      callSiteKey: string,
+    ): CallSiteLspResolutionResult => ({
+      callSiteKey,
+      sourceContentHash: "d".repeat(64),
+      ruleSignature:
+        callSiteKey === firstKey ? "likely-first-v1" : "likely-second-v1",
+      verificationPolicyVersion: "sha256-callsite-rule-v2",
+      expectedTargetNodeKey: oldTargetNodeKey,
+      resolutionClass: "likely",
+      verificationMode: "tier-b",
+      outcome: "unique-local",
+      targetNodeKey: newTargetNodeKey,
+    });
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+        makeLspResult(firstKey),
+      ]),
+    ).toEqual({
+      updatedCallSiteKeys: [firstKey],
+      affectedFilePaths: [filePath],
+      quarantinedRuleSignatures: [],
+    });
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls")
+        .sort((left, right) => left.id - right.id),
+    ).toEqual([
+      {
+        id: oldTargetId,
+        name: "old target",
+        type: "module",
+        linkType: "calls",
+      },
+      {
+        id: newTargetId,
+        name: "new target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+
+    expect(
+      store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+        makeLspResult(secondKey),
+      ]),
+    ).toEqual({
+      updatedCallSiteKeys: [secondKey],
+      affectedFilePaths: [filePath],
+      quarantinedRuleSignatures: [],
+    });
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      {
+        id: newTargetId,
+        name: "new target",
+        type: "module",
+        linkType: "calls",
+      },
+    ]);
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, filePath)
+        .map(
+          ({ resolutionClass, selectedTargetNodeKey, verificationStatus }) => ({
+            resolutionClass,
+            selectedTargetNodeKey,
+            verificationStatus,
+          }),
+        ),
+    ).toEqual([
+      {
+        resolutionClass: "likely",
+        selectedTargetNodeKey: newTargetNodeKey,
+        verificationStatus: "verified",
+      },
+      {
+        resolutionClass: "likely",
+        selectedTargetNodeKey: newTargetNodeKey,
+        verificationStatus: "verified",
+      },
     ]);
   });
 
@@ -1184,7 +1537,7 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
           callSiteKey,
           sourceContentHash: "d".repeat(64),
           ruleSignature: "rule-v1",
-          verificationPolicyVersion: "sha256-callsite-rule-class-v1",
+          verificationPolicyVersion: "sha256-callsite-rule-v2",
           expectedTargetNodeKey: "src/target.ts#run",
           resolutionClass: "proven",
           verificationMode: "tier-b",

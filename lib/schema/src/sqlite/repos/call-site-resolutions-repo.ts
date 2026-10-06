@@ -200,11 +200,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           );
 
           for (const resolution of resolutions) {
-            const currentResolution = applyLocalRuleQuarantine(
-              this.db,
-              projectId,
-              resolution,
-            );
+            const currentResolution = resolution;
             insertResolution.run(
               projectId,
               currentResolution.callSiteKey,
@@ -674,43 +670,6 @@ function validateResolution(
   normalizeResolutionDependencies(resolution);
 }
 
-function applyLocalRuleQuarantine(
-  db: Database.Database,
-  projectId: number,
-  resolution: CallSiteResolutionRecord,
-): CallSiteResolutionRecord {
-  const quarantine = db
-    .prepare(
-      `SELECT call_site_key, source_content_hash, observed_target_node_key
-       FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES}
-       WHERE project_id = ? AND rule_signature = ?`,
-    )
-    .get(projectId, resolution.ruleSignature) as
-    | {
-        call_site_key: string;
-        source_content_hash: string;
-        observed_target_node_key: string;
-      }
-    | undefined;
-  if (!quarantine) return resolution;
-
-  const isContradictionSite =
-    resolution.callSiteKey === quarantine.call_site_key &&
-    resolution.sourceContentHash === quarantine.source_content_hash;
-  return {
-    ...resolution,
-    resolutionClass: CallSiteResolutionClasses.AMBIGUOUS,
-    selectedTargetNodeKey: null,
-    confidence: null,
-    verificationStatus: isContradictionSite
-      ? CallSiteVerificationStatuses.CONTRADICTED
-      : CallSiteVerificationStatuses.UNVERIFIED,
-    verifiedTargetNodeKey: isContradictionSite
-      ? quarantine.observed_target_node_key
-      : null,
-  };
-}
-
 interface TierBApplyState {
   updatedCallSiteKeys: Set<string>;
   affectedFilePaths: Set<string>;
@@ -817,6 +776,7 @@ function isProvenTierBMismatch(
 ): result is Extract<CallSiteLspResolutionResult, { outcome: "unique-local" }> {
   return (
     result.outcome === "unique-local" &&
+    result.expectedTargetNodeKey !== null &&
     result.targetNodeKey !== result.expectedTargetNodeKey &&
     current.resolution_class === CallSiteResolutionClasses.PROVEN &&
     result.verificationPolicyVersion === CALL_SITE_VERIFICATION_POLICY_VERSION
@@ -832,17 +792,15 @@ function quarantineTierBSignature(
   evidenceJson: string,
   state: TierBApplyState,
 ): void {
-  const signatureRows = db
+  const signatureFiles = db
     .prepare(
-      `SELECT call_site_key, file_path, source_content_hash
+      `SELECT DISTINCT file_path
        FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
        WHERE project_id = ? AND rule_signature = ?
-       ORDER BY file_path COLLATE BINARY, call_site_key COLLATE BINARY`,
+       ORDER BY file_path COLLATE BINARY`,
     )
     .all(projectId, current.rule_signature) as Array<{
-    call_site_key: string;
     file_path: string;
-    source_content_hash: string;
   }>;
   const didQuarantine = db
     .prepare(
@@ -861,85 +819,33 @@ function quarantineTierBSignature(
       result.expectedTargetNodeKey,
       result.targetNodeKey,
     ).changes;
-  markSignatureAmbiguous(db, projectId, current, result.targetNodeKey);
-
-  for (const row of signatureRows) {
-    state.affectedFilePaths.add(row.file_path);
-    state.updatedCallSiteKeys.add(row.call_site_key);
-    if (row.call_site_key !== current.call_site_key) {
-      appendQuarantineObservation(repo, projectId, current, result, row);
-    }
-  }
+  db.prepare(
+    `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
+     SET selected_target_node_key = ?, verification_status = ?,
+         verified_target_node_key = ?
+     WHERE project_id = ? AND call_site_key = ?`,
+  ).run(
+    result.targetNodeKey,
+    CallSiteVerificationStatuses.CONTRADICTED,
+    result.targetNodeKey,
+    projectId,
+    current.call_site_key,
+  );
   appendTierBObservation(
     repo,
     projectId,
     current,
     result.targetNodeKey,
     evidenceJson,
-    CallSiteResolutionClasses.AMBIGUOUS,
   );
+  state.updatedCallSiteKeys.add(current.call_site_key);
+
+  for (const row of signatureFiles) {
+    state.affectedFilePaths.add(row.file_path);
+  }
   if (didQuarantine > 0) {
     state.quarantinedRuleSignatures.add(current.rule_signature);
   }
-}
-
-function markSignatureAmbiguous(
-  db: Database.Database,
-  projectId: number,
-  current: VerificationDbRow,
-  observedTargetNodeKey: string,
-): void {
-  db.prepare(
-    `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
-     SET resolution_class = ?, selected_target_node_key = NULL,
-         confidence = NULL, verification_status = ?, verified_target_node_key = NULL
-     WHERE project_id = ? AND rule_signature = ?`,
-  ).run(
-    CallSiteResolutionClasses.AMBIGUOUS,
-    CallSiteVerificationStatuses.UNVERIFIED,
-    projectId,
-    current.rule_signature,
-  );
-  db.prepare(
-    `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
-     SET verification_status = ?, verified_target_node_key = ?
-     WHERE project_id = ? AND call_site_key = ?`,
-  ).run(
-    CallSiteVerificationStatuses.CONTRADICTED,
-    observedTargetNodeKey,
-    projectId,
-    current.call_site_key,
-  );
-}
-
-function appendQuarantineObservation(
-  repo: CallSiteResolutionsRepo,
-  projectId: number,
-  current: VerificationDbRow,
-  result: Extract<CallSiteLspResolutionResult, { outcome: "unique-local" }>,
-  row: {
-    call_site_key: string;
-    file_path: string;
-    source_content_hash: string;
-  },
-): void {
-  repo.appendObservation(projectId, {
-    callSiteKey: row.call_site_key,
-    filePath: row.file_path,
-    sourceContentHash: row.source_content_hash,
-    source: CallSiteResolutionObservationSources.TIER_B,
-    targetNodeKey: null,
-    evidenceJson: JSON.stringify({
-      kind: "tier-b-signature-quarantined",
-      ruleSignature: current.rule_signature,
-      policyVersion: result.verificationPolicyVersion,
-      reason: CallSiteRuleQuarantineReasons.TIER_B_TARGET_MISMATCH,
-      triggerCallSiteKey: current.call_site_key,
-    }),
-    resolutionClass: CallSiteResolutionClasses.AMBIGUOUS,
-    resolver: "local-rule-quarantine",
-    ruleSignature: current.rule_signature,
-  });
 }
 
 function verifyTierBTarget(
@@ -1011,7 +917,9 @@ function validateTierBResults(results: CallSiteLspResolutionResult[]): void {
       result.verificationPolicyVersion,
       "verification policy version",
     );
-    assertNonEmpty(result.expectedTargetNodeKey, "expected target node key");
+    if (result.expectedTargetNodeKey !== null) {
+      assertNonEmpty(result.expectedTargetNodeKey, "expected target node key");
+    }
     assertOneOf(
       result.resolutionClass,
       Object.values(CallSiteResolutionClasses),
@@ -1133,8 +1041,23 @@ function rebuildCallsProjection(
        ON target.${SchemaColumns.PROJECT_ID} = r.project_id
        AND target.${SchemaColumns.NODE_KEY} = r.selected_target_node_key
      WHERE r.project_id = ? AND r.file_path = ?
-       AND r.is_stale = 0 AND r.selected_target_node_key IS NOT NULL`,
-  ).run(LinkTypes.CALLS, callerPaths, projectId, filePath);
+       AND r.is_stale = 0 AND r.selected_target_node_key IS NOT NULL
+       AND (
+         NOT EXISTS (
+           SELECT 1 FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES} q
+           WHERE q.project_id = r.project_id
+             AND q.rule_signature = r.rule_signature
+         )
+         OR r.verification_status IN (?, ?)
+       )`,
+  ).run(
+    LinkTypes.CALLS,
+    callerPaths,
+    projectId,
+    filePath,
+    CallSiteVerificationStatuses.VERIFIED,
+    CallSiteVerificationStatuses.CONTRADICTED,
+  );
 }
 
 function validateResolutionIdentity(
@@ -1180,17 +1103,34 @@ function validateResolutionEvidence(
 function validateSelectionAndConfidence(
   resolution: CallSiteResolutionRecord,
 ): void {
+  validateSelectedTarget(resolution);
+  validateResolutionConfidence(resolution);
+}
+
+function validateSelectedTarget(resolution: CallSiteResolutionRecord): void {
   const hasSelectedTarget =
     resolution.selectedTargetNodeKey !== null &&
     resolution.selectedTargetNodeKey.trim().length > 0;
-  const requiresSelection =
+  const classRequiresSelection =
     resolution.resolutionClass === CallSiteResolutionClasses.PROVEN ||
     resolution.resolutionClass === CallSiteResolutionClasses.LIKELY;
-  if (hasSelectedTarget !== requiresSelection) {
+  const hasVerifiedSelection =
+    resolution.verificationStatus === CallSiteVerificationStatuses.VERIFIED &&
+    hasSelectedTarget &&
+    resolution.selectedTargetNodeKey === resolution.verifiedTargetNodeKey;
+  if (
+    (classRequiresSelection && !hasSelectedTarget) ||
+    (!classRequiresSelection && hasSelectedTarget && !hasVerifiedSelection)
+  ) {
     throw invalidInput(
-      "Only proven or likely resolutions may select a target, and both require one",
+      "A selected target requires a proven or likely class or a matching verified Tier B result",
     );
   }
+}
+
+function validateResolutionConfidence(
+  resolution: CallSiteResolutionRecord,
+): void {
   if (resolution.resolutionClass === CallSiteResolutionClasses.LIKELY) {
     if (
       typeof resolution.confidence !== "number" ||

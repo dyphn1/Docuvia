@@ -31,12 +31,11 @@ export function resolveCanaryRate(
   return sampleRate;
 }
 
-/** Stable, stratified sample for one proven call site. The portable key, rule signature and
- *  resolution class are all bound into the versioned SHA-256 input. */
+/** Stable, stratified sample for one proven call site, keyed only by the portable identity and
+ *  rule signature under the versioned SHA-256 policy. */
 export function isCallResolutionTierBCanary(
   callSiteKey: string,
   ruleSignature: string,
-  resolutionClass: CallSiteResolutionRecord["resolutionClass"],
   sampleRate: number,
 ): boolean {
   if (!Number.isFinite(sampleRate) || sampleRate < 0 || sampleRate > 1)
@@ -48,7 +47,6 @@ export function isCallResolutionTierBCanary(
     CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
     callSiteKey,
     ruleSignature,
-    resolutionClass,
   ]);
   const bucket = createHash("sha256")
     .update(hashInput, "utf8")
@@ -85,7 +83,6 @@ export function isCertifiedNonCanaryCallSite(
   return !isCallResolutionTierBCanary(
     resolution.callSiteKey,
     resolution.ruleSignature,
-    resolution.resolutionClass,
     resolveCanaryRate(policy),
   );
 }

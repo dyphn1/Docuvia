@@ -662,7 +662,7 @@ export type CallSiteLspResolutionResult =
       sourceContentHash: string;
       ruleSignature: string;
       verificationPolicyVersion: string;
-      expectedTargetNodeKey: string;
+      expectedTargetNodeKey: string | null;
       resolutionClass: CallSiteResolutionClass;
       verificationMode: "tier-b" | "canary";
       outcome: "unique-local";
@@ -673,7 +673,7 @@ export type CallSiteLspResolutionResult =
       sourceContentHash: string;
       ruleSignature: string;
       verificationPolicyVersion: string;
-      expectedTargetNodeKey: string;
+      expectedTargetNodeKey: string | null;
       resolutionClass: CallSiteResolutionClass;
       verificationMode: "tier-b" | "canary";
       outcome: "no-result" | "timeout" | "external" | "multi-location";
@@ -709,7 +709,7 @@ export type CallSiteVerificationStatus =
   (typeof CallSiteVerificationStatuses)[keyof typeof CallSiteVerificationStatuses];
 
 export const CALL_SITE_VERIFICATION_POLICY_VERSION =
-  "sha256-callsite-rule-class-v1" as const;
+  "sha256-callsite-rule-v2" as const;
 
 export const CallSiteResolutionObservationSources = {
   SCOPE_RESOLVER: "scope-resolver",

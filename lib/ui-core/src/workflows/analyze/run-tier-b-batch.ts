@@ -512,13 +512,28 @@ async function resolveEdgesForQueue(
     git,
     callResolutionCanary,
   } = deps;
+  const project = store.projects.getFirst();
+  const localQuarantines = project
+    ? (store.callSiteResolutions?.getQuarantinedRuleSignatures?.(project.id) ??
+      [])
+    : [];
+  const effectiveCanaryPolicy =
+    localQuarantines.length === 0
+      ? callResolutionCanary
+      : {
+          ...callResolutionCanary,
+          quarantinedRuleSignatures: new Set([
+            ...(callResolutionCanary?.quarantinedRuleSignatures ?? []),
+            ...localQuarantines,
+          ]),
+        };
   return resolveEdgesForLanguageBuckets(buckets, {
     workspaceRoot,
     logger,
     providerConfig,
     store,
     git,
-    callResolutionCanary,
+    callResolutionCanary: effectiveCanaryPolicy,
   });
 }
 

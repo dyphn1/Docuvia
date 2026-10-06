@@ -15,6 +15,8 @@ import {
   type EdgeResolutionFileFailure,
   type EdgeResolutionOutcome,
   type EdgeResolutionProviderConfig,
+  CallSiteResolutionClasses,
+  type CallSiteResolutionClass,
   type CallSiteResolutionRecord,
   type IGitProvider,
   type IGraphStore,
@@ -33,6 +35,15 @@ import {
   resolveCanaryRate,
   type CallResolutionTierBCanaryPolicy,
 } from "./call-resolution-tier-b-canary.js";
+
+const TIER_B_CLASS_PRIORITY: Record<CallSiteResolutionClass, number> = {
+  [CallSiteResolutionClasses.AMBIGUOUS]: 0,
+  [CallSiteResolutionClasses.UNRESOLVED]: 0,
+  [CallSiteResolutionClasses.EXTERNAL]: 0,
+  [CallSiteResolutionClasses.UNSUPPORTED]: 0,
+  [CallSiteResolutionClasses.LIKELY]: 1,
+  [CallSiteResolutionClasses.PROVEN]: 2,
+};
 
 /** Per-language honest-degradation fidelity (multi-language-lsp-support plan, Finding F) --
  *  additive alongside the aggregate `unavailableReason` below. */
@@ -546,9 +557,8 @@ async function selectTypeScriptCallsForFile(
   if (!storedHash || !liveHash || storedHash !== liveHash)
     return { stale: true };
 
-  const resolutions = input.canaryPolicy
-    ? (input.store.callSiteResolutions?.getForFile(input.projectId, file) ?? [])
-    : [];
+  const resolutions =
+    input.store.callSiteResolutions?.getForFile(input.projectId, file) ?? [];
   return {
     stale: false,
     selection: selectFileCallSites(
@@ -673,7 +683,7 @@ function selectFileCallSites(
   }
 
   return {
-    forwarded,
+    forwarded: prioritizeTierBCallSites(forwarded),
     allSitesOverridden,
     selectedKeysBySignature,
     overriddenKeysBySignature,
@@ -708,6 +718,29 @@ function hasCompleteResolutionCoverage(
   }
 
   return true;
+}
+
+/** Sends uncertain and unsupported sites first, likely sites in the background lane, and proven
+ *  sites last. Sorting is stable within each class so source positions remain reproducible. */
+function prioritizeTierBCallSites(
+  callSites: EdgeResolutionCallSite[],
+): EdgeResolutionCallSite[] {
+  return callSites
+    .map((callSite, index) => ({
+      callSite,
+      index,
+      priority:
+        TIER_B_CLASS_PRIORITY[
+          callSite.effectiveResolutionClass ??
+            callSite.resolutionClass ??
+            CallSiteResolutionClasses.UNRESOLVED
+        ],
+    }))
+    .sort(
+      (left, right) =>
+        left.priority - right.priority || left.index - right.index,
+    )
+    .map(({ callSite }) => callSite);
 }
 
 function indexResolutionsByPosition(
@@ -774,7 +807,7 @@ function selectCallSite(
     policy,
   );
   if (nonCanarySelection) return nonCanarySelection;
-  if (!resolution || !policy || sampleRate === undefined) {
+  if (!resolution) {
     return selectTierBOnlyCallSite(callSite, policy);
   }
   return selectPotentialCanaryCallSite(
@@ -814,28 +847,33 @@ function selectPotentialCanaryCallSite(
   callSite: EdgeResolutionCallSite,
   resolution: CallSiteResolutionRecord,
   sourceContentHash: string,
-  policy: CallResolutionTierBCanaryPolicy,
-  sampleRate: number,
+  policy: CallResolutionTierBCanaryPolicy | undefined,
+  sampleRate: number | undefined,
 ): CallSiteSelection {
   const isCanary =
+    policy !== undefined &&
+    sampleRate !== undefined &&
     isCertifiedProvenCallSite(resolution, sourceContentHash, policy) &&
     isCallResolutionTierBCanary(
       resolution.callSiteKey,
       resolution.ruleSignature,
-      resolution.resolutionClass,
       sampleRate,
     );
+  const effectiveResolutionClass = policy?.quarantinedRuleSignatures?.has(
+    resolution.ruleSignature,
+  )
+    ? CallSiteResolutionClasses.AMBIGUOUS
+    : resolution.resolutionClass;
   return {
     callSite: {
       ...callSite,
       callSiteKey: resolution.callSiteKey,
       ruleSignature: resolution.ruleSignature,
       resolutionClass: resolution.resolutionClass,
+      effectiveResolutionClass,
       verificationPolicyVersion: CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
       sourceContentHash: resolution.sourceContentHash,
-      ...(resolution.selectedTargetNodeKey
-        ? { expectedTargetNodeKey: resolution.selectedTargetNodeKey }
-        : {}),
+      expectedTargetNodeKey: resolution.selectedTargetNodeKey,
       verificationMode: isCanary ? "canary" : "tier-b",
     },
     ...(isCanary ? { canaryKey: resolution } : {}),
@@ -876,7 +914,7 @@ function makeCanaryMetadata(
     policyVersion: CALL_RESOLUTION_TIER_B_CANARY_POLICY_VERSION,
     sampleRate,
     stratification: "rule-signature",
-    hashInputFields: ["callSiteKey", "ruleSignature", "resolutionClass"],
+    hashInputFields: ["callSiteKey", "ruleSignature"],
     selectedCallSiteKeysByRuleSignature: toRecord(selected),
     ruleOverriddenCallSiteKeysByRuleSignature: toRecord(overridden),
   };

@@ -682,6 +682,21 @@ describe("Phase 4 hard gates", () => {
       new RegExp(PHASE4_GATE_IDS.REPORT_FORMAT),
     );
 
+    const aggregate = {
+      ...report,
+      metrics: {
+        ...report.metrics,
+        aggregateAccuracy: {
+          value: 1,
+          numerator: 1,
+          denominator: 1,
+        },
+      },
+    } as unknown as typeof report;
+    expect(() => renderImpactHonestyReport(aggregate)).toThrow(
+      new RegExp(PHASE4_GATE_IDS.REPORT_FORMAT),
+    );
+
     const missingDenominator = {
       ...report,
       metrics: {

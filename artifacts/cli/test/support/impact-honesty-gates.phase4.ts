@@ -85,9 +85,12 @@ function forbiddenReportTermInKey(
   key: string,
 ): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
   const normalized = key.toLowerCase();
-  return PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
-    normalized.includes(term),
-  );
+  const compact = normalized.replace(/[^a-z0-9]+/g, "");
+  return PHASE4_FORBIDDEN_REPORT_TERMS.find((term) => {
+    const normalizedTerm = term.toLowerCase();
+    const compactTerm = normalizedTerm.replace(/[^a-z0-9]+/g, "");
+    return normalized.includes(normalizedTerm) || compact.includes(compactTerm);
+  });
 }
 
 function forbiddenReportTermInMetricKeys(

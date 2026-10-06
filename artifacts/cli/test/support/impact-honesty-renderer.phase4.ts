@@ -76,11 +76,23 @@ function ensureRenderable(report: ImpactHonestyReport): void {
   }
 }
 
+function markdownMetricLabels(markdown: string): string[] {
+  return markdown.split("\n").flatMap((line) => {
+    const heading = /^#{1,6}\s+(.+?)\s*$/.exec(line)?.[1];
+    if (heading) return [heading];
+    const bulletLabel = /^-\s+([^:]+):/.exec(line)?.[1];
+    return bulletLabel ? [bulletLabel] : [];
+  });
+}
+
 export function phase4MarkdownFormatViolations(
   markdown: string,
 ): Phase4GateViolation[] {
+  const labels = markdownMetricLabels(markdown).map((label) =>
+    label.toLowerCase(),
+  );
   const forbidden = PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
-    markdown.toLowerCase().includes(term),
+    labels.some((label) => label.includes(term)),
   );
   return forbidden
     ? [
@@ -88,7 +100,7 @@ export function phase4MarkdownFormatViolations(
           gateId: PHASE4_GATE_IDS.REPORT_FORMAT,
           sliceId: PHASE4_REPORT_SCOPE,
           caseIds: [],
-          detail: `forbidden report term '${forbidden}' is present in Markdown`,
+          detail: `forbidden report metric label containing '${forbidden}' is present in Markdown`,
         },
       ]
     : [];

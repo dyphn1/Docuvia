@@ -211,6 +211,7 @@ export type {
   CallSiteResolutionDependency,
   CallSiteResolutionInvalidationResult,
   CallSiteResolutionRecord,
+  SnapshotCallResolutionRow,
   CallSiteResolutionProjectionCallerInput,
   CallSiteResolutionObservationInput,
   CallSiteResolutionObservation,
@@ -317,6 +318,10 @@ export type {
   IQueryService,
   ITierBCoverageHintProvider,
 } from "./interfaces/query.interfaces.js";
+export type {
+  CallResolutionSummary,
+  CallResolutionImpactBreakdown,
+} from "./interfaces/call-resolution-output.interfaces.js";
 export { QueryResultLayers } from "./interfaces/query.interfaces.js";
 export { TOPOLOGY_VERSION } from "./interfaces/topology.interfaces.js";
 export type {
@@ -437,10 +442,14 @@ export {
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
   SNAPSHOT_CALL_SITES_VERSION,
   SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+  SNAPSHOT_CALL_RESOLUTIONS_VERSION,
+  SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
   DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
   SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallResolutionAvailabilityStates,
 } from "./constants/knowledge-snapshot.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,

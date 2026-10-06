@@ -622,6 +622,73 @@ describe("SnapshotWorkflow.execute()", () => {
     );
   });
 
+  it("[state-diff] packs per-site certainty without reading local quarantine", async () => {
+    const callResolution = {
+      callSiteKey: "portable-site-key",
+      identityVersion: 1,
+      filePath: "src/caller.ts",
+      sourceContentHash: "caller-hash",
+      startLine: 3,
+      startColumn: 4,
+      calleeKind: "member",
+      calleeName: "open",
+      callerNodeKey: "src/caller.ts#run",
+      projectionCallerNodeKey: "src/caller.ts#run",
+      resolutionClass: "proven",
+      selectedTargetNodeKey: "src/target.ts#open",
+      confidence: null,
+      resolver: "q1-named-import",
+      ruleSignature: "q1:named-import:v1",
+      dependencyFingerprint: "dependency-fingerprint",
+      dependencies: [{ filePath: "src/target.ts", contentHash: "target-hash" }],
+      verificationStatus: "unverified",
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [
+        {
+          targetNodeKey: "src/target.ts#open",
+          ordinal: 0,
+          evidenceJson: '{"kind":"unique-named-import"}',
+        },
+      ],
+    };
+    const getAllForProject = vi.fn().mockReturnValue([callResolution]);
+    const getRuleQuarantines = vi.fn().mockReturnValue([
+      {
+        ruleSignature: "local-only-signature",
+        reason: "tier-b-target-mismatch",
+      },
+    ]);
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({
+          id: 42,
+          name: "demo",
+          repo_url: "file:///demo",
+        }),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      callSiteResolutions: {
+        getAllForProject,
+        getRuleQuarantines,
+      } as unknown as NonNullable<IGraphStore["callSiteResolutions"]>,
+    });
+
+    const input = await packStoreAndCaptureInput(store);
+
+    expect(getAllForProject).toHaveBeenCalledWith(42);
+    expect(getRuleQuarantines).not.toHaveBeenCalled();
+    expect(input.callResolutions).toStrictEqual([callResolution]);
+    expect(input.metadata?.capabilities?.callResolutions).toStrictEqual({
+      version: 1,
+    });
+    expect(JSON.stringify(input.callResolutions)).not.toContain(
+      "local-only-signature",
+    );
+  });
+
   it("skips snapshot generation entirely when the latest snapshot, last Tier B commit, and HEAD match, and no batch is pending", async () => {
     const store = makeMockStore({
       meta: {

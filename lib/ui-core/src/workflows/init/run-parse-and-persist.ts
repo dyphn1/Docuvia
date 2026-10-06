@@ -9,7 +9,9 @@ import type {
 } from "@workspace/contracts";
 import {
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
 } from "@workspace/contracts";
 
 /** Restores the call-site capability after a full pass that attempted every discoverable file
@@ -43,6 +45,10 @@ export function markCallSitesAvailableAfterCompleteIngestion(input: {
   store.meta.set(
     `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
     SnapshotCallSiteAvailabilityStates.AVAILABLE,
+  );
+  store.meta.set(
+    `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+    SnapshotCallResolutionAvailabilityStates.AVAILABLE,
   );
 }
 

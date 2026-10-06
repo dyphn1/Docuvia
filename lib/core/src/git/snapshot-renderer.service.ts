@@ -7,9 +7,11 @@ import {
   type SnapshotRenderInput,
   type SnapshotRenderResult,
   type SnapshotCallSiteRow,
+  type SnapshotCallResolutionRow,
   type TopologyNodeKind,
   KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
   SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+  SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
   LinkTypes,
   UTF8_ENCODING,
   DocuviaError,
@@ -65,6 +67,17 @@ function compareCallSites(
   );
 }
 
+function compareCallResolutions(
+  left: SnapshotCallResolutionRow,
+  right: SnapshotCallResolutionRow,
+): number {
+  return left.callSiteKey < right.callSiteKey
+    ? -1
+    : left.callSiteKey > right.callSiteKey
+      ? 1
+      : 0;
+}
+
 /**
  * Renders the current knowledge-graph state (already persisted to `IGraphStore`) into the
  * git-diffable directory shape `snapshot` packs onto the hidden knowledge branch — `graph/
@@ -82,7 +95,15 @@ export class SnapshotRendererService implements ISnapshotRenderer {
   public async render(
     input: SnapshotRenderInput,
   ): Promise<SnapshotRenderResult> {
-    const { outDir, l2Rows, linkRows, l3Rows, metadata, callSites } = input;
+    const {
+      outDir,
+      l2Rows,
+      linkRows,
+      l3Rows,
+      metadata,
+      callSites,
+      callResolutions,
+    } = input;
 
     const graphDir = path.join(outDir, GitConstants.GRAPH_DIR_NAME);
     const knowledgeDir = path.join(outDir, GitConstants.KNOWLEDGE_DIR_NAME);
@@ -176,6 +197,7 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     }
 
     await this.writeCallSites(graphDir, callSites);
+    await this.writeCallResolutions(graphDir, callResolutions);
 
     await this.writeSnapshotMetadata(graphDir, metadata);
 
@@ -280,6 +302,61 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     await fs.writeFile(
       path.join(graphDir, SNAPSHOT_CALL_SITES_JSONL_FILE_NAME),
       callSitesData.length > 0 ? `${callSitesData.join("\n")}\n` : "",
+      UTF8_ENCODING,
+    );
+  }
+
+  private async writeCallResolutions(
+    graphDir: string,
+    callResolutions: SnapshotRenderInput["callResolutions"],
+  ): Promise<void> {
+    if (callResolutions === undefined) return;
+    const rows = [...callResolutions]
+      .sort(compareCallResolutions)
+      .map((row) => ({
+        callSiteKey: row.callSiteKey,
+        identityVersion: row.identityVersion,
+        filePath: row.filePath,
+        sourceContentHash: row.sourceContentHash,
+        startLine: row.startLine,
+        startColumn: row.startColumn,
+        calleeKind: row.calleeKind,
+        calleeName: row.calleeName,
+        callerNodeKey: row.callerNodeKey,
+        projectionCallerNodeKey: row.projectionCallerNodeKey,
+        resolutionClass: row.resolutionClass,
+        selectedTargetNodeKey: row.selectedTargetNodeKey,
+        confidence: row.confidence,
+        resolver: row.resolver,
+        ruleSignature: row.ruleSignature,
+        dependencyFingerprint: row.dependencyFingerprint,
+        dependencies: [...row.dependencies]
+          .sort((left, right) =>
+            left.filePath < right.filePath
+              ? -1
+              : left.filePath > right.filePath
+                ? 1
+                : 0,
+          )
+          .map((dependency) => ({
+            filePath: dependency.filePath,
+            contentHash: dependency.contentHash,
+          })),
+        verificationStatus: row.verificationStatus,
+        verifiedTargetNodeKey: row.verifiedTargetNodeKey,
+        isStale: row.isStale,
+        candidates: [...row.candidates]
+          .sort((left, right) => left.ordinal - right.ordinal)
+          .map((candidate) => ({
+            targetNodeKey: candidate.targetNodeKey,
+            ordinal: candidate.ordinal,
+            evidenceJson: candidate.evidenceJson,
+          })),
+      }))
+      .map((row) => JSON.stringify(row));
+    await fs.writeFile(
+      path.join(graphDir, SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME),
+      rows.length > 0 ? `${rows.join("\n")}\n` : "",
       UTF8_ENCODING,
     );
   }

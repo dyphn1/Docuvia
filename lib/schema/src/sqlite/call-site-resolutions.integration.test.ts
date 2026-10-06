@@ -66,6 +66,45 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ]);
   });
 
+  it("[state-diff] round trips portable project rows without rewriting snapshot graph edges", () => {
+    const callerNodeKey = "src/caller.ts#caller";
+    const targetNodeKey = "src/target.ts#run";
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerNodeKey,
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "run",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: targetNodeKey,
+    });
+    const row = resolution(portableKey("snapshot-round-trip"), [], {
+      callerNodeKey,
+      selectedTargetNodeKey: targetNodeKey,
+    });
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      [row],
+      [{ callSiteKey: row.callSiteKey, callerNodeKey }],
+    );
+    const portableRows = store.callSiteResolutions.getAllForProject(projectId);
+    const projectedLinks = store.graph.getAllLinks();
+
+    expect(portableRows).toStrictEqual([
+      { ...row, projectionCallerNodeKey: callerNodeKey },
+    ]);
+    store.callSiteResolutions.replaceForProject(projectId, portableRows);
+    expect(store.callSiteResolutions.getAllForProject(projectId)).toStrictEqual(
+      portableRows,
+    );
+    expect(store.graph.getAllLinks()).toStrictEqual(projectedLinks);
+    expect(store.graph.getNodeKeyById?.(callerId)).toBe(callerNodeKey);
+  });
+
   it("[invalid-input] rejects a likely resolution without confidence", () => {
     expect(() =>
       store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [

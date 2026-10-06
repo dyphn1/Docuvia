@@ -4,6 +4,8 @@ import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import {
   DynamicEvidenceUnavailableReasons,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_VERSION,
   type IGitProvider,
   type IGraphStore,
 } from "@workspace/contracts";
@@ -505,6 +507,161 @@ describe("HydrationService.hydrate()", () => {
     expect(meta.repo.delete).toHaveBeenCalledWith(
       "impact.dynamic-dependencies.v1:42",
     );
+  });
+
+  it("[positive] restores versioned per-site call certainty from the snapshot capability", async () => {
+    const hash = "a".repeat(64);
+    const resolution = {
+      callSiteKey: `call-site:v1:${"b".repeat(64)}`,
+      identityVersion: 1,
+      filePath: "src/caller.ts",
+      sourceContentHash: hash,
+      startLine: 3,
+      startColumn: 4,
+      calleeKind: "member",
+      calleeName: "open",
+      callerNodeKey: "src/caller.ts#run",
+      projectionCallerNodeKey: "src/caller.ts#run",
+      resolutionClass: "proven",
+      selectedTargetNodeKey: "src/target.ts#open",
+      confidence: null,
+      resolver: "q1-named-import",
+      ruleSignature: "q1:named-import:v1",
+      dependencyFingerprint: hash,
+      dependencies: [{ filePath: "src/target.ts", contentHash: hash }],
+      verificationStatus: "verified",
+      verifiedTargetNodeKey: "src/target.ts#open",
+      isStale: false,
+      candidates: [
+        {
+          targetNodeKey: "src/target.ts#open",
+          ordinal: 0,
+          evidenceJson: '{"kind":"unique-named-import"}',
+        },
+      ],
+    };
+    const metadataJson = JSON.stringify({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [],
+      snapshotVersion: 1,
+      capabilities: {
+        callSites: { version: 1 },
+        callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION },
+      },
+    });
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) => {
+          if (filePath === "graph/metadata.json")
+            return Promise.resolve(metadataJson);
+          if (filePath === "graph/call-sites.jsonl") return Promise.resolve("");
+          if (filePath === "graph/call-resolutions.jsonl") {
+            return Promise.resolve(`${JSON.stringify(resolution)}\n`);
+          }
+          return Promise.resolve(undefined);
+        }),
+    });
+    const meta = makeMemoryMeta();
+    const invalidateAll = vi.fn();
+    const replaceForProject = vi.fn();
+    const store = makeMockGraphStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 42 }),
+        insert: vi.fn(),
+        getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
+        count: vi.fn(),
+      },
+      meta: meta.repo,
+      callSites: {
+        deleteForFile: vi.fn(),
+        insertMany: vi.fn(),
+        getForFiles: vi.fn().mockReturnValue(new Map()),
+        getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+        replaceForProject: vi.fn(),
+      },
+      callSiteResolutions: {
+        invalidateAll,
+        replaceForProject,
+      } as unknown as NonNullable<IGraphStore["callSiteResolutions"]>,
+    });
+
+    await new HydrationService(git).hydrate("/workspace", store);
+
+    expect(invalidateAll).toHaveBeenCalledWith(42);
+    expect(replaceForProject).toHaveBeenCalledWith(42, [resolution]);
+    expect(
+      meta.values.get(
+        `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
+      ),
+    ).toBe("available");
+  });
+
+  it("[negative] never derives proven certainty from legacy aggregate calls edges", async () => {
+    const legacyCallEdge = {
+      source: "src/caller.ts#run",
+      target: "src/target.ts#open",
+      type: "calls",
+    };
+    const metadataJson = JSON.stringify({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [],
+      snapshotVersion: 1,
+      capabilities: { callSites: { version: 1 } },
+    });
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-legacy"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(
+            filePath === "graph/metadata.json"
+              ? metadataJson
+              : filePath === "graph/call-sites.jsonl"
+                ? ""
+                : filePath === "graph/edges.jsonl"
+                  ? `${JSON.stringify(legacyCallEdge)}\n`
+                  : undefined,
+          ),
+        ),
+    });
+    const meta = makeMemoryMeta();
+    const replaceForProject = vi.fn();
+    const store = makeMockGraphStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 42 }),
+        insert: vi.fn(),
+        getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
+        count: vi.fn(),
+      },
+      meta: meta.repo,
+      callSites: {
+        deleteForFile: vi.fn(),
+        insertMany: vi.fn(),
+        getForFiles: vi.fn().mockReturnValue(new Map()),
+        getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
+        replaceForProject: vi.fn(),
+      },
+      callSiteResolutions: {
+        invalidateAll: vi.fn(),
+        replaceForProject,
+      } as unknown as NonNullable<IGraphStore["callSiteResolutions"]>,
+    });
+
+    await new HydrationService(git).hydrate("/workspace", store);
+
+    expect(
+      vi.mocked(store.graph.bulkLoadGraph).mock.calls[0]?.[0]?.edges,
+    ).toStrictEqual([legacyCallEdge]);
+    expect(replaceForProject).toHaveBeenCalledWith(42, []);
+    expect(
+      meta.values.get(
+        `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
+      ),
+    ).toBe("unavailable");
   });
 
   it.each([

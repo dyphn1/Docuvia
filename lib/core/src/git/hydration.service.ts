@@ -7,6 +7,7 @@ import type {
   ILogger,
   SnapshotMetadata,
   SnapshotCallSiteRow,
+  SnapshotCallResolutionRow,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import {
@@ -17,8 +18,14 @@ import {
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
   SNAPSHOT_CALL_SITES_VERSION,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
+  SNAPSHOT_CALL_RESOLUTIONS_VERSION,
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
+  CallSiteResolutionClasses,
+  CallSiteVerificationStatuses,
 } from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
 import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
@@ -91,7 +98,11 @@ function nullableString(value: unknown): string | null {
 }
 
 function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    !value.includes("\0")
+  );
 }
 
 function isNonNegativeSafeInteger(value: unknown): value is number {
@@ -133,6 +144,219 @@ function parseCallSitesJsonl(
   }
   return rows.every(isSnapshotCallSiteRow)
     ? (rows as SnapshotCallSiteRow[])
+    : undefined;
+}
+
+function isValidResolutionCandidate(candidate: unknown): boolean {
+  if (!isRecord(candidate)) return false;
+  return (
+    isNonEmptyString(candidate.targetNodeKey) &&
+    isNonNegativeSafeInteger(candidate.ordinal) &&
+    typeof candidate.evidenceJson === "string" &&
+    isValidJson(candidate.evidenceJson)
+  );
+}
+
+function hasValidResolutionCandidates(value: Record<string, unknown>): boolean {
+  if (!Array.isArray(value.candidates)) return false;
+  if (!value.candidates.every(isValidResolutionCandidate)) return false;
+  const candidates = value.candidates as Record<string, unknown>[];
+  return (
+    new Set(candidates.map((candidate) => candidate.ordinal)).size ===
+      candidates.length &&
+    new Set(candidates.map((candidate) => candidate.targetNodeKey)).size ===
+      candidates.length
+  );
+}
+
+function isValidResolutionDependency(dependency: unknown): boolean {
+  return (
+    isRecord(dependency) &&
+    isWorkspaceRelativePath(dependency.filePath) &&
+    isNullableHash(dependency.contentHash)
+  );
+}
+
+function hasValidResolutionDependencies(
+  value: Record<string, unknown>,
+): boolean {
+  if (!Array.isArray(value.dependencies)) return false;
+  if (!value.dependencies.every(isValidResolutionDependency)) return false;
+  const dependencies = value.dependencies as Record<string, unknown>[];
+  return (
+    new Set(dependencies.map((dependency) => dependency.filePath)).size ===
+    dependencies.length
+  );
+}
+
+function isValidResolutionVerification(
+  value: Record<string, unknown>,
+): boolean {
+  const statuses = Object.values(CallSiteVerificationStatuses) as string[];
+  if (
+    typeof value.verificationStatus !== "string" ||
+    !statuses.includes(value.verificationStatus)
+  ) {
+    return false;
+  }
+  return value.verificationStatus === CallSiteVerificationStatuses.UNVERIFIED
+    ? value.verifiedTargetNodeKey === null
+    : isNonEmptyString(value.verifiedTargetNodeKey);
+}
+
+function isValidResolutionSelection(value: Record<string, unknown>): boolean {
+  const classes = Object.values(CallSiteResolutionClasses) as string[];
+  if (
+    typeof value.resolutionClass !== "string" ||
+    !classes.includes(value.resolutionClass)
+  ) {
+    return false;
+  }
+  const hasSelectedTarget = isNonEmptyString(value.selectedTargetNodeKey);
+  if (
+    value.resolutionClass === CallSiteResolutionClasses.PROVEN ||
+    value.resolutionClass === CallSiteResolutionClasses.LIKELY
+  ) {
+    return hasSelectedTarget;
+  }
+  return (
+    !hasSelectedTarget ||
+    (value.verificationStatus === CallSiteVerificationStatuses.VERIFIED &&
+      value.selectedTargetNodeKey === value.verifiedTargetNodeKey)
+  );
+}
+
+function isValidResolutionConfidence(value: Record<string, unknown>): boolean {
+  if (value.resolutionClass !== CallSiteResolutionClasses.LIKELY) {
+    return value.confidence === null;
+  }
+  return (
+    typeof value.confidence === "number" &&
+    Number.isFinite(value.confidence) &&
+    value.confidence >= 0 &&
+    value.confidence <= 1
+  );
+}
+
+function isValidPortableCallSiteKey(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.callSiteKey === "string" &&
+    /^call-site:v1:[a-f0-9]{64}$/.test(value.callSiteKey) &&
+    value.identityVersion === 1
+  );
+}
+
+function isValidResolutionSourceLocation(
+  value: Record<string, unknown>,
+): boolean {
+  return (
+    isWorkspaceRelativePath(value.filePath) &&
+    isHash(value.sourceContentHash) &&
+    isNonNegativeSafeInteger(value.startLine) &&
+    isNonNegativeSafeInteger(value.startColumn) &&
+    isNonEmptyString(value.calleeKind) &&
+    isNonEmptyString(value.calleeName) &&
+    isNonEmptyString(value.callerNodeKey) &&
+    (value.projectionCallerNodeKey === null ||
+      isNonEmptyString(value.projectionCallerNodeKey))
+  );
+}
+
+function isValidResolutionIdentity(value: Record<string, unknown>): boolean {
+  return (
+    isValidPortableCallSiteKey(value) && isValidResolutionSourceLocation(value)
+  );
+}
+
+function isValidResolutionEvidence(value: Record<string, unknown>): boolean {
+  return (
+    isNonEmptyString(value.resolver) &&
+    isNonEmptyString(value.ruleSignature) &&
+    isHash(value.dependencyFingerprint) &&
+    hasValidResolutionDependencies(value) &&
+    hasValidResolutionCandidates(value)
+  );
+}
+
+function isSnapshotCallResolutionRow(
+  value: unknown,
+): value is SnapshotCallResolutionRow {
+  if (!isRecord(value)) return false;
+  return (
+    isValidSnapshotResolutionOutput(value) && isValidResolutionEvidence(value)
+  );
+}
+
+function isValidSnapshotResolutionOutput(
+  value: Record<string, unknown>,
+): boolean {
+  return (
+    isValidResolutionIdentity(value) &&
+    isValidResolutionSelection(value) &&
+    isValidResolutionConfidence(value) &&
+    isValidResolutionVerification(value) &&
+    (value.selectedTargetNodeKey === null ||
+      isNonEmptyString(value.selectedTargetNodeKey)) &&
+    (value.verifiedTargetNodeKey === null ||
+      isNonEmptyString(value.verifiedTargetNodeKey)) &&
+    typeof value.isStale === "boolean"
+  );
+}
+
+function isWorkspaceRelativePath(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !value.startsWith("/") &&
+    !value.endsWith("/") &&
+    !value.includes("\\") &&
+    !value.includes("\0") &&
+    !/^[a-zA-Z]:/.test(value) &&
+    value
+      .split("/")
+      .every(
+        (segment) => segment.length > 0 && segment !== "." && segment !== "..",
+      )
+  );
+}
+
+function isHash(value: unknown): value is string {
+  return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+}
+
+function isNullableHash(value: unknown): value is string | null {
+  return value === null || isHash(value);
+}
+
+function isValidJson(value: string): boolean {
+  try {
+    JSON.parse(value) as unknown;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function parseCallResolutionsJsonl(
+  raw: string | undefined,
+): SnapshotCallResolutionRow[] | undefined {
+  if (raw === undefined) return undefined;
+  if (raw.trim() === "") return [];
+  const rows: unknown[] = [];
+  try {
+    for (const line of raw
+      .split("\n")
+      .filter((item) => item.trim().length > 0)) {
+      rows.push(JSON.parse(line) as unknown);
+    }
+  } catch {
+    return undefined;
+  }
+  if (!rows.every(isSnapshotCallResolutionRow)) return undefined;
+  const typedRows = rows as SnapshotCallResolutionRow[];
+  return new Set(typedRows.map((row) => row.callSiteKey)).size ===
+    typedRows.length
+    ? typedRows
     : undefined;
 }
 
@@ -219,6 +443,23 @@ function isSnapshotCallSitesPayloadAvailable(
   );
 }
 
+function isSnapshotCallResolutionsPayloadAvailable(
+  metadata: ParsedSnapshotMetadata | undefined,
+  callSitesAvailable: boolean,
+  callResolutions: SnapshotCallResolutionRow[] | undefined,
+): boolean {
+  if (!callSitesAvailable || callResolutions === undefined) return false;
+  if (metadata?.snapshotVersion !== KNOWLEDGE_SNAPSHOT_FORMAT_VERSION) {
+    return false;
+  }
+  if (!isRecord(metadata.capabilities)) return false;
+  const capability = metadata.capabilities.callResolutions;
+  return (
+    isRecord(capability) &&
+    capability.version === SNAPSHOT_CALL_RESOLUTIONS_VERSION
+  );
+}
+
 /**
  * Git-to-SQLite hydration (STOR-002), built entirely on `IGitProvider`'s raw primitives — the
  * reverse direction of `KnowledgeGitService`'s SQLite-to-Git snapshot write path.
@@ -295,46 +536,60 @@ export class HydrationService implements IHydrationService {
       };
     }
 
-    const [nodesJsonl, edgesJsonl, metadataJson, callSitesJsonl] =
-      await Promise.all([
-        this.git.readFileAtRef(
-          cwd,
-          knowledgeSha,
-          path.posix.join(
-            GitConstants.GRAPH_DIR_NAME,
-            GitConstants.NODES_JSONL_NAME,
-          ),
+    const [
+      nodesJsonl,
+      edgesJsonl,
+      metadataJson,
+      callSitesJsonl,
+      callResolutionsJsonl,
+    ] = await Promise.all([
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.NODES_JSONL_NAME,
         ),
-        this.git.readFileAtRef(
-          cwd,
-          knowledgeSha,
-          path.posix.join(
-            GitConstants.GRAPH_DIR_NAME,
-            GitConstants.EDGES_JSONL_NAME,
-          ),
+      ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.EDGES_JSONL_NAME,
         ),
-        this.git.readFileAtRef(
-          cwd,
-          knowledgeSha,
-          path.posix.join(
-            GitConstants.GRAPH_DIR_NAME,
-            GitConstants.METADATA_JSON_NAME,
-          ),
+      ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.METADATA_JSON_NAME,
         ),
-        this.git.readFileAtRef(
-          cwd,
-          knowledgeSha,
-          path.posix.join(
-            GitConstants.GRAPH_DIR_NAME,
-            SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
-          ),
+      ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
         ),
-      ]);
+      ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
+        ),
+      ),
+    ]);
 
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
     const metadata = parseSnapshotMetadata(metadataJson);
     const callSites = parseCallSitesJsonl(callSitesJsonl);
+    const callResolutions = parseCallResolutionsJsonl(callResolutionsJsonl);
 
     const force = options?.force ?? false;
     if (!force) {
@@ -365,6 +620,13 @@ export class HydrationService implements IHydrationService {
         nodes,
         edges,
       });
+      this.restoreSnapshotCallResolutions(
+        store,
+        projectId,
+        metadata,
+        callSites,
+        callResolutions,
+      );
       // L3DIST-007: the other half of the union (git -> local.db), absorbing any card this
       // developer never authored locally (a teammate's decision, or their own on a fresh clone).
       await importL3CardsFromKnowledgeBranch(
@@ -468,6 +730,39 @@ export class HydrationService implements IHydrationService {
       payloadAvailable && canReplace
         ? SnapshotCallSiteAvailabilityStates.AVAILABLE
         : SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+    );
+  }
+
+  private restoreSnapshotCallResolutions(
+    store: IGraphStore,
+    projectId: number,
+    metadata: ParsedSnapshotMetadata | undefined,
+    callSites: SnapshotCallSiteRow[] | undefined,
+    callResolutions: SnapshotCallResolutionRow[] | undefined,
+  ): void {
+    const callSitesAvailable = isSnapshotCallSitesPayloadAvailable(
+      metadata,
+      callSites,
+    );
+    const payloadAvailable = isSnapshotCallResolutionsPayloadAvailable(
+      metadata,
+      callSitesAvailable,
+      callResolutions,
+    );
+    const replaceForProject = store.callSiteResolutions?.replaceForProject;
+    const canReplace = typeof replaceForProject === "function";
+    if (canReplace) {
+      replaceForProject.call(
+        store.callSiteResolutions,
+        projectId,
+        payloadAvailable ? (callResolutions ?? []) : [],
+      );
+    }
+    store.meta.set(
+      `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+      payloadAvailable && canReplace
+        ? SnapshotCallResolutionAvailabilityStates.AVAILABLE
+        : SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
     );
   }
 

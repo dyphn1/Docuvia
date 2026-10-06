@@ -368,9 +368,16 @@ export interface IGraphNodesRepo {
    * since an empty `<l2_module>` block with no file/kind context was otherwise indistinguishable
    * from a genuinely-empty result.
    */
-  findNodeByName(
-    target: string,
-  ): { id: number; name: string; type: string; filePath?: string } | undefined;
+  findNodeByName(target: string):
+    | {
+        id: number;
+        name: string;
+        type: string;
+        filePath?: string;
+      }
+    | undefined;
+  /** Exact exported node identity for a row id, optional for alternate graph providers. */
+  getNodeKeyById?(nodeId: number): string | undefined;
   /**
    * Resolves an l2_node's id by its exact STOR-005 `node_key` (deterministic `<file_path>` /
    * `<file_path>#<symbolName>` identity) — used by `analyze <targetPath>`'s decision-extraction
@@ -763,6 +770,13 @@ export interface CallSiteResolutionRecord {
   candidates: CallSiteResolutionCandidate[];
 }
 
+/** Project-portable current resolution state. The ScopeResolver projection owner is kept
+ * separately from the enclosing caller so a hydrated row can preserve future invalidation
+ * behavior without exporting SQLite ids or local quarantine state. */
+export interface SnapshotCallResolutionRow extends CallSiteResolutionRecord {
+  projectionCallerNodeKey: string | null;
+}
+
 /** ScopeResolver's caller node for the derived `calls` projection. This stays separate from the
  *  exact enclosing caller identity stored in `CallSiteResolutionRecord.callerNodeKey`. */
 export interface CallSiteResolutionProjectionCallerInput {
@@ -799,6 +813,13 @@ export interface ICallSiteResolutionsRepo {
   deleteForFile(projectId: number, filePath: string): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Stable portable read for snapshot packing. Optional for alternate providers. */
+  getAllForProject?(projectId: number): SnapshotCallResolutionRow[];
+  /** Replaces portable current state without rebuilding graph edges during hydration. */
+  replaceForProject?(
+    projectId: number,
+    resolutions: SnapshotCallResolutionRow[],
+  ): void;
   /** Applies site-bound Tier B responses and atomically rebuilds affected calls projections. */
   applyTierBVerificationResults(
     projectId: number,

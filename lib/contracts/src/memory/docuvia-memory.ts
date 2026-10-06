@@ -22,6 +22,7 @@ export const MemoryKeys = {
    *  outside `ESCALATE_TO_LSP`. */
   TIER_B_FULL_RESYNC: "tierBFullResync",
   LIMIT: "limit",
+  EXPLAIN_RESOLUTION: "explainResolution",
   COLLAPSE: "collapse",
   /** `uninstall --keep-db` — when set, skips local.db deletion, whole-`.docuvia/`-dir removal,
    *  and the `docuvia-knowledge` branch delete (all three are the same underlying graph, just in

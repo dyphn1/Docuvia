@@ -8,7 +8,9 @@ import {
   resetFactoryForTests,
   createMockLogger,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
   type AstProcessResult,
   type IAstProcessor,
   type IConfigScanner,
@@ -303,7 +305,12 @@ describe("runFullIngestion()", () => {
 
   it("[state-diff] restores unavailable call-site evidence after a complete full ingestion", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    const resolutionMarkerKey = `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    store.meta.set(
+      resolutionMarkerKey,
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
+    );
     await runFullIngestion({
       workspaceRoot: tmpDir,
       logger: createMockLogger(),
@@ -313,6 +320,9 @@ describe("runFullIngestion()", () => {
 
     expect(store.meta.get(markerKey)).toBe(
       SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
+    expect(store.meta.get(resolutionMarkerKey)).toBe(
+      SnapshotCallResolutionAvailabilityStates.AVAILABLE,
     );
   });
 
@@ -346,7 +356,12 @@ describe("runFullIngestion()", () => {
 
   it("[state-diff] keeps call-site evidence unavailable when full discovery skips an unchanged file", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    const resolutionMarkerKey = `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    store.meta.set(
+      resolutionMarkerKey,
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
+    );
     vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue(
       Object.assign(
         {
@@ -368,6 +383,9 @@ describe("runFullIngestion()", () => {
 
     expect(store.meta.get(markerKey)).toBe(
       SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+    );
+    expect(store.meta.get(resolutionMarkerKey)).toBe(
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
     );
   });
 

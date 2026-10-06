@@ -2164,7 +2164,7 @@ describe("call-resolution hypothesis service", () => {
       "function run(service: Missing) { service.open(); }",
     );
     const callSite = callerFile.callSiteShapeFacts?.callSites[0];
-    expect(callSite).toBeDefined();
+    expect(callSite?.calleeName).toBe("open");
     if (!callSite) throw new Error("worker omitted the call shape");
     const service = new CallResolutionHypothesisService();
     const workspaceIndex = indexWorkspace(
@@ -2206,7 +2206,7 @@ describe("call-resolution hypothesis service", () => {
       "function run(service: PrivateService) { service.open(); }",
     );
     const callSite = callerFile.callSiteShapeFacts?.callSites[0];
-    expect(callSite).toBeDefined();
+    expect(callSite?.calleeName).toBe("open");
     if (!callSite) throw new Error("worker omitted the call shape");
     const service = new CallResolutionHypothesisService();
     const workspaceIndex = indexWorkspace(service, "c".repeat(64), [
@@ -2246,7 +2246,7 @@ describe("call-resolution hypothesis service", () => {
       "function run(service: unknown) { service.open(); }",
     );
     const callSite = callerFile.callSiteShapeFacts?.callSites[0];
-    expect(callSite).toBeDefined();
+    expect(callSite?.calleeName).toBe("open");
     if (!callSite) throw new Error("worker omitted the call shape");
     const service = new CallResolutionHypothesisService({ maxCandidates: 1 });
     const workspaceIndex = indexWorkspace(service, "d".repeat(64), [
@@ -2283,8 +2283,8 @@ describe("call-resolution hypothesis service", () => {
     );
     const firstCall = source.callSiteShapeFacts?.callSites[0];
     const changedCall = changed.callSiteShapeFacts?.callSites[0];
-    expect(firstCall).toBeDefined();
-    expect(changedCall).toBeDefined();
+    expect(firstCall?.calleeName).toBe("open");
+    expect(changedCall?.calleeName).toBe("open");
     if (!firstCall || !changedCall)
       throw new Error("worker omitted a call shape");
     const service = new CallResolutionHypothesisService();
@@ -2727,6 +2727,24 @@ describe("call-resolution hypothesis service", () => {
     expect(new Set(bareResult.generatedCandidateKeys).size).toBe(2);
     expect(memberResult.status).toBe("ambiguous");
     expect(bareResult.status).toBe("ambiguous");
+  });
+
+  it("[negative] keeps a bare call out of the member-call shape", async () => {
+    const callerFile = await parseFile(
+      "src/caller.ts",
+      "function run() { open(); }",
+    );
+    const callSite = callerFile.callSiteShapeFacts?.callSites[0];
+
+    expect({
+      calleeName: callSite?.calleeName,
+      calleeKind: callSite?.calleeKind,
+      receiverText: callSite?.receiverText,
+    }).toStrictEqual({
+      calleeName: "open",
+      calleeKind: "bare",
+      receiverText: null,
+    });
   });
 
   it("[identity] scopes heritage evidence to its source file and exact owner", async () => {

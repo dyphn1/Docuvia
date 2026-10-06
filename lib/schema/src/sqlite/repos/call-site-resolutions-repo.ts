@@ -17,6 +17,7 @@ import type {
   CallSiteResolutionObservation,
   CallSiteResolutionObservationInput,
   CallSiteResolutionRecord,
+  SnapshotCallResolutionRow,
   CallSiteResolutionProjectionCallerInput,
   CallSiteLspResolutionResult,
   CallSiteRuleQuarantine,
@@ -46,6 +47,10 @@ const CALL_SITE_RESOLUTIONS_ERRORS = {
     `Failed to apply Tier B verification results for project ${projectId}`,
   READ_RULE_QUARANTINES_FAILED: (projectId: number) =>
     `Failed to read call-site rule quarantines for project ${projectId}`,
+  READ_PROJECT_FAILED: (projectId: number) =>
+    `Failed to read portable call-site resolutions for project ${projectId}`,
+  REPLACE_PROJECT_FAILED: (projectId: number) =>
+    `Failed to replace portable call-site resolutions for project ${projectId}`,
 } as const;
 
 interface ResolutionDbRow {
@@ -392,6 +397,184 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.READ_FILE_FAILED(projectId, filePath),
+        err,
+      );
+    }
+  }
+
+  getAllForProject(projectId: number): SnapshotCallResolutionRow[] {
+    assertProjectId(projectId);
+    try {
+      const filePaths = this.db
+        .prepare(
+          `SELECT DISTINCT file_path FROM ${SchemaTables.CALL_SITE_RESOLUTIONS}
+           WHERE project_id = ? ORDER BY file_path COLLATE BINARY`,
+        )
+        .all(projectId) as Array<{ file_path: string }>;
+      const projectionRows = this.db
+        .prepare(
+          `SELECT call_site_key, caller_node_key
+           FROM ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS}
+           WHERE project_id = ? ORDER BY call_site_key COLLATE BINARY`,
+        )
+        .all(projectId) as Array<{
+        call_site_key: string;
+        caller_node_key: string;
+      }>;
+      const projectionCallerByKey = new Map(
+        projectionRows.map((row) => [row.call_site_key, row.caller_node_key]),
+      );
+      return filePaths
+        .flatMap(({ file_path: filePath }) =>
+          this.getForFile(projectId, filePath).map((resolution) => ({
+            ...resolution,
+            projectionCallerNodeKey:
+              projectionCallerByKey.get(resolution.callSiteKey) ?? null,
+          })),
+        )
+        .sort((left, right) =>
+          left.callSiteKey < right.callSiteKey
+            ? -1
+            : left.callSiteKey > right.callSiteKey
+              ? 1
+              : 0,
+        );
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.READ_PROJECT_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  replaceForProject(
+    projectId: number,
+    resolutions: SnapshotCallResolutionRow[],
+  ): void {
+    assertProjectId(projectId);
+    if (!Array.isArray(resolutions)) {
+      throw invalidInput("Call-site resolutions must be an array");
+    }
+    const callSiteKeys = new Set<string>();
+    for (const resolution of resolutions) {
+      validateResolution(resolution.filePath, resolution);
+      if (callSiteKeys.has(resolution.callSiteKey)) {
+        throw invalidInput("Call-site resolution keys must be unique");
+      }
+      callSiteKeys.add(resolution.callSiteKey);
+      if (
+        resolution.projectionCallerNodeKey !== null &&
+        (typeof resolution.projectionCallerNodeKey !== "string" ||
+          resolution.projectionCallerNodeKey.length === 0)
+      ) {
+        throw invalidInput(
+          "Projection caller node key must be non-empty or null",
+        );
+      }
+    }
+    try {
+      this.db
+        .transaction(() => {
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES} WHERE project_id = ?`,
+            )
+            .run(projectId);
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} WHERE project_id = ?`,
+            )
+            .run(projectId);
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} WHERE project_id = ?`,
+            )
+            .run(projectId);
+          this.db
+            .prepare(
+              `DELETE FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} WHERE project_id = ?`,
+            )
+            .run(projectId);
+
+          const insertResolution = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTIONS} (
+              project_id, call_site_key, identity_version, file_path, source_content_hash,
+              start_line, start_column, callee_kind, callee_name, caller_node_key,
+              resolution_class, selected_target_node_key, confidence, resolver, rule_signature,
+              dependency_fingerprint, verification_status, verified_target_node_key, is_stale
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          );
+          const insertCandidate = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES} (
+              project_id, call_site_key, ordinal, target_node_key, evidence_json
+            ) VALUES (?, ?, ?, ?, ?)`,
+          );
+          const insertProjectionCaller = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} (
+              project_id, call_site_key, caller_node_key
+            ) VALUES (?, ?, ?)`,
+          );
+          const insertDependency = this.db.prepare(
+            `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} (
+              project_id, call_site_key, dependency_path, content_hash
+            ) VALUES (?, ?, ?, ?)`,
+          );
+          for (const resolution of resolutions) {
+            insertResolution.run(
+              projectId,
+              resolution.callSiteKey,
+              resolution.identityVersion,
+              resolution.filePath,
+              resolution.sourceContentHash,
+              resolution.startLine,
+              resolution.startColumn,
+              resolution.calleeKind,
+              resolution.calleeName,
+              resolution.callerNodeKey,
+              resolution.resolutionClass,
+              resolution.selectedTargetNodeKey,
+              resolution.confidence,
+              resolution.resolver,
+              resolution.ruleSignature,
+              resolution.dependencyFingerprint,
+              resolution.verificationStatus,
+              resolution.verifiedTargetNodeKey,
+              resolution.isStale ? 1 : 0,
+            );
+            for (const candidate of resolution.candidates) {
+              insertCandidate.run(
+                projectId,
+                resolution.callSiteKey,
+                candidate.ordinal,
+                candidate.targetNodeKey,
+                candidate.evidenceJson,
+              );
+            }
+            if (resolution.projectionCallerNodeKey !== null) {
+              insertProjectionCaller.run(
+                projectId,
+                resolution.callSiteKey,
+                resolution.projectionCallerNodeKey,
+              );
+            }
+            for (const dependency of normalizeResolutionDependencies(
+              resolution,
+            )) {
+              insertDependency.run(
+                projectId,
+                resolution.callSiteKey,
+                dependency.filePath,
+                dependency.contentHash,
+              );
+            }
+          }
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.REPLACE_PROJECT_FAILED(projectId),
         err,
       );
     }

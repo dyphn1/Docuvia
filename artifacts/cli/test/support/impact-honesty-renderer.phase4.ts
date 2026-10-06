@@ -1,9 +1,9 @@
 /** Deterministic CI Markdown and JSON rendering for the Phase 4 report. */
 
 import {
-  PHASE4_FORBIDDEN_REPORT_TERMS,
   PHASE4_GATE_IDS,
   PHASE4_REPORT_SCOPE,
+  phase4ForbiddenReportTermInLabel,
   phase4GateViolations,
   phase4ReportFormatViolations,
   type Phase4GateViolation,
@@ -76,19 +76,29 @@ function ensureRenderable(report: ImpactHonestyReport): void {
   }
 }
 
+function markdownMetricLabels(markdown: string): string[] {
+  return markdown.split("\n").flatMap((line) => {
+    const heading = /^#{1,6}\s+(.+?)\s*$/.exec(line)?.[1];
+    if (heading) return [heading];
+    if (/^-\s+FAIL\b/.test(line)) return [];
+    const bulletLabel = /^-\s+([^:]+):(?:\s|$)/.exec(line)?.[1];
+    return bulletLabel ? [bulletLabel] : [];
+  });
+}
+
 export function phase4MarkdownFormatViolations(
   markdown: string,
 ): Phase4GateViolation[] {
-  const forbidden = PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
-    markdown.toLowerCase().includes(term),
-  );
+  const forbidden = markdownMetricLabels(markdown)
+    .map((label) => phase4ForbiddenReportTermInLabel(label))
+    .find((term) => term !== undefined);
   return forbidden
     ? [
         {
           gateId: PHASE4_GATE_IDS.REPORT_FORMAT,
           sliceId: PHASE4_REPORT_SCOPE,
           caseIds: [],
-          detail: `forbidden report term '${forbidden}' is present in Markdown`,
+          detail: `forbidden report metric label containing '${forbidden}' is present in Markdown`,
         },
       ]
     : [];

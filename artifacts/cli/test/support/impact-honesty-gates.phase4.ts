@@ -81,20 +81,59 @@ function rateProblem(name: string, value: unknown): string | null {
     : `${name} value does not match its numerator/denominator`;
 }
 
+export function phase4ForbiddenReportTermInLabel(
+  label: string,
+): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
+  const normalized = label.toLowerCase();
+  const compact = normalized.replace(/[^a-z0-9]+/g, "");
+  return PHASE4_FORBIDDEN_REPORT_TERMS.find((term) => {
+    const normalizedTerm = term.toLowerCase();
+    const compactTerm = normalizedTerm.replace(/[^a-z0-9]+/g, "");
+    return normalized.includes(normalizedTerm) || compact.includes(compactTerm);
+  });
+}
+
+function forbiddenReportTermInKey(
+  key: string,
+): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
+  return phase4ForbiddenReportTermInLabel(key);
+}
+
+function forbiddenReportTermInMetricKeys(
+  value: unknown,
+): (typeof PHASE4_FORBIDDEN_REPORT_TERMS)[number] | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = forbiddenReportTermInMetricKeys(item);
+      if (nested) return nested;
+    }
+    return undefined;
+  }
+  if (typeof value !== "object" || value === null) return undefined;
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const forbidden = forbiddenReportTermInKey(key);
+    if (forbidden) return forbidden;
+    const nested = forbiddenReportTermInMetricKeys(nestedValue);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
 function reportFormatViolations(
   report: ImpactHonestyReport,
 ): Phase4GateViolation[] {
-  const serialized = JSON.stringify(report).toLowerCase();
-  const forbidden = PHASE4_FORBIDDEN_REPORT_TERMS.find((term) =>
-    serialized.includes(term),
-  );
+  const forbidden =
+    Object.keys(report)
+      .map((key) => forbiddenReportTermInKey(key))
+      .find((term) => term !== undefined) ??
+    forbiddenReportTermInMetricKeys(report.metrics);
   if (forbidden) {
     return [
       violation(
         PHASE4_GATE_IDS.REPORT_FORMAT,
         PHASE4_REPORT_SCOPE,
         [],
-        `forbidden blended-score term '${forbidden}' is present`,
+        `forbidden blended-score metric key containing '${forbidden}' is present`,
       ),
     ];
   }

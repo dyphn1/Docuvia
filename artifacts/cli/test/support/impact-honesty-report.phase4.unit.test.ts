@@ -719,9 +719,7 @@ describe("Phase 4 hard gates", () => {
     expect(phase4MarkdownFormatViolations("- aggregateAccuracy: 1")).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
-    expect(
-      phase4MarkdownFormatViolations("- aggregate_accuracy: 1"),
-    ).toEqual([
+    expect(phase4MarkdownFormatViolations("- aggregate_accuracy: 1")).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
   });

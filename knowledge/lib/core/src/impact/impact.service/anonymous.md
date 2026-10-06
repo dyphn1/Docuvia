@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/impact/impact.service.ts#ImpactService.anonymous@L316
+id: lib/core/src/impact/impact.service.ts#ImpactService.anonymous@L306
 type: symbol
 name: anonymous
 filePath: lib/core/src/impact/impact.service.ts

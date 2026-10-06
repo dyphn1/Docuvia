@@ -2,6 +2,17 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.17.1](https://github.com/dyphn1/Docuvia/compare/v1.17.0...v1.17.1) (2026-10-06)
+
+### Bug Fixes
+
+- **impact:** ignore diagnostic data in markdown label scan ([83e075c](https://github.com/dyphn1/Docuvia/commit/83e075c7a9ed4429f16bbe6e3925e0ee30376251))
+- **impact:** normalize compact forbidden metric keys ([25b36e6](https://github.com/dyphn1/Docuvia/commit/25b36e6571ae51f323b635cda9a458dde72d5452))
+- **impact:** normalize forbidden Markdown metric labels ([975f4ab](https://github.com/dyphn1/Docuvia/commit/975f4ab40feb8dc7531c4283d875013dd113641e))
+- **impact:** parse normalized Markdown labels without diagnostic data ([6f9b2ab](https://github.com/dyphn1/Docuvia/commit/6f9b2ab4a76bdb69fc40aa9f226187b9c4e43dcb))
+- **impact:** scope markdown forbidden terms to metric labels ([#549](https://github.com/dyphn1/Docuvia/issues/549)) ([f55e31d](https://github.com/dyphn1/Docuvia/commit/f55e31d3d82782089c08872813a1537b87337fb9))
+- **impact:** scope report-format term checks to metric keys ([#549](https://github.com/dyphn1/Docuvia/issues/549)) ([86dc629](https://github.com/dyphn1/Docuvia/commit/86dc6291bbf735547620999b125b4059ac807d17))
+
 # [1.17.0](https://github.com/dyphn1/Docuvia/compare/v1.16.0...v1.17.0) (2026-10-02)
 
 ### Bug Fixes

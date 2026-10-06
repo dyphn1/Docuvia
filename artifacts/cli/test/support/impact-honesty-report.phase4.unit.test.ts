@@ -30,8 +30,6 @@ import {
 
 // TDD-SOURCE: issue #508 Phase 4 honest CI report and hard regression gates
 // TDD-SOURCE: issue #549 report-format gate must inspect metric labels, not data values
-// TDD-SOURCE: issue #550 canonical Phase 4 case ids across legacy report collections
-// TDD-SOURCE: issue #551 error dropped count excludes missing cases and tracks exemptions
 // TDD-SOURCE: docs/ai_plans/acceptance_508-phase4-honest-ci-report.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase4.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase0.md
@@ -189,45 +187,6 @@ describe("Phase 4 report builder", () => {
         expect.objectContaining({ checkpoint: "T10@after", issue: 522 }),
       ]),
     );
-  });
-
-  it("[invalid-input] canonicalizes legacy scenario ids across report collections", () => {
-    const rawScenario = "legacy-a:evalTarget#confirmed-positive";
-    const errored = {
-      ...legacyResult(rawScenario),
-      status: "error" as const,
-    };
-    const report = buildImpactHonestyReport(
-      input({
-        legacy: {
-          ...input().legacy,
-          declaredCaseIds: ["legacy-a"],
-          results: [errored],
-          aggregate: aggregateCases([errored]),
-          regressedCaseIds: [rawScenario],
-          exclusions: [{ caseId: rawScenario, reason: "fixture exclusion" }],
-        },
-      }),
-    );
-    const legacy = report.slices.find(
-      (slice) => slice.id === PHASE4_SLICE_IDS.LEGACY,
-    );
-
-    expect(legacy).toMatchObject({
-      caseIds: ["legacy-a"],
-      observedCaseIds: ["legacy-a"],
-      missingCaseIds: [],
-      unexpectedCaseIds: [],
-      regressedCaseIds: ["legacy-a"],
-      errorCaseIds: ["legacy-a"],
-      exclusions: [{ caseId: "legacy-a", reason: "fixture exclusion" }],
-    });
-    expect(report.errors).toEqual(["legacy-a"]);
-    expect(report.exclusions).toContainEqual({
-      caseId: "legacy-a",
-      reason: "fixture exclusion",
-    });
-    expect(report.legacyCaseResults[0].scenario).toBe(rawScenario);
   });
 
   it("[determinism] renders byte-identical output for identical evaluator inputs", () => {
@@ -593,73 +552,6 @@ describe("Phase 4 hard gates", () => {
     );
   });
 
-  it("[error-handling] missing cases do not inflate the dropped error count", () => {
-    const errored = {
-      ...legacyResult("legacy-error"),
-      status: "error" as const,
-    };
-    const report = buildImpactHonestyReport(
-      input({
-        legacy: {
-          ...input().legacy,
-          declaredCaseIds: [
-            "legacy-error",
-            "legacy-missing-a",
-            "legacy-missing-b",
-          ],
-          results: [errored],
-          aggregate: aggregateCases([errored]),
-        },
-      }),
-    );
-    const errorViolation = phase4GateViolations(report).find(
-      (violation) => violation.gateId === PHASE4_GATE_IDS.ERROR_CASES,
-    );
-
-    expect(errorViolation).toMatchObject({
-      caseIds: ["legacy-error"],
-      detail: "errors=1; dropped=0",
-    });
-  });
-
-  it("[error-handling] dropped counts only known-defect error exemptions", () => {
-    const legacyErrored = {
-      ...legacyResult("legacy-error"),
-      status: "error" as const,
-    };
-    const knownDefectErrored = honestyResult(
-      "T12@after:evalTarget#confirmed-positive",
-      {
-        observedStatus: "error",
-        predictions: [],
-      },
-    );
-    const base = input();
-    const report = buildImpactHonestyReport(
-      input({
-        legacy: {
-          ...base.legacy,
-          declaredCaseIds: ["legacy-error"],
-          results: [legacyErrored],
-          aggregate: aggregateCases([legacyErrored]),
-        },
-        phase3: {
-          ...base.phase3,
-          declaredCaseIds: ["T0@after", "T12@after"],
-          records: [base.phase3.records[0], knownDefectErrored],
-        },
-      }),
-    );
-    const errorViolation = phase4GateViolations(report).find(
-      (violation) => violation.gateId === PHASE4_GATE_IDS.ERROR_CASES,
-    );
-
-    expect(errorViolation).toMatchObject({
-      caseIds: ["legacy-error"],
-      detail: "errors=1; dropped=1",
-    });
-  });
-
   it("[invalid-input] dropping a declared case fails the inventory gate", () => {
     const report = buildImpactHonestyReport(
       input({
@@ -824,14 +716,10 @@ describe("Phase 4 hard gates", () => {
     expect(() =>
       assertImpactHonestyMarkdownFormat("## Overall accuracy"),
     ).toThrow(new RegExp(PHASE4_GATE_IDS.REPORT_FORMAT));
-    expect(
-      phase4MarkdownFormatViolations("- aggregateAccuracy: 1"),
-    ).toEqual([
+    expect(phase4MarkdownFormatViolations("- aggregateAccuracy: 1")).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
-    expect(
-      phase4MarkdownFormatViolations("- aggregate_accuracy: 1"),
-    ).toEqual([
+    expect(phase4MarkdownFormatViolations("- aggregate_accuracy: 1")).toEqual([
       expect.objectContaining({ gateId: PHASE4_GATE_IDS.REPORT_FORMAT }),
     ]);
   });

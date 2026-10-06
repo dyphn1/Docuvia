@@ -29,6 +29,7 @@ import {
 } from "./impact-eval-scorer.js";
 
 // TDD-SOURCE: issue #508 Phase 4 honest CI report and hard regression gates
+// TDD-SOURCE: issue #549 report-format gate must inspect metric labels, not data values
 // TDD-SOURCE: docs/ai_plans/acceptance_508-phase4-honest-ci-report.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase4.md
 // TDD-SOURCE: docs/gitbook/analysis/impact-benchmark-honesty-phase0.md
@@ -609,12 +610,48 @@ describe("Phase 4 hard gates", () => {
     );
   });
 
+  it("[invalid-input] allows forbidden-score words in report data values", () => {
+    const overallCase = legacyResult("overall-fanout-negative");
+    const legacyB = legacyResult("legacy-b");
+    const report = buildImpactHonestyReport(
+      input({
+        legacy: {
+          ...input().legacy,
+          declaredCaseIds: ["overall-fanout-negative", "legacy-b"],
+          results: [overallCase, legacyB],
+          aggregate: aggregateCases([overallCase, legacyB]),
+          exclusions: [
+            {
+              caseId: "overall-fanout-negative",
+              reason: "blended is fixture metadata, not a metric",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(phase4GateViolations(report)).toEqual([]);
+    expect(() => renderImpactHonestyReport(report)).not.toThrow();
+    expect(
+      phase4MarkdownFormatViolations(
+        "- Exclusions: overall-fanout-negative (blended fixture metadata)",
+      ),
+    ).toEqual([]);
+  });
+
   it("[error-handling] renderer rejects blended scores and missing denominators", () => {
     const report = buildImpactHonestyReport(input());
     const blended = {
       ...report,
-      overallAccuracy: 1,
-    } as typeof report & { overallAccuracy: number };
+      metrics: {
+        ...report.metrics,
+        overallAccuracy: {
+          value: 1,
+          numerator: 1,
+          denominator: 1,
+        },
+      },
+    } as unknown as typeof report;
     expect(() => renderImpactHonestyReport(blended)).toThrow(
       new RegExp(PHASE4_GATE_IDS.REPORT_FORMAT),
     );

@@ -3,6 +3,7 @@ import type {
   L3NodeRow,
   NodeLinkRow,
   ProjectFileSnapshotMetadata,
+  SnapshotCallResolutionRow,
   SnapshotCallSiteRow,
 } from "./graph-store.interfaces.js";
 
@@ -16,6 +17,8 @@ export interface SnapshotCapabilities {
   dynamicDependencyEvidence?: SnapshotVersionedPayload<string>;
   /** Call-site rows live in their own JSONL file; this section versions that file's shape. */
   callSites?: { version: number };
+  /** Per-site resolution class, verification, dependency and candidate state. */
+  callResolutions?: { version: number };
 }
 
 export interface SnapshotMetadata {
@@ -42,6 +45,8 @@ export interface SnapshotRenderInput {
   linkRows: NodeLinkRow[];
   /** Project-portable Tier A call sites. When present, an empty list is a complete empty set. */
   callSites?: SnapshotCallSiteRow[];
+  /** Current per-site resolution evidence, separate from raw AST call-site rows. */
+  callResolutions?: SnapshotCallResolutionRow[];
   /**
    * Exportable L3 decision rows (`IGraphStore.l3.getAllExportable()`'s output). When present, the
    * renderer additionally writes one `knowledge/_l3/<content_hash>.md` card per resolvable row —

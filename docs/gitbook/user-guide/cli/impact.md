@@ -17,6 +17,7 @@ docuvia impact <target>
 ### Flags
 
 - `--format=<human|json>`: Specify the output format. `human` (default) renders the blast-radius table and risk level; `json` emits the structured `ImpactResult` verbatim (`blastRadius`, `riskLevel`, optional `epistemic`/`riskNote`/`dynamicEvidence`/`dynamicEvidenceUnavailable`/`tierBCoverage`/`coverageNote`) as pure JSON on stdout with the banner/spinner suppressed. When the target doesn't resolve, `--format=json` prints the JSON literal `null` (exit `0`), so a consumer can distinguish "not found" from "found but zero dependents". An unknown value fails fast with a list of the available formats.
+- `--explain-resolution`: Include complete per-call-site resolver, verification, dependency, and candidate evidence on call edges. By default, call edges expose a bounded certainty summary; MCP impact accepts the equivalent `explainResolution: true` detail parameter.
 
 ## Empty results are UNKNOWN, not zero (issue #192)
 
@@ -33,6 +34,8 @@ Runtime `import()` evidence is recomputed against the **current** file universe 
 Specifiers written with the NodeNext/ESM runtime extension match their sources: ``import(`./plugins/${name}.js`)`` bounds `plugins/*.ts`/`.tsx`/`.js`/`.jsx`, `.mjs` bounds `.mts`/`.mjs`, and `.cjs` bounds `.cts`/`.cjs` — in both template and literal specifiers (issue #508).
 
 A non-empty blast radius at full Tier B coverage, with no target-relevant runtime dependency evidence and an available evidence set, omits `epistemic` entirely (omit-when-confident). Accuracy against human-labeled ground truth is measured weekly in CI by the eval workflow (`.github/workflows/eval.yml`) over `artifacts/cli/test/support/impact-corpus.ts`; run it locally with `pnpm run eval:impact`.
+
+Call-edge certainty is reported separately in `callResolutionBreakdown`: `verifiedProven`, `heuristicProvisional`, and `unknown` count the respective call contributions. Each blast-radius entry retains its per-site `callResolutions`. Existing `edgeSource` values continue to describe edge origin, such as `lsp-fallback` and `dynamic-candidate`; certainty remains explicit in the call-resolution summary and the separate counts. The existing `riskLevel` calculation remains based on the full reported radius, with these certainty counts shown alongside it.
 
 ## The call-site fallback (`edgeSource: "lsp-fallback"`, issue #217)
 

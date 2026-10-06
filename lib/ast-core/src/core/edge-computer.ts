@@ -1,4 +1,5 @@
 import { Node } from "web-tree-sitter";
+import type { AstReexportDescriptor } from "@workspace/contracts";
 import { AstEvent } from "../sink.js";
 import { AstEventType } from "../constants/ast-event-constants.js";
 import { TreeSitterNodeTypes } from "../constants/tree-sitter-node-types.js";
@@ -51,6 +52,10 @@ export interface ParsedImportDescriptor {
   /** True for TS/JS barrel re-export descriptors (`export { X } from "./y"`) — see
    *  collectTsJsExportFromDescriptors. */
   viaReexport?: boolean;
+  /** True for TS `import type` and `import { type X }` bindings. */
+  isTypeOnly?: boolean;
+  /** True only for the default binding in an ordinary `import X, { y }` statement. */
+  isCombinedDefaultImport?: boolean;
 }
 
 /**
@@ -60,9 +65,9 @@ export interface ParsedImportDescriptor {
  * the same data into the opaque `${modulePath}::${originalName}` string format EdgeComputer
  * expects (kept only for that consumer's backward compatibility).
  *
- * `originalName: "*"` marks namespace/default/whole-module bindings that don't resolve to a
- * single named symbol (e.g. `import * as X`, Python dotted `import a.b.c`, C's `#include`) —
- * callers (ScopeResolver.resolveCall) treat "*" as "fall back to the call name itself".
+ * `originalName: "*"` marks namespace, standalone default, and whole-module bindings that don't
+ * resolve to a single named symbol. A default binding in `import X, { y }` is marked explicitly
+ * as `originalName: "default"` so source-bound call resolution can handle only that narrow form.
  */
 export function parseImportDescriptors(
   importStatements: Node[],
@@ -128,47 +133,146 @@ function collectTsJsImportDescriptors(
   if (!sourceNode) return;
   const srcText = sourceNode.text.replace(/['"]/g, "");
 
+  const statementIsTypeOnly = /^import\s+type\b/u.test(stmt.text.trimStart());
+  if (collectNamespaceImport(stmt, srcText, statementIsTypeOnly, descriptors))
+    return;
+  if (collectNamedImport(stmt, srcText, statementIsTypeOnly, descriptors)) {
+    collectCombinedDefaultImport(
+      stmt,
+      srcText,
+      statementIsTypeOnly,
+      descriptors,
+    );
+    return;
+  }
+  collectDefaultImport(stmt, srcText, statementIsTypeOnly, descriptors);
+}
+
+function collectNamespaceImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): boolean {
   const namespaceImport = stmt.descendantsOfType("namespace_import")[0];
-  if (namespaceImport) {
-    const nsId = namespaceImport.descendantsOfType("identifier")[0];
-    if (nsId) {
-      descriptors.push({
-        localName: nsId.text,
-        originalName: WILDCARD_IMPORT_MARKER,
-        modulePath: srcText,
-      });
-    }
-    return;
-  }
+  if (!namespaceImport) return false;
+  const namespaceName = namespaceImport.descendantsOfType("identifier")[0];
+  if (namespaceName)
+    descriptors.push({
+      localName: namespaceName.text,
+      originalName: WILDCARD_IMPORT_MARKER,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
+    });
+  return true;
+}
 
+function collectNamedImport(
+  stmt: Node,
+  modulePath: string,
+  statementIsTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): boolean {
   const namedImports = stmt.descendantsOfType("named_imports")[0];
-  if (namedImports) {
-    const specifiers = namedImports.descendantsOfType("import_specifier");
-    for (const spec of specifiers) {
-      if (!spec) continue;
-      const nameNode = spec.childForFieldName("name");
-      const aliasNode = spec.childForFieldName("alias");
-      if (nameNode) {
-        const importedName = nameNode.text;
-        const localName = aliasNode ? aliasNode.text : importedName;
-        descriptors.push({
-          localName,
-          originalName: importedName,
-          modulePath: srcText,
-        });
-      }
-    }
-    return;
+  if (!namedImports) return false;
+  for (const spec of namedImports.descendantsOfType("import_specifier")) {
+    if (!spec) continue;
+    collectNamedImportSpecifier(
+      spec,
+      modulePath,
+      statementIsTypeOnly,
+      descriptors,
+    );
   }
+  return true;
+}
 
+function collectNamedImportSpecifier(
+  spec: Node,
+  modulePath: string,
+  statementIsTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
+  const nameNode = spec.childForFieldName("name");
+  if (!nameNode) return;
+  const aliasNode = spec.childForFieldName("alias");
+  const importedName = nameNode.text;
+  descriptors.push({
+    localName: aliasNode ? aliasNode.text : importedName,
+    originalName: importedName,
+    modulePath,
+    ...(statementIsTypeOnly || /^type\s/u.test(spec.text.trimStart())
+      ? { isTypeOnly: true }
+      : {}),
+  });
+}
+
+function collectCombinedDefaultImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
+  const defaultName = combinedDefaultImportName(stmt);
+  if (
+    !defaultName ||
+    !hasNamedImportClause(stmt) ||
+    !hasNamedImportSpecifier(stmt)
+  )
+    return;
+  descriptors.push({
+    localName: defaultName,
+    originalName: "default",
+    modulePath,
+    isCombinedDefaultImport: true,
+    ...(isTypeOnly ? { isTypeOnly: true } : {}),
+  });
+}
+
+function combinedDefaultImportName(stmt: Node): string | undefined {
+  const importClause = stmt.descendantsOfType("import_clause")[0];
+  const clauseChildren = (importClause?.namedChildren ?? []).filter(
+    (child): child is Node => child !== null,
+  );
+  const defaultBinding = clauseChildren.find(
+    (child) => child.type === "identifier",
+  );
+  const sourceDefaultName = stmt.text
+    .trimStart()
+    .match(
+      /^import\s+(?:type\s+)?([$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*)\s*,\s*\{/u,
+    )?.[1];
+  return defaultBinding?.text ?? sourceDefaultName;
+}
+
+function hasNamedImportClause(stmt: Node): boolean {
+  const importClause = stmt.descendantsOfType("import_clause")[0];
+  const children = importClause?.namedChildren ?? [];
+  if (children.some((child) => child?.type === "named_imports")) return true;
+  return /^import\s+(?:type\s+)?[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*\s*,\s*\{/u.test(
+    stmt.text.trimStart(),
+  );
+}
+
+function hasNamedImportSpecifier(stmt: Node): boolean {
+  const namedImports = stmt.descendantsOfType("named_imports")[0];
+  return Boolean(namedImports?.descendantsOfType("import_specifier").length);
+}
+
+function collectDefaultImport(
+  stmt: Node,
+  modulePath: string,
+  isTypeOnly: boolean,
+  descriptors: ParsedImportDescriptor[],
+): void {
   const defaultId = stmt.descendantsOfType("identifier")[0];
-  if (defaultId) {
+  if (defaultId)
     descriptors.push({
       localName: defaultId.text,
       originalName: WILDCARD_IMPORT_MARKER,
-      modulePath: srcText,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
     });
-  }
 }
 
 // ── Python ────────────────────────────────────────────────────────────
@@ -206,6 +310,113 @@ function collectTsJsExportFromDescriptors(
       viaReexport: true,
     });
   }
+}
+
+function reexportModulePath(statement: Node): string | undefined {
+  const sourceNode = statement.childForFieldName("source");
+  return sourceNode ? sourceNode.text.replace(/^['"]|['"]$/gu, "") : undefined;
+}
+
+function isTypeOnlyReexport(statement: Node, specifier?: Node): boolean {
+  return (
+    /^export\s+type\b/u.test(statement.text.trimStart()) ||
+    (specifier !== undefined &&
+      /^type(?:\s|$)/u.test(specifier.text.trimStart()))
+  );
+}
+
+function parseExportSpecifier(
+  statement: Node,
+  modulePath: string | undefined,
+  specifier: Node,
+): AstReexportDescriptor | null {
+  const nameNode = specifier.childForFieldName("name");
+  if (!nameNode) return null;
+  const aliasNode = specifier.childForFieldName("alias");
+  const isTypeOnly = isTypeOnlyReexport(statement, specifier);
+  const exportedName = aliasNode?.text ?? nameNode.text;
+  if (modulePath !== undefined)
+    return {
+      kind: "named",
+      exportedName,
+      importedName: nameNode.text,
+      modulePath,
+      ...(isTypeOnly ? { isTypeOnly: true } : {}),
+    };
+  return {
+    kind: "local",
+    exportedName,
+    localName: nameNode.text,
+    ...(isTypeOnly ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseExportClause(
+  statement: Node,
+  modulePath: string | undefined,
+): AstReexportDescriptor[] | null {
+  const exportClause = statement.descendantsOfType("export_clause")[0];
+  if (!exportClause) return null;
+  return exportClause
+    .descendantsOfType("export_specifier")
+    .flatMap((specifier) => {
+      if (!specifier) return [];
+      const descriptor = parseExportSpecifier(statement, modulePath, specifier);
+      return descriptor ? [descriptor] : [];
+    });
+}
+
+function parseNamespaceReexport(
+  statement: Node,
+  modulePath: string,
+): AstReexportDescriptor | null {
+  const namespaceName = statement.text
+    .trimStart()
+    .match(
+      /^export\s+(?:type\s+)?\*\s+as\s+([$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*)/u,
+    )?.[1];
+  if (!namespaceName) return null;
+  return {
+    kind: "namespace",
+    exportedName: namespaceName,
+    modulePath,
+    ...(isTypeOnlyReexport(statement) ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseStarReexport(
+  statement: Node,
+  modulePath: string,
+): AstReexportDescriptor | null {
+  if (!/^export\s+(?:type\s+)?\*\s+from\b/u.test(statement.text.trimStart()))
+    return null;
+  return {
+    kind: "star",
+    exportedName: "*",
+    modulePath,
+    ...(isTypeOnlyReexport(statement) ? { isTypeOnly: true } : {}),
+  };
+}
+
+function parseReexportStatement(statement: Node): AstReexportDescriptor[] {
+  const modulePath = reexportModulePath(statement);
+  const exportClause = parseExportClause(statement, modulePath);
+  if (exportClause) return exportClause;
+  if (modulePath === undefined) return [];
+  const namespace = parseNamespaceReexport(statement, modulePath);
+  if (namespace) return [namespace];
+  const star = parseStarReexport(statement, modulePath);
+  return star ? [star] : [];
+}
+
+/** Extracts TS/JS export-clause syntax without adding synthetic import bindings. */
+export function parseReexportDescriptors(root: Node): AstReexportDescriptor[] {
+  const descriptors: AstReexportDescriptor[] = [];
+  for (const statement of root.namedChildren) {
+    if (statement?.type !== TreeSitterNodeTypes.EXPORT_STATEMENT) continue;
+    descriptors.push(...parseReexportStatement(statement));
+  }
+  return descriptors;
 }
 
 function collectPythonFromStatementDescriptors(
@@ -601,6 +812,9 @@ export function buildScopeMap(
 ): Map<string, string> {
   const scopeMap = new Map<string, string>();
   for (const d of parseImportDescriptors(importStatements)) {
+    // Combined-default descriptors exist only for source-bound candidate generation. Keep the
+    // legacy EdgeComputer projection byte-for-byte stable for graph consumers.
+    if (d.isCombinedDefaultImport) continue;
     scopeMap.set(
       d.localName,
       d.originalName === WILDCARD_IMPORT_MARKER

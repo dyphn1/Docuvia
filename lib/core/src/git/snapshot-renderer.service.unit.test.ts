@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { L2NodeRow, L3NodeRow, NodeLinkRow } from "@workspace/contracts";
+import type {
+  L2NodeRow,
+  L3NodeRow,
+  NodeLinkRow,
+  SnapshotCallResolutionRow,
+} from "@workspace/contracts";
 import { SnapshotRendererService } from "./snapshot-renderer.service.js";
 
 function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
@@ -427,6 +432,125 @@ describe("SnapshotRendererService.render()", () => {
       ).toBe(
         fs.readFileSync(path.join(outDir, "graph", "metadata.json"), "utf8"),
       );
+    } finally {
+      fs.rmSync(secondDir, { recursive: true, force: true });
+    }
+  });
+
+  it("[state-diff] writes versioned call resolutions in stable bytes beside raw call sites", async () => {
+    const callSites = [
+      {
+        filePath: "src/caller.ts",
+        targetFunction: "run",
+        startLine: 4,
+        startColumn: 8,
+        calleeName: "open",
+        receiverText: "service",
+        calleeKind: "member",
+      },
+    ];
+    const callResolutions: SnapshotCallResolutionRow[] = [
+      {
+        callSiteKey: "site-z",
+        identityVersion: 1,
+        filePath: "src/caller.ts",
+        sourceContentHash: "caller-hash",
+        startLine: 4,
+        startColumn: 8,
+        calleeKind: "member",
+        calleeName: "open",
+        callerNodeKey: "src/caller.ts#run",
+        projectionCallerNodeKey: "src/caller.ts#run",
+        resolutionClass: "likely",
+        selectedTargetNodeKey: "src/target.ts#open",
+        confidence: 0.91,
+        resolver: "system-one",
+        ruleSignature: "declared-member-hypothesis-v6",
+        dependencyFingerprint: "fingerprint-1",
+        dependencies: [
+          { filePath: "src/target.ts", contentHash: "target-hash" },
+        ],
+        verificationStatus: "unverified",
+        verifiedTargetNodeKey: null,
+        isStale: false,
+        candidates: [
+          {
+            targetNodeKey: "src/other.ts#open",
+            ordinal: 1,
+            evidenceJson: '{"signal":"name"}',
+          },
+          {
+            targetNodeKey: "src/target.ts#open",
+            ordinal: 0,
+            evidenceJson: '{"signal":"type"}',
+          },
+        ],
+      },
+    ];
+    const metadata = {
+      files: [],
+      snapshotVersion: 1,
+      capabilities: {
+        callSites: { version: 1 },
+        callResolutions: { version: 1 },
+      },
+    };
+
+    await renderer.render({
+      outDir,
+      l2Rows: [],
+      linkRows: [],
+      callSites,
+      callResolutions,
+      metadata,
+    });
+
+    const resolutionsPath = path.join(
+      outDir,
+      "graph",
+      "call-resolutions.jsonl",
+    );
+    const resolutionBytes = fs.readFileSync(resolutionsPath, "utf8");
+    const expectedResolution = {
+      ...callResolutions[0],
+      candidates: [
+        {
+          targetNodeKey: "src/target.ts#open",
+          ordinal: 0,
+          evidenceJson: '{"signal":"type"}',
+        },
+        {
+          targetNodeKey: "src/other.ts#open",
+          ordinal: 1,
+          evidenceJson: '{"signal":"name"}',
+        },
+      ],
+    };
+    expect(readJsonl(resolutionsPath)).toStrictEqual([expectedResolution]);
+    expect(
+      fs.readFileSync(path.join(outDir, "graph", "call-sites.jsonl"), "utf8"),
+    ).toBe(
+      '{"filePath":"src/caller.ts","targetFunction":"run","startLine":4,"startColumn":8,"calleeName":"open","receiverText":"service","calleeKind":"member"}\n',
+    );
+
+    const secondDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-call-resolution-repeat-"),
+    );
+    try {
+      await renderer.render({
+        outDir: secondDir,
+        l2Rows: [],
+        linkRows: [],
+        callSites,
+        callResolutions: [...callResolutions].reverse(),
+        metadata,
+      });
+      expect(
+        fs.readFileSync(
+          path.join(secondDir, "graph", "call-resolutions.jsonl"),
+          "utf8",
+        ),
+      ).toBe(resolutionBytes);
     } finally {
       fs.rmSync(secondDir, { recursive: true, force: true });
     }

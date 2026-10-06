@@ -14,11 +14,16 @@ import { GitConstants } from "@workspace/contracts";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type TierBBatchResult } from "./analyze-result.js";
-import { readTierBQueue, type TierBQueueEntry } from "./tier-b-queue.js";
+import {
+  prioritizeTierBQueueByCallResolution,
+  readTierBQueue,
+  type TierBQueueEntry,
+} from "./tier-b-queue.js";
 import { queueFullTierBResync } from "./queue-full-tier-b-resync.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import { runTierCDrain } from "./run-tier-c-drain.js";
+import type { CallResolutionTierBCanaryPolicy } from "./call-resolution-tier-b-canary.js";
 import {
   resolveEdgesForLanguageBuckets,
   type MergedEdgeResolutionOutcome,
@@ -74,6 +79,9 @@ export interface TierBBatchDeps {
   /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) --
    *  pre-populates `tierBQueue` with every currently-tracked file before the batch drains it. */
   full?: boolean;
+  /** Unseen-certified signatures may keep non-canary sites on their strict result; all other
+   *  sites remain on Tier B. Omit to preserve the legacy all-sites Tier B behavior. */
+  callResolutionCanary?: CallResolutionTierBCanaryPolicy;
 }
 
 /**
@@ -393,7 +401,7 @@ async function dispatchQueue(
   droppedDeleted: TierBQueueEntry[];
   skippedLanguage: TierBQueueEntry[];
 }> {
-  const { workspaceRoot } = deps;
+  const { workspaceRoot, store } = deps;
   const existing: TierBQueueEntry[] = [];
   const droppedDeleted: TierBQueueEntry[] = [];
 
@@ -404,6 +412,17 @@ async function dispatchQueue(
   }
 
   const { buckets, unsupported } = partitionQueueByLanguage(existing);
+  // Preserve the language bucket insertion order from the original queue; prioritize only files
+  // within each bucket so this policy cannot change which provider runs first.
+  for (const languageId of Object.keys(buckets) as TierBLanguageId[]) {
+    const entries = buckets[languageId];
+    if (entries) {
+      buckets[languageId] = prioritizeTierBQueueByCallResolution(
+        store,
+        entries,
+      );
+    }
+  }
   return {
     buckets,
     toProcess: Object.values(buckets).flatMap((entries) => entries ?? []),
@@ -485,13 +504,36 @@ async function resolveEdgesForQueue(
   deps: TierBBatchDeps,
   buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
 ): Promise<MergedEdgeResolutionOutcome> {
-  const { workspaceRoot, logger, providerConfig, store, git } = deps;
+  const {
+    workspaceRoot,
+    logger,
+    providerConfig,
+    store,
+    git,
+    callResolutionCanary,
+  } = deps;
+  const project = store.projects.getFirst();
+  const localQuarantines = project
+    ? (store.callSiteResolutions?.getQuarantinedRuleSignatures?.(project.id) ??
+      [])
+    : [];
+  const effectiveCanaryPolicy =
+    localQuarantines.length === 0
+      ? callResolutionCanary
+      : {
+          ...callResolutionCanary,
+          quarantinedRuleSignatures: new Set([
+            ...(callResolutionCanary?.quarantinedRuleSignatures ?? []),
+            ...localQuarantines,
+          ]),
+        };
   return resolveEdgesForLanguageBuckets(buckets, {
     workspaceRoot,
     logger,
     providerConfig,
     store,
     git,
+    callResolutionCanary: effectiveCanaryPolicy,
   });
 }
 
@@ -523,55 +565,13 @@ async function applyResolvedEdges(
 
   await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
     await store.withWriteLock(() => {
-      currentBatchEntries = retainEntriesStillInTierBQueue(batchEntries, store);
-      const currentBatchFiles = new Set(
-        currentBatchEntries.map((entry) => entry.file),
+      const applied = store.withTransaction(() =>
+        applyTierBBatchWrites(store, outcome, headSha, batchEntries),
       );
-      processedFiles = outcome.filesProcessed.filter((file) =>
-        currentBatchFiles.has(file),
-      );
-
-      const existingLinks = new Set(
-        store.graph
-          .getAllLinks()
-          .map(
-            (l) => `${l.source_node_id}->${l.target_node_id}->${l.link_type}`,
-          ),
-      );
-
-      for (const edge of outcome.edges) {
-        if (!isNodeKeyInFiles(edge.sourceNodeKey, currentBatchFiles)) {
-          continue;
-        }
-
-        const sourceId = store.graph.findNodeIdByNodeKey(edge.sourceNodeKey);
-        const targetId = store.graph.findNodeIdByNodeKey(edge.targetNodeKey);
-        if (sourceId === undefined || targetId === undefined) continue;
-
-        const linkKey = `${sourceId}->${targetId}->${LinkTypes.CALLS}`;
-        if (existingLinks.has(linkKey)) continue;
-        existingLinks.add(linkKey);
-
-        store.graph.insertLink({
-          sourceNodeId: sourceId,
-          targetNodeId: targetId,
-          linkType: LinkTypes.CALLS,
-        });
-        edgesApplied++;
-      }
-
-      edgesPruned = store.graph.pruneOrphanedLinks();
-
-      const project = store.projects.getFirst();
-      if (project) {
-        for (const file of processedFiles) {
-          store.files.markTierBProcessed({
-            projectId: project.id,
-            filePath: file,
-            commitSha: headSha,
-          });
-        }
-      }
+      edgesApplied = applied.edgesApplied;
+      edgesPruned = applied.edgesPruned;
+      currentBatchEntries = applied.currentBatchEntries;
+      processedFiles = applied.processedFiles;
     });
   });
 
@@ -581,6 +581,86 @@ async function applyResolvedEdges(
     currentBatchEntries,
     processedFiles,
   };
+}
+
+function applyTierBBatchWrites(
+  store: IGraphStore,
+  outcome: MergedEdgeResolutionOutcome,
+  headSha: string | null,
+  batchEntries: TierBQueueEntry[],
+): {
+  edgesApplied: number;
+  edgesPruned: number;
+  currentBatchEntries: TierBQueueEntry[];
+  processedFiles: string[];
+} {
+  const currentBatchEntries = retainEntriesStillInTierBQueue(
+    batchEntries,
+    store,
+  );
+  const currentBatchFiles = new Set(
+    currentBatchEntries.map((entry) => entry.file),
+  );
+  const processedFiles = outcome.filesProcessed.filter((file) =>
+    currentBatchFiles.has(file),
+  );
+  const edgesApplied = applyAggregateCallEdges(
+    store,
+    outcome.edges,
+    currentBatchFiles,
+  );
+
+  const project = store.projects.getFirst();
+  if (project && outcome.callSiteResults?.length) {
+    store.callSiteResolutions?.applyTierBVerificationResults(
+      project.id,
+      outcome.callSiteResults,
+    );
+  }
+  const edgesPruned = store.graph.pruneOrphanedLinks();
+
+  if (project) {
+    for (const file of processedFiles) {
+      store.files.markTierBProcessed({
+        projectId: project.id,
+        filePath: file,
+        commitSha: headSha,
+      });
+    }
+  }
+  return { edgesApplied, edgesPruned, currentBatchEntries, processedFiles };
+}
+
+function applyAggregateCallEdges(
+  store: IGraphStore,
+  edges: MergedEdgeResolutionOutcome["edges"],
+  currentBatchFiles: ReadonlySet<string>,
+): number {
+  let edgesApplied = 0;
+  const existingLinks = new Set(
+    store.graph
+      .getAllLinks()
+      .map(
+        (link) =>
+          `${link.source_node_id}->${link.target_node_id}->${link.link_type}`,
+      ),
+  );
+  for (const edge of edges) {
+    if (!isNodeKeyInFiles(edge.sourceNodeKey, currentBatchFiles)) continue;
+    const sourceId = store.graph.findNodeIdByNodeKey(edge.sourceNodeKey);
+    const targetId = store.graph.findNodeIdByNodeKey(edge.targetNodeKey);
+    if (sourceId === undefined || targetId === undefined) continue;
+    const linkKey = `${sourceId}->${targetId}->${LinkTypes.CALLS}`;
+    if (existingLinks.has(linkKey)) continue;
+    existingLinks.add(linkKey);
+    store.graph.insertLink({
+      sourceNodeId: sourceId,
+      targetNodeId: targetId,
+      linkType: LinkTypes.CALLS,
+    });
+    edgesApplied++;
+  }
+  return edgesApplied;
 }
 
 /** Symbol node keys use `<file>#<symbol>`; file-level keys are the file path alone. Git paths may

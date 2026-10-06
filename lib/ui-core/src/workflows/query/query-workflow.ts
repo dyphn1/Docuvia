@@ -23,7 +23,11 @@ export class QueryWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  public async execute(target: string, limit?: number): Promise<QueryResult> {
+  public async execute(
+    target: string,
+    limit?: number,
+    options?: { explainResolution?: boolean },
+  ): Promise<QueryResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(QUERY_MESSAGES.QUERYING);
@@ -61,7 +65,9 @@ export class QueryWorkflow {
       const queryService = docuviaFactory.resolve(TOKENS.QueryService, {
         logger,
       });
-      const result = queryService.query(store, target, limit);
+      const result = options?.explainResolution
+        ? queryService.query(store, target, limit, options)
+        : queryService.query(store, target, limit);
 
       const found =
         Boolean(result.l2) || result.l3.length > 0 || Boolean(result.context);

@@ -1,0 +1,11 @@
+{
+  "summaryPath": "evaluate/results/semantic-corpus/v1/phase2-p2a-v6-default-import-impact/default-import-impact-summary.json",
+  "summarySha256": "d4ce88988d339f031f5d67b8e83a9723f85d35904227e85d5af0cff47c4ddbf7",
+  "replayPath": "evaluate/results/semantic-corpus/v1/phase2-p2a-v6-default-import-impact/default-import-paired-replay.jsonl",
+  "replaySha256": "376b702315470063d1484a60f47e124a3dfc89c1ddf7138538b5e3170f9ce7b3",
+  "pinnedSliceAReplaySha256": "c1147a42d82855d50c59e8ddd2a2215d91c58de805536d3dcce51e232c0cbc64",
+  "graphParitySummaryPath": "docs/gitbook/analysis/tiered-call-resolution-phase2-p2a-default-import-feature-b-evidence/whole-graph-parity-summary.json",
+  "graphParitySummarySha256": "e99c918fb09fd1c9663600fc92f800e39c0e47774f4f631da9ee61ea54da58c7",
+  "graphParityRunnerPath": "scripts/semantic-corpus/phase2-default-import-graph-parity.mts",
+  "graphParityRunnerSha256": "00a0e3aa9db958bafedd8edd01ee00827a7c49742479037ef5dab935559ea3ea"
+}

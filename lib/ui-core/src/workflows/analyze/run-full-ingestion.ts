@@ -63,6 +63,9 @@ export async function runFullIngestion(deps: {
   });
 
   const project = await seedProjectRow(store.projects, git, workspaceRoot);
+  await store.withWriteLock(() => {
+    store.callSiteResolutions?.invalidateAll(project.id);
+  });
 
   const discoveryResult = await runDiscoveryPipeline({
     configScanner,
@@ -97,6 +100,7 @@ export async function runFullIngestion(deps: {
       workspaceRoot,
       projectId: project.id,
       filesToParse: discoveryResult.filesToParse,
+      candidateFileCount: discoveryResult.candidateFileCount,
       skippedOversized: discoveryResult.skippedOversized,
       tags: discoveryResult.tags,
       appendLogLine: appendAnalyzeLogLine,

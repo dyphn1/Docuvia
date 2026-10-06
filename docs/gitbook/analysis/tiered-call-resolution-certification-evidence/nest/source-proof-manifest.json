@@ -1,0 +1,114 @@
+{
+  "corpusManifestSha256": "376f10329063d81e9c128465f95562c2d284122cbd4a5e24ab6f6958f5fd2054",
+  "collectionReportSha256": "60d5238c6184125317d4fda9bf3f720d34d91f45289dc10c16f6c18dfdd135d4",
+  "combinedProofSitesSha256": "01c2115cf0dec17356d67f299a66c48edf5e3f32f4a1a28bf839dd65c44ebff4",
+  "evaluationResultsSha256": "9698b420b4c0718eba3721490d9122d05e43ec40a89913d8714664c59c286109",
+  "datasetHash": "98e07c6a51305f480f8a82c39b704e8a960770d89c87141ac543109807a66be2",
+  "prelabelSamples": 516,
+  "prelabelDuplicateGroups": 493,
+  "sourceProofSites": 1610,
+  "proofSitesInFrozenCorpus": 54,
+  "proofSitesOutsideFrozenCorpus": 1556,
+  "ruleProofs": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "wholeSourcePersistedProofSites": 688,
+      "inFrozenSampleProofSites": 20,
+      "outsideFrozenSampleProofSites": 668,
+      "inFrozenSampleDuplicateGroups": 20
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "wholeSourcePersistedProofSites": 188,
+      "inFrozenSampleProofSites": 5,
+      "outsideFrozenSampleProofSites": 183,
+      "inFrozenSampleDuplicateGroups": 5
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "wholeSourcePersistedProofSites": 6,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 6,
+      "inFrozenSampleDuplicateGroups": 0
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "wholeSourcePersistedProofSites": 0,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 0,
+      "inFrozenSampleDuplicateGroups": 0
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "wholeSourcePersistedProofSites": 405,
+      "inFrozenSampleProofSites": 8,
+      "outsideFrozenSampleProofSites": 397,
+      "inFrozenSampleDuplicateGroups": 8
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "wholeSourcePersistedProofSites": 323,
+      "inFrozenSampleProofSites": 21,
+      "outsideFrozenSampleProofSites": 302,
+      "inFrozenSampleDuplicateGroups": 19
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "wholeSourcePersistedProofSites": 0,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 0,
+      "inFrozenSampleDuplicateGroups": 0
+    }
+  ],
+  "sourceParity": {
+    "q1": {
+      "sourceManifestSha256": "71780b1f51b9bbb902ce90258b8f054b8e78fa0c221848804606cc1bb064ee82",
+      "sourceFiles": 2054,
+      "parsedFiles": 2054,
+      "parseFailures": 0,
+      "proofSites": 688,
+      "persistedResolutionRows": 688,
+      "allServiceProofsPersisted": true,
+      "missingPersistenceCounts": {},
+      "missingPersistenceExamples": [],
+      "peakRssBytes": 2317238272
+    },
+    "q2": {
+      "sourceManifestSha256": "71780b1f51b9bbb902ce90258b8f054b8e78fa0c221848804606cc1bb064ee82",
+      "sourceFiles": 2054,
+      "parsedFiles": 2054,
+      "parseFailures": 0,
+      "proofSites": 188,
+      "persistedResolutionRows": 188,
+      "allServiceProofsPersisted": true,
+      "missingPersistenceCounts": {},
+      "missingPersistenceExamples": [],
+      "peakRssBytes": 2160672768
+    },
+    "q3": {
+      "sourceManifestSha256": "71780b1f51b9bbb902ce90258b8f054b8e78fa0c221848804606cc1bb064ee82",
+      "sourceFiles": 2054,
+      "parsedFiles": 2054,
+      "parseFailures": 0,
+      "proofSites": 734,
+      "persistedResolutionRows": 734,
+      "allServiceProofsPersisted": true,
+      "missingPersistenceCounts": {},
+      "missingPersistenceExamples": [],
+      "peakRssBytes": 2318221312
+    }
+  },
+  "q3UnpersistedCandidatesAtFrozenLocations": [],
+  "q3UnpersistedCandidatesOutsideFrozenLocations": [],
+  "copiedArtifactSha256": {
+    "nest/oracle/corpus-manifest.json": "376f10329063d81e9c128465f95562c2d284122cbd4a5e24ab6f6958f5fd2054",
+    "nest/oracle/collection-report.json": "60d5238c6184125317d4fda9bf3f720d34d91f45289dc10c16f6c18dfdd135d4",
+    "nest/oracle/run-manifest.json": "cf7204c28501d85ffdc6bbc4c019db140163861c76c7972f74e01a551193175b",
+    "nest/oracle/collection-progress.json": "c77fece3c6333aa6d25cbccc723708204d60fbbd575247536e0523c6000987aa",
+    "nest/proof-sites.json": "01c2115cf0dec17356d67f299a66c48edf5e3f32f4a1a28bf839dd65c44ebff4",
+    "nest/evaluation-results.json": "9698b420b4c0718eba3721490d9122d05e43ec40a89913d8714664c59c286109",
+    "nest/source-parity/q1-summary.jsonl": "33d9a5177c2accbd6fd4fba831c1c9c135396866d4db9a35ddf0154d6b9259b6",
+    "nest/source-parity/q2-summary.jsonl": "58801ab505c00e139a02c3e58943e95910479e979ccbdd68a1d58123a5a8631c",
+    "nest/source-parity/q3-summary.jsonl": "3e9a5a921c19a4f1eb32733737604a15b4f8fe965b0ef0b6236105a45782b46d"
+  }
+}

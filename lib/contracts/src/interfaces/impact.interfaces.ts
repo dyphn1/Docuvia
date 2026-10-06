@@ -1,4 +1,8 @@
 import type { IGraphStore } from "./graph-store.interfaces.js";
+import type {
+  CallResolutionImpactBreakdown,
+  CallResolutionSummary,
+} from "./call-resolution-output.interfaces.js";
 
 /**
  * Blast-radius risk scoring (Domain Core logic — see
@@ -135,6 +139,8 @@ export interface BlastRadiusEntry {
    * `{ name, type }` entry keep passing.
    */
   why?: Array<{ title: string; content: string | null }>;
+  /** Per-site certainty for an incoming call edge. */
+  callResolutions?: CallResolutionSummary[];
 }
 
 export interface IImpactService {
@@ -154,7 +160,15 @@ export interface IImpactService {
   getBlastRadius(
     store: IGraphStore,
     target: string,
+    options?: { explainResolution?: boolean },
   ): BlastRadiusEntry[] | undefined;
+  /** Exact per-site certainty for one incoming calls projection, including explicit unknown. */
+  getCallResolutionForEdge?(
+    store: IGraphStore,
+    callerNodeKey: string | undefined,
+    targetNodeKey: string | undefined,
+    options?: { explainResolution?: boolean },
+  ): CallResolutionSummary[];
   /** Issue #393: target-relevant bounded candidates plus globally-unbounded runtime evidence.
    * Optional for compatibility with test doubles/alternate implementations predating #393. */
   getDynamicEvidence?(

@@ -5,6 +5,7 @@ import type {
   EpistemicLevel,
   RiskLevel,
   TierBCoverageHint,
+  CallResolutionImpactBreakdown,
 } from "@workspace/contracts";
 
 /** Issue #508 Phase 3 (D8): the graph describes `graphSourceSha`, not source `HEAD`. */
@@ -17,6 +18,8 @@ export interface ImpactGraphFreshness {
 
 export interface ImpactResult {
   blastRadius: BlastRadiusEntry[];
+  /** Call-edge contributions are separated by certainty; existing risk totals remain compatible. */
+  callResolutionBreakdown?: CallResolutionImpactBreakdown;
   /** Issue #192: an empty confirmed blast radius is UNKNOWN, never LOW (see `RiskLevels.UNKNOWN`). */
   riskLevel: RiskLevel;
   /** Issue #192/#393: omitted entirely when `exact`; present with `lower-bound` whenever static

@@ -30,6 +30,7 @@ import { CsharpLspEdgeProvider } from "./lsp/csharp-lsp-edge-provider.js";
 import { PhpLspEdgeProvider } from "./lsp/php-lsp-edge-provider.js";
 import { RubyLspEdgeProvider } from "./lsp/ruby-lsp-edge-provider.js";
 import { SemanticDecisionValidator } from "./semantic/semantic-decision-validator.js";
+import { CallResolutionHypothesisService } from "./semantic/call-resolution-hypothesis.service.js";
 import { acquireProcessLock } from "./process/process-lock.js";
 
 export interface CoreRegistrationOptions {
@@ -98,7 +99,13 @@ export function registerCoreProviders(
     return new AstProcessingService(sharedAstWorkerPool, params?.logger);
   });
 
-  factory.register(TOKENS.GraphPersister, () => new GraphPersisterService());
+  factory.register(
+    TOKENS.GraphPersister,
+    (f) =>
+      new GraphPersisterService(
+        f.resolve(TOKENS.CallResolutionHypothesisService),
+      ),
+  );
 
   factory.register(
     TOKENS.TempFileManager,
@@ -125,6 +132,11 @@ export function registerCoreProviders(
   factory.register(TOKENS.TierBCoverageHintProvider, () => ({
     resolve: resolveTierBCoverageHint,
   }));
+
+  factory.register(
+    TOKENS.CallResolutionHypothesisService,
+    () => new CallResolutionHypothesisService(),
+  );
 
   factory.register(
     TOKENS.ImpactService,

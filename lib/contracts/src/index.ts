@@ -47,6 +47,7 @@ export type {
 export type {
   EdgeResolutionAvailability,
   EdgeResolutionCallSite,
+  CallResolutionCanaryRequestMetadata,
   EdgeResolutionFileFailure,
   EdgeResolutionOutcome,
   EdgeResolutionProviderConfig,
@@ -103,7 +104,9 @@ export type {
 export type { IDiscoverableSourceFileProvider } from "./interfaces/discovery.interfaces.js";
 export type {
   AstExportKind,
+  AstExportDescriptor,
   AstImportDescriptor,
+  AstReexportDescriptor,
   ParsedAstFileData,
   ParsedAstFileResult,
   AstParseFailure,
@@ -111,6 +114,67 @@ export type {
   IAstProcessor,
 } from "./interfaces/ast.interfaces.js";
 export { AstExportKinds } from "./interfaces/ast.interfaces.js";
+export type {
+  AstDeclaredCallableArity,
+  AstDeclaredDeclaration,
+  AstDeclaredDeclarationKind,
+  AstDeclaredOwnerInventory,
+  AstDeclaredTypeFact,
+  AstDeclaredTypeFactKind,
+  AstDeclaredTypeFacts,
+  AstDeclaredTypeLanguage,
+  AstDeclaredTypeOwner,
+  AstDeclaredTypeOwnerKind,
+  AstQ3NewReceiverBindingFact,
+  AstQ3ClassDeclarationFact,
+  AstQ3ReceiverFacts,
+  AstQ3TypeAliasFact,
+  AstDeclaredUnsupportedReason,
+  AstDeclaredVisibility,
+  AstUtf16Span,
+} from "./interfaces/declared-type-facts.interfaces.js";
+export { AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
+export { AST_Q3_RECEIVER_FACTS_SCHEMA_VERSION } from "./interfaces/declared-type-facts.interfaces.js";
+export type {
+  AstCallCalleeBinding,
+  AstCallArgumentKind,
+  AstCallReceiverBinding,
+  AstCallReceiverBindingKind,
+  AstCallSiteShapeFact,
+  AstCallSiteShapeFacts,
+} from "./interfaces/call-site-shape-facts.interfaces.js";
+export { AST_CALL_SITE_SHAPE_SCHEMA_VERSION } from "./interfaces/call-site-shape-facts.interfaces.js";
+export {
+  createPortableCallSiteKey,
+  type PortableCallSiteKeyInput,
+} from "./graph/call-site-identity.js";
+export type {
+  CallResolutionCalibrationFamilyMetric,
+  CallResolutionCalibrationRecord,
+  CallResolutionHypothesisCandidate,
+  CallResolutionStrictProof,
+  CallResolutionStrictProofReason,
+  CallResolutionHypothesisFilterStage,
+  CallResolutionHypothesisReason,
+  CallResolutionHypothesisRequest,
+  CallResolutionHypothesisResult,
+  CallResolutionHypothesisServiceOptions,
+  CallResolutionHypothesisSourceFile,
+  CallResolutionConfiguredPathAliases,
+  CallResolutionHypothesisWorkspaceIndex,
+  CallResolutionHypothesisWorkspaceInput,
+  ICallResolutionHypothesisService,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export {
+  CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+  CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE,
+  CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
+  CALL_RESOLUTION_RANKING_POLICY_VERSION,
+  CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
+} from "./interfaces/call-resolution-hypothesis.interfaces.js";
 export type {
   ProjectRow,
   ProjectFileRow,
@@ -140,6 +204,21 @@ export type {
   AstCallSiteRow,
   SnapshotCallSiteRow,
   ICallSitesRepo,
+  CallSiteResolutionClass,
+  CallSiteVerificationStatus,
+  CallSiteResolutionObservationSource,
+  CallSiteResolutionCandidate,
+  CallSiteResolutionDependency,
+  CallSiteResolutionInvalidationResult,
+  CallSiteResolutionRecord,
+  SnapshotCallResolutionRow,
+  CallSiteResolutionProjectionCallerInput,
+  CallSiteResolutionObservationInput,
+  CallSiteResolutionObservation,
+  CallSiteLspResolutionResult,
+  CallSiteRuleQuarantine,
+  CallSiteVerificationApplyResult,
+  ICallSiteResolutionsRepo,
   L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
 export {
@@ -149,6 +228,11 @@ export {
   L3NodeTypes,
   ValidityStatuses,
   L3DecisionSources,
+  CallSiteResolutionClasses,
+  CallSiteVerificationStatuses,
+  CallSiteResolutionObservationSources,
+  CallSiteRuleQuarantineReasons,
+  CALL_SITE_VERIFICATION_POLICY_VERSION,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   ExtractedDecision,
@@ -234,6 +318,10 @@ export type {
   IQueryService,
   ITierBCoverageHintProvider,
 } from "./interfaces/query.interfaces.js";
+export type {
+  CallResolutionSummary,
+  CallResolutionImpactBreakdown,
+} from "./interfaces/call-resolution-output.interfaces.js";
 export { QueryResultLayers } from "./interfaces/query.interfaces.js";
 export { TOPOLOGY_VERSION } from "./interfaces/topology.interfaces.js";
 export type {
@@ -354,10 +442,14 @@ export {
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
   SNAPSHOT_CALL_SITES_VERSION,
   SNAPSHOT_CALL_SITES_JSONL_FILE_NAME,
+  SNAPSHOT_CALL_RESOLUTIONS_VERSION,
+  SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
   DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
   SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
+  SnapshotCallResolutionAvailabilityStates,
 } from "./constants/knowledge-snapshot.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,

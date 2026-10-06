@@ -77,6 +77,28 @@ export function makeMockStore(
       getForFiles: vi.fn().mockReturnValue(new Map()),
       getByTargetFunctions: vi.fn().mockReturnValue(new Map()),
     },
+    callSiteResolutions: {
+      replaceForFile: vi.fn(),
+      deleteForFile: vi.fn(),
+      getForFile: vi.fn().mockReturnValue([]),
+      applyTierBVerificationResults: vi.fn().mockReturnValue({
+        updatedCallSiteKeys: [],
+        affectedFilePaths: [],
+        quarantinedRuleSignatures: [],
+      }),
+      getQuarantinedRuleSignatures: vi.fn().mockReturnValue([]),
+      getRuleQuarantines: vi.fn().mockReturnValue([]),
+      invalidateChangedDependencies: vi.fn().mockReturnValue({
+        invalidatedCount: 0,
+        affectedFilePaths: [],
+      }),
+      invalidateAll: vi.fn().mockReturnValue({
+        invalidatedCount: 0,
+        affectedFilePaths: [],
+      }),
+      appendObservation: vi.fn(),
+      getObservations: vi.fn().mockReturnValue([]),
+    },
     withWriteLock: async (fn: any) => fn(),
     withTransaction: (fn: any) => fn(),
     withReadLock: async (fn: any) => fn(),

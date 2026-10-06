@@ -30,6 +30,7 @@ import type {
   ISemanticDecisionProvider,
   ISemanticDecisionValidator,
 } from "../interfaces/semantic-decision.interfaces.js";
+import type { ICallResolutionHypothesisService } from "../interfaces/call-resolution-hypothesis.interfaces.js";
 import type {
   IEdgeResolutionProvider,
   TierBLanguageId,
@@ -141,6 +142,10 @@ export const TOKENS = {
   SemanticDecisionProvider: createToken<ISemanticDecisionProvider>(
     "ISemanticDecisionProvider",
   ),
+  CallResolutionHypothesisService:
+    createToken<ICallResolutionHypothesisService>(
+      "ICallResolutionHypothesisService",
+    ),
   /** A registry, not a single builder function (multi-language-lsp-support plan, Finding A) — the
    *  `DocuviaFactory` itself stays single-value-per-token, so the *value* behind this one token is
    *  a `Partial<Record<TierBLanguageId, ...>>` map of per-language provider builders. The Tier B

@@ -433,6 +433,23 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     }
   }
 
+  getNodeKeyById(nodeId: number): string | undefined {
+    try {
+      const row = this.db
+        .prepare(
+          `SELECT ${SchemaColumns.NODE_KEY} as node_key FROM ${SchemaTables.L2_NODES} WHERE id = ?`,
+        )
+        .get(nodeId) as { node_key: string | null } | undefined;
+      return row?.node_key ?? undefined;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        `Failed to read node key for node ${nodeId}`,
+        err,
+      );
+    }
+  }
+
   /**
    * Nodes with an outgoing node_links edge INTO nodeId — the 1-hop "blast radius". `DISTINCT`
    * dedupes a neighbor that's connected by more than one edge type (e.g. both a `calls` and a

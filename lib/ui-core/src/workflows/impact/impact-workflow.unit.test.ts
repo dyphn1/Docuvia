@@ -166,6 +166,146 @@ describe("ImpactWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(2);
   });
 
+  it("[positive] keeps verified call certainty separate in the impact result", async () => {
+    const store = makeMockStore();
+    const callerNodeKey = "src/caller.ts#caller";
+    const targetNodeKey = "src/target.ts#target";
+    vi.mocked(store.graph.findNodeByName).mockReturnValue({
+      id: 10,
+      name: "target",
+      type: "module",
+      filePath: "src/target.ts",
+    });
+    vi.mocked(store.graph.getIncomingRelations).mockReturnValue([
+      { id: 20, name: "caller", type: "module", linkType: "calls" },
+    ]);
+    store.graph.getNodeKeyById = vi.fn((id) =>
+      id === 20 ? callerNodeKey : targetNodeKey,
+    );
+    const resolution = {
+      callSiteKey: "site-a",
+      resolutionClass: "proven" as const,
+      verificationStatus: "unverified" as const,
+      selectedTargetNodeKey: targetNodeKey,
+      evidenceLabel: "static-proof" as const,
+      isStale: false,
+      alternatives: [],
+      candidates: [],
+    };
+    const impactService: IImpactService = {
+      getBlastRadius: vi
+        .fn()
+        .mockReturnValue([{ name: "caller", type: "module" }]),
+      getCallResolutionForEdge: vi.fn().mockReturnValue([resolution]),
+      computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      getDynamicEvidence: vi.fn().mockReturnValue([]),
+    };
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target", { explainResolution: true });
+
+    expect(result?.blastRadius).toStrictEqual([
+      { name: "caller", type: "module", callResolutions: [resolution] },
+    ]);
+    expect(result?.callResolutionBreakdown).toStrictEqual({
+      verifiedProven: 1,
+      heuristicProvisional: 0,
+      unknown: 0,
+    });
+    expect(impactService.getCallResolutionForEdge).toHaveBeenCalledWith(
+      store,
+      callerNodeKey,
+      targetNodeKey,
+      { explainResolution: true },
+    );
+  });
+
+  it("[positive] counts mixed certainty per call edge instead of merging a dependent's evidence", async () => {
+    const store = makeMockStore();
+    const callerNodeKey = "src/caller.ts#caller";
+    const targetNodeKey = "src/target.ts#target";
+    vi.mocked(store.graph.findNodeByName).mockReturnValue({
+      id: 10,
+      name: "target",
+      type: "module",
+      filePath: "src/target.ts",
+    });
+    vi.mocked(store.graph.getIncomingRelations).mockReturnValue([
+      { id: 20, name: "caller", type: "module", linkType: "calls" },
+    ]);
+    store.graph.getNodeKeyById = vi.fn((id) =>
+      id === 20 ? callerNodeKey : targetNodeKey,
+    );
+    const resolutions = [
+      {
+        callSiteKey: "site-proven",
+        resolutionClass: "proven" as const,
+        verificationStatus: "unverified" as const,
+        selectedTargetNodeKey: targetNodeKey,
+        evidenceLabel: "static-proof" as const,
+        isStale: false,
+        alternatives: [],
+        candidates: [],
+      },
+      {
+        callSiteKey: "site-likely",
+        resolutionClass: "likely" as const,
+        verificationStatus: "unverified" as const,
+        selectedTargetNodeKey: targetNodeKey,
+        confidence: 0.8,
+        isStale: false,
+        alternatives: ["src/other.ts#target"],
+        candidates: [],
+      },
+      {
+        callSiteKey: "site-unknown",
+        resolutionClass: "unknown" as const,
+        verificationStatus: "unknown" as const,
+        selectedTargetNodeKey: null,
+        isStale: false,
+        alternatives: [],
+        candidates: [],
+      },
+    ];
+    const impactService: IImpactService = {
+      getBlastRadius: vi
+        .fn()
+        .mockReturnValue([{ name: "caller", type: "module" }]),
+      getCallResolutionForEdge: vi.fn().mockReturnValue(resolutions),
+      computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
+      getDynamicEvidence: vi.fn().mockReturnValue([]),
+    };
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
+
+    expect(result?.callResolutionBreakdown).toStrictEqual({
+      verifiedProven: 1,
+      heuristicProvisional: 1,
+      unknown: 1,
+    });
+  });
+
   it("[error-handling] passes an unavailable evidence state through as dynamicEvidenceUnavailable and lower-bound (#508 D1)", async () => {
     const store = makeMockStore();
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>

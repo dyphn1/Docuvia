@@ -20,15 +20,16 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEAK_PATTERNS="toBeDefined\(\)|toBeUndefined\(\)|toBeTruthy\(\)|toBeFalsy\(\)|toBeGreaterThan\(0\)"
 
 # ─── Prefer rg (ripgrep) when available; fall back to grep ──────────────
-# `-c` (count mode) prints one "path:count" line per matching file, which is what both the
-# totals and the per-file breakdown below need.
+# The shared scanner reads tracked *.test.ts paths and explicitly excludes node_modules.
 if command -v rg >/dev/null 2>&1; then
-  SEARCH_CMD=(rg -c --type ts -g '*.test.ts')
-  REGEX_FLAG=(-e)
+  SEARCH_BACKEND=rg
 else
-  SEARCH_CMD=(grep -rc --include='*.test.ts')
-  REGEX_FLAG=(-E)
+  SEARCH_BACKEND=grep
 fi
+
+search_test_files() {
+  bash "$REPO_ROOT/scripts/test-quality-gate-scan.sh" "$SEARCH_BACKEND" "$1" "$REPO_ROOT"
+}
 
 # ─── Sum the counts out of "path:count" lines ────────────────────────────
 # On Windows, `path` itself can contain a colon (the drive letter), so the count is always read
@@ -37,17 +38,18 @@ sum_counts() {
   awk -F: '{ n = $NF; if (n ~ /^[0-9]+$/) total += n } END { print total + 0 }'
 }
 
+# Lock scanner scope before trusting its counts, including when the gate fails below.
+bash "$REPO_ROOT/scripts/test-quality-gate-scan.unit.test.sh"
+
 # ─── Count weak assertions across all test files ────────────────────────
 # Both rg and grep return exit code 1 when there are no matches. Under
 # set -euo pipefail this would abort the script before we can report 0,
 # so we append || true to swallow the non-zero exit.
-WEAK_COUNT=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
-  | sum_counts || true)
+WEAK_COUNT=$(search_test_files "$WEAK_PATTERNS" 2>/dev/null | sum_counts || true)
 WEAK_COUNT=${WEAK_COUNT:-0}
 
 # ─── Count total assertions (approximate: expect( calls) ────────────────
-TOTAL_ASSERTIONS=$("${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "expect\(" "$REPO_ROOT" 2>/dev/null \
-  | sum_counts || true)
+TOTAL_ASSERTIONS=$(search_test_files "expect\(" 2>/dev/null | sum_counts || true)
 TOTAL_ASSERTIONS=${TOTAL_ASSERTIONS:-0}
 
 # ─── Compute ratio ──────────────────────────────────────────────────────
@@ -65,7 +67,7 @@ echo "║  Weak assertions:     $WEAK_COUNT / $TOTAL_ASSERTIONS total (${RATIO}%
 echo "║  Threshold:           220 (static ceiling — lower it as the count drops)"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  Top offenders (weak assertion count per file):"
-"${SEARCH_CMD[@]}" "${REGEX_FLAG[@]}" "$WEAK_PATTERNS" "$REPO_ROOT" 2>/dev/null \
+search_test_files "$WEAK_PATTERNS" 2>/dev/null \
   | awk -F: '{
       n = $NF;
       if (n !~ /^[0-9]+$/) next;

@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createMockLogger } from "@workspace/contracts";
+import {
+  createMockLogger,
+  createPortableCallSiteKey,
+} from "@workspace/contracts";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { TypescriptLspEdgeProvider } from "./typescript-lsp-edge-provider.js";
-import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
+import { LspMethods, LSP_MESSAGES, LspSymbolKinds } from "./lsp-constants.js";
 import { TS_LSP_MESSAGES } from "./typescript-lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
@@ -1307,6 +1310,240 @@ describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue 
 
   afterEach(() => {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("[happy][state-diff][invalid-input] returns site-bound evidence and only emits unique local edges", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const cUri = pathToFileURL(path.join(workspaceRoot, "c.ts")).toString();
+    const externalUri = pathToFileURL(
+      path.join(os.tmpdir(), "docuvia-external-definition.ts"),
+    ).toString();
+    fs.writeFileSync(
+      path.join(workspaceRoot, "c.ts"),
+      "export function baz() {}\n",
+      "utf8",
+    );
+
+    const handlers: Partial<Record<string, RequestHandler>> = {
+      [LspMethods.INITIALIZE]: () => ({}),
+      [LspMethods.DOCUMENT_SYMBOL]: (_method, params) => {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "main",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 7, 1),
+              selectionRange: range(0, 16, 0, 20),
+            },
+          ];
+        }
+        const name = params.textDocument.uri === bUri ? "bar" : "baz";
+        return [
+          {
+            name,
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 0, 25),
+            selectionRange: range(0, 16, 0, 19),
+          },
+        ];
+      },
+      [LspMethods.DEFINITION]: (_method, params) => {
+        switch (params.position.line) {
+          case 1:
+          case 6:
+            return [{ uri: bUri, range: range(0, 16, 0, 19) }];
+          case 2:
+            return [
+              { uri: bUri, range: range(0, 16, 0, 19) },
+              { uri: cUri, range: range(0, 16, 0, 19) },
+            ];
+          case 4:
+            return [{ uri: externalUri, range: range(0, 16, 0, 19) }];
+          case 5:
+            throw new Error(
+              LSP_MESSAGES.requestTimedOut(LspMethods.DEFINITION, 30_000),
+            );
+          default:
+            return null;
+        }
+      },
+      [LspMethods.REFERENCES]: () => [],
+      [LspMethods.SHUTDOWN]: () => null,
+    };
+    const handler: RequestHandler = (method, params) =>
+      handlers[method]?.(method, params);
+
+    const provider = createTypescriptProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+    const sourceContentHash = "a".repeat(64);
+    const barCallSiteKey = createPortableCallSiteKey({
+      filePath: "a.ts",
+      sourceContentHash,
+      startLine: 1,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName: "bar",
+    });
+    const makeVerifiedSite = (
+      targetFunction: string,
+      startLine: number,
+      expectedTargetNodeKey: string,
+    ) => ({
+      targetFunction,
+      startLine,
+      startColumn: 2,
+      callSiteKey: createPortableCallSiteKey({
+        filePath: "a.ts",
+        sourceContentHash,
+        startLine,
+        startColumn: 2,
+        calleeKind: "bare",
+        calleeName: targetFunction,
+      }),
+      sourceContentHash,
+      ruleSignature: "rule-v1",
+      resolutionClass: "proven",
+      verificationPolicyVersion: "sha256-callsite-rule-v2",
+      expectedTargetNodeKey,
+      verificationMode: "canary",
+    });
+    const callSites = [
+      makeVerifiedSite("bar", 1, "b.ts#old-bar"),
+      makeVerifiedSite("baz", 2, "b.ts#baz"),
+      makeVerifiedSite("missing", 3, "b.ts#missing"),
+      makeVerifiedSite("external", 4, "b.ts#external"),
+      makeVerifiedSite("timeout", 5, "b.ts#timeout"),
+      makeVerifiedSite("same", 6, "b.ts#bar"),
+    ];
+    const forwardedSites = callSites as never;
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+      callsByFile: { "a.ts": forwardedSites },
+    });
+
+    expect(outcome.edges).toEqual([]);
+    const callSiteResults = (
+      outcome as unknown as { callSiteResults?: unknown[] }
+    ).callSiteResults;
+    expect(callSiteResults).toHaveLength(6);
+    const resultBase = (index: number) => {
+      const {
+        callSiteKey,
+        sourceContentHash: sourceHash,
+        ruleSignature,
+      } = callSites[index];
+      const {
+        expectedTargetNodeKey,
+        resolutionClass,
+        verificationMode,
+        verificationPolicyVersion,
+      } = callSites[index];
+      return {
+        callSiteKey,
+        sourceContentHash: sourceHash,
+        ruleSignature,
+        verificationPolicyVersion,
+        expectedTargetNodeKey,
+        resolutionClass,
+        verificationMode,
+      };
+    };
+    expect(callSiteResults).toEqual(
+      expect.arrayContaining([
+        {
+          ...resultBase(0),
+          outcome: "unique-local",
+          targetNodeKey: "b.ts#bar",
+        },
+        { ...resultBase(1), outcome: "multi-location" },
+        { ...resultBase(2), outcome: "no-result" },
+        { ...resultBase(3), outcome: "external" },
+        { ...resultBase(4), outcome: "timeout" },
+        {
+          ...resultBase(5),
+          outcome: "unique-local",
+          targetNodeKey: "b.ts#bar",
+        },
+      ]),
+    );
+  });
+
+  it("[state-diff] records a unique local target when the original site had no selected target", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        const name = params.textDocument.uri === aUri ? "main" : "bar";
+        return [
+          {
+            name,
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 2, 1),
+            selectionRange: range(0, 16, 0, 19),
+          },
+        ];
+      }
+      if (method === LspMethods.DEFINITION) {
+        return { uri: bUri, range: range(0, 16, 0, 19) };
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+    const provider = createTypescriptProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+    const sourceContentHash = "c".repeat(64);
+    const callSiteKey = createPortableCallSiteKey({
+      filePath: "a.ts",
+      sourceContentHash,
+      startLine: 1,
+      startColumn: 2,
+      calleeKind: "bare",
+      calleeName: "unknown",
+    });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+      callsByFile: {
+        "a.ts": [
+          {
+            targetFunction: "unknown",
+            startLine: 1,
+            startColumn: 2,
+            callSiteKey,
+            sourceContentHash,
+            ruleSignature: "unresolved-rule-v1",
+            resolutionClass: "unresolved",
+            effectiveResolutionClass: "ambiguous",
+            verificationPolicyVersion: "sha256-callsite-rule-v2",
+            expectedTargetNodeKey: null,
+            verificationMode: "tier-b",
+          },
+        ],
+      },
+    });
+
+    expect(outcome.edges).toEqual([]);
+    expect(outcome.callSiteResults).toEqual([
+      {
+        callSiteKey,
+        sourceContentHash,
+        ruleSignature: "unresolved-rule-v1",
+        verificationPolicyVersion: "sha256-callsite-rule-v2",
+        expectedTargetNodeKey: null,
+        resolutionClass: "unresolved",
+        verificationMode: "tier-b",
+        outcome: "unique-local",
+        targetNodeKey: "b.ts#bar",
+      },
+    ]);
   });
 
   it("resolves a cross-file symbol-level calls edge from an AST-seeded call site via textDocument/definition, and does not run the reverse references scan on the forward-seeded file", async () => {

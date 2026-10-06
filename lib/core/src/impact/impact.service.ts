@@ -14,6 +14,10 @@ import {
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
 } from "@workspace/contracts";
+import {
+  getCallResolutionSummariesForEdge,
+  getCurrentCallResolutionRows,
+} from "../semantic/call-resolution-output.js";
 
 const ImpactMessages = {
   NO_NODE_RESOLVED: "No node resolved for impact target",
@@ -81,6 +85,37 @@ export function computeRiskLevelFromCounts(
   return RiskLevels.LOW;
 }
 
+function getCallResolutionsByCallerId(
+  store: IGraphStore,
+  targetNodeId: number,
+  targetNodeKey: string | undefined,
+  options?: { explainResolution?: boolean },
+): Map<number, NonNullable<BlastRadiusEntry["callResolutions"]>> {
+  const resolutionRows = getCurrentCallResolutionRows(store);
+  const byCallerId = new Map<
+    number,
+    NonNullable<BlastRadiusEntry["callResolutions"]>
+  >();
+  for (const relation of store.graph.getIncomingRelations(targetNodeId) ?? []) {
+    if (relation.linkType !== LinkTypes.CALLS) continue;
+    const callResolutions = getCallResolutionSummariesForEdge(
+      store,
+      store.graph.getNodeKeyById?.(relation.id),
+      targetNodeKey,
+      options?.explainResolution,
+      resolutionRows,
+    );
+    if (
+      callResolutions.every((resolution) => resolution.callSiteKey === null)
+    ) {
+      continue;
+    }
+    const existing = byCallerId.get(relation.id) ?? [];
+    byCallerId.set(relation.id, [...existing, ...callResolutions]);
+  }
+  return byCallerId;
+}
+
 /**
  * Blast-radius resolution + risk scoring — the "calculating blast radius"/"risk scoring" example
  * named directly in docs/gitbook/architecture/virtual-contracts-architecture.md's Domain Core
@@ -98,6 +133,7 @@ export class ImpactService implements IImpactService {
   getBlastRadius(
     store: IGraphStore,
     target: string,
+    options?: { explainResolution?: boolean },
   ): BlastRadiusEntry[] | undefined {
     const node = store.graph.findNodeByName(target);
     if (!node) {
@@ -106,8 +142,21 @@ export class ImpactService implements IImpactService {
     }
 
     const directIncoming = store.graph.getIncomingEdges(node.id);
+    const targetNodeKey = store.graph.getNodeKeyById?.(node.id);
+    const callResolutionsByCallerId = getCallResolutionsByCallerId(
+      store,
+      node.id,
+      targetNodeKey,
+      options,
+    );
     const blastRadius = directIncoming.map(({ id, name, type }) =>
-      this.buildEntry(store, id, name, type),
+      this.buildDirectIncomingEntry(
+        store,
+        id,
+        name,
+        type,
+        callResolutionsByCallerId.get(id),
+      ),
     );
 
     // Issue #192 real-repository acceptance case: a file is represented by one file node plus
@@ -152,6 +201,36 @@ export class ImpactService implements IImpactService {
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  private buildDirectIncomingEntry(
+    store: IGraphStore,
+    id: number,
+    name: string,
+    type: string,
+    callResolutions:
+      NonNullable<BlastRadiusEntry["callResolutions"]> | undefined,
+  ): BlastRadiusEntry {
+    const entry = this.buildEntry(store, id, name, type);
+    if (!callResolutions) return entry;
+    return {
+      ...entry,
+      callResolutions,
+    };
+  }
+
+  getCallResolutionForEdge(
+    store: IGraphStore,
+    callerNodeKey: string | undefined,
+    targetNodeKey: string | undefined,
+    options?: { explainResolution?: boolean },
+  ) {
+    return getCallResolutionSummariesForEdge(
+      store,
+      callerNodeKey,
+      targetNodeKey,
+      options?.explainResolution,
+    );
   }
 
   getCallSiteFallbackUnavailableReason(

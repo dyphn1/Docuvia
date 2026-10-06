@@ -1,6 +1,7 @@
 import * as path from "path";
 import {
   LinkTypes,
+  type ICallResolutionHypothesisService,
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
@@ -60,7 +61,11 @@ function localSymbols(result: ParsedAstFileResult): string[] {
  * guessing them would trade an honest false negative for a false positive.
  */
 export class GraphPersisterService implements IGraphPersister {
-  private readonly base = new BaseGraphPersisterService();
+  private readonly base: BaseGraphPersisterService;
+
+  constructor(hypothesisService?: ICallResolutionHypothesisService) {
+    this.base = new BaseGraphPersisterService(hypothesisService);
+  }
 
   public async persist(
     input: Parameters<IGraphPersister["persist"]>[0],
@@ -110,7 +115,9 @@ export class GraphPersisterService implements IGraphPersister {
     for (const result of parsedResults) {
       resolver.registerFile(
         result.file,
-        result.data.imports ?? [],
+        (result.data.imports ?? []).filter(
+          (descriptor) => !descriptor.isCombinedDefaultImport,
+        ),
         [],
         localSymbols(result),
       );
@@ -127,6 +134,7 @@ export class GraphPersisterService implements IGraphPersister {
     if (!sourceId) return;
 
     for (const descriptor of result.data.imports ?? []) {
+      if (descriptor.isCombinedDefaultImport) continue;
       this.linkValueImport(store, resolver, result, sourceId, descriptor);
     }
   }
@@ -203,6 +211,7 @@ export class GraphPersisterService implements IGraphPersister {
     if (!sourceId) return;
 
     for (const descriptor of result.data.imports ?? []) {
+      if (descriptor.isCombinedDefaultImport) continue;
       if (CHILD_PROCESS_MODULES.has(descriptor.modulePath)) {
         this.linkChildProcessDescriptor(
           store,

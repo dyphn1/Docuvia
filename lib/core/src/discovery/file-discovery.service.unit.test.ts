@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import type { FileHashLookup, IGitProvider } from "@workspace/contracts";
+import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
 import { FileDiscoveryService } from "./file-discovery.service.js";
 
 function makeMockGitProvider(
@@ -220,6 +221,60 @@ describe("FileDiscoveryService", () => {
     expect(skippedOversized).toHaveLength(1);
     expect(skippedOversized[0].file).toBe("huge.ts");
     expect(skippedOversized[0].sizeBytes).toBeGreaterThan(512_000);
+  });
+
+  it("[invalid-input] size-checks an oversized regular parser.c before reading it and still discovers caller.ts", async () => {
+    const parserPath = path.join(tmpDir, "src", "parser.c");
+    fs.mkdirSync(path.dirname(parserPath), { recursive: true });
+    fs.writeFileSync(parserPath, Buffer.alloc(MAX_FILE_SIZE_BYTES + 1, 0x78));
+    fs.writeFileSync(
+      path.join(tmpDir, "src", "caller.ts"),
+      "export function caller() {}\n",
+    );
+    const readFileSpy = vi.spyOn(fs.promises, "readFile");
+
+    const result = await new FileDiscoveryService(
+      makeMockGitProvider({
+        isGitRepository: vi.fn().mockResolvedValue(false),
+      }),
+    ).discoverFiles(tmpDir, makeMockFilesRepo());
+
+    expect(result.filesToParse.map(({ file }) => file)).toEqual([
+      "src/caller.ts",
+    ]);
+    expect(result.skippedOversized).toEqual([
+      { file: "src/parser.c", sizeBytes: MAX_FILE_SIZE_BYTES + 1 },
+    ]);
+    expect(readFileSpy.mock.calls.some(([file]) => file === parserPath)).toBe(
+      false,
+    );
+  });
+
+  it("[happy] preserves indexed Git blob contents when the disk file differs", async () => {
+    const callerPath = path.join(tmpDir, "src", "caller.ts");
+    fs.mkdirSync(path.dirname(callerPath), { recursive: true });
+    fs.writeFileSync(callerPath, Buffer.alloc(MAX_FILE_SIZE_BYTES + 1, 0x78));
+    const blobCode = "export function caller() {}\n";
+    const readBlobContent = vi.fn().mockResolvedValue(blobCode);
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(true),
+      listTrackedFilesWithBlobHash: vi
+        .fn()
+        .mockResolvedValue(new Map([["src/caller.ts", "small-blob-sha"]])),
+      readBlobContent,
+    });
+
+    const result = await new FileDiscoveryService(mockGit).discoverFiles(
+      tmpDir,
+      makeMockFilesRepo(),
+      { onlyIndexed: true },
+    );
+
+    expect(result.filesToParse).toEqual([
+      { file: "src/caller.ts", hash: "small-blob-sha", code: blobCode },
+    ]);
+    expect(readBlobContent).toHaveBeenCalledWith(tmpDir, "small-blob-sha");
+    expect(result.skippedOversized).toEqual([]);
   });
 
   it("does not re-parse a file whose hash matches the repo's existing hash", async () => {

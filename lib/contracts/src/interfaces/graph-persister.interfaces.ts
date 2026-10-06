@@ -59,6 +59,9 @@ export interface IGraphPersister {
     projectId: number;
     parsedResults: ParsedAstFileResult[];
     tags: string[];
+    /** True only for a full discovery pass that parsed every candidate source file. Absent on
+     *  delta/default calls; strict source-index proofs must fail closed without this assertion. */
+    sourceIndexComplete?: boolean;
   }): Promise<{
     updatedCount: number;
     /** Issue #221: per-run aggregate + per-file call-site resolution counters. Optional so

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "9ad485c10272584f05679698ec5309d8c2daecad",
+  "comparison": "same committed HEAD source snapshot; HEAD-shaped AST projection vs working-tree AST projection",
+  "sourceFiles": 882,
+  "parsedFiles": 882,
+  "parseFailures": 0,
+  "candidateOnlyCombinedDefaultImports": 0,
+  "candidateOnlyDefaultExports": 8,
+  "baseline": {
+    "nodeCount": 16436,
+    "nodeRowsSha256": "719c34c6a0d07a633c126f2e0dd08767278c4be4a24a72d8b4bbe0ec20f73147",
+    "nodeLinksByType": {
+      "contains": 15554,
+      "calls": 13974,
+      "depends_on": 464,
+      "implements": 43,
+      "extends": 28,
+      "imports": 3447
+    },
+    "nodeLinkCount": 33510,
+    "nodeLinkRowsSha256": "2fe4d0f7f665298ddb5468096e9ab2ac4a885770b7fc4495a67ac350d85e04d8"
+  },
+  "workingTree": {
+    "nodeCount": 16436,
+    "nodeRowsSha256": "719c34c6a0d07a633c126f2e0dd08767278c4be4a24a72d8b4bbe0ec20f73147",
+    "nodeLinksByType": {
+      "contains": 15554,
+      "calls": 13974,
+      "depends_on": 464,
+      "implements": 43,
+      "extends": 28,
+      "imports": 3447
+    },
+    "nodeLinkCount": 33510,
+    "nodeLinkRowsSha256": "2fe4d0f7f665298ddb5468096e9ab2ac4a885770b7fc4495a67ac350d85e04d8"
+  },
+  "exactDiff": {
+    "nodes": {
+      "removedFromWorkingTree": [],
+      "addedInWorkingTree": []
+    },
+    "nodeLinks": {
+      "removedFromWorkingTree": [],
+      "addedInWorkingTree": []
+    },
+    "empty": true
+  },
+  "peakRssBytes": 1880129536
+}

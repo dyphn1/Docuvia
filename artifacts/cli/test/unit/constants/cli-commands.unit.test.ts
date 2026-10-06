@@ -85,6 +85,21 @@ describe("cli-commands", () => {
   });
 
   describe("getCommandUsageText", () => {
+    it("[positive] lists explain-resolution on query and impact", () => {
+      expect(CLI_COMMAND_FLAGS[CLI_COMMANDS.QUERY]).toContain(
+        CLI_FLAGS.EXPLAIN_RESOLUTION,
+      );
+      expect(CLI_COMMAND_FLAGS[CLI_COMMANDS.IMPACT]).toContain(
+        CLI_FLAGS.EXPLAIN_RESOLUTION,
+      );
+      expect(getCommandUsageText(CLI_COMMANDS.QUERY)).toContain(
+        CLI_FLAGS.EXPLAIN_RESOLUTION,
+      );
+      expect(getCommandUsageText(CLI_COMMANDS.IMPACT)).toContain(
+        CLI_FLAGS.EXPLAIN_RESOLUTION,
+      );
+    });
+
     it("includes the command name and description", () => {
       const usage = getCommandUsageText(CLI_COMMANDS.STATUS);
       expect(usage).toContain("docuvia status");

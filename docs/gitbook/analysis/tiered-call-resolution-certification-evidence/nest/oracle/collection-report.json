@@ -1,0 +1,537 @@
+{
+  "collector": "semantic-corpus-collector/1",
+  "featureSchema": "tier-a-name-match/v1",
+  "limits": {
+    "maxCandidates": 32,
+    "maxInputBytes": 32768
+  },
+  "oracle": {
+    "server": "typescript-language-server",
+    "version": "5.3.0+tsserver@5.9.3",
+    "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "nestjs-base-b1014b6862",
+      "repoId": "nestjs/nest",
+      "family": "nestjs",
+      "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "committedAt": "2026-09-25T08:26:15+02:00",
+      "subtree": null,
+      "snapshotHash": "a50e72b10ae438d46fcddb3412e42dfc8bea9647f9f33a2c0bc07afe6064cf66",
+      "snapshotHashesAgree": true,
+      "trackedSnapshotFiles": 2199,
+      "tierA": {
+        "nodes": 21342,
+        "edges": 8171,
+        "callSites": 52164,
+        "durationMs": 7373.761874999999
+      },
+      "checker": {
+        "typescriptVersion": "5.9.3",
+        "programs": 92,
+        "uniqueCallSites": 52164,
+        "exclusions": {
+          "checker-unresolved": 9714,
+          "external-target": 26907,
+          "no-configured-project": 1644,
+          "no-identifier-at-position": 2,
+          "non-typescript-file": 56,
+          "same-file-target": 3644,
+          "unmappable-target": 1847
+        },
+        "population": 8350,
+        "sampled": 0,
+        "audit": {},
+        "durationMs": 26825.227165999997
+      },
+      "candidates": {
+        "empty": 0,
+        "truncated": 0,
+        "goldCovered": 0
+      },
+      "oracle": {
+        "statuses": {},
+        "unmappedLocations": 0,
+        "requests": 0,
+        "readinessProbeRequests": 0,
+        "processStarts": 0,
+        "groups": 0,
+        "notReadyGroups": 0,
+        "readiness": [],
+        "durationMs": 0.1262090000018361
+      },
+      "durationMs": 35631.218333
+    },
+    {
+      "snapshotId": "nestjs-temporal-35142c3eca",
+      "repoId": "nestjs/nest",
+      "family": "nestjs",
+      "revision": "35142c3eca8edaaf6abc5984d915da2fbd458aa2",
+      "committedAt": "2026-10-02T14:07:21+02:00",
+      "subtree": null,
+      "snapshotHash": "aaf52fd909fb8c38726b82f59c625bdb777797aabcd37a53f7f794a011c15fbe",
+      "snapshotHashesAgree": true,
+      "trackedSnapshotFiles": 2253,
+      "tierA": {
+        "nodes": 22474,
+        "edges": 8648,
+        "callSites": 56149,
+        "durationMs": 7791.771792
+      },
+      "checker": {
+        "typescriptVersion": "5.9.3",
+        "programs": 93,
+        "uniqueCallSites": 56149,
+        "exclusions": {
+          "checker-unresolved": 10166,
+          "external-target": 29338,
+          "no-configured-project": 1843,
+          "no-identifier-at-position": 2,
+          "non-typescript-file": 56,
+          "same-file-target": 3992,
+          "unmappable-target": 1896
+        },
+        "population": 8856,
+        "sampled": 8856,
+        "audit": {
+          "match": 2005,
+          "not-applicable:receiver-not-a-class": 3,
+          "not-applicable:receiver-not-imported": 4217,
+          "not-applicable:unresolved-specifier": 1969,
+          "not-applicable:unsupported-callee-kind": 662
+        },
+        "durationMs": 27447.141542000005
+      },
+      "candidates": {
+        "empty": 1,
+        "truncated": 806,
+        "goldCovered": 8846
+      },
+      "oracle": {
+        "statuses": {
+          "empty": 60,
+          "resolved": 8793,
+          "unsupported": 3
+        },
+        "unmappedLocations": 526,
+        "requests": 8856,
+        "readinessProbeRequests": 154,
+        "processStarts": 77,
+        "groups": 77,
+        "notReadyGroups": 0,
+        "readiness": [
+          {
+            "projectId": "integration/auto-mock/tsconfig.json",
+            "ready": true,
+            "readyMs": 676.2494169999991
+          },
+          {
+            "projectId": "integration/cookies/tsconfig.json",
+            "ready": true,
+            "readyMs": 698.3358750000043
+          },
+          {
+            "projectId": "integration/cors/tsconfig.json",
+            "ready": true,
+            "readyMs": 675.7978750000038
+          },
+          {
+            "projectId": "integration/discovery/tsconfig.json",
+            "ready": true,
+            "readyMs": 673.0490419999987
+          },
+          {
+            "projectId": "integration/file-upload/tsconfig.json",
+            "ready": true,
+            "readyMs": 717.7907919999998
+          },
+          {
+            "projectId": "integration/graceful-shutdown/tsconfig.json",
+            "ready": true,
+            "readyMs": 694.1050839999953
+          },
+          {
+            "projectId": "integration/graphql-code-first/tsconfig.json",
+            "ready": true,
+            "readyMs": 682.0394579999993
+          },
+          {
+            "projectId": "integration/graphql-schema-first/tsconfig.json",
+            "ready": true,
+            "readyMs": 687.1721250000119
+          },
+          {
+            "projectId": "integration/hello-world/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.0412499999948
+          },
+          {
+            "projectId": "integration/hooks/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.8438750000059
+          },
+          {
+            "projectId": "integration/injector/tsconfig.json",
+            "ready": true,
+            "readyMs": 676.1217919999908
+          },
+          {
+            "projectId": "integration/inspector/tsconfig.json",
+            "ready": true,
+            "readyMs": 686.4654169999994
+          },
+          {
+            "projectId": "integration/lazy-modules/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.5451669999893
+          },
+          {
+            "projectId": "integration/microservices/tsconfig.json",
+            "ready": true,
+            "readyMs": 690.2029999999941
+          },
+          {
+            "projectId": "integration/module-utils/tsconfig.json",
+            "ready": true,
+            "readyMs": 675.4489999999932
+          },
+          {
+            "projectId": "integration/mongoose/tsconfig.json",
+            "ready": true,
+            "readyMs": 679.0734159999993
+          },
+          {
+            "projectId": "integration/nest-application/app-locals/tsconfig.json",
+            "ready": true,
+            "readyMs": 680.3118749999994
+          },
+          {
+            "projectId": "integration/nest-application/get-url/tsconfig.json",
+            "ready": true,
+            "readyMs": 675.0230829999928
+          },
+          {
+            "projectId": "integration/nest-application/global-prefix/tsconfig.json",
+            "ready": true,
+            "readyMs": 675.4774170000019
+          },
+          {
+            "projectId": "integration/nest-application/listen/tsconfig.json",
+            "ready": true,
+            "readyMs": 676.1792909999931
+          },
+          {
+            "projectId": "integration/nest-application/observable-response/tsconfig.json",
+            "ready": true,
+            "readyMs": 679.5829999999987
+          },
+          {
+            "projectId": "integration/nest-application/raw-body/tsconfig.json",
+            "ready": true,
+            "readyMs": 680.3553749999992
+          },
+          {
+            "projectId": "integration/nest-application/sse/tsconfig.json",
+            "ready": true,
+            "readyMs": 678.2534169999999
+          },
+          {
+            "projectId": "integration/query-method/tsconfig.json",
+            "ready": true,
+            "readyMs": 672.7143749999959
+          },
+          {
+            "projectId": "integration/repl/tsconfig.json",
+            "ready": true,
+            "readyMs": 682.8525410000002
+          },
+          {
+            "projectId": "integration/route-conflict/tsconfig.json",
+            "ready": true,
+            "readyMs": 699.1855409999989
+          },
+          {
+            "projectId": "integration/scopes/tsconfig.json",
+            "ready": true,
+            "readyMs": 676.6919579999958
+          },
+          {
+            "projectId": "integration/security/tsconfig.json",
+            "ready": true,
+            "readyMs": 682.4081250000017
+          },
+          {
+            "projectId": "integration/send-files/tsconfig.json",
+            "ready": true,
+            "readyMs": 675.2563329999975
+          },
+          {
+            "projectId": "integration/testing-module-override/tsconfig.json",
+            "ready": true,
+            "readyMs": 690.4730830000044
+          },
+          {
+            "projectId": "integration/typeorm/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.2170000000042
+          },
+          {
+            "projectId": "integration/versioning/tsconfig.json",
+            "ready": true,
+            "readyMs": 684.7927919999929
+          },
+          {
+            "projectId": "integration/websockets/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.9339169999876
+          },
+          {
+            "projectId": "packages/common/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1569.5397920000105
+          },
+          {
+            "projectId": "packages/common/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 681.9750420000055
+          },
+          {
+            "projectId": "packages/core/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1563.9712080000027
+          },
+          {
+            "projectId": "packages/core/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 678.9445419999975
+          },
+          {
+            "projectId": "packages/microservices/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1567.611499999999
+          },
+          {
+            "projectId": "packages/microservices/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 694.3362500000076
+          },
+          {
+            "projectId": "packages/platform-express/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1572.0791250000038
+          },
+          {
+            "projectId": "packages/platform-express/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 689.3696659999987
+          },
+          {
+            "projectId": "packages/platform-fastify/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1560.2824589999946
+          },
+          {
+            "projectId": "packages/platform-fastify/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 714.0155830000003
+          },
+          {
+            "projectId": "packages/platform-socket.io/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1580.3854589999974
+          },
+          {
+            "projectId": "packages/testing/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1559.8625420000026
+          },
+          {
+            "projectId": "packages/testing/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 681.4049169999926
+          },
+          {
+            "projectId": "packages/websockets/test/tsconfig.json",
+            "ready": true,
+            "readyMs": 1555.8105420000065
+          },
+          {
+            "projectId": "packages/websockets/tsconfig.build.json",
+            "ready": true,
+            "readyMs": 684.5472080000036
+          },
+          {
+            "projectId": "sample/01-cats-app/tsconfig.json",
+            "ready": true,
+            "readyMs": 176.20033300000068
+          },
+          {
+            "projectId": "sample/02-gateways/tsconfig.json",
+            "ready": true,
+            "readyMs": 678.380833999996
+          },
+          {
+            "projectId": "sample/03-microservices/tsconfig.json",
+            "ready": true,
+            "readyMs": 679.9311250000028
+          },
+          {
+            "projectId": "sample/05-sql-typeorm/tsconfig.json",
+            "ready": true,
+            "readyMs": 686.0625420000142
+          },
+          {
+            "projectId": "sample/06-mongoose/tsconfig.json",
+            "ready": true,
+            "readyMs": 687.1588330000086
+          },
+          {
+            "projectId": "sample/07-sequelize/tsconfig.json",
+            "ready": true,
+            "readyMs": 688.6026249999995
+          },
+          {
+            "projectId": "sample/08-webpack/tsconfig.json",
+            "ready": true,
+            "readyMs": 683.2416250000097
+          },
+          {
+            "projectId": "sample/10-fastify/tsconfig.json",
+            "ready": true,
+            "readyMs": 181.0234999999957
+          },
+          {
+            "projectId": "sample/11-swagger/tsconfig.json",
+            "ready": true,
+            "readyMs": 685.2677919999987
+          },
+          {
+            "projectId": "sample/12-graphql-schema-first/tsconfig.json",
+            "ready": true,
+            "readyMs": 696.4603750000097
+          },
+          {
+            "projectId": "sample/13-mongo-typeorm/tsconfig.json",
+            "ready": true,
+            "readyMs": 183.69895800000813
+          },
+          {
+            "projectId": "sample/14-mongoose-base/tsconfig.json",
+            "ready": true,
+            "readyMs": 177.6791249999951
+          },
+          {
+            "projectId": "sample/18-context/tsconfig.json",
+            "ready": true,
+            "readyMs": 680.8976249999978
+          },
+          {
+            "projectId": "sample/19-auth-jwt/tsconfig.json",
+            "ready": true,
+            "readyMs": 694.3158750000002
+          },
+          {
+            "projectId": "sample/22-graphql-prisma/tsconfig.json",
+            "ready": true,
+            "readyMs": 682.4697909999959
+          },
+          {
+            "projectId": "sample/23-graphql-code-first/tsconfig.json",
+            "ready": true,
+            "readyMs": 700.1489589999983
+          },
+          {
+            "projectId": "sample/25-dynamic-modules/tsconfig.json",
+            "ready": true,
+            "readyMs": 685.8752079999977
+          },
+          {
+            "projectId": "sample/26-queues/tsconfig.json",
+            "ready": true,
+            "readyMs": 679.6148329999996
+          },
+          {
+            "projectId": "sample/29-file-upload/tsconfig.json",
+            "ready": true,
+            "readyMs": 685.9546660000051
+          },
+          {
+            "projectId": "sample/30-event-emitter/tsconfig.json",
+            "ready": true,
+            "readyMs": 677.1844589999964
+          },
+          {
+            "projectId": "sample/31-graphql-federation-code-first/posts-application/tsconfig.json",
+            "ready": true,
+            "readyMs": 686.5425000000105
+          },
+          {
+            "projectId": "sample/31-graphql-federation-code-first/users-application/tsconfig.json",
+            "ready": true,
+            "readyMs": 179.94341700000223
+          },
+          {
+            "projectId": "sample/32-graphql-federation-schema-first/posts-application/tsconfig.json",
+            "ready": true,
+            "readyMs": 684.5300419999985
+          },
+          {
+            "projectId": "sample/32-graphql-federation-schema-first/users-application/tsconfig.json",
+            "ready": true,
+            "readyMs": 179.19570899999235
+          },
+          {
+            "projectId": "sample/33-graphql-mercurius/tsconfig.json",
+            "ready": true,
+            "readyMs": 693.3734169999952
+          },
+          {
+            "projectId": "sample/34-hmr-esm/tsconfig.json",
+            "ready": true,
+            "readyMs": 176.4910830000008
+          },
+          {
+            "projectId": "sample/35-zod-validation/tsconfig.json",
+            "ready": true,
+            "readyMs": 186.10087500000373
+          },
+          {
+            "projectId": "sample/37-outbox/tsconfig.json",
+            "ready": true,
+            "readyMs": 695.7340419999964
+          },
+          {
+            "projectId": "tools/benchmarks/tsconfig.json",
+            "ready": true,
+            "readyMs": 685.222541999974
+          }
+        ],
+        "durationMs": 63254.75174999998
+      },
+      "durationMs": 100124.001584
+    }
+  ],
+  "temporalOrderVerified": {
+    "nestjs-temporal-35142c3eca": true
+  },
+  "baselineOnlySnapshots": ["nestjs-base-b1014b6862"],
+  "familyRelations": [
+    {
+      "a": "nestjs-base-b1014b6862",
+      "b": "nestjs-temporal-35142c3eca",
+      "overlap": 0.9448818897637795,
+      "sharedRoot": true,
+      "crossFamily": false
+    }
+  ],
+  "splitDrops": {
+    "temporal-unchanged": 8340
+  },
+  "samples": 516,
+  "datasetHash": "98e07c6a51305f480f8a82c39b704e8a960770d89c87141ac543109807a66be2",
+  "gates": {
+    "sampleSize": "insufficient-evidence",
+    "candidateRecall": "insufficient-evidence"
+  }
+}

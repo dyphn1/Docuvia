@@ -67,9 +67,10 @@ graphify-out/
 lib/core/src/**/*.js
 lib/schema/src/**/*.js
 
-# Dev-mode-compiled AST worker (see ast-worker-pool.ts's compileWorkerForDevMode()) — a
-# still-being-written temp file, renamed atomically once complete.
+# Dev-mode-compiled AST worker and its input manifest. Temp files are renamed atomically once
+# complete.
 lib/core/src/**/*.js.*.tmp
+lib/core/src/**/*.js.inputs.json
 
 # Harness Everything Skill output (only appears if the skill is installed and run directly against this tree — should normally be run from a git worktree instead)
 .github/harness-everything/

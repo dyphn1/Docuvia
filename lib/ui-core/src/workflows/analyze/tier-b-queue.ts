@@ -6,6 +6,15 @@ export interface TierBQueueEntry {
   commitSha: string;
 }
 
+const CALL_RESOLUTION_TIER_B_PRIORITY: Readonly<Record<string, number>> = {
+  ambiguous: 0,
+  unresolved: 0,
+  unsupported: 0,
+  external: 0,
+  likely: 1,
+  proven: 2,
+};
+
 function isTierBQueueEntry(entry: unknown): entry is TierBQueueEntry {
   if (!entry || typeof entry !== "object") return false;
   const candidate = entry as Partial<TierBQueueEntry>;
@@ -28,6 +37,65 @@ export function readTierBQueue(store: IGraphStore): TierBQueueEntry[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Orders the existing file-level Tier B queue by its most urgent current call-site resolution,
+ * then groups equal-priority files by rule signature. This only changes request order: every
+ * queued file still reaches the existing LSP batch until its signature has unseen certification.
+ */
+export function prioritizeTierBQueueByCallResolution(
+  store: IGraphStore,
+  queue: TierBQueueEntry[],
+): TierBQueueEntry[] {
+  const project = store.projects.getFirst();
+  const resolutions = store.callSiteResolutions;
+  if (!project || !resolutions) return queue;
+
+  return queue
+    .map((entry, queueIndex) => {
+      const rows = resolutions.getForFile(project.id, entry.file);
+      const priority =
+        rows.length === 0
+          ? 0
+          : rows.reduce((best, row) => {
+              if (row.isStale || row.verificationStatus === "contradicted")
+                return 0;
+              return Math.min(
+                best,
+                CALL_RESOLUTION_TIER_B_PRIORITY[row.resolutionClass] ?? 0,
+              );
+            }, Number.POSITIVE_INFINITY);
+      const signatureKey = [
+        ...new Set(
+          rows
+            .filter(
+              (row) =>
+                (row.isStale || row.verificationStatus === "contradicted"
+                  ? 0
+                  : (CALL_RESOLUTION_TIER_B_PRIORITY[row.resolutionClass] ??
+                    0)) === priority,
+            )
+            .map((row) => row.ruleSignature),
+        ),
+      ]
+        .sort()
+        .join("\u0000");
+
+      return { entry, priority, signatureKey, queueIndex };
+    })
+    .sort((left, right) => {
+      const priorityDifference = left.priority - right.priority;
+      if (priorityDifference !== 0) return priorityDifference;
+      if (left.signatureKey !== right.signatureKey)
+        return left.signatureKey < right.signatureKey ? -1 : 1;
+      if (left.entry.file !== right.entry.file)
+        return left.entry.file < right.entry.file ? -1 : 1;
+      if (left.entry.commitSha !== right.entry.commitSha)
+        return left.entry.commitSha < right.entry.commitSha ? -1 : 1;
+      return left.queueIndex - right.queueIndex;
+    })
+    .map(({ entry }) => entry);
 }
 
 /**

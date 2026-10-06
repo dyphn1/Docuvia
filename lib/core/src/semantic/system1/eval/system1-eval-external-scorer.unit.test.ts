@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import {
   SYSTEM1_EVAL_ACTIONS,
   SYSTEM1_EVAL_PROTOCOL_VERSION,
@@ -99,7 +100,7 @@ const workingDirectory = process.cwd();
 function run(
   states: readonly System1DatasetRecord[],
   script: string,
-  batchTimeoutMs = 2_000,
+  batchTimeoutMs = SUBPROCESS_TEST_TIMEOUT_MS,
 ) {
   return runSystem1ExternalScorerBatch(states, {
     command,
@@ -110,6 +111,24 @@ function run(
 }
 
 describe("System-1 external JSONL scorer", () => {
+  it("[boundary] accepts ordered responses when the child starts slowly", async () => {
+    const states = [
+      stateRecord("external-slow-1"),
+      stateRecord("external-slow-2"),
+    ];
+    const script = `setTimeout(() => {\n${VALID_SCORER_SCRIPT}\n}, 2_100);`;
+    const responses = await run(states, script);
+
+    expect(responses.map(({ status }) => status)).toEqual([
+      SYSTEM1_EVAL_SCORER_STATUSES.OK,
+      SYSTEM1_EVAL_SCORER_STATUSES.OK,
+    ]);
+    expect(responses.map(({ requestId }) => requestId)).toEqual([
+      "external-slow-1",
+      "external-slow-2",
+    ]);
+  });
+
   it("[happy] accepts valid JSONL responses in request order", async () => {
     const states = [stateRecord("external-1"), stateRecord("external-2")];
     const responses = await run(states, VALID_SCORER_SCRIPT);
@@ -118,6 +137,10 @@ describe("System-1 external JSONL scorer", () => {
     expect(responses.map(({ status }) => status)).toEqual([
       SYSTEM1_EVAL_SCORER_STATUSES.OK,
       SYSTEM1_EVAL_SCORER_STATUSES.OK,
+    ]);
+    expect(responses.map(({ requestId }) => requestId)).toEqual([
+      "external-1",
+      "external-2",
     ]);
     expect(responses[0]?.scores).toEqual({
       "candidate-a": 0.5,

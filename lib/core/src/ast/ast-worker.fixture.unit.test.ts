@@ -129,6 +129,81 @@ describe("typescript fixture: real tree-sitter parse (Steps 4-6)", () => {
  * ast-worker.ts now produces a real, parsed ImportDescriptor via
  * @workspace/ast-core's parseImportDescriptors() instead.
  */
+describe("typescript fixture: strict re-export syntax facts", () => {
+  it("records named, renamed, local, star, namespace, and type-only re-exports without changing imports", async () => {
+    const response = await buildParseResponse({
+      taskId: "strict-reexport-facts",
+      filePath: "src/barrel.ts",
+      code: [
+        'import { helper as localHelper } from "./impl.js";',
+        'export { run as publicRun } from "./impl.js";',
+        "export { localHelper as renamedHelper };",
+        'export * from "./more.js";',
+        'export * as namespaceTools from "./namespace.js";',
+        'export type { TypeOnly } from "./types.js";',
+      ].join("\n"),
+      language: "typescript",
+    });
+    if (!response.success || !response.data)
+      throw new Error(
+        response.error ?? "AST worker omitted re-export fixture data",
+      );
+
+    const data = response.data as unknown as {
+      readonly reexports?: unknown;
+    };
+    expect(data.reexports).toEqual([
+      {
+        kind: "named",
+        exportedName: "publicRun",
+        importedName: "run",
+        modulePath: "./impl.js",
+      },
+      {
+        kind: "local",
+        exportedName: "renamedHelper",
+        localName: "localHelper",
+      },
+      {
+        kind: "star",
+        exportedName: "*",
+        modulePath: "./more.js",
+      },
+      {
+        kind: "namespace",
+        exportedName: "namespaceTools",
+        modulePath: "./namespace.js",
+      },
+      {
+        kind: "named",
+        exportedName: "TypeOnly",
+        importedName: "TypeOnly",
+        modulePath: "./types.js",
+        isTypeOnly: true,
+      },
+    ]);
+    expect(response.data.imports).toEqual([
+      {
+        localName: "localHelper",
+        originalName: "helper",
+        modulePath: "./impl.js",
+      },
+      {
+        localName: "publicRun",
+        originalName: "run",
+        modulePath: "./impl.js",
+        viaReexport: true,
+      },
+      {
+        localName: "TypeOnly",
+        originalName: "TypeOnly",
+        modulePath: "./types.js",
+        viaReexport: true,
+      },
+    ]);
+  });
+});
+
 const IMPORT_SRC = `
 import { helper } from "./b";
 function main() { helper(); }
@@ -597,6 +672,121 @@ export { origThing as outwardThing } from "../deep/other";
 `;
 
 describe("typescript fixture: exported consts and barrel re-exports (issue #192)", () => {
+  it("[happy] emits direct named callable declarations as export descriptors", async () => {
+    const response = await buildParseResponse({
+      taskId: "direct-export-descriptors",
+      filePath: "exports.ts",
+      code: [
+        "export function shutdown(): void {}",
+        "export const handler = () => {};",
+        "export default function fallback(): void {}",
+        'export { shutdown as renamed } from "./other.js";',
+        "const local = () => {};",
+      ].join("\n"),
+      language: "typescript",
+    });
+    const fallbackDeclaration =
+      response.data?.declaredTypeFacts?.declarations.find(
+        ({ name }) => name === "fallback",
+      );
+    expect(response.data?.exports).toEqual([
+      { name: "shutdown", type: "function" },
+      { name: "handler", type: "variable" },
+      {
+        name: "default",
+        type: "function",
+        declarationSpan: fallbackDeclaration?.declarationSpan,
+      },
+    ]);
+  });
+
+  it("[happy] emits a source-spanned descriptor for a named default function", async () => {
+    const named = await buildParseResponse({
+      taskId: "named-default-function-export",
+      filePath: "named-default.ts",
+      code: "export default async function PrivateReportPage() {}",
+      language: "typescript",
+    });
+    const namedDeclaration = named.data?.declaredTypeFacts?.declarations.find(
+      ({ name }) => name === "PrivateReportPage",
+    );
+    expect(named.data?.exports).toEqual([
+      {
+        name: "default",
+        type: "function",
+        declarationSpan: namedDeclaration?.declarationSpan,
+      },
+    ]);
+  });
+
+  it("[happy] emits a stable descriptor for an anonymous default function", async () => {
+    const anonymous = await buildParseResponse({
+      taskId: "anonymous-default-function-export",
+      filePath: "anonymous-default.ts",
+      code: "export default function () {}",
+      language: "typescript",
+    });
+    const anonymousDeclaration =
+      anonymous.data?.declaredTypeFacts?.declarations.find(
+        ({ kind, name }) => kind === "function-expression" && name === null,
+      );
+
+    expect(anonymous.data?.declaredTypeFacts?.declarations).toContainEqual(
+      expect.objectContaining({ kind: "function-expression", name: null }),
+    );
+    expect(anonymous.data?.exports).toEqual([
+      {
+        name: "default",
+        type: "function",
+        declarationSpan: anonymousDeclaration?.declarationSpan,
+      },
+    ]);
+  });
+
+  it("[boundary] labels direct default classes and expressions without making them callable defaults", async () => {
+    const scenarios = [
+      { code: "export default class PrivateReportPage {}", type: "class" },
+      { code: "export default { render() {} };", type: "other" },
+      { code: "export default () => {};", type: "other" },
+      {
+        code: "function PrivateReportPage() {} export default PrivateReportPage;",
+        type: "other",
+      },
+    ];
+    for (const [index, scenario] of scenarios.entries()) {
+      const response = await buildParseResponse({
+        taskId: `unsupported-default-export-${index}`,
+        filePath: `unsupported-default-${index}.ts`,
+        code: scenario.code,
+        language: "typescript",
+      });
+      expect(
+        response.data?.exports.filter(({ name }) => name === "default"),
+      ).toEqual([
+        expect.objectContaining({ name: "default", type: scenario.type }),
+      ]);
+    }
+  });
+
+  it("[invalid-input] omits default function descriptors for barrels, export-equals, and CommonJS", async () => {
+    const scenarios = [
+      'export { default } from "./implementation";',
+      "export = function PrivateReportPage() {};",
+      "module.exports = function PrivateReportPage() {};",
+    ];
+    for (const [index, code] of scenarios.entries()) {
+      const response = await buildParseResponse({
+        taskId: `indirect-default-export-${index}`,
+        filePath: `indirect-default-${index}.ts`,
+        code,
+        language: "typescript",
+      });
+      expect(
+        response.data?.exports.filter(({ name }) => name === "default"),
+      ).toEqual([]);
+    }
+  });
+
   it("indexes an exported scalar const as a variable symbol, but not a non-exported one", async () => {
     const response = await buildParseResponse({
       taskId: "const-indexing",

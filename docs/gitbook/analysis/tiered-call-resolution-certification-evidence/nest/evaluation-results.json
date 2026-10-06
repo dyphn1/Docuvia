@@ -1,0 +1,1524 @@
+{
+  "schemaVersion": 1,
+  "track": "nest",
+  "prelabelSamples": 516,
+  "oracleLabelSamples": 516,
+  "sourceProofSites": 1610,
+  "proofSitesInFrozenCorpus": 54,
+  "proofSitesOutsideFrozenCorpus": 1556,
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "provenSites": 20,
+      "nGroups": 20,
+      "successes": 20,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.8608916593317348,
+      "statusCounts": {
+        "success": 20
+      },
+      "groupResults": [
+        {
+          "duplicateGroup": "0733fe09b38fe3c88a635165c11747052c62d15c6d1c5b4563cf3a35090064d2",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:c741edbdd32db62e7fc50b027f903c8e1cae00eb374513246a76e817ee11db40",
+                "callerNodeKey": "packages/core/test/injector/nested-transient-isolation.spec.ts#anonymous@L172",
+                "targetNodeKey": "packages/common/decorators/core/injectable.decorator.ts#Injectable",
+                "filePath": "packages/core/test/injector/nested-transient-isolation.spec.ts",
+                "startLine": 184,
+                "startColumn": 5,
+                "calleeName": "Injectable",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/injector/nested-transient-isolation.spec.ts:184:5",
+              "duplicateGroup": "0733fe09b38fe3c88a635165c11747052c62d15c6d1c5b4563cf3a35090064d2",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/injectable.decorator.ts#Injectable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "27cec0df843658c8c7691f621d2cc4053f941d5ef0ff2d6d35f63611e1f0b59a",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:7d3901aa15fcdcd32cbaba127ff232900db5724e6446683e0d43595e9ab2c00e",
+                "callerNodeKey": "packages/common/pipes/parse-uuid.pipe.ts",
+                "targetNodeKey": "packages/common/decorators/core/injectable.decorator.ts#Injectable",
+                "filePath": "packages/common/pipes/parse-uuid.pipe.ts",
+                "startLine": 68,
+                "startColumn": 1,
+                "calleeName": "Injectable",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/pipes/parse-uuid.pipe.ts:68:1",
+              "duplicateGroup": "27cec0df843658c8c7691f621d2cc4053f941d5ef0ff2d6d35f63611e1f0b59a",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/injectable.decorator.ts#Injectable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "399ef1d518f3792d54f7bce1744b324902a61164261e07df64ddb71cb921535f",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:bb142b410f46521ae42a786cc243772590cbbd71e7de22dad8c6cfeaa4d8ed92",
+                "callerNodeKey": "packages/core/test/middleware/utils.spec.ts#anonymous@L175",
+                "targetNodeKey": "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded",
+                "filePath": "packages/core/test/middleware/utils.spec.ts",
+                "startLine": 176,
+                "startColumn": 15,
+                "calleeName": "isMiddlewareRouteExcluded",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/middleware/utils.spec.ts:176:15",
+              "duplicateGroup": "399ef1d518f3792d54f7bce1744b324902a61164261e07df64ddb71cb921535f",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "39b42be296cccbe62791abd3f5f2137585607267e84aa9bed5315bfccc7c2476",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:cbf3480e2a565a6c7fa43c1f1723c489d0872895c1195fa7df3af0ba380cc858",
+                "callerNodeKey": "packages/core/nest-application.ts#NestApplication.useSecurityHeaders",
+                "targetNodeKey": "packages/core/security/security-headers.ts#resolveSecurityHeaders",
+                "filePath": "packages/core/nest-application.ts",
+                "startLine": 405,
+                "startColumn": 20,
+                "calleeName": "resolveSecurityHeaders",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/nest-application.ts:405:20",
+              "duplicateGroup": "39b42be296cccbe62791abd3f5f2137585607267e84aa9bed5315bfccc7c2476",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/security/security-headers.ts#resolveSecurityHeaders"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "3ac2a8303b83d8789bcc03a6fdbf43f072c401e0f6621ee20c37cee99ac0f29c",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:69d815192fede697e7d2e71b419e6df98952ced48c639d26c45e72d03579fa60",
+                "callerNodeKey": "packages/core/test/injector/nested-transient-isolation.spec.ts#anonymous@L172",
+                "targetNodeKey": "packages/common/decorators/core/injectable.decorator.ts#Injectable",
+                "filePath": "packages/core/test/injector/nested-transient-isolation.spec.ts",
+                "startLine": 173,
+                "startColumn": 5,
+                "calleeName": "Injectable",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/injector/nested-transient-isolation.spec.ts:173:5",
+              "duplicateGroup": "3ac2a8303b83d8789bcc03a6fdbf43f072c401e0f6621ee20c37cee99ac0f29c",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/injectable.decorator.ts#Injectable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "3b94cab8711498f643553fcf529fe70b4f12cafa5b763a31c54318c4fa433660",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:5730a89f78c13ee6384145c0afae466ef19a4ca8cd2e88fb5fe080b317737219",
+                "callerNodeKey": "packages/core/test/injector/injector.spec.ts#anonymous@L874",
+                "targetNodeKey": "packages/common/decorators/core/injectable.decorator.ts#Injectable",
+                "filePath": "packages/core/test/injector/injector.spec.ts",
+                "startLine": 876,
+                "startColumn": 7,
+                "calleeName": "Injectable",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/injector/injector.spec.ts:876:7",
+              "duplicateGroup": "3b94cab8711498f643553fcf529fe70b4f12cafa5b763a31c54318c4fa433660",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/injectable.decorator.ts#Injectable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "44f134ef91c8d98af17744f785f51b8f2bc45b58b1b11003cd70d60376365c4c",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:b85b8c4ab2a29c127fb7666a7b8c29ef4dfcb9c8a8b61b26416603c8373917f5",
+                "callerNodeKey": "packages/common/services/utils/get-env-log-levels.util.ts#getEnvLogLevels",
+                "targetNodeKey": "packages/common/services/utils/filter-log-levels.util.ts#filterLogLevels",
+                "filePath": "packages/common/services/utils/get-env-log-levels.util.ts",
+                "startLine": 26,
+                "startColumn": 19,
+                "calleeName": "filterLogLevels",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/utils/get-env-log-levels.util.ts:26:19",
+              "duplicateGroup": "44f134ef91c8d98af17744f785f51b8f2bc45b58b1b11003cd70d60376365c4c",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/filter-log-levels.util.ts#filterLogLevels"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "492afcc3b24188eb62e31053d71f7135b5241d53b46e978956163dd75f4010d3",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:84378a91f41d8b17fc12fe6cb0fcaf51d49f50f34ceb94d7b71e26c7d3b00ea1",
+                "callerNodeKey": "packages/common/services/console-logger.service.ts#ConsoleLogger.isLevelEnabled",
+                "targetNodeKey": "packages/common/services/utils/is-log-level-enabled.util.ts#isLogLevelEnabled",
+                "filePath": "packages/common/services/console-logger.service.ts",
+                "startLine": 370,
+                "startColumn": 11,
+                "calleeName": "isLogLevelEnabled",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/console-logger.service.ts:370:11",
+              "duplicateGroup": "492afcc3b24188eb62e31053d71f7135b5241d53b46e978956163dd75f4010d3",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/is-log-level-enabled.util.ts#isLogLevelEnabled"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "6a621029acf1fde1aab21962e77a789f161f2c54fab2b9264d31234e40921b4c",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:7c6c19f1930dde211af1f8903d9f0cd824af4439a8986d151482e42feb2109bc",
+                "callerNodeKey": "packages/common/test/services/utils/redact.util.spec.ts#anonymous@L6",
+                "targetNodeKey": "packages/common/services/utils/redact.util.ts#createRedactor",
+                "filePath": "packages/common/test/services/utils/redact.util.spec.ts",
+                "startLine": 7,
+                "startColumn": 11,
+                "calleeName": "createRedactor",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/services/utils/redact.util.spec.ts:7:11",
+              "duplicateGroup": "6a621029acf1fde1aab21962e77a789f161f2c54fab2b9264d31234e40921b4c",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/redact.util.ts#createRedactor"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "848a65e8f56d19e664e02e254404c88906c4d341ef708a0b275d9986b88a9bde",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:dd53f95cfab6c88913dcef9d91cbb6b65ff789f151000e27692cc08ac991cec6",
+                "callerNodeKey": "packages/core/injector/instance-wrapper.ts#InstanceWrapper.mergeWith",
+                "targetNodeKey": "packages/core/helpers/get-class-scope.ts#getClassScope",
+                "filePath": "packages/core/injector/instance-wrapper.ts",
+                "startLine": 513,
+                "startColumn": 19,
+                "calleeName": "getClassScope",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/injector/instance-wrapper.ts:513:19",
+              "duplicateGroup": "848a65e8f56d19e664e02e254404c88906c4d341ef708a0b275d9986b88a9bde",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/helpers/get-class-scope.ts#getClassScope"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "916d9dd05ee13a13758667d09547e0602817817c4a5a21524171059a94ff4689",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:83cd57cf43441d3a2db3ce77cdcb1e93d70596efc98467e9ea520f95e7b0525a",
+                "callerNodeKey": "packages/common/services/console-logger.service.ts#ConsoleLogger.constructor",
+                "targetNodeKey": "packages/common/services/utils/redact.util.ts#createRedactor",
+                "filePath": "packages/common/services/console-logger.service.ts",
+                "startLine": 218,
+                "startColumn": 10,
+                "calleeName": "createRedactor",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/console-logger.service.ts:218:10",
+              "duplicateGroup": "916d9dd05ee13a13758667d09547e0602817817c4a5a21524171059a94ff4689",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/redact.util.ts#createRedactor"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "94a4a5c1df3c9492276427fa7a803dd669c3f8761cd653b1948b3f0e59d660cf",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:291865ab7090672c809f650b02b023aec54e12a96357824b963c318c8b3f64a2",
+                "callerNodeKey": "packages/common/services/utils/get-env-log-levels.util.ts#getEnvLogLevels",
+                "targetNodeKey": "packages/common/services/utils/is-log-level.util.ts#isLogLevel",
+                "filePath": "packages/common/services/utils/get-env-log-levels.util.ts",
+                "startLine": 24,
+                "startColumn": 6,
+                "calleeName": "isLogLevel",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/utils/get-env-log-levels.util.ts:24:6",
+              "duplicateGroup": "94a4a5c1df3c9492276427fa7a803dd669c3f8761cd653b1948b3f0e59d660cf",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/is-log-level.util.ts#isLogLevel"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "ca57aad99f2e0814ca0afa1925d0029a43322c0b18a42e7a70d4ce9ed6945533",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:a5c857816353dbc2ce26a13693fdcfe545bd26c9a4c0e2173b85c00c55db0719",
+                "callerNodeKey": "packages/core/test/middleware/utils.spec.ts#anonymous@L161",
+                "targetNodeKey": "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded",
+                "filePath": "packages/core/test/middleware/utils.spec.ts",
+                "startLine": 163,
+                "startColumn": 15,
+                "calleeName": "isMiddlewareRouteExcluded",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/middleware/utils.spec.ts:163:15",
+              "duplicateGroup": "ca57aad99f2e0814ca0afa1925d0029a43322c0b18a42e7a70d4ce9ed6945533",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "d2dc98d06225fe9f363aaf25f6eb1ffd2d12ed5615b762f4c52f77b6661e0bbc",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:b2803ecb4b584f039da78c5cf282021ffd9c29a99223eabfd390df9b1f87aa7d",
+                "callerNodeKey": "packages/core/injector/instance-wrapper.ts#InstanceWrapper.mergeWith",
+                "targetNodeKey": "packages/core/injector/helpers/provider-classifier.ts#isFactoryProvider",
+                "filePath": "packages/core/injector/instance-wrapper.ts",
+                "startLine": 519,
+                "startColumn": 15,
+                "calleeName": "isFactoryProvider",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/injector/instance-wrapper.ts:519:15",
+              "duplicateGroup": "d2dc98d06225fe9f363aaf25f6eb1ffd2d12ed5615b762f4c52f77b6661e0bbc",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/injector/helpers/provider-classifier.ts#isFactoryProvider"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "d47fdcb460aef265d6560ab2066070031c50cc1d3e180a4fd2c4d040ecc61290",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:707a52685462755772cacc75e290b8cff72a19874d98ee054e1e867a7b3c9442",
+                "callerNodeKey": "packages/common/test/services/utils/redact.util.spec.ts#anonymous@L6",
+                "targetNodeKey": "packages/common/services/utils/redact.util.ts#createRedactor",
+                "filePath": "packages/common/test/services/utils/redact.util.spec.ts",
+                "startLine": 8,
+                "startColumn": 11,
+                "calleeName": "createRedactor",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/services/utils/redact.util.spec.ts:8:11",
+              "duplicateGroup": "d47fdcb460aef265d6560ab2066070031c50cc1d3e180a4fd2c4d040ecc61290",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/redact.util.ts#createRedactor"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "e11956abbc9b6e3ea87d47af7ab64493f1014ab9b2abc85dad467f5b02fef108",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:3c8058c341fe4c636d5b46fc6b294305b1129525cfe9abac1f8e8e3baf4497d5",
+                "callerNodeKey": "packages/common/services/console-logger.service.ts#ConsoleLogger.getDefaultLogLevels",
+                "targetNodeKey": "packages/common/services/utils/get-env-log-levels.util.ts#getEnvLogLevels",
+                "filePath": "packages/common/services/console-logger.service.ts",
+                "startLine": 381,
+                "startColumn": 25,
+                "calleeName": "getEnvLogLevels",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/console-logger.service.ts:381:25",
+              "duplicateGroup": "e11956abbc9b6e3ea87d47af7ab64493f1014ab9b2abc85dad467f5b02fef108",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/get-env-log-levels.util.ts#getEnvLogLevels"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "e85e8f6b7644cc169d0440c16698296790eed4a7a865201f0ecad374ab9f1ed0",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:9056c90ab95eca03cf29bb72f7e522d9d29f67f801f4b5a4d90f7d1cf7d3c0c9",
+                "callerNodeKey": "packages/core/injector/instance-wrapper.ts#InstanceWrapper.mergeWith",
+                "targetNodeKey": "packages/core/helpers/is-durable.ts#isDurable",
+                "filePath": "packages/core/injector/instance-wrapper.ts",
+                "startLine": 514,
+                "startColumn": 21,
+                "calleeName": "isDurable",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/injector/instance-wrapper.ts:514:21",
+              "duplicateGroup": "e85e8f6b7644cc169d0440c16698296790eed4a7a865201f0ecad374ab9f1ed0",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/helpers/is-durable.ts#isDurable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f4fea97ebdfc4d0f078ba48cb35017dbfe09f93c98fd60dadf1e94c209c66da1",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:4d7b3c5c156420db61b5c9dc0228c706edc4722280f221105f36d5f219c7bc4c",
+                "callerNodeKey": "packages/core/test/injector/nested-transient-isolation.spec.ts#anonymous@L172",
+                "targetNodeKey": "packages/common/decorators/core/inject.decorator.ts#Inject",
+                "filePath": "packages/core/test/injector/nested-transient-isolation.spec.ts",
+                "startLine": 186,
+                "startColumn": 7,
+                "calleeName": "Inject",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/injector/nested-transient-isolation.spec.ts:186:7",
+              "duplicateGroup": "f4fea97ebdfc4d0f078ba48cb35017dbfe09f93c98fd60dadf1e94c209c66da1",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/inject.decorator.ts#Inject"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f9370d5f12fda09600ea0d5aedad661203dc290dc7974ef91fed096cc45aa69c",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:08d57656580f589325a43c5308477463f8b431c309dee6a98d9b7c30b21664d1",
+                "callerNodeKey": "packages/common/services/console-logger.service.ts#ConsoleLogger.constructor",
+                "targetNodeKey": "packages/common/services/utils/redact.util.ts#createRedactor",
+                "filePath": "packages/common/services/console-logger.service.ts",
+                "startLine": 219,
+                "startColumn": 10,
+                "calleeName": "createRedactor",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/console-logger.service.ts:219:10",
+              "duplicateGroup": "f9370d5f12fda09600ea0d5aedad661203dc290dc7974ef91fed096cc45aa69c",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/redact.util.ts#createRedactor"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f958aaebda1c6c014d52b9eec4ef6a8949acb9bf4bfdc4eeb5f21c9c618a9535",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:c5223e99fe36e858f7ed9bedc5f62a3bb6ec61a8f144d9dfbf46b367251138a8",
+                "callerNodeKey": "packages/common/test/services/utils/redact.util.spec.ts#redact",
+                "targetNodeKey": "packages/common/services/utils/redact.util.ts#createRedactor",
+                "filePath": "packages/common/test/services/utils/redact.util.spec.ts",
+                "startLine": 4,
+                "startColumn": 4,
+                "calleeName": "createRedactor",
+                "ruleSignature": "q1:named-import:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/services/utils/redact.util.spec.ts:4:4",
+              "duplicateGroup": "f958aaebda1c6c014d52b9eec4ef6a8949acb9bf4bfdc4eeb5f21c9c618a9535",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/redact.util.ts#createRedactor"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "provenSites": 5,
+      "nGroups": 5,
+      "successes": 5,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.5492802716530588,
+      "statusCounts": {
+        "success": 5
+      },
+      "groupResults": [
+        {
+          "duplicateGroup": "b560b6a2aa51d365a5d34d0206b32aa4feff38c07a86645e96d1fad35e675996",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:a1e6e9c336893ac8ab4ee7105e51fbd48e6984e1a8be064c51ea1a353d0a6b6c",
+                "callerNodeKey": "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded",
+                "targetNodeKey": "packages/core/router/utils/exclude-route.util.ts#isRouteExcluded",
+                "filePath": "packages/core/middleware/utils.ts",
+                "startLine": 138,
+                "startColumn": 6,
+                "calleeName": "isRouteExcluded",
+                "ruleSignature": "q2:reexport-trace:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/middleware/utils.ts:138:6",
+              "duplicateGroup": "b560b6a2aa51d365a5d34d0206b32aa4feff38c07a86645e96d1fad35e675996",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/router/utils/exclude-route.util.ts#isRouteExcluded"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "cd87e89d9f41f0cd44c8ad8003393ff1d0c172298f9ed94ce8bc6462336bef34",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:8488f73dbad93ef0def681e0e2fede508495eb486727abfe0da8b703eb8342c7",
+                "callerNodeKey": "packages/core/middleware/utils.ts#isMiddlewareRouteExcluded",
+                "targetNodeKey": "packages/core/router/utils/exclude-route.util.ts#isRouteExcluded",
+                "filePath": "packages/core/middleware/utils.ts",
+                "startLine": 136,
+                "startColumn": 4,
+                "calleeName": "isRouteExcluded",
+                "ruleSignature": "q2:reexport-trace:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/middleware/utils.ts:136:4",
+              "duplicateGroup": "cd87e89d9f41f0cd44c8ad8003393ff1d0c172298f9ed94ce8bc6462336bef34",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/router/utils/exclude-route.util.ts#isRouteExcluded"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "d8ed59f2baeeb720e0a80930daafe6dea0a8279cab8f4b3fbd5d99125007be28",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:9d77ec407e475367f65a2730fdd1b3a8de7f34e428326fee56f5a704b12b8539",
+                "callerNodeKey": "packages/common/test/decorators/inject.decorator.spec.ts#anonymous@L55",
+                "targetNodeKey": "packages/common/decorators/core/inject.decorator.ts#Inject",
+                "filePath": "packages/common/test/decorators/inject.decorator.spec.ts",
+                "startLine": 57,
+                "startColumn": 7,
+                "calleeName": "Inject",
+                "ruleSignature": "q2:reexport-trace:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/decorators/inject.decorator.spec.ts:57:7",
+              "duplicateGroup": "d8ed59f2baeeb720e0a80930daafe6dea0a8279cab8f4b3fbd5d99125007be28",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/inject.decorator.ts#Inject"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f200d000f4a33875bd657451c5265f0120dfe02cfd388d6c237309d33708cfe3",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:71c9f1a4a4939ba37cf76ff71777e9cea11f7a289bb5ce2a1b93b2beb8016b1d",
+                "callerNodeKey": "packages/common/services/logger.service.ts#Logger.isLevelEnabled",
+                "targetNodeKey": "packages/common/services/utils/is-log-level-enabled.util.ts#isLogLevelEnabled",
+                "filePath": "packages/common/services/logger.service.ts",
+                "startLine": 334,
+                "startColumn": 23,
+                "calleeName": "isLogLevelEnabled",
+                "ruleSignature": "q2:reexport-trace:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/services/logger.service.ts:334:23",
+              "duplicateGroup": "f200d000f4a33875bd657451c5265f0120dfe02cfd388d6c237309d33708cfe3",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/services/utils/is-log-level-enabled.util.ts#isLogLevelEnabled"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "fcca88cb70fec83399bce75c1f790171999c990e0ca3fc0c1cd1b0bb3d956a25",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:3e7f9b52eaf592d45e069e52a0c4403c865d55d8e6339ba8bf7083f101992c8d",
+                "callerNodeKey": "packages/common/test/decorators/inject.decorator.spec.ts#anonymous@L55",
+                "targetNodeKey": "packages/common/decorators/core/inject.decorator.ts#Inject",
+                "filePath": "packages/common/test/decorators/inject.decorator.spec.ts",
+                "startLine": 61,
+                "startColumn": 7,
+                "calleeName": "Inject",
+                "ruleSignature": "q2:reexport-trace:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/decorators/inject.decorator.spec.ts:61:7",
+              "duplicateGroup": "fcca88cb70fec83399bce75c1f790171999c990e0ca3fc0c1cd1b0bb3d956a25",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/decorators/core/inject.decorator.ts#Inject"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "provenSites": 0,
+      "nGroups": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {},
+      "groupResults": [],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "provenSites": 0,
+      "nGroups": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {},
+      "groupResults": [],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "provenSites": 8,
+      "nGroups": 8,
+      "successes": 8,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.6876560219336321,
+      "statusCounts": {
+        "success": 8
+      },
+      "groupResults": [
+        {
+          "duplicateGroup": "0bbfb96b30f5c0ac7a21d4baf04dee365f1fa55906223c7c50dee846c8526ff8",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:f940b5f0a9fea17e604f25a4538f0dec383416c011e4a96e3308283bc589cc56",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 764,
+                "startColumn": 34,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:764:34",
+              "duplicateGroup": "0bbfb96b30f5c0ac7a21d4baf04dee365f1fa55906223c7c50dee846c8526ff8",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "297ed0b480acd4d04c37888c40c07f8fe4d1909ae4edaa0246829759ce5fca9f",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:9dcdf5f0b44d0faea987eb456d25d259b73ad344c230ae9f9353c604097768c7",
+                "filePath": "packages/websockets/web-sockets-controller.ts",
+                "startLine": 413,
+                "startColumn": 35,
+                "calleeName": "create",
+                "targetNodeKey": "packages/websockets/context/ws-context-creator.ts#WsContextCreator.create",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/websockets/web-sockets-controller.ts:413:35",
+              "duplicateGroup": "297ed0b480acd4d04c37888c40c07f8fe4d1909ae4edaa0246829759ce5fca9f",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/websockets/context/ws-context-creator.ts#WsContextCreator.create"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "34c6a09218a6b69e876c652b4d53697c623b2febf409535ddbd92b4c9cba8241",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:4a90a57bc1ca2adfd11291a19663d03cdb5ccf8d53d9480f7910b8b0b76cee48",
+                "filePath": "sample/37-outbox/analytics-service/src/analytics.controller.ts",
+                "startLine": 32,
+                "startColumn": 52,
+                "calleeName": "record",
+                "targetNodeKey": "sample/37-outbox/analytics-service/src/order-stats.service.ts#OrderStatsService.record",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::sample/37-outbox/analytics-service/src/analytics.controller.ts:32:52",
+              "duplicateGroup": "34c6a09218a6b69e876c652b4d53697c623b2febf409535ddbd92b4c9cba8241",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "sample/37-outbox/analytics-service/src/order-stats.service.ts#OrderStatsService.record"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "4227859ac8406f4a2fc489025c8edaf859028a753066ae7a69232ce6e6e89a5a",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:4426361b80760d9a8efcc592cff8043556b0735e7c4ea2eb69c004dda09c283a",
+                "filePath": "packages/websockets/web-sockets-controller.ts",
+                "startLine": 162,
+                "startColumn": 34,
+                "calleeName": "create",
+                "targetNodeKey": "packages/websockets/context/ws-context-creator.ts#WsContextCreator.create",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/websockets/web-sockets-controller.ts:162:34",
+              "duplicateGroup": "4227859ac8406f4a2fc489025c8edaf859028a753066ae7a69232ce6e6e89a5a",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/websockets/context/ws-context-creator.ts#WsContextCreator.create"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "a68b78b9a23c824ab731c43ff64c57e85fad335e7f5251ecfe71754ac8e198c5",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:127cfd45b1ab8fcff1adf357bf635575aa37cdebb09451eeb049cb7758dcbabb",
+                "filePath": "sample/37-outbox/src/orders/orders.controller.ts",
+                "startLine": 23,
+                "startColumn": 30,
+                "calleeName": "cancelOrder",
+                "targetNodeKey": "sample/37-outbox/src/orders/orders.service.ts#OrdersService.cancelOrder",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::sample/37-outbox/src/orders/orders.controller.ts:23:30",
+              "duplicateGroup": "a68b78b9a23c824ab731c43ff64c57e85fad335e7f5251ecfe71754ac8e198c5",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "sample/37-outbox/src/orders/orders.service.ts#OrdersService.cancelOrder"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "ed5c4c533f1af25764d6653528f5730a38e34034aed8dd6600c56717279540e0",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:4bbcf1dab28c6612832ea5f6baa50639e3f1826f4fd636b792f628f71f9197a3",
+                "filePath": "sample/37-outbox/src/orders/orders.controller.ts",
+                "startLine": 17,
+                "startColumn": 30,
+                "calleeName": "placeOrder",
+                "targetNodeKey": "sample/37-outbox/src/orders/orders.service.ts#OrdersService.placeOrder",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::sample/37-outbox/src/orders/orders.controller.ts:17:30",
+              "duplicateGroup": "ed5c4c533f1af25764d6653528f5730a38e34034aed8dd6600c56717279540e0",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "sample/37-outbox/src/orders/orders.service.ts#OrdersService.placeOrder"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f33496e0283656208567660838a08790c172c3d914f7d2d592d6154c8c7ca26a",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:689ff459a4e985c006723de14f420c1513b4956c6e77a19dd7b1e3d59afd4161",
+                "filePath": "sample/37-outbox/src/notifications/order-emails.handler.ts",
+                "startLine": 12,
+                "startColumn": 29,
+                "calleeName": "sendOrderConfirmation",
+                "targetNodeKey": "sample/37-outbox/src/notifications/mailer.service.ts#MailerService.sendOrderConfirmation",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::sample/37-outbox/src/notifications/order-emails.handler.ts:12:29",
+              "duplicateGroup": "f33496e0283656208567660838a08790c172c3d914f7d2d592d6154c8c7ca26a",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "sample/37-outbox/src/notifications/mailer.service.ts#MailerService.sendOrderConfirmation"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f5f0801766c9a32684813a2d733943074d0315ca22757a279f5d8f7aa3b268e6",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:30c0430f810bfb5a7c65fbcb3407416a6bf41cba925ff45ffe56ff6884f9ae76",
+                "filePath": "sample/37-outbox/src/outbox-admin/outbox-admin.controller.ts",
+                "startLine": 41,
+                "startColumn": 30,
+                "calleeName": "snapshot",
+                "targetNodeKey": "sample/37-outbox/src/outbox-admin/outbox-metrics.service.ts#OutboxMetrics.snapshot",
+                "ruleSignature": "q3:typed-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::sample/37-outbox/src/outbox-admin/outbox-admin.controller.ts:41:30",
+              "duplicateGroup": "f5f0801766c9a32684813a2d733943074d0315ca22757a279f5d8f7aa3b268e6",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "sample/37-outbox/src/outbox-admin/outbox-metrics.service.ts#OutboxMetrics.snapshot"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "provenSites": 21,
+      "nGroups": 19,
+      "successes": 19,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.8541314966877566,
+      "statusCounts": {
+        "success": 21
+      },
+      "groupResults": [
+        {
+          "duplicateGroup": "09c683c88435256c87ec2f4516ee837e725140f2c07112a7a063aa15add5b63e",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:0d2f29fe6180d587e68fdcfd0d7c69e61d465712180ca7f8df45636037aa6f4c",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 802,
+                "startColumn": 11,
+                "calleeName": "on",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.on",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:802:11",
+              "duplicateGroup": "09c683c88435256c87ec2f4516ee837e725140f2c07112a7a063aa15add5b63e",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.on"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "0d1dc6d6a4e012e1ce8862d95bef7c8096b9fe89354762c3a452c6b3cbbb0731",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:878c83bc5b879804387c51f319bcb2cdc223e894140cd5ecc68fb59d8b851318",
+                "filePath": "packages/core/test/injector/injector.spec.ts",
+                "startLine": 882,
+                "startColumn": 16,
+                "calleeName": "addInjectable",
+                "targetNodeKey": "packages/core/injector/module.ts#Module.addInjectable",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/injector/injector.spec.ts:882:16",
+              "duplicateGroup": "0d1dc6d6a4e012e1ce8862d95bef7c8096b9fe89354762c3a452c6b3cbbb0731",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/injector/module.ts#Module.addInjectable"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "192c5dc107ddb460b10e58fc592029ff6dddd4364fea1a939a1bb91acb442fcb",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:090454ae9ca8274377a1f544a7c1a9918ee95c8fcb107b01d794ab57ac7fb07b",
+                "filePath": "packages/core/test/nest-application.spec.ts",
+                "startLine": 240,
+                "startColumn": 16,
+                "calleeName": "setHttpAdapter",
+                "targetNodeKey": "packages/core/injector/container.ts#NestContainer.setHttpAdapter",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/nest-application.spec.ts:240:16",
+              "duplicateGroup": "192c5dc107ddb460b10e58fc592029ff6dddd4364fea1a939a1bb91acb442fcb",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/injector/container.ts#NestContainer.setHttpAdapter"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "227ba38dd1cb3e359138368279ef07540ad3f9e9e9a4d4acbbc723a0d025a136",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:18a02fbe0eca0f6b8659dcbcd18d1a25bba7581446c8f7e8ade4758b5395cf2a",
+                "filePath": "packages/core/test/nest-application.spec.ts",
+                "startLine": 230,
+                "startColumn": 28,
+                "calleeName": "getUrl",
+                "targetNodeKey": "packages/core/nest-application.ts#NestApplication.getUrl",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/nest-application.spec.ts:230:28",
+              "duplicateGroup": "227ba38dd1cb3e359138368279ef07540ad3f9e9e9a4d4acbbc723a0d025a136",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/nest-application.ts#NestApplication.getUrl"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "2c5a45527edb54dc372f44543aacf4fba25315640aa62e125d1654a52ceb5e63",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:2f81717a03d513c17e4714e31fd6c33d63ac9c39b9fec6ea4178d3deed433157",
+                "filePath": "packages/core/test/nest-application.spec.ts",
+                "startLine": 217,
+                "startColumn": 16,
+                "calleeName": "setHttpAdapter",
+                "targetNodeKey": "packages/core/injector/container.ts#NestContainer.setHttpAdapter",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/nest-application.spec.ts:217:16",
+              "duplicateGroup": "2c5a45527edb54dc372f44543aacf4fba25315640aa62e125d1654a52ceb5e63",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/injector/container.ts#NestContainer.setHttpAdapter"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "395190de233587f940a2abd80f70ca424e167196c194f0764ffe183687623088",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:979114526fa0290345bf0ee1a9685214e1d8641541c2abe5b44e61e8b75529e8",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 584,
+                "startColumn": 25,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:584:25",
+              "duplicateGroup": "395190de233587f940a2abd80f70ca424e167196c194f0764ffe183687623088",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "446d531787595cbdc4391c6a1c495c64aa3af3c5b8acc91cdd705b265458f52b",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:77617489c4a4412d2940ed6e068e263704ebd4f39bdaa7b3a3b11abd09493216",
+                "filePath": "packages/microservices/test/helpers/json-socket.spec.ts",
+                "startLine": 242,
+                "startColumn": 19,
+                "calleeName": "sendMessage",
+                "targetNodeKey": "packages/microservices/helpers/tcp-socket.ts#TcpSocket.sendMessage",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/helpers/json-socket.spec.ts:242:19",
+              "duplicateGroup": "446d531787595cbdc4391c6a1c495c64aa3af3c5b8acc91cdd705b265458f52b",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/helpers/tcp-socket.ts#TcpSocket.sendMessage"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "479547e39e22206305dd78748e9949c4abe240d59a76e00d31fc0e201cf9f76b",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:954af907788ed1bdda1274855422730a303c0e822f671ea20c2aa01ec6c94437",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 568,
+                "startColumn": 11,
+                "calleeName": "registerCloseListener",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.registerCloseListener",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:568:11",
+              "duplicateGroup": "479547e39e22206305dd78748e9949c4abe240d59a76e00d31fc0e201cf9f76b",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.registerCloseListener"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "50d8750f49bc710aba757c5ce7f714c875b9510b4bb1da6bd26abffa6f7522a7",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:c89f18c878b454c9a9031614d849f461394976a84781cbd0ccad8a54e4ee7f8e",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 824,
+                "startColumn": 17,
+                "calleeName": "close",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.close",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:824:17",
+              "duplicateGroup": "50d8750f49bc710aba757c5ce7f714c875b9510b4bb1da6bd26abffa6f7522a7",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.close"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "66f3b2d83d83bbe1a8a74ea4cca9132b40ca5eeefb619a8fcf8458ff50516f9a",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:dd80e83def8b9b1eab96e877ccb9e47820983e85a2264819f2a292828f3579cc",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 598,
+                "startColumn": 26,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:598:26",
+              "duplicateGroup": "66f3b2d83d83bbe1a8a74ea4cca9132b40ca5eeefb619a8fcf8458ff50516f9a",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "79d1d58a6bf16873386353b72c1415ca66d16843412586139dd178cf3e3f75ee",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:b49976408ff10957f8ac0f150406839c15a636bc28936281b825a1a6808f3153",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 536,
+                "startColumn": 25,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:536:25",
+              "duplicateGroup": "79d1d58a6bf16873386353b72c1415ca66d16843412586139dd178cf3e3f75ee",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "873cbdb67e3e4ad4a21006bdc596fe4d7fbed78b088707ba523db0b263995828",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:57199f07f620c20fefdf8cf4e2c27068061270b3d7a3dd88d23910d860e101b0",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 527,
+                "startColumn": 26,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:527:26",
+              "duplicateGroup": "873cbdb67e3e4ad4a21006bdc596fe4d7fbed78b088707ba523db0b263995828",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            },
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:bef21872d694a14c9e0a9a54c0f6716226b733fc8d9292f68fa57eff2d09b0fe",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 551,
+                "startColumn": 26,
+                "calleeName": "connect",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:551:26",
+              "duplicateGroup": "873cbdb67e3e4ad4a21006bdc596fe4d7fbed78b088707ba523db0b263995828",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.connect"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "8bd0d1e1a22dc7eaf7f9834c100e718d7cd369cc99d35398601b5cf425d32fc1",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:f57031b65b38f104550612d9d50bec4fae6362276d48a02a2a430648f9f1faaf",
+                "filePath": "packages/microservices/test/helpers/json-socket.spec.ts",
+                "startLine": 218,
+                "startColumn": 21,
+                "calleeName": "sendMessage",
+                "targetNodeKey": "packages/microservices/helpers/tcp-socket.ts#TcpSocket.sendMessage",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/helpers/json-socket.spec.ts:218:21",
+              "duplicateGroup": "8bd0d1e1a22dc7eaf7f9834c100e718d7cd369cc99d35398601b5cf425d32fc1",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/helpers/tcp-socket.ts#TcpSocket.sendMessage"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "99358acbeb8cbce44885c81043f56e39cb9ad77df17acd112568b8f479a2cef6",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:93622800f115f3d1d2ce81109887e726baf2d6d2c1f68682d634af138f8a3a69",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 782,
+                "startColumn": 11,
+                "calleeName": "on",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.on",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:782:11",
+              "duplicateGroup": "99358acbeb8cbce44885c81043f56e39cb9ad77df17acd112568b8f479a2cef6",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.on"
+                ]
+              }
+            },
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:aa3e0583ea268245b6efb4b01b0d3d558be2dbb0c50e3758fa5bcd152d5b0b08",
+                "filePath": "packages/microservices/test/client/client-mqtt.spec.ts",
+                "startLine": 821,
+                "startColumn": 11,
+                "calleeName": "on",
+                "targetNodeKey": "packages/microservices/client/client-mqtt.ts#ClientMqtt.on",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/microservices/test/client/client-mqtt.spec.ts:821:11",
+              "duplicateGroup": "99358acbeb8cbce44885c81043f56e39cb9ad77df17acd112568b8f479a2cef6",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/microservices/client/client-mqtt.ts#ClientMqtt.on"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "9f67f1b4b769d5860f16aee666773b3f95d639f3ae3874e3fdec9cc6df0c6a79",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:01aeacfa7a31fefb322f415e026f906f7c848950169c2a3ab8128304eec268c1",
+                "filePath": "packages/common/test/pipes/validation.pipe.spec.ts",
+                "startLine": 83,
+                "startColumn": 27,
+                "calleeName": "createExceptionFactory",
+                "targetNodeKey": "packages/common/pipes/validation.pipe.ts#ValidationPipe.createExceptionFactory",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/pipes/validation.pipe.spec.ts:83:27",
+              "duplicateGroup": "9f67f1b4b769d5860f16aee666773b3f95d639f3ae3874e3fdec9cc6df0c6a79",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/pipes/validation.pipe.ts#ValidationPipe.createExceptionFactory"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "b22d9b439cb96a30028ce64bf796b16aaf2833c43833973f5d99a9e655cb0777",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:609b261db762082a547d29275db3e8dc3adba903bc1ca6ed1f7229e2a6061ebf",
+                "filePath": "packages/core/router/router-response-controller.ts",
+                "startLine": 190,
+                "startColumn": 17,
+                "calleeName": "pipe",
+                "targetNodeKey": "packages/core/router/sse-stream.ts#SseStream.pipe",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/router/router-response-controller.ts:190:17",
+              "duplicateGroup": "b22d9b439cb96a30028ce64bf796b16aaf2833c43833973f5d99a9e655cb0777",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/router/sse-stream.ts#SseStream.pipe"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "b5103332dacb57e7dbf88e53ce88e1c72033687bb42d72728c597cae43bf534f",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:fda6a8a91be08744ba84fa166bfe0408a0722cd195d1c3eb28a54e4da7a94068",
+                "filePath": "packages/core/router/router-response-controller.ts",
+                "startLine": 242,
+                "startColumn": 23,
+                "calleeName": "commitHeaders",
+                "targetNodeKey": "packages/core/router/sse-stream.ts#SseStream.commitHeaders",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/router/router-response-controller.ts:242:23",
+              "duplicateGroup": "b5103332dacb57e7dbf88e53ce88e1c72033687bb42d72728c597cae43bf534f",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/router/sse-stream.ts#SseStream.commitHeaders"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "c1b993b5026a49279f1241cef0f5f7e05129ae6a45b67b90bcd1bfe93e59706c",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:f7d66f7e0329667e973245a4e3ec38190f7da77987f8b33714b2a159247bc829",
+                "filePath": "packages/common/test/pipes/validation.pipe.spec.ts",
+                "startLine": 67,
+                "startColumn": 11,
+                "calleeName": "transform",
+                "targetNodeKey": "packages/common/pipes/validation.pipe.ts#ValidationPipe.transform",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/common/test/pipes/validation.pipe.spec.ts:67:11",
+              "duplicateGroup": "c1b993b5026a49279f1241cef0f5f7e05129ae6a45b67b90bcd1bfe93e59706c",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/common/pipes/validation.pipe.ts#ValidationPipe.transform"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "duplicateGroup": "f24bee6ff121d7ff304c7cb02384c0b4cfcf4479d343f1399a065575d056e2a5",
+          "result": "success",
+          "sites": [
+            {
+              "proof": {
+                "callSiteKey": "call-site:v1:8ebb629bb534ecaecb233da31c328618c9796b125f4e12764507b4149221fb4d",
+                "filePath": "packages/core/test/nest-application.spec.ts",
+                "startLine": 229,
+                "startColumn": 23,
+                "calleeName": "getHttpAdapterHostRef",
+                "targetNodeKey": "packages/core/injector/container.ts#NestContainer.getHttpAdapterHostRef",
+                "ruleSignature": "q3:new-receiver:v1"
+              },
+              "sampleId": "nestjs/nest@35142c3eca8e::packages/core/test/nest-application.spec.ts:229:23",
+              "duplicateGroup": "f24bee6ff121d7ff304c7cb02384c0b4cfcf4479d343f1399a065575d056e2a5",
+              "outcome": {
+                "kind": "success",
+                "status": "resolved",
+                "oracleTargets": [
+                  "packages/core/injector/container.ts#NestContainer.getHttpAdapterHostRef"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "contradictionDetails": []
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "provenSites": 0,
+      "nGroups": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {},
+      "groupResults": [],
+      "contradictionDetails": []
+    }
+  ]
+}

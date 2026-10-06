@@ -55,6 +55,8 @@ interface SnapshotSpec {
   readonly license: string;
   readonly usage: "evaluation-only" | "training-and-evaluation";
   readonly temporalOf: string | null;
+  /** Contributes all source duplicate groups to temporal novelty, but no labelled rows. */
+  readonly baselineOnly?: boolean;
 }
 
 interface CorpusSpec {
@@ -135,17 +137,22 @@ async function collectSnapshot(
   const checkerMs = performance.now() - checkerStarted;
   const all = uniqueSites(checker.results);
   const population = all.filter((r) => r.exclusion === null);
-  const sampled = [...population]
-    .sort((a, b) =>
-      seeded(
-        corpus.splitSeed,
-        `${spec.snapshotId}\0${callSiteId(a.callSite)}`,
-      ) <
-      seeded(corpus.splitSeed, `${spec.snapshotId}\0${callSiteId(b.callSite)}`)
-        ? -1
-        : 1,
-    )
-    .slice(0, corpus.maxSamplesPerSnapshot);
+  const sampled = spec.baselineOnly
+    ? []
+    : [...population]
+        .sort((a, b) =>
+          seeded(
+            corpus.splitSeed,
+            `${spec.snapshotId}\0${callSiteId(a.callSite)}`,
+          ) <
+          seeded(
+            corpus.splitSeed,
+            `${spec.snapshotId}\0${callSiteId(b.callSite)}`,
+          )
+            ? -1
+            : 1,
+        )
+        .slice(0, corpus.maxSamplesPerSnapshot);
 
   const oracleHash = hashSnapshot(dir);
   const groups = new Map<string, CheckedCallSite[]>();
@@ -471,6 +478,9 @@ async function main(): Promise<void> {
     oracle: identity,
     snapshots,
     temporalOrderVerified: temporal,
+    baselineOnlySnapshots: corpus.snapshots
+      .filter((snapshot) => snapshot.baselineOnly === true)
+      .map((snapshot) => snapshot.snapshotId),
     familyRelations: relations,
     splitDrops: count(dropped.map((d) => d.reason)),
     samples: samples.length,

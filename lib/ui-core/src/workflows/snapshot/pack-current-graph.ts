@@ -4,8 +4,10 @@ import path from "node:path";
 import {
   docuviaFactory,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   TOKENS,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
   type IGraphStore,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
@@ -14,6 +16,7 @@ import {
   DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX,
   KNOWLEDGE_SNAPSHOT_FORMAT_VERSION,
   SNAPSHOT_CALL_SITES_VERSION,
+  SNAPSHOT_CALL_RESOLUTIONS_VERSION,
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
 } from "@workspace/contracts";
 import { SNAPSHOT_TEMP_DIR_PREFIX } from "./snapshot-messages.js";
@@ -36,6 +39,30 @@ function getCallSitesForSnapshot(
   }
 
   return store.callSites.getAllForProject(project.id);
+}
+
+function getCallResolutionsForSnapshot(
+  store: IGraphStore,
+  project: ReturnType<IGraphStore["projects"]["getFirst"]>,
+  callSitesAvailable: boolean,
+) {
+  if (
+    !project ||
+    !callSitesAvailable ||
+    !store.callSiteResolutions?.getAllForProject
+  ) {
+    return undefined;
+  }
+  const availability = store.meta.get(
+    `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}${project.id}`,
+  );
+  if (
+    availability !== undefined &&
+    availability !== SnapshotCallResolutionAvailabilityStates.AVAILABLE
+  ) {
+    return undefined;
+  }
+  return store.callSiteResolutions.getAllForProject(project.id);
 }
 
 /**
@@ -65,6 +92,11 @@ export async function packCurrentGraphOntoKnowledgeBranch(
   // A missing marker is a locally ingested database. Preserve an explicit unavailable marker
   // so re-snapshotting cannot turn an incomplete hydrated set into a complete empty set.
   const callSites = getCallSitesForSnapshot(store, project);
+  const callResolutions = getCallResolutionsForSnapshot(
+    store,
+    project,
+    callSites !== undefined,
+  );
   const dynamicEvidence = project
     ? store.meta.get(
         `${DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX}${project.id}`,
@@ -82,6 +114,9 @@ export async function packCurrentGraphOntoKnowledgeBranch(
     ...(callSites !== undefined
       ? { callSites: { version: SNAPSHOT_CALL_SITES_VERSION } }
       : {}),
+    ...(callResolutions !== undefined
+      ? { callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION } }
+      : {}),
   };
 
   const tempDir = await fs.mkdtemp(
@@ -93,6 +128,7 @@ export async function packCurrentGraphOntoKnowledgeBranch(
       l2Rows,
       linkRows,
       ...(callSites !== undefined ? { callSites } : {}),
+      ...(callResolutions !== undefined ? { callResolutions } : {}),
       l3Rows: store.l3.getAllExportable(),
       metadata: {
         project: project

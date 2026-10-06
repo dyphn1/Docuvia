@@ -27,6 +27,7 @@ const CORE_OWNED_TOKENS = [
   TOKENS.SemanticDiffAnalyzer,
   TOKENS.SemanticCorpusService,
   TOKENS.SemanticDecisionValidator,
+  TOKENS.CallResolutionHypothesisService,
   TOKENS.EdgeResolutionProviders,
 ] as const;
 

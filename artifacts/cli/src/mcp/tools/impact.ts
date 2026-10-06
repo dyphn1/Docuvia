@@ -11,6 +11,7 @@ import { createPinoBackedLogger } from "../../logging/create-logger.js";
 const ImpactToolInputSchema = z
   .object({
     target: z.string().min(1),
+    explainResolution: z.boolean().optional(),
   })
   .strict();
 
@@ -28,6 +29,11 @@ export const impactTool: McpTool = {
           description:
             "Symbol name or file path whose dependents (blast radius) should be computed.",
         },
+        explainResolution: {
+          type: "boolean",
+          description:
+            "Include the full resolver, dependency, and candidate evidence for call edges.",
+        },
       },
       required: ["target"],
     },
@@ -42,6 +48,9 @@ export const impactTool: McpTool = {
       docuviaMemory.createScope(scopeId);
       docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, process.cwd());
       docuviaMemory.set(scopeId, MemoryKeys.TARGET, input.target);
+      if (input.explainResolution) {
+        docuviaMemory.set(scopeId, MemoryKeys.EXPLAIN_RESOLUTION, true);
+      }
 
       try {
         // `null` is a legal outcome (unresolved target), not a failure — the CLI's

@@ -6,6 +6,8 @@ import {
   UTF8_ENCODING,
   type AstParseFailure,
   type CallResolutionStats,
+  type CallSiteResolutionInvalidationResult,
+  type CallSiteResolutionDependency,
   type ChangedFileEntry,
   type DiscoveredFile,
   type IGitProvider,
@@ -16,6 +18,7 @@ import {
   type SemanticDiffModifiedNode,
   type TierCQueueEntry,
   isDiscoverableSourceFile,
+  isDocuviaGeneratedPath,
 } from "@workspace/contracts";
 import {
   aggregateCallResolution,
@@ -120,14 +123,30 @@ export async function runDeltaIngestion(deps: {
     headSha,
   );
   const { toDelete, toReparse } = partitionChangedEntries(changedEntries);
-
+  const changedDependencySnapshot = await collectChangedDependencyHashes(
+    deps,
+    changedEntries,
+  );
+  const invalidation: CallSiteResolutionInvalidationResult | undefined =
+    await store.withWriteLock(() =>
+      changedDependencySnapshot.dependencies.length > 0
+        ? store.callSiteResolutions?.invalidateChangedDependencies(
+            projectId,
+            changedDependencySnapshot.dependencies,
+          )
+        : undefined,
+    );
   const {
     filesToParse,
     skippedOversized,
     tierBEntries,
     tierCSymbolEntries,
     changedBytes,
-  } = await collectFilesToParse(deps, toReparse);
+  } = await collectFilesToParse(
+    deps,
+    toReparse,
+    changedDependencySnapshot.contentByPath,
+  );
   const pathsToRetire = new Set(toDelete);
   for (const { file } of skippedOversized) pathsToRetire.add(file);
   // Tier C's commit-message candidate source (phase1-decision-integration.md §9b/§9e) — collected
@@ -148,17 +167,21 @@ export async function runDeltaIngestion(deps: {
   // `snapshot`'s git-write step uses — so a concurrent `snapshot` can't read a half-updated
   // local.db mid-delta.
   let failures: AstParseFailure[] = [];
+  let filesParsed = 0;
   await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
-    failures = await persistDelta(deps, {
+    const persisted = await persistDelta(deps, {
       pathsToRetire,
       filesToParse,
+      affectedCallerFilePaths: invalidation?.affectedFilePaths ?? [],
       tierBEntries,
       tierCEntries,
       changedBytes,
     });
+    failures = persisted.failures;
+    filesParsed = persisted.filesParsed;
   });
 
-  const filesReparsed = filesToParse.length - failures.length;
+  const filesReparsed = filesParsed - failures.length;
 
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.DELTA_SUMMARY,
@@ -186,6 +209,82 @@ export async function runDeltaIngestion(deps: {
 }
 
 type DeltaDeps = Parameters<typeof runDeltaIngestion>[0];
+
+async function collectChangedDependencyHashes(
+  deps: DeltaDeps,
+  changedEntries: ChangedFileEntry[],
+): Promise<{
+  dependencies: CallSiteResolutionDependency[];
+  contentByPath: Map<string, string>;
+}> {
+  const contentHashByPath = new Map<string, string | null>();
+  const contentByPath = new Map<string, string>();
+
+  for (const entry of changedEntries) {
+    if (isDocuviaGeneratedPath(entry.file)) continue;
+    if (entry.status === ChangedFileStatuses.DELETED) {
+      contentHashByPath.set(entry.file, null);
+      continue;
+    }
+    if (entry.status === ChangedFileStatuses.RENAMED && entry.oldFile) {
+      if (!isDocuviaGeneratedPath(entry.oldFile)) {
+        contentHashByPath.set(entry.oldFile, null);
+      }
+    }
+
+    const content = await deps.git.readFileAtRef(
+      deps.workspaceRoot,
+      deps.headSha,
+      entry.file,
+    );
+    if (content !== undefined) contentByPath.set(entry.file, content);
+    contentHashByPath.set(
+      entry.file,
+      content === undefined ? null : hashContent(content),
+    );
+  }
+
+  return {
+    dependencies: [...contentHashByPath]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([filePath, contentHash]) => ({ filePath, contentHash })),
+    contentByPath,
+  };
+}
+
+function hashContent(content: string): string {
+  return crypto
+    .createHash(HASH_ALGO_SHA256)
+    .update(content, UTF8_ENCODING)
+    .digest(ENCODING_HEX);
+}
+
+async function collectDependentCallerFiles(
+  deps: DeltaDeps,
+  affectedFilePaths: string[],
+  pathsToRetire: ReadonlySet<string>,
+  filesToParse: DiscoveredFile[],
+): Promise<DiscoveredFile[]> {
+  const existingPaths = new Set(filesToParse.map(({ file }) => file));
+  const additionalFiles: DiscoveredFile[] = [];
+  for (const file of affectedFilePaths) {
+    if (
+      existingPaths.has(file) ||
+      pathsToRetire.has(file) ||
+      !isDiscoverableSourceFile(file)
+    ) {
+      continue;
+    }
+    const code = await deps.git.readFileAtRef(
+      deps.workspaceRoot,
+      deps.headSha,
+      file,
+    );
+    if (code === undefined) continue;
+    additionalFiles.push({ file, hash: hashContent(code), code });
+  }
+  return additionalFiles;
+}
 
 /** Splits a name-status diff into paths whose L2 rows must be dropped (deleted files + renames'
  *  old paths) and discoverable source files to re-parse (§6b: renames are delete + add). */
@@ -219,6 +318,7 @@ function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
 async function collectFilesToParse(
   deps: DeltaDeps,
   toReparse: ChangedFileEntry[],
+  changedContentByPath: ReadonlyMap<string, string>,
 ): Promise<{
   filesToParse: DiscoveredFile[];
   skippedOversized: { file: string; sizeBytes: number }[];
@@ -241,7 +341,9 @@ async function collectFilesToParse(
   let changedBytes = 0;
 
   for (const entry of toReparse) {
-    const content = await git.readFileAtRef(workspaceRoot, headSha, entry.file);
+    const content =
+      changedContentByPath.get(entry.file) ??
+      (await git.readFileAtRef(workspaceRoot, headSha, entry.file));
     if (content === undefined) continue; // gone by the time we read it (rare race) — skip, not fatal
 
     const sizeBytes = Buffer.byteLength(content, UTF8_ENCODING);
@@ -346,112 +448,162 @@ async function persistDelta(
   work: {
     pathsToRetire: Set<string>;
     filesToParse: DiscoveredFile[];
+    affectedCallerFilePaths: string[];
     tierBEntries: TierBQueueEntry[];
     tierCEntries: TierCQueueEntry[];
     changedBytes: number;
   },
-): Promise<AstParseFailure[]> {
-  const { workspaceRoot, logger, store, projectId, headSha } = deps;
-  const {
+): Promise<{ failures: AstParseFailure[]; filesParsed: number }> {
+  const filesToPersist = await prepareDeltaFiles(deps, work);
+  await retireDeltaPaths(deps, work.pathsToRetire);
+  const { failures, callResolutionByFile } = await parseDeltaFiles(
+    deps,
+    filesToPersist,
+    work.pathsToRetire,
+  );
+  await recordDeltaCallResolution(
+    deps,
+    work.pathsToRetire,
+    filesToPersist,
+    callResolutionByFile,
+  );
+  await commitDeltaMetadata(deps, work, failures);
+  return { failures, filesParsed: filesToPersist.length };
+}
+
+async function prepareDeltaFiles(
+  deps: DeltaDeps,
+  work: {
+    pathsToRetire: Set<string>;
+    filesToParse: DiscoveredFile[];
+    affectedCallerFilePaths: string[];
+  },
+): Promise<DiscoveredFile[]> {
+  const { pathsToRetire, filesToParse, affectedCallerFilePaths } = work;
+  const dependentCallerFiles = await collectDependentCallerFiles(
+    deps,
+    affectedCallerFilePaths,
     pathsToRetire,
     filesToParse,
-    tierBEntries,
-    tierCEntries,
-    changedBytes,
-  } = work;
+  );
+  return [...filesToParse, ...dependentCallerFiles];
+}
 
-  if (pathsToRetire.size > 0) {
-    await store.withWriteLock(() => {
-      for (const file of pathsToRetire) retirePath(store, projectId, file);
-      // Tier B drains can upsert `project_files`, while Tier C contract-symbol entries need an L2
-      // anchor. Drop both kinds of path-scoped work before a later drain can outlive this retirement.
-      removeTierBQueueEntriesForFiles(store, pathsToRetire);
-      removeTierCQueueEntriesForFiles(store, pathsToRetire);
-    });
+async function retireDeltaPaths(
+  deps: DeltaDeps,
+  pathsToRetire: Set<string>,
+): Promise<void> {
+  if (pathsToRetire.size === 0) return;
+  const { store, projectId } = deps;
+  await store.withWriteLock(() => {
+    for (const file of pathsToRetire) retirePath(store, projectId, file);
+    // Tier B drains can upsert `project_files`, while Tier C contract-symbol entries need an L2
+    // anchor. Drop both kinds of path-scoped work before a later drain can outlive this retirement.
+    removeTierBQueueEntriesForFiles(store, pathsToRetire);
+    removeTierCQueueEntriesForFiles(store, pathsToRetire);
+  });
+}
+
+async function parseDeltaFiles(
+  deps: DeltaDeps,
+  filesToPersist: DiscoveredFile[],
+  pathsToRetire: Set<string>,
+): Promise<{
+  failures: AstParseFailure[];
+  callResolutionByFile?: Record<string, CallResolutionStats>;
+}> {
+  const { workspaceRoot, logger, store, projectId } = deps;
+  if (filesToPersist.length === 0) {
+    if (pathsToRetire.size > 0) {
+      // Refresh #393 evidence against the remaining tracked files on retirement-only deltas.
+      await docuviaFactory.resolve(TOKENS.GraphPersister).persist({
+        store,
+        workspaceRoot,
+        projectId,
+        parsedResults: [],
+        tags: [],
+      });
+    }
+    return { failures: [] };
   }
 
-  let failures: AstParseFailure[] = [];
-  let callResolutionByFile: Record<string, CallResolutionStats> | undefined;
-  if (filesToParse.length === 0 && pathsToRetire.size > 0) {
-    // #508 D6 / #522: a retirement-only delta parses nothing, but the #393 evidence may still name
-    // the retired paths as loaders or candidates. An empty persist batch refreshes every retained
-    // record against the remaining tracked files.
-    await docuviaFactory.resolve(TOKENS.GraphPersister).persist({
-      store,
-      workspaceRoot,
-      projectId,
-      parsedResults: [],
-      tags: [],
-    });
-  }
-  if (filesToParse.length > 0) {
-    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
-      logger,
-    });
-    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+  const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, { logger });
+  const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+  const result = await runParseAndPersist({
+    astProcessor,
+    graphPersister,
+    store,
+    workspaceRoot,
+    projectId,
+    filesToParse: filesToPersist,
+    // Already logged (analyze.delta.file_skipped_oversized) while collecting source changes.
+    skippedOversized: [],
+    tags: new Set(),
+    appendLogLine: appendAnalyzeLogLine,
+    logEvents: {
+      parseFailure: ANALYZE_EVENTS.DELTA_PARSE_FAILURE,
+      fileSkippedOversized: ANALYZE_EVENTS.DELTA_FILE_SKIPPED_OVERSIZED,
+    },
+  });
+  return {
+    failures: result.failures,
+    callResolutionByFile: result.callResolutionByFile,
+  };
+}
 
-    const result = await runParseAndPersist({
-      astProcessor,
-      graphPersister,
-      store,
-      workspaceRoot,
-      projectId,
-      filesToParse,
-      // Already logged (analyze.delta.file_skipped_oversized) as each was found in
-      // collectFilesToParse -- passing them again here would double-log the same skip.
-      skippedOversized: [],
-      tags: new Set(),
-      appendLogLine: appendAnalyzeLogLine,
-      logEvents: {
-        parseFailure: ANALYZE_EVENTS.DELTA_PARSE_FAILURE,
-        fileSkippedOversized: ANALYZE_EVENTS.DELTA_FILE_SKIPPED_OVERSIZED,
-      },
-    });
-    failures = result.failures;
-    callResolutionByFile = result.callResolutionByFile;
-  }
+async function recordDeltaCallResolution(
+  deps: DeltaDeps,
+  pathsToRetire: Set<string>,
+  filesToPersist: DiscoveredFile[],
+  callResolutionByFile: Record<string, CallResolutionStats> | undefined,
+): Promise<void> {
+  if (filesToPersist.length === 0 && pathsToRetire.size === 0) return;
+  const { workspaceRoot, store } = deps;
+  const deltaCallResolution = callResolutionByFile ?? {};
+  mergeDeltaCallResolution(
+    store,
+    deltaCallResolution,
+    filesToPersist.map(({ file }) => file),
+    pathsToRetire,
+  );
+  const totals = aggregateCallResolution(deltaCallResolution);
+  await appendAnalyzeLogLine(workspaceRoot, {
+    event: ANALYZE_EVENTS.DELTA_CALL_RESOLUTION,
+    ...totals,
+    files: Object.keys(deltaCallResolution).length,
+  });
+}
+
+async function commitDeltaMetadata(
+  deps: DeltaDeps,
+  work: {
+    tierBEntries: TierBQueueEntry[];
+    tierCEntries: TierCQueueEntry[];
+    changedBytes: number;
+  },
+  failures: AstParseFailure[],
+): Promise<void> {
+  const { store, projectId, headSha, logger } = deps;
   const failedPaths = new Set(failures.map(({ file }) => file));
-
-  // Issue #221 / #526 / #522: reconcile every path touched by this delta. A file with zero call
-  // sites has no entry in callResolutionByFile, so the re-parse and retirement sets are
-  // authoritative for removing its previous record. Retirement-only deltas still write the map.
-  if (filesToParse.length > 0 || pathsToRetire.size > 0) {
-    const deltaCallResolution = callResolutionByFile ?? {};
-    mergeDeltaCallResolution(
-      store,
-      deltaCallResolution,
-      filesToParse.map(({ file }) => file),
-      pathsToRetire,
-    );
-    const totals = aggregateCallResolution(deltaCallResolution);
-    await appendAnalyzeLogLine(workspaceRoot, {
-      event: ANALYZE_EVENTS.DELTA_CALL_RESOLUTION,
-      ...totals,
-      files: Object.keys(deltaCallResolution).length,
-    });
-  }
-
   await store.withWriteLock(() => {
     for (const file of failedPaths) retirePath(store, projectId, file);
-    if (tierBEntries.length > 0) {
-      appendTierBQueueEntries(store, tierBEntries);
+    if (work.tierBEntries.length > 0) {
+      appendTierBQueueEntries(store, work.tierBEntries);
     }
-    if (tierCEntries.length > 0) {
-      appendTierCQueueEntries(store, tierCEntries, logger);
+    if (work.tierCEntries.length > 0) {
+      appendTierCQueueEntries(store, work.tierCEntries, logger);
     }
     removeTierBQueueEntriesForFiles(store, failedPaths);
     removeTierCQueueEntriesForFiles(store, failedPaths);
-    if (changedBytes > 0) {
+    if (work.changedBytes > 0) {
       const priorBytes = Number(
         store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES) ?? 0,
       );
       store.meta.set(
         GitConstants.META_KEY_TIER_B_CHANGED_BYTES,
-        String(priorBytes + changedBytes),
+        String(priorBytes + work.changedBytes),
       );
     }
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
   });
-
-  return failures;
 }

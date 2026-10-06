@@ -1,12 +1,45 @@
 import type { DiscoveredFile } from "./discovery.interfaces.js";
+import type {
+  AstDeclaredTypeFacts,
+  AstUtf16Span,
+} from "./declared-type-facts.interfaces.js";
+import type { AstCallSiteShapeFacts } from "./call-site-shape-facts.interfaces.js";
 
 export const AstExportKinds = {
   FUNCTION: "function",
   CLASS: "class",
   VARIABLE: "variable",
+  OTHER: "other",
 } as const;
 export type AstExportKind =
   (typeof AstExportKinds)[keyof typeof AstExportKinds];
+
+export type AstReexportDescriptor =
+  | {
+      readonly kind: "named";
+      readonly exportedName: string;
+      readonly importedName: string;
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "star";
+      readonly exportedName: "*";
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "namespace";
+      readonly exportedName: string;
+      readonly modulePath: string;
+      readonly isTypeOnly?: boolean;
+    }
+  | {
+      readonly kind: "local";
+      readonly exportedName: string;
+      readonly localName: string;
+      readonly isTypeOnly?: boolean;
+    };
 
 export interface AstImportDescriptor {
   localName: string;
@@ -17,11 +50,24 @@ export interface AstImportDescriptor {
    *  persist-ast-graph links these as file-level `depends_on` edges (a barrel depends on its
    *  source even though it has no call sites). */
   viaReexport?: boolean;
+  /** True for TS `import type` and `import { type X }` bindings. */
+  isTypeOnly?: boolean;
+  /** True only for the default binding in an ordinary `import X, { y }` statement. */
+  isCombinedDefaultImport?: boolean;
+}
+
+export interface AstExportDescriptor {
+  readonly name: string;
+  readonly type: AstExportKind;
+  /** Exact declaration span for a direct `export default function` descriptor. */
+  readonly declarationSpan?: AstUtf16Span;
 }
 
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
-  exports: Array<{ name: string; type: AstExportKind }>;
+  exports: AstExportDescriptor[];
+  /** TS/JS export-clause syntax kept separate from imports so ScopeResolver inputs stay stable. */
+  reexports?: AstReexportDescriptor[];
   functions: Array<{
     name: string;
     startLine: number;
@@ -46,7 +92,8 @@ export interface ParsedAstFileData {
     contentHash?: string;
   }>;
   /** One static call site. `startLine`/`startColumn` are the 0-based source position of the
-   *  callee expression's start (Tier A's own `startPosition` convention) -- the seed Tier B
+   *  callee expression's start (Tier A's `startPosition` convention; column is a UTF-16 code-unit
+   *  column, matching TypeScript offsets) -- the seed Tier B
    *  forward resolution (issue #11 plan A) issues `textDocument/definition` at this position per
    *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1.
    *
@@ -70,6 +117,10 @@ export interface ParsedAstFileData {
   }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;
+  /** Optional source-only TypeScript/JavaScript syntax facts; older producers omit this versioned payload. */
+  declaredTypeFacts?: AstDeclaredTypeFacts;
+  /** Optional binding-scoped, syntax-only call features for candidate filtering. */
+  callSiteShapeFacts?: AstCallSiteShapeFacts;
   /** `new Worker(<path>)` spawn sites (TS/JS only) — see `ast-worker.ts`'s `collectWorkerSpawns`. */
   workerSpawns?: Array<{ sourceFunction: string; targetPath: string }>;
   decisions?: string[];

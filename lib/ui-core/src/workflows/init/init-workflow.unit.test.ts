@@ -24,7 +24,9 @@ import {
 import {
   GitConstants,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
 } from "@workspace/contracts";
 import { InitWorkflow, resolveDbPath } from "./init-workflow.js";
 import { readTierBQueue } from "../analyze/tier-b-queue.js";
@@ -400,12 +402,20 @@ describe("InitWorkflow.execute()", () => {
 
   it("[state-diff] restores call-site availability after init parses every discoverable file", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    const resolutionMarkerKey = `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    store.meta.set(
+      resolutionMarkerKey,
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
+    );
 
     await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
     expect(store.meta.get(markerKey)).toBe(
       SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
+    expect(store.meta.get(resolutionMarkerKey)).toBe(
+      SnapshotCallResolutionAvailabilityStates.AVAILABLE,
     );
   });
 

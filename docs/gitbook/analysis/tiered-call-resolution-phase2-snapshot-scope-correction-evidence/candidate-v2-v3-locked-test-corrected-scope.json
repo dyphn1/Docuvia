@@ -1,0 +1,617 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2a-candidate-recall/2",
+  "evaluatedAt": "2026-10-03T20:22:55.376Z",
+  "split": "test",
+  "provenance": {
+    "predictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+    "labelRowsHash": "6a65cb34cac9f395a81179a2f24bfc9d4f16e739cbb14455726108cf3073a0eb",
+    "correctedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "implementationHash": "5d6a9c3d332c9ea744eaa17c49b0f0873f6f4bb606375bf482cf29aa9a28d3ca",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v3",
+    "snapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "uniqueOracleAliasCount": 119141,
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "candidateOracleMappingScopeCount": 10,
+    "allOracleAliasCount": 153585,
+    "candidateOracleMappingImplementationHash": "bf8602f4bb49b0906467ad60d825c5e594ad523dc28dbea016189c4a5a683a2c",
+    "candidateOracleMappingImplementationFiles": {
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts": "6196ea238af4dfb45b9a97b74fbbd9abd9116657abd1e28ff66ac3c921064978",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-evaluation.mts": "fddcc0ee2966b2316476fc6c28884c588d8ebee86cc1ef7e05266433d2d261d7",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "ca5637dc13bdb725ff9d9c18b92171995e97f4189a19d77de253fbcc27b24655"
+    }
+  },
+  "candidateRecallDomain": {
+    "totalConfirmedPositiveSiteCount": 12422,
+    "uniqueMappedPositiveTargetOccurrenceCount": 11547,
+    "ambiguousPositiveTargetOccurrenceCount": 521,
+    "unmappedPositiveTargetOccurrenceCount": 354,
+    "uniqueMappedPositiveSiteCount": 11547,
+    "sitesWithoutUniquePositiveTargetCount": 875
+  },
+  "metrics": {
+    "split": "test",
+    "eligibleSiteCount": 11547,
+    "candidateGoldTargetCount": 11547,
+    "coveredGoldTargetCount": 11492,
+    "candidateRecall": 0.9952368580583701,
+    "zeroCandidateSiteCount": 51,
+    "zeroCandidateRate": 0.004416731618602235,
+    "missSiteCount": 55,
+    "zeroCandidateMissSiteCount": 51,
+    "candidateButMissSiteCount": 4,
+    "candidateWithoutOracleIdSiteCount": 718,
+    "unmappedCandidateCount": 0,
+    "ambiguousCandidateMappingCount": 6935,
+    "candidateSetSizeP50": 1,
+    "candidateSetSizeP95": 12,
+    "candidateSetSizeMax": 120,
+    "families": [
+      {
+        "name": "abhigyanpatwari/GitNexus",
+        "eligibleSiteCount": 6178,
+        "candidateGoldTargetCount": 6178,
+        "coveredGoldTargetCount": 6161,
+        "candidateRecall": 0.9972483004208482,
+        "zeroCandidateSiteCount": 17,
+        "candidateWithoutOracleIdSiteCount": 683
+      },
+      {
+        "name": "onyx-dot-app/onyx",
+        "eligibleSiteCount": 5369,
+        "candidateGoldTargetCount": 5369,
+        "coveredGoldTargetCount": 5331,
+        "candidateRecall": 0.9929223319053827,
+        "zeroCandidateSiteCount": 34,
+        "candidateWithoutOracleIdSiteCount": 35
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "arg-chain",
+        "eligibleSiteCount": 33,
+        "candidateGoldTargetCount": 33,
+        "coveredGoldTargetCount": 33,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 1
+      },
+      {
+        "name": "bare",
+        "eligibleSiteCount": 8802,
+        "candidateGoldTargetCount": 8802,
+        "coveredGoldTargetCount": 8747,
+        "candidateRecall": 0.9937514201317882,
+        "zeroCandidateSiteCount": 51,
+        "candidateWithoutOracleIdSiteCount": 246
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 2615,
+        "candidateGoldTargetCount": 2615,
+        "coveredGoldTargetCount": 2615,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 422
+      },
+      {
+        "name": "this",
+        "eligibleSiteCount": 97,
+        "candidateGoldTargetCount": 97,
+        "coveredGoldTargetCount": 97,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 49
+      }
+    ],
+    "missingEvidenceReasons": {
+      "incomplete-inventory": 4,
+      "no-supported-candidates": 51
+    }
+  },
+  "candidateSetDistribution": {
+    "overall": {
+      "name": "all eligible sites",
+      "eligibleSiteCount": 12422,
+      "zeroCandidateSiteCount": 336,
+      "zeroCandidateRate": 0.027048784414748027,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 32,
+      "candidateSetSizeMax": 305,
+      "candidateWithoutOracleIdSiteCount": 1243,
+      "ambiguousCandidateMappingCount": 78396,
+      "unmappedCandidateCount": 0
+    },
+    "byFamily": [
+      {
+        "name": "abhigyanpatwari/GitNexus",
+        "eligibleSiteCount": 6249,
+        "zeroCandidateSiteCount": 22,
+        "zeroCandidateRate": 0.0035205632901264203,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 24,
+        "candidateSetSizeMax": 120,
+        "candidateWithoutOracleIdSiteCount": 690,
+        "ambiguousCandidateMappingCount": 6820,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "onyx-dot-app/onyx",
+        "eligibleSiteCount": 6173,
+        "zeroCandidateSiteCount": 314,
+        "zeroCandidateRate": 0.05086667746638587,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 305,
+        "candidateSetSizeMax": 305,
+        "candidateWithoutOracleIdSiteCount": 553,
+        "ambiguousCandidateMappingCount": 71576,
+        "unmappedCandidateCount": 0
+      }
+    ],
+    "byCallShape": [
+      {
+        "name": "arg-chain",
+        "eligibleSiteCount": 33,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 3,
+        "candidateSetSizeP95": 21,
+        "candidateSetSizeMax": 21,
+        "candidateWithoutOracleIdSiteCount": 1,
+        "ambiguousCandidateMappingCount": 4,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "bare",
+        "eligibleSiteCount": 9093,
+        "zeroCandidateSiteCount": 336,
+        "zeroCandidateRate": 0.03695150115473441,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 5,
+        "candidateSetSizeMax": 35,
+        "candidateWithoutOracleIdSiteCount": 252,
+        "ambiguousCandidateMappingCount": 2565,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 3199,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 2,
+        "candidateSetSizeP95": 305,
+        "candidateSetSizeMax": 305,
+        "candidateWithoutOracleIdSiteCount": 941,
+        "ambiguousCandidateMappingCount": 74883,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "this",
+        "eligibleSiteCount": 97,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 18,
+        "candidateSetSizeP95": 62,
+        "candidateSetSizeMax": 62,
+        "candidateWithoutOracleIdSiteCount": 49,
+        "ambiguousCandidateMappingCount": 944,
+        "unmappedCandidateCount": 0
+      }
+    ]
+  },
+  "baselineComparison": {
+    "baselineRuleVersion": "declared-member-hypothesis-v2",
+    "currentRuleVersion": "declared-member-hypothesis-v3",
+    "baselineImplementationHash": "dbae5f856f5ab1d3f8b2432dfe761c9fdfb2eec067a378c960a95959f976b3a0",
+    "baselinePredictionSha256": "3a250e913a1927376adbb7309d3281d3454a51e18abbe7d181c0f923da328aa5",
+    "commonSourceInputs": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "commonCorrectedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "commonLabelRowsHash": "6a65cb34cac9f395a81179a2f24bfc9d4f16e739cbb14455726108cf3073a0eb",
+    "commonSnapshotScopedOracleMappingHash": "3088674bee530052f7b7c5575f0714f217b4774074b92de2b169fe813d89ec81",
+    "commonUniqueOracleAliasCount": 119141,
+    "commonCandidateOracleMappingImplementationHash": "bf8602f4bb49b0906467ad60d825c5e594ad523dc28dbea016189c4a5a683a2c",
+    "callShapeGrouping": "current source-only prediction rows, joined by sampleId for both versions",
+    "baselineMetrics": {
+      "split": "test",
+      "eligibleSiteCount": 11547,
+      "candidateGoldTargetCount": 11547,
+      "coveredGoldTargetCount": 9804,
+      "candidateRecall": 0.8490517017407119,
+      "zeroCandidateSiteCount": 1285,
+      "zeroCandidateRate": 0.11128431627262493,
+      "missSiteCount": 1743,
+      "zeroCandidateMissSiteCount": 1285,
+      "candidateButMissSiteCount": 458,
+      "candidateWithoutOracleIdSiteCount": 718,
+      "unmappedCandidateCount": 0,
+      "ambiguousCandidateMappingCount": 0,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 12,
+      "candidateSetSizeMax": 120,
+      "families": [
+        {
+          "name": "abhigyanpatwari/GitNexus",
+          "eligibleSiteCount": 6178,
+          "candidateGoldTargetCount": 6178,
+          "coveredGoldTargetCount": 4837,
+          "candidateRecall": 0.7829394626092586,
+          "zeroCandidateSiteCount": 912,
+          "candidateWithoutOracleIdSiteCount": 683
+        },
+        {
+          "name": "onyx-dot-app/onyx",
+          "eligibleSiteCount": 5369,
+          "candidateGoldTargetCount": 5369,
+          "coveredGoldTargetCount": 4967,
+          "candidateRecall": 0.9251257217358912,
+          "zeroCandidateSiteCount": 373,
+          "candidateWithoutOracleIdSiteCount": 35
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "arg-chain",
+          "eligibleSiteCount": 33,
+          "candidateGoldTargetCount": 33,
+          "coveredGoldTargetCount": 33,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 1
+        },
+        {
+          "name": "bare",
+          "eligibleSiteCount": 8802,
+          "candidateGoldTargetCount": 8802,
+          "coveredGoldTargetCount": 7059,
+          "candidateRecall": 0.8019768234492161,
+          "zeroCandidateSiteCount": 1285,
+          "candidateWithoutOracleIdSiteCount": 246
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 2615,
+          "candidateGoldTargetCount": 2615,
+          "coveredGoldTargetCount": 2615,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 422
+        },
+        {
+          "name": "this",
+          "eligibleSiteCount": 97,
+          "candidateGoldTargetCount": 97,
+          "coveredGoldTargetCount": 97,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 49
+        }
+      ],
+      "missingEvidenceReasons": {
+        "incomplete-inventory": 458,
+        "no-supported-candidates": 1285
+      }
+    },
+    "currentMetrics": {
+      "split": "test",
+      "eligibleSiteCount": 11547,
+      "candidateGoldTargetCount": 11547,
+      "coveredGoldTargetCount": 11492,
+      "candidateRecall": 0.9952368580583701,
+      "zeroCandidateSiteCount": 51,
+      "zeroCandidateRate": 0.004416731618602235,
+      "missSiteCount": 55,
+      "zeroCandidateMissSiteCount": 51,
+      "candidateButMissSiteCount": 4,
+      "candidateWithoutOracleIdSiteCount": 718,
+      "unmappedCandidateCount": 0,
+      "ambiguousCandidateMappingCount": 6935,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 12,
+      "candidateSetSizeMax": 120,
+      "families": [
+        {
+          "name": "abhigyanpatwari/GitNexus",
+          "eligibleSiteCount": 6178,
+          "candidateGoldTargetCount": 6178,
+          "coveredGoldTargetCount": 6161,
+          "candidateRecall": 0.9972483004208482,
+          "zeroCandidateSiteCount": 17,
+          "candidateWithoutOracleIdSiteCount": 683
+        },
+        {
+          "name": "onyx-dot-app/onyx",
+          "eligibleSiteCount": 5369,
+          "candidateGoldTargetCount": 5369,
+          "coveredGoldTargetCount": 5331,
+          "candidateRecall": 0.9929223319053827,
+          "zeroCandidateSiteCount": 34,
+          "candidateWithoutOracleIdSiteCount": 35
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "arg-chain",
+          "eligibleSiteCount": 33,
+          "candidateGoldTargetCount": 33,
+          "coveredGoldTargetCount": 33,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 1
+        },
+        {
+          "name": "bare",
+          "eligibleSiteCount": 8802,
+          "candidateGoldTargetCount": 8802,
+          "coveredGoldTargetCount": 8747,
+          "candidateRecall": 0.9937514201317882,
+          "zeroCandidateSiteCount": 51,
+          "candidateWithoutOracleIdSiteCount": 246
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 2615,
+          "candidateGoldTargetCount": 2615,
+          "coveredGoldTargetCount": 2615,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 422
+        },
+        {
+          "name": "this",
+          "eligibleSiteCount": 97,
+          "candidateGoldTargetCount": 97,
+          "coveredGoldTargetCount": 97,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "candidateWithoutOracleIdSiteCount": 49
+        }
+      ],
+      "missingEvidenceReasons": {
+        "incomplete-inventory": 4,
+        "no-supported-candidates": 51
+      }
+    },
+    "uniqueOracleTargetDomain": {
+      "baseline": {
+        "siteCount": 12422,
+        "rawCandidateSiteCount": 10852,
+        "uniquelyMappedCandidateSiteCount": 10835,
+        "sitesWithCandidatesButNoUniqueTargetCount": 17,
+        "candidateAliasMembershipCountBeforeFiltering": 81472,
+        "uniqueCandidateMembershipCount": 63130,
+        "uniqueMappedPositiveTargetOccurrenceCount": 11547,
+        "ambiguousPositiveTargetOccurrenceCount": 521,
+        "unmappedPositiveTargetOccurrenceCount": 354,
+        "uniqueMappedPositiveSiteCount": 11547,
+        "sitesWithoutUniquePositiveTargetCount": 875,
+        "droppedAmbiguousCandidateMembershipCount": 18342,
+        "droppedUnmappedCandidateMembershipCount": 0
+      },
+      "current": {
+        "siteCount": 12422,
+        "rawCandidateSiteCount": 12086,
+        "uniquelyMappedCandidateSiteCount": 12084,
+        "sitesWithCandidatesButNoUniqueTargetCount": 2,
+        "candidateAliasMembershipCountBeforeFiltering": 65197,
+        "uniqueCandidateMembershipCount": 65197,
+        "uniqueMappedPositiveTargetOccurrenceCount": 11547,
+        "ambiguousPositiveTargetOccurrenceCount": 521,
+        "unmappedPositiveTargetOccurrenceCount": 354,
+        "uniqueMappedPositiveSiteCount": 11547,
+        "sitesWithoutUniquePositiveTargetCount": 875,
+        "droppedAmbiguousCandidateMembershipCount": 0,
+        "droppedUnmappedCandidateMembershipCount": 0
+      }
+    },
+    "comparison": {
+      "baselineCandidateRecall": 0.8490517017407119,
+      "currentCandidateRecall": 0.9952368580583701,
+      "candidateRecallDelta": 0.14618515631765827,
+      "baselineCoveredGoldTargetCount": 9804,
+      "currentCoveredGoldTargetCount": 11492,
+      "addedCandidateMembershipCount": 2067,
+      "removedCandidateMembershipCount": 0,
+      "sitesWithAddedCandidateCount": 1756,
+      "sitesWithRemovedCandidateCount": 0,
+      "newlyCoveredGoldTargetCount": 1688,
+      "noLongerCoveredGoldTargetCount": 0
+    },
+    "generatedCandidateCounts": {
+      "siteCount": 12422,
+      "baselineGeneratedCandidateCount": 141413,
+      "currentGeneratedCandidateCount": 143593,
+      "generatedCandidateCountDelta": 2180,
+      "sitesWithFewerGeneratedCandidates": 0,
+      "sitesWithEqualGeneratedCandidates": 10661,
+      "sitesWithMoreGeneratedCandidates": 1761
+    },
+    "baselineCandidateSetDistribution": {
+      "overall": {
+        "name": "all eligible sites",
+        "eligibleSiteCount": 12422,
+        "zeroCandidateSiteCount": 1570,
+        "zeroCandidateRate": 0.12638866527129286,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 32,
+        "candidateSetSizeMax": 305,
+        "candidateWithoutOracleIdSiteCount": 1243,
+        "ambiguousCandidateMappingCount": 0,
+        "unmappedCandidateCount": 0
+      },
+      "byFamily": [
+        {
+          "name": "abhigyanpatwari/GitNexus",
+          "eligibleSiteCount": 6249,
+          "zeroCandidateSiteCount": 917,
+          "zeroCandidateRate": 0.14674347895663306,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 22,
+          "candidateSetSizeMax": 120,
+          "candidateWithoutOracleIdSiteCount": 690,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "onyx-dot-app/onyx",
+          "eligibleSiteCount": 6173,
+          "zeroCandidateSiteCount": 653,
+          "zeroCandidateRate": 0.10578324963550947,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 305,
+          "candidateSetSizeMax": 305,
+          "candidateWithoutOracleIdSiteCount": 553,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        }
+      ],
+      "byCallShape": [
+        {
+          "name": "arg-chain",
+          "eligibleSiteCount": 33,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 3,
+          "candidateSetSizeP95": 21,
+          "candidateSetSizeMax": 21,
+          "candidateWithoutOracleIdSiteCount": 1,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "bare",
+          "eligibleSiteCount": 9093,
+          "zeroCandidateSiteCount": 1570,
+          "zeroCandidateRate": 0.17266028813372924,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 5,
+          "candidateSetSizeMax": 33,
+          "candidateWithoutOracleIdSiteCount": 252,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 3199,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 2,
+          "candidateSetSizeP95": 305,
+          "candidateSetSizeMax": 305,
+          "candidateWithoutOracleIdSiteCount": 941,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "this",
+          "eligibleSiteCount": 97,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 18,
+          "candidateSetSizeP95": 56,
+          "candidateSetSizeMax": 56,
+          "candidateWithoutOracleIdSiteCount": 49,
+          "ambiguousCandidateMappingCount": 0,
+          "unmappedCandidateCount": 0
+        }
+      ]
+    },
+    "currentCandidateSetDistribution": {
+      "overall": {
+        "name": "all eligible sites",
+        "eligibleSiteCount": 12422,
+        "zeroCandidateSiteCount": 336,
+        "zeroCandidateRate": 0.027048784414748027,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 32,
+        "candidateSetSizeMax": 305,
+        "candidateWithoutOracleIdSiteCount": 1243,
+        "ambiguousCandidateMappingCount": 78396,
+        "unmappedCandidateCount": 0
+      },
+      "byFamily": [
+        {
+          "name": "abhigyanpatwari/GitNexus",
+          "eligibleSiteCount": 6249,
+          "zeroCandidateSiteCount": 22,
+          "zeroCandidateRate": 0.0035205632901264203,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 24,
+          "candidateSetSizeMax": 120,
+          "candidateWithoutOracleIdSiteCount": 690,
+          "ambiguousCandidateMappingCount": 6820,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "onyx-dot-app/onyx",
+          "eligibleSiteCount": 6173,
+          "zeroCandidateSiteCount": 314,
+          "zeroCandidateRate": 0.05086667746638587,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 305,
+          "candidateSetSizeMax": 305,
+          "candidateWithoutOracleIdSiteCount": 553,
+          "ambiguousCandidateMappingCount": 71576,
+          "unmappedCandidateCount": 0
+        }
+      ],
+      "byCallShape": [
+        {
+          "name": "arg-chain",
+          "eligibleSiteCount": 33,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 3,
+          "candidateSetSizeP95": 21,
+          "candidateSetSizeMax": 21,
+          "candidateWithoutOracleIdSiteCount": 1,
+          "ambiguousCandidateMappingCount": 4,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "bare",
+          "eligibleSiteCount": 9093,
+          "zeroCandidateSiteCount": 336,
+          "zeroCandidateRate": 0.03695150115473441,
+          "candidateSetSizeP50": 1,
+          "candidateSetSizeP95": 5,
+          "candidateSetSizeMax": 35,
+          "candidateWithoutOracleIdSiteCount": 252,
+          "ambiguousCandidateMappingCount": 2565,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "member",
+          "eligibleSiteCount": 3199,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 2,
+          "candidateSetSizeP95": 305,
+          "candidateSetSizeMax": 305,
+          "candidateWithoutOracleIdSiteCount": 941,
+          "ambiguousCandidateMappingCount": 74883,
+          "unmappedCandidateCount": 0
+        },
+        {
+          "name": "this",
+          "eligibleSiteCount": 97,
+          "zeroCandidateSiteCount": 0,
+          "zeroCandidateRate": 0,
+          "candidateSetSizeP50": 18,
+          "candidateSetSizeP95": 62,
+          "candidateSetSizeMax": 62,
+          "candidateWithoutOracleIdSiteCount": 49,
+          "ambiguousCandidateMappingCount": 944,
+          "unmappedCandidateCount": 0
+        }
+      ]
+    },
+    "interpretation": "Both versions are re-evaluated with the same snapshotId+repoId-scoped unique candidate-alias mapping built from the pinned corrected facts. The unique-oracle denominator excludes positive aliases that are ambiguous or absent within that source snapshot. Candidate-set sizes use raw generatedCandidateCount and include every confirmed site. Test and temporal splits are not part of this train/calibration comparison."
+  }
+}

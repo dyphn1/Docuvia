@@ -1,4 +1,5 @@
 import type { IGraphStore, ValidityStatus } from "./graph-store.interfaces.js";
+import type { CallResolutionSummary } from "./call-resolution-output.interfaces.js";
 
 /**
  * Local-first (no-LLM) natural-language + structural query surface (Domain Core logic) —
@@ -8,6 +9,8 @@ import type { IGraphStore, ValidityStatus } from "./graph-store.interfaces.js";
  */
 export interface GraphEdgeRef {
   name: string;
+  /** Exact graph identity, when supplied by the storage provider. */
+  nodeKey?: string;
   /** The relationship itself (`calls`/`implements`/`extends`/...) — previously this field held the
    *  *neighbor node's* own kind instead, which is always `"module"` today (every symbol/file row
    *  shares one `L2NodeType`, see `persist-ast-graph.ts`) and so never actually told a caller
@@ -16,6 +19,8 @@ export interface GraphEdgeRef {
    *  masqueraded as) genuine relationships for foundational symbols with few resolved
    *  calls/implements/extends edges. */
   linkType: string;
+  /** Present only for `calls` edges; unknown certainty is explicit. */
+  callResolutions?: CallResolutionSummary[];
 }
 
 export interface GraphContext {
@@ -119,7 +124,11 @@ export interface IQueryService {
   /** Deterministic stop-word-stripping tokenizer (old Docuvia's LLM-unreachable fallback, used unconditionally here). */
   extractKeywords(query: string): string[];
   /** Structural context (incoming/outgoing edges) for a resolved node, or null if `target` doesn't resolve. */
-  getContext(store: IGraphStore, target: string): GraphContext | null;
+  getContext(
+    store: IGraphStore,
+    target: string,
+    options?: { explainResolution?: boolean },
+  ): GraphContext | null;
   /** FTS keyword search + node-ref exact/LIKE lookup + 1-hop neighbor traversal, deduped and ranked. */
   search(
     store: IGraphStore,
@@ -127,5 +136,10 @@ export interface IQueryService {
     limit?: number,
   ): LocalSearchResult[];
   /** End-to-end query: `search()` bucketed into {l2, l3} plus `getContext()`. */
-  query(store: IGraphStore, target: string, limit?: number): LocalQueryResult;
+  query(
+    store: IGraphStore,
+    target: string,
+    limit?: number,
+    options?: { explainResolution?: boolean },
+  ): LocalQueryResult;
 }

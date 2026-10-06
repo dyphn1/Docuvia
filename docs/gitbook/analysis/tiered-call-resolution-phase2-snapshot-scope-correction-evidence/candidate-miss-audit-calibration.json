@@ -1,0 +1,1264 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2a-candidate-miss-source-audit/1",
+  "split": "calibration",
+  "labelScope": "train/calibration only; heldout labels are never read by this tool",
+  "provenance": {
+    "predictionSha256": "3c3ff5a8b86bc58497faf4f9e357e7bc21d2853bd3a8d94d3f0023a46a41ab0f",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v3",
+    "correctedFactsSha256": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e",
+    "sourceInputHashes": {
+      "callsites.jsonl": "b61764cdaa1168ba453689c5e11f6a9b035a05273532068648092c48a0dbd362",
+      "declared-type-facts-pass-a.jsonl": "ba7b631b36ed05b1f16c6b500b0c17b5e4273acd939a493800848225c4dad14e"
+    },
+    "labelRowsHash": "5b2892aa4be1ea53c76ff6dc189c0c78c3bf3d83af61639cbd1c59716710c426",
+    "uniqueOracleSnapshotScope": "snapshotId+repoId"
+  },
+  "counts": {
+    "allPredictionSites": 2966,
+    "confirmedPositiveSites": 2966,
+    "uniqueMappablePositiveSites": 2766,
+    "uniqueMappablePositiveTargetOccurrences": 2766,
+    "missSites": 17,
+    "missedPositiveTargetOccurrences": 17,
+    "zeroCandidateMissSites": 17,
+    "candidateButMissSites": 0
+  },
+  "byReasonFamilyAndShape": [
+    {
+      "family": "403errors/repomind",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "reasonClass": "no-supported-candidates",
+      "siteCount": 17,
+      "missedTargetCount": 17,
+      "zeroCandidateSiteCount": 17
+    }
+  ],
+  "rows": [
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1027:23",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "423c891f32da78954f9646e7fb65158507ebc2c079de8a0c2ab88d5caceb3def",
+      "callSiteKey": "v1:299c27b0e47772576475d93aaaa70a1663783369dd1edb0809a150839435b33e",
+      "filePath": "src/app/actions.ts",
+      "line": 1027,
+      "columnUtf16": 23,
+      "calleeName": "createScanShareLinkRecord",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/scan-share-links.ts#createScanShareLink",
+          "factFileFound": true,
+          "factFileContentSha256": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "createScanShareLink",
+              "declarationSpan": {
+                "start": 1022,
+                "end": 3222
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5639
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1258,
+                "end": 3222
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1043:11",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "543eeb1d550c6155d110e885d62bd3faa10bf317f7fb8a6f4ce7f02cd6a0cd6f",
+      "callSiteKey": "v1:b6d19f59e3fe8b0927b6f79682859fa9a92e4db80b910216e834d1309555da2c",
+      "filePath": "src/app/actions.ts",
+      "line": 1043,
+      "columnUtf16": 11,
+      "calleeName": "resolveScanFromShareTokenRecord",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/scan-share-links.ts#resolveScanFromShareToken",
+          "factFileFound": true,
+          "factFileContentSha256": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "resolveScanFromShareToken",
+              "declarationSpan": {
+                "start": 4689,
+                "end": 4837
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5639
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 4775,
+                "end": 4837
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1065:23",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "423c891f32da78954f9646e7fb65158507ebc2c079de8a0c2ab88d5caceb3def",
+      "callSiteKey": "v1:5ab1443bd78c6c21e53843cfe56517ac5f710fb72af8bff9742bdb9c03ced96a",
+      "filePath": "src/app/actions.ts",
+      "line": 1065,
+      "columnUtf16": 23,
+      "calleeName": "createScanShareLinkRecord",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/scan-share-links.ts#createScanShareLink",
+          "factFileFound": true,
+          "factFileContentSha256": "3dcbf9e1190f258689dfe4ae081b7c829c29a63d30f4c53b750f892bfe7395dd",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "createScanShareLink",
+              "declarationSpan": {
+                "start": 1022,
+                "end": 3222
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5639
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1258,
+                "end": 3222
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1107:24",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "54ce938b9f53012054d605e4e07627192251c9583548bbf633b2dcd70fa5197c",
+      "callSiteKey": "v1:7e64becf5d768a780483883f6062dff74d4ccf7b9b092f12350a32d8498681fa",
+      "filePath": "src/app/actions.ts",
+      "line": 1107,
+      "columnUtf16": 24,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1251:11",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "1330884b7f01ce6f8d1151572d914975e533973773f8b054b48c71ea860549e2",
+      "callSiteKey": "v1:5ad5c5bc2b87a3944606d3f1473522f2f83adf0603a6fdc6e2c8a3f61e86db94",
+      "filePath": "src/app/actions.ts",
+      "line": 1251,
+      "columnUtf16": 11,
+      "calleeName": "_searchRepositoryCode",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/artifact-service.ts#searchRepositoryCode",
+          "factFileFound": true,
+          "factFileContentSha256": "8714e13e743393b863ffbbc83aeedde956b5b486975d43c6c6c3e924bafa7183",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "searchRepositoryCode",
+              "declarationSpan": {
+                "start": 815,
+                "end": 1855
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1857
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1062,
+                "end": 1855
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 4,
+                "maxParameterCount": 6
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:1257:11",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "2a92809a5525695d17fd6cb8dde0126c99d457eea570587c58c7a95e91a809b4",
+      "callSiteKey": "v1:d65c8eacd1f00565f0caeebfd624f575b99ef7a62a8bda85d72258d2cdfd3d1f",
+      "filePath": "src/app/actions.ts",
+      "line": 1257,
+      "columnUtf16": 11,
+      "calleeName": "_getRecentSearches",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/history-service.ts#getRecentSearches",
+          "factFileFound": true,
+          "factFileContentSha256": "29bc8e52369f0d31007c1df5b6b63d91fcc5b4a6a089b6bfd7e3cb0cb8fcf2b4",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "getRecentSearches",
+              "declarationSpan": {
+                "start": 1027,
+                "end": 1457
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 1458
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1125,
+                "end": 1457
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 2
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/actions.ts:435:11",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "dd69790ba96805df327b3ebaa963fd0d6dff138d72b1e60bf4b6665da8e81910",
+      "callSiteKey": "v1:729be3f5e723785274477f9349b6ac04ec1f7006d01e3d5f61fe6d3553002dce",
+      "filePath": "src/app/actions.ts",
+      "line": 435,
+      "columnUtf16": 11,
+      "calleeName": "_getRepoSuggestions",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "3210cc74f578d9f4a1dd81b094cd7b0b6b29fbe7c153fa5b26a5f465af852e6b",
+        "language": "typescript",
+        "declarationFactCount": 282
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/repo-suggestions.ts#getRepoSuggestions",
+          "factFileFound": true,
+          "factFileContentSha256": "29c1d0b9e535dd02e6de42d00f099f51fa5050ff37c5694a6b3ed3504a445273",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "getRepoSuggestions",
+              "declarationSpan": {
+                "start": 1388,
+                "end": 4843
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 4844
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 1464,
+                "end": 4843
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/admin/blog/actions.ts:27:8",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "ba148a7820577027f7265c85624644f9838e6fa27b7e3b3184c4874aac53d7c7",
+      "callSiteKey": "v1:39de719a5344a544c8cbfb0d9bcd7ae129abf5affc2b3f9246bcb302f556f41c",
+      "filePath": "src/app/admin/blog/actions.ts",
+      "line": 27,
+      "columnUtf16": 8,
+      "calleeName": "deletePostFromDb",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "66ab3350e435a1af8655026d1ee3807238b5605817e98ac8e221215be1945791",
+        "language": "typescript",
+        "declarationFactCount": 3
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/blog-service.ts#deletePost",
+          "factFileFound": true,
+          "factFileContentSha256": "d071188cadce17d46308d09c148d5c7603bc1835358105e351c860404be11dd6",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "deletePost",
+              "declarationSpan": {
+                "start": 4755,
+                "end": 5049
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5050
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 4793,
+                "end": 5049
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/public-pages.test.tsx:27:31",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "8a5e0cd90f68c8e2efbee1a2a54bcb028e40afd05cba72344b2930489ef767e5",
+      "callSiteKey": "v1:6b34b4fb9ca3e1ea712f4986e368d46f5299bec7206ce89755e529d8c321b1a4",
+      "filePath": "src/app/public-pages.test.tsx",
+      "line": 27,
+      "columnUtf16": 31,
+      "calleeName": "generateComingSoonMetadata",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "815f8bb7f561b24779bd5462a1b7fdb45eae850070f81d415213fd097ab0f4aa",
+        "language": "tsx",
+        "declarationFactCount": 7
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/app/coming-soon/page.tsx#generateMetadata",
+          "factFileFound": true,
+          "factFileContentSha256": "6b23bf211477fd332cf470addb8ca064b2769631bc7987ca05d072ab61a85108",
+          "factFileLanguage": "tsx",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "generateMetadata",
+              "declarationSpan": {
+                "start": 380,
+                "end": 1416
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 2723
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 519,
+                "end": 1416
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:111:21",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "4c40fbf9f3eee45cbdde28b8b9080edef0795587b2c38ed0284ccd0f25914946",
+      "callSiteKey": "v1:2bea21b20d78a2d76cb9338cc0fc3d7f390d24cbce118f460def83382aa30e00",
+      "filePath": "src/app/report/[scan_id]/page.test.tsx",
+      "line": 111,
+      "columnUtf16": 21,
+      "calleeName": "ReportPage",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+        "language": "tsx",
+        "declarationFactCount": 82
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+          "factFileFound": true,
+          "factFileContentSha256": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+          "factFileLanguage": "tsx",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "PrivateReportPage",
+              "declarationSpan": {
+                "start": 3642,
+                "end": 5205
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5206
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 3729,
+                "end": 5205
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:128:27",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "4f84538a1dae521bb28f07214c8e5a3b8d26ee7c1dc7101d1a391938baaceffe",
+      "callSiteKey": "v1:738b671d9251242d958816abe30914374ec7bec80a08843792fbc223696a8292",
+      "filePath": "src/app/report/[scan_id]/page.test.tsx",
+      "line": 128,
+      "columnUtf16": 27,
+      "calleeName": "ReportPage",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+        "language": "tsx",
+        "declarationFactCount": 82
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+          "factFileFound": true,
+          "factFileContentSha256": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+          "factFileLanguage": "tsx",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "PrivateReportPage",
+              "declarationSpan": {
+                "start": 3642,
+                "end": 5205
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5206
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 3729,
+                "end": 5205
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/app/report/[scan_id]/page.test.tsx:150:27",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "61ec1c0a524cf053a5dd2d3652deba01c87e98ce770fabf46e94d584dcf24e50",
+      "callSiteKey": "v1:e26b8ea3de93d5851680cd2878d0d6f32276d5b458fa85fd4d9d029af1303e2e",
+      "filePath": "src/app/report/[scan_id]/page.test.tsx",
+      "line": 150,
+      "columnUtf16": 27,
+      "calleeName": "ReportPage",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "34504c9b5a21a3a5c9a9fea506794722123bc1bddf7944ba79509a66d4c3e773",
+        "language": "tsx",
+        "declarationFactCount": 82
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/app/report/[scan_id]/page.tsx#PrivateReportPage",
+          "factFileFound": true,
+          "factFileContentSha256": "a7d138e127b9706374fabad9a4452a6e654a13cef5377da93dc00a7fb14b248c",
+          "factFileLanguage": "tsx",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "PrivateReportPage",
+              "declarationSpan": {
+                "start": 3642,
+                "end": 5205
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 5206
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 3729,
+                "end": 5205
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/__tests__/fix-verification.test.ts:175:28",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "a3de0abe2870daafe81b7bf6d5bc6772be614f84490e4399a36cc03df9b2e2ab",
+      "callSiteKey": "v1:f7c346777a8edde4a97204b77adb6939167eabbee9f0f5532e17e33160726549",
+      "filePath": "src/lib/services/__tests__/fix-verification.test.ts",
+      "line": 175,
+      "columnUtf16": 28,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "5e1d36183c315dc0abe03fe7a4b55eb3e137429483187991126cc4e2f6a183d5",
+        "language": "typescript",
+        "declarationFactCount": 132
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/fix-verification.ts:103:21",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "3ec48b3c2ac5c44f8ed2e85100b5987975cf053d997db950f7e04db01078247f",
+      "callSiteKey": "v1:8e40a4bb385f96cee53974778dcd8903c1f6a8d0e19c998a6265235b24f16ea1",
+      "filePath": "src/lib/services/fix-verification.ts",
+      "line": 103,
+      "columnUtf16": 21,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "676c552218094c9771804493dff5f1e937a8aea68a8bf57b3d410169fec3deb0",
+        "language": "typescript",
+        "declarationFactCount": 92
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/fix-verification.ts:131:21",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "97bacbe43defb442cac3afb255f6d8736a93ee0e65b1f03eb38ba8a39db1ec3c",
+      "callSiteKey": "v1:86802c9ceb510eab137257a9a90fe7ad9915a044dd63d9eddc3bb32df958be73",
+      "filePath": "src/lib/services/fix-verification.ts",
+      "line": 131,
+      "columnUtf16": 21,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "676c552218094c9771804493dff5f1e937a8aea68a8bf57b3d410169fec3deb0",
+        "language": "typescript",
+        "declarationFactCount": 92
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/security-verification.ts:765:36",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "d7c3e482defa60a21ac8e78199518f0e7275a03ec07fa8bbdac1f6ac34e1eceb",
+      "callSiteKey": "v1:4f093ffce3a67488b5fc4481842e1d23545f32b93cf46001d38060a36b4efa16",
+      "filePath": "src/lib/services/security-verification.ts",
+      "line": 765,
+      "columnUtf16": 36,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "2ce620b69734a422e1e0a6f00687d66c0318a01ad042f21543b2aa1e9edf1117",
+        "language": "typescript",
+        "declarationFactCount": 284
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "sampleId": "github.com/403errors/repomind@6a46bb25a132::src/lib/services/security-verification.ts:808:28",
+      "snapshotId": "repomind",
+      "repoId": "github.com/403errors/repomind",
+      "revision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repoFamily": "403errors/repomind",
+      "duplicateGroup": "f52bfc0cfc83e06c1e54d19a42e82bab1b5be00d208a0f4ea8ba72151f6a5535",
+      "callSiteKey": "v1:430854c3382d98e85d905f769d81007ab973534d01d0aa71d5f7c33e03c987fb",
+      "filePath": "src/lib/services/security-verification.ts",
+      "line": 808,
+      "columnUtf16": 28,
+      "calleeName": "buildFindingFingerprint",
+      "calleeKind": "bare",
+      "receiverText": null,
+      "receiverCategory": "bare",
+      "positionStatus": "unique",
+      "observationReason": "no-supported-candidates",
+      "reasonClass": "no-supported-candidates",
+      "sourceCallShape": "bare",
+      "predictionCallShape": "bare",
+      "generatedCandidateCount": 0,
+      "candidateTargetIds": [],
+      "unsupportedCallShape": false,
+      "truncated": false,
+      "candidateSetComplete": false,
+      "callerFacts": {
+        "fileContentSha256": "2ce620b69734a422e1e0a6f00687d66c0318a01ad042f21543b2aa1e9edf1117",
+        "language": "typescript",
+        "declarationFactCount": 284
+      },
+      "missedTargets": [
+        {
+          "targetId": "src/lib/services/report-service.ts#findingFingerprint",
+          "factFileFound": true,
+          "factFileContentSha256": "445abe678cd0e992964e2924a4d3616e93aee24d9d4e8754d3d61d055f5a7ca7",
+          "factFileLanguage": "typescript",
+          "declarationFactCount": 1,
+          "declarations": [
+            {
+              "kind": "function",
+              "name": "findingFingerprint",
+              "declarationSpan": {
+                "start": 6611,
+                "end": 6978
+              },
+              "owner": {
+                "kind": "program",
+                "name": null,
+                "span": {
+                  "start": 0,
+                  "end": 22802
+                },
+                "genericTypeParameterNames": []
+              },
+              "lexicalScopeSpan": {
+                "start": 6673,
+                "end": 6978
+              },
+              "visibility": null,
+              "isStatic": false,
+              "isAbstract": false,
+              "isOptional": false,
+              "arity": {
+                "requiredParameterCount": 1,
+                "maxParameterCount": 1
+              },
+              "genericTypeParameterNames": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

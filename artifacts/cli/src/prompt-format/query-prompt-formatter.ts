@@ -60,6 +60,47 @@ function buildL3OpenTag(l3: LocalQueryResult["l3"][number]): string {
   return tag + XML_TAGS.L3_START_SUFFIX;
 }
 
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function buildCallResolutionLines(
+  edge: GraphEdgeRef,
+  indentation: string,
+): string[] {
+  return (edge.callResolutions ?? [])
+    .map((resolution) => {
+      let line = `${indentation}<call_resolution class="${resolution.resolutionClass}" verification="${resolution.verificationStatus}"`;
+      if (resolution.selectedTargetNodeKey) {
+        line += ` target="${escapeXml(resolution.selectedTargetNodeKey)}"`;
+      }
+      if (resolution.confidence !== undefined) {
+        line += ` confidence="${resolution.confidence}"`;
+      }
+      if (resolution.evidenceLabel) {
+        line += ` evidence_label="${resolution.evidenceLabel}"`;
+      }
+      if (resolution.alternatives.length > 0) {
+        line += ` alternatives="${escapeXml(resolution.alternatives.join(","))}"`;
+      }
+      if (resolution.candidates.length > 0) {
+        line += ` candidates="${escapeXml(resolution.candidates.join(","))}"`;
+      }
+      line += " />";
+      if (!resolution.evidence) return [line];
+      return [
+        line,
+        `${indentation}<resolution_evidence>${escapeXml(JSON.stringify(resolution.evidence))}</resolution_evidence>`,
+      ];
+    })
+    .flat();
+}
+
 function buildPromptL2Lines(result: LocalQueryResult): string[] {
   const lines: string[] = [];
   if (result.l2) {
@@ -91,12 +132,12 @@ function buildPromptIncomingLines(
     const lines: string[] = [XML_TAGS.INCOMING_START];
     for (const i of incoming) {
       lines.push(
-        XML_TAGS.CALLER_PREFIX +
-          i.name +
-          XML_TAGS.CALLER_MID +
-          i.linkType +
-          XML_TAGS.CALLER_SUFFIX,
+        `${XML_TAGS.CALLER_PREFIX}${i.name}${XML_TAGS.CALLER_MID}${i.linkType}${i.callResolutions ? '"> ' : XML_TAGS.CALLER_SUFFIX}`.trimEnd(),
       );
+      if (i.callResolutions) {
+        lines.push(...buildCallResolutionLines(i, "      "));
+        lines.push("    </caller>");
+      }
     }
     lines.push(XML_TAGS.INCOMING_END);
     return lines;
@@ -125,12 +166,12 @@ function buildPromptOutgoingLines(
     const lines: string[] = [XML_TAGS.OUTGOING_START];
     for (const o of outgoing) {
       lines.push(
-        XML_TAGS.CALLEE_PREFIX +
-          o.name +
-          XML_TAGS.CALLEE_MID +
-          o.linkType +
-          XML_TAGS.CALLEE_SUFFIX,
+        `${XML_TAGS.CALLEE_PREFIX}${o.name}${XML_TAGS.CALLEE_MID}${o.linkType}${o.callResolutions ? '"> ' : XML_TAGS.CALLEE_SUFFIX}`.trimEnd(),
       );
+      if (o.callResolutions) {
+        lines.push(...buildCallResolutionLines(o, "      "));
+        lines.push("    </callee>");
+      }
     }
     lines.push(XML_TAGS.OUTGOING_END);
     return lines;

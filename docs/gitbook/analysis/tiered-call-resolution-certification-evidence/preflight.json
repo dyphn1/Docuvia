@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "status": "historical-blocked-preflight-superseded",
+  "timestampUtc": "2026-10-06T07:11:29Z",
+  "implementationHead": {
+    "expected": "63cbe205731d2b1eb7276ceeba604d7a5bad2214",
+    "observed": "63cbe205731d2b1eb7276ceeba604d7a5bad2214",
+    "branch": "docs/559-grph-008-tiered-call-resolution",
+    "workingTreeCleanAtStart": true
+  },
+  "oraclePreflightIdentity": {
+    "server": "typescript-language-server",
+    "version": "5.3.0+tsserver@5.9.3",
+    "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "serverStarted": false
+  },
+  "tracks": [
+    {
+      "track": "new-family",
+      "repository": "abhigyanpatwari/GitNexus",
+      "revision": "58be52885deee423e2079ae05b4a860ab0f3df75",
+      "sourceExport": "/private/tmp/claude-501/-Users-daniel-chang-Desktop-GitHub/9a31c62e-65fd-4957-8671-984b186fab1e/scratchpad/cert/gitnexus-58be5288",
+      "licenseFilePresent": true,
+      "gitMetadataPresent": false,
+      "corpusManifestSha256": null,
+      "splitHashSha256": null,
+      "labelsOpened": false,
+      "status": "not-collected"
+    },
+    {
+      "track": "temporal",
+      "repository": "nestjs/nest",
+      "priorCorpusRevision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "priorCorpusCommittedAt": "2026-09-25T08:26:15+02:00",
+      "ownerSuppliedTargetRevision": "35142c3eca",
+      "ownerSuppliedTargetCommittedAt": "2026-10-02",
+      "sourceExport": "/private/tmp/claude-501/-Users-daniel-chang-Desktop-GitHub/9a31c62e-65fd-4957-8671-984b186fab1e/scratchpad/cert/nest-35142c3eca",
+      "licenseFilePresent": true,
+      "gitMetadataPresent": false,
+      "targetFullShaResolved": false,
+      "temporalAncestryVerified": false,
+      "corpusManifestSha256": null,
+      "splitHashSha256": null,
+      "labelsOpened": false,
+      "status": "not-collected"
+    }
+  ],
+  "certification": {
+    "freezeManifestWritten": false,
+    "corpusCollectionStarted": false,
+    "resolverReplayStarted": false,
+    "oracleComparisonsStarted": false,
+    "productionCertificationRecordsWritten": false,
+    "tierBSkipEnabled": false
+  },
+  "blockers": [
+    {
+      "code": "source-exports-have-no-git-history",
+      "evidence": "git rev-parse HEAD fails in both provided source exports; scripts/semantic-corpus/snapshot.mts requires git log and git archive for pinned revisions."
+    },
+    {
+      "code": "network-unavailable-for-pinned-git-objects",
+      "evidence": "Scratch-only git fetch for the supplied GitNexus SHA failed: Could not resolve host: github.com."
+    },
+    {
+      "code": "no-prelabel-sample-manifest-path",
+      "evidence": "scripts/semantic-corpus/collect.mts runs the LSP oracle inside collectSnapshot before buildSamples assigns duplicate-group splits and writes corpus-manifest.json. The existing collector cannot produce the required sample-level manifest and split hashes before labels are opened."
+    }
+  ],
+  "regressionOnlyDisposition": "not-activated: no certification outcomes were opened; any conforming resumed run that opens these outcomes must treat both tracks as regression-only afterward",
+  "supersededBy": {
+    "freezeManifest": "freeze-manifest.json",
+    "frozenAtUtc": "2026-10-06T09:23:31.927Z",
+    "note": "The owner supplied git-backed clones and authorized source-only pre-label collection; the final freeze and certification proceeded after these earlier blockers were resolved."
+  }
+}

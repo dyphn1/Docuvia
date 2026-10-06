@@ -8,7 +8,9 @@ import {
   resetFactoryForTests,
   createMockLogger,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
   type AstProcessResult,
   type IAstProcessor,
   type IConfigScanner,
@@ -251,8 +253,16 @@ describe("runFullIngestion()", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("seeds a project row, runs discovery -> parse -> persist -> knowledge-branch pack -> markSynced in that order", async () => {
+  it("[happy][state-diff] invalidates prior proof state before full discovery and persistence", async () => {
     const git = makeMockGitProvider();
+    const invalidation = vi.fn(() => {
+      callOrder.push("invalidateAll");
+      return { invalidatedCount: 2, affectedFilePaths: ["src/caller.ts"] };
+    });
+    Object.defineProperty(store, "callSiteResolutions", {
+      configurable: true,
+      value: { invalidateAll: invalidation },
+    });
 
     await runFullIngestion({
       workspaceRoot: tmpDir,
@@ -262,17 +272,45 @@ describe("runFullIngestion()", () => {
     });
 
     expect(callOrder).toEqual([
+      "invalidateAll",
       "discoverFiles",
       "processFiles",
       "packSnapshotToKnowledgeBranch",
       "markSynced",
     ]);
+    expect(invalidation).toHaveBeenCalledWith(1);
     expect(store.projects.getOrInsert).toHaveBeenCalled();
+  });
+
+  it("[invalid-input][error-handling] stops before discovery when full invalidation rejects", async () => {
+    Object.defineProperty(store, "callSiteResolutions", {
+      configurable: true,
+      value: {
+        invalidateAll: vi.fn(() => {
+          throw new Error("invalid project metadata");
+        }),
+      },
+    });
+
+    await expect(
+      runFullIngestion({
+        workspaceRoot: tmpDir,
+        logger: createMockLogger(),
+        store,
+        git: makeMockGitProvider(),
+      }),
+    ).rejects.toThrowError("invalid project metadata");
+    expect(fileDiscovery.discoverFiles).toHaveBeenCalledTimes(0);
   });
 
   it("[state-diff] restores unavailable call-site evidence after a complete full ingestion", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    const resolutionMarkerKey = `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    store.meta.set(
+      resolutionMarkerKey,
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
+    );
     await runFullIngestion({
       workspaceRoot: tmpDir,
       logger: createMockLogger(),
@@ -282,6 +320,9 @@ describe("runFullIngestion()", () => {
 
     expect(store.meta.get(markerKey)).toBe(
       SnapshotCallSiteAvailabilityStates.AVAILABLE,
+    );
+    expect(store.meta.get(resolutionMarkerKey)).toBe(
+      SnapshotCallResolutionAvailabilityStates.AVAILABLE,
     );
   });
 
@@ -315,7 +356,12 @@ describe("runFullIngestion()", () => {
 
   it("[state-diff] keeps call-site evidence unavailable when full discovery skips an unchanged file", async () => {
     const markerKey = `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}1`;
+    const resolutionMarkerKey = `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}1`;
     store.meta.set(markerKey, SnapshotCallSiteAvailabilityStates.UNAVAILABLE);
+    store.meta.set(
+      resolutionMarkerKey,
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
+    );
     vi.mocked(fileDiscovery.discoverFiles).mockResolvedValue(
       Object.assign(
         {
@@ -337,6 +383,9 @@ describe("runFullIngestion()", () => {
 
     expect(store.meta.get(markerKey)).toBe(
       SnapshotCallSiteAvailabilityStates.UNAVAILABLE,
+    );
+    expect(store.meta.get(resolutionMarkerKey)).toBe(
+      SnapshotCallResolutionAvailabilityStates.UNAVAILABLE,
     );
   });
 

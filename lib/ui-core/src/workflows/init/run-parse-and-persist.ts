@@ -9,7 +9,9 @@ import type {
 } from "@workspace/contracts";
 import {
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
+  SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  SnapshotCallResolutionAvailabilityStates,
 } from "@workspace/contracts";
 
 /** Restores the call-site capability after a full pass that attempted every discoverable file
@@ -44,6 +46,10 @@ export function markCallSitesAvailableAfterCompleteIngestion(input: {
     `${SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
     SnapshotCallSiteAvailabilityStates.AVAILABLE,
   );
+  store.meta.set(
+    `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}${projectId}`,
+    SnapshotCallResolutionAvailabilityStates.AVAILABLE,
+  );
 }
 
 export interface RunParseAndPersistResult {
@@ -71,6 +77,8 @@ export async function runParseAndPersist(deps: {
   workspaceRoot: string;
   projectId: number;
   filesToParse: DiscoveredFile[];
+  /** Full-discovery candidate count; omitted by delta ingestion, which can never claim a complete index. */
+  candidateFileCount?: number;
   skippedOversized: { file: string; sizeBytes: number }[];
   /** Config + hotspot tags from `runDiscoveryPipeline`; a fresh `Set` is returned with per-file language tags folded in — the input is never mutated. */
   tags: Set<string>;
@@ -89,6 +97,7 @@ export async function runParseAndPersist(deps: {
     workspaceRoot,
     projectId,
     filesToParse,
+    candidateFileCount,
     skippedOversized,
     appendLogLine,
     logEvents,
@@ -123,6 +132,13 @@ export async function runParseAndPersist(deps: {
     projectId,
     parsedResults,
     tags: Array.from(tags),
+    ...(candidateFileCount !== undefined &&
+    failures.length === 0 &&
+    skippedOversized.length === 0 &&
+    parsedResults.length === filesToParse.length &&
+    parsedResults.length === candidateFileCount
+      ? { sourceIndexComplete: true }
+      : {}),
   });
 
   return {

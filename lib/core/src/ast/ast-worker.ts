@@ -5,16 +5,24 @@ import * as fs from "fs";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
 import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import {
+  parseReexportDescriptors,
   parseImportDescriptors,
   loadDefaultRegistry,
 } from "@workspace/ast-core";
 import {
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
-  type AstExportKind,
+  type AstImportDescriptor,
+  type AstReexportDescriptor,
+  type AstDeclaredTypeLanguage,
+  type AstExportDescriptor,
+  type AstDeclaredTypeFacts,
+  type AstCallSiteShapeFacts,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
+import { extractDeclaredTypeFacts } from "./declared-type-facts.js";
+import { extractCallSiteShapeFacts } from "./call-site-shape-facts.js";
 import {
   collectClassNodes,
   collectFunctionNodes,
@@ -58,11 +66,7 @@ export interface AstParseRequest {
   language: SupportedLanguage;
 }
 
-export interface ImportDescriptor {
-  localName: string;
-  originalName: string;
-  modulePath: string;
-}
+export type ImportDescriptor = AstImportDescriptor;
 
 export interface AstParseResponse {
   taskId: string;
@@ -70,7 +74,8 @@ export interface AstParseResponse {
   error?: string;
   data?: {
     imports: ImportDescriptor[];
-    exports: Array<{ name: string; type: AstExportKind }>;
+    exports: AstExportDescriptor[];
+    reexports?: AstReexportDescriptor[];
     functions: Array<{
       name: string;
       startLine: number;
@@ -111,6 +116,10 @@ export interface AstParseResponse {
     }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
+    /** Optional explicit TypeScript/JavaScript syntax facts; not a resolution or proof. */
+    declaredTypeFacts?: AstDeclaredTypeFacts;
+    /** Optional binding-scoped, syntax-only call features; not a resolution or proof. */
+    callSiteShapeFacts?: AstCallSiteShapeFacts;
     /**
      * `new Worker(<path>)` spawn sites (TS/JS only — see `WORKER_SPAWN_LANGUAGES`), one per
      * resolved spawn call, attributing it to its enclosing function like `calls` does.
@@ -496,6 +505,137 @@ export function collectWorkerSpawns(
   }
 }
 
+function namedChildren(node: Node): Node[] {
+  const children: Node[] = [];
+  for (let index = 0; index < node.namedChildCount; index += 1) {
+    const child = node.namedChild(index);
+    if (child) children.push(child);
+  }
+  return children;
+}
+
+function directExportDescriptors(root: Node): AstExtractionResult["exports"] {
+  const exports: AstExtractionResult["exports"] = [];
+  for (const statement of namedChildren(root))
+    exports.push(...directExportForStatement(statement));
+  return exports;
+}
+
+function directExportForStatement(
+  statement: Node,
+): AstExtractionResult["exports"] {
+  if (statement.type !== "export_statement") return [];
+  if (/^export\s+default\b/u.test(statement.text))
+    return [directDefaultExportDescriptor(statement)];
+  const declaration = statement.childForFieldName("declaration");
+  return declaration ? directExportForDeclaration(declaration) : [];
+}
+
+function directDefaultExportDescriptor(statement: Node): AstExportDescriptor {
+  const directFunctionSyntax =
+    /^export\s+default\s+(?:async\s+)?function(?:\s|\*|\()/u.test(
+      statement.text,
+    );
+  const defaultDeclarationNodes = [
+    ...statement.descendantsOfType("function_declaration"),
+    ...statement.descendantsOfType("generator_function_declaration"),
+    ...statement.descendantsOfType("function_expression"),
+    ...statement.descendantsOfType("generator_function"),
+    ...statement.descendantsOfType("class_declaration"),
+    ...statement.descendantsOfType("abstract_class_declaration"),
+  ].filter((node): node is Node => node !== null);
+  const declaration =
+    statement.childForFieldName("declaration") ??
+    defaultDeclarationNodes.sort(
+      (left, right) => left.startIndex - right.startIndex,
+    )[0];
+  if (
+    declaration &&
+    directFunctionSyntax &&
+    [
+      "function_declaration",
+      "generator_function_declaration",
+      "function_expression",
+      "generator_function",
+    ].includes(declaration.type)
+  )
+    return {
+      name: "default",
+      type: "function",
+      declarationSpan: {
+        start: declaration.startIndex,
+        end: declaration.endIndex,
+      },
+    };
+
+  const isClass =
+    declaration?.type === "class_declaration" ||
+    declaration?.type === "abstract_class_declaration";
+  return {
+    name: "default",
+    type: isClass ? "class" : "other",
+    declarationSpan: declaration
+      ? { start: declaration.startIndex, end: declaration.endIndex }
+      : { start: statement.startIndex, end: statement.endIndex },
+  };
+}
+
+function directExportForDeclaration(
+  declaration: Node,
+): AstExtractionResult["exports"] {
+  const classExport = directClassExportDescriptor(declaration);
+  if (classExport) return [classExport];
+  const functionExport = directFunctionExportDescriptor(declaration);
+  if (functionExport) return [functionExport];
+  if (
+    declaration.type !== "lexical_declaration" &&
+    declaration.type !== "variable_declaration"
+  )
+    return [];
+  return directVariableExportDescriptors(declaration);
+}
+
+function directClassExportDescriptor(
+  declaration: Node,
+): AstExtractionResult["exports"][number] | undefined {
+  if (
+    declaration.type !== "class_declaration" &&
+    declaration.type !== "abstract_class_declaration"
+  )
+    return undefined;
+  const name = declaration.childForFieldName("name");
+  return name && ["identifier", "type_identifier"].includes(name.type)
+    ? { name: name.text, type: "class" }
+    : undefined;
+}
+
+function directFunctionExportDescriptor(
+  declaration: Node,
+): AstExtractionResult["exports"][number] | undefined {
+  if (
+    declaration.type !== "function_declaration" &&
+    declaration.type !== "generator_function_declaration"
+  )
+    return undefined;
+  const name = declaration.childForFieldName("name");
+  return name?.type === "identifier"
+    ? { name: name.text, type: "function" }
+    : undefined;
+}
+
+function directVariableExportDescriptors(
+  declaration: Node,
+): AstExtractionResult["exports"] {
+  const exports: AstExtractionResult["exports"] = [];
+  for (const declarator of namedChildren(declaration)) {
+    if (declarator.type !== "variable_declarator") continue;
+    const name = declarator.childForFieldName("name");
+    if (name?.type === "identifier")
+      exports.push({ name: name.text, type: "variable" });
+  }
+  return exports;
+}
+
 /**
  * Runs every provider-driven extraction against a parsed tree (or returns empty results plus a
  * decision note if parsing produced no tree). A single try/catch wraps the whole pass, matching
@@ -510,6 +650,7 @@ function extractAstData(
   const decisions: string[] = [];
   const imports: ImportDescriptor[] = [];
   const exports: AstExtractionResult["exports"] = [];
+  let reexports: AstReexportDescriptor[] | undefined;
   const functions: AstExtractionResult["functions"] = [];
   const classes: AstExtractionResult["classes"] = [];
   const variables: NonNullable<AstExtractionResult["variables"]> = [];
@@ -522,6 +663,13 @@ function extractAstData(
     decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
 
     try {
+      exports.push(...directExportDescriptors(tree.rootNode));
+      if (
+        language === SUPPORTED_LANGUAGES.TYPESCRIPT ||
+        language === SUPPORTED_LANGUAGES.JAVASCRIPT
+      ) {
+        reexports = parseReexportDescriptors(tree.rootNode);
+      }
       const classNodes = collectClassNodes(tree, provider, classes);
       const functionNodes = collectFunctionNodes(
         tree,
@@ -553,6 +701,7 @@ function extractAstData(
   return {
     imports,
     exports,
+    ...(reexports === undefined ? {} : { reexports }),
     functions,
     classes,
     variables,
@@ -591,6 +740,7 @@ function parseAndExtract(
   provider: LanguageProvider,
   langInstance: Language,
   language: SupportedLanguage,
+  filePath: string,
 ): AstExtractionResult {
   const parser = new Parser();
   parser.setLanguage(langInstance);
@@ -605,11 +755,40 @@ function parseAndExtract(
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider, language);
+  const declaredTypeLanguage = getDeclaredTypeLanguage(language, filePath);
+  const result =
+    tree && declaredTypeLanguage
+      ? {
+          ...data,
+          declaredTypeFacts: extractDeclaredTypeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+          ),
+          callSiteShapeFacts: extractCallSiteShapeFacts(
+            tree.rootNode,
+            declaredTypeLanguage,
+            data.calls,
+            data.imports,
+          ),
+        }
+      : data;
 
   if (tree) tree.delete();
   parser.delete();
 
-  return data;
+  return result;
+}
+
+function getDeclaredTypeLanguage(
+  language: SupportedLanguage,
+  filePath: string,
+): AstDeclaredTypeLanguage | undefined {
+  if (language === SUPPORTED_LANGUAGES.TYPESCRIPT)
+    return path.extname(filePath).toLowerCase() === ".tsx"
+      ? "tsx"
+      : "typescript";
+  if (language === SUPPORTED_LANGUAGES.JAVASCRIPT) return "javascript";
+  return undefined;
 }
 
 /**
@@ -670,6 +849,7 @@ export async function buildParseResponse(
     provider,
     langInstance,
     request.language,
+    request.filePath,
   );
 
   return {

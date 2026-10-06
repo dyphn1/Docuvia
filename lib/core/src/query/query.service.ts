@@ -13,6 +13,10 @@ import {
   QueryResultLayers,
 } from "@workspace/contracts";
 import { resolveTierBCoverageHint } from "../graph/tier-b-coverage.js";
+import {
+  getCallResolutionSummariesForEdge,
+  getCurrentCallResolutionRows,
+} from "../semantic/call-resolution-output.js";
 
 const QueryMessages = {
   INVALID_LIMIT_FALLBACK:
@@ -140,18 +144,52 @@ export class QueryService implements IQueryService {
     return Array.from(new Set(tokens));
   }
 
-  getContext(store: IGraphStore, target: string): GraphContext | null {
+  getContext(
+    store: IGraphStore,
+    target: string,
+    options?: { explainResolution?: boolean },
+  ): GraphContext | null {
     const node = store.graph.findNodeByName(target);
     if (!node) return null;
+    const targetNodeKey = store.graph.getNodeKeyById?.(node.id);
+    const resolutionRows = getCurrentCallResolutionRows(store);
 
     const incoming = store.graph
       .getIncomingRelations(node.id)
       .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
-      .map(({ name, linkType }) => ({ name, linkType }));
+      .map(({ id, name, linkType }) => ({
+        name,
+        linkType,
+        ...(linkType === LinkTypes.CALLS
+          ? {
+              callResolutions: getCallResolutionSummariesForEdge(
+                store,
+                store.graph.getNodeKeyById?.(id),
+                targetNodeKey,
+                options?.explainResolution,
+                resolutionRows,
+              ),
+            }
+          : {}),
+      }));
     const outgoing = store.graph
       .getOutgoingRelations(node.id)
       .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
-      .map(({ name, linkType }) => ({ name, linkType }));
+      .map(({ id, name, linkType }) => ({
+        name,
+        linkType,
+        ...(linkType === LinkTypes.CALLS
+          ? {
+              callResolutions: getCallResolutionSummariesForEdge(
+                store,
+                targetNodeKey,
+                store.graph.getNodeKeyById?.(id),
+                options?.explainResolution,
+                resolutionRows,
+              ),
+            }
+          : {}),
+      }));
 
     const tierBCoverage = resolveTierBCoverageHint(
       store,
@@ -282,7 +320,12 @@ export class QueryService implements IQueryService {
       .map(({ score: _score, ...rest }) => rest);
   }
 
-  query(store: IGraphStore, target: string, limit = 10): LocalQueryResult {
+  query(
+    store: IGraphStore,
+    target: string,
+    limit = 10,
+    options?: { explainResolution?: boolean },
+  ): LocalQueryResult {
     const results = this.search(store, target, limit);
     const l2Result = results.find((r) => r.layer === QueryResultLayers.L2);
     const l3Results = results.filter((r) => r.layer === QueryResultLayers.L3);
@@ -293,7 +336,7 @@ export class QueryService implements IQueryService {
     // null` on failure.
     let context: GraphContext | null = null;
     try {
-      context = this.getContext(store, target);
+      context = this.getContext(store, target, options);
     } catch (err) {
       this.logger.debug(QueryMessages.GET_CONTEXT_FAILED, {
         target,

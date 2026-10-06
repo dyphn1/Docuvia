@@ -8,6 +8,15 @@ import { QueryService } from "./query.service.js";
 // TDD-SOURCE: lib/contracts/src/interfaces/query.interfaces.ts
 
 describe("Phase 5 QueryService quality evidence", () => {
+  const unknownCallResolution = {
+    callSiteKey: null,
+    resolutionClass: "unknown",
+    verificationStatus: "unknown",
+    selectedTargetNodeKey: null,
+    isStale: false,
+    alternatives: [],
+    candidates: [],
+  };
   let tmpDir: string;
   let store: GraphStore;
   let projectId: number;
@@ -90,10 +99,57 @@ describe("Phase 5 QueryService quality evidence", () => {
     const first = queryService.getContext(store, "authService");
     const second = queryService.getContext(store, "authService");
 
-    expect(second).toEqual(first);
-    expect(first).toEqual({
-      incoming: [{ name: "caller", linkType: "calls" }],
+    expect(second).toStrictEqual(first);
+    // GRPH-008 Phase 5 adds explicit unknown certainty to aggregate calls edges with no
+    // per-site record. The negative test below pins that the original graph edge stays present.
+    expect(first).toStrictEqual({
+      incoming: [
+        {
+          name: "caller",
+          linkType: "calls",
+          callResolutions: [unknownCallResolution],
+        },
+      ],
       outgoing: [{ name: "callee", linkType: "implements" }],
+    });
+  });
+
+  it("[negative] preserves an aggregate calls edge when per-site certainty is unavailable", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "aggregateTarget",
+      pathPatterns: ["src/aggregate-target.ts"],
+    });
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "aggregateCaller",
+      pathPatterns: ["src/aggregate-caller.ts"],
+    });
+    store.files.upsertFile({
+      projectId,
+      filePath: "src/aggregate-target.ts",
+      contentHash: null,
+    });
+    store.files.markTierBProcessed({
+      projectId,
+      filePath: "src/aggregate-target.ts",
+      commitSha: "phase5-aggregate",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: targetId,
+      linkType: "calls",
+    });
+
+    expect(queryService.getContext(store, "aggregateTarget")).toStrictEqual({
+      incoming: [
+        {
+          name: "aggregateCaller",
+          linkType: "calls",
+          callResolutions: [unknownCallResolution],
+        },
+      ],
+      outgoing: [],
     });
   });
 
@@ -216,15 +272,22 @@ describe("Phase 5 QueryService quality evidence", () => {
       const first = queryService.query(store, "authService");
       const second = queryService.query(store, "authService");
 
-      expect(second).toEqual(first);
+      expect(second).toStrictEqual(first);
       expect(first.l2).toEqual({
         name: "authService",
         type: "module",
         filePath: "src/auth.ts",
         matchType: "exact",
       });
-      expect(first.context).toEqual({
-        incoming: [{ name: "caller", linkType: "calls" }],
+      // Phase 5 makes the aggregate call edge's missing per-site certainty explicit as unknown.
+      expect(first.context).toStrictEqual({
+        incoming: [
+          {
+            name: "caller",
+            linkType: "calls",
+            callResolutions: [unknownCallResolution],
+          },
+        ],
         outgoing: [],
       });
     },
@@ -263,7 +326,7 @@ describe("Phase 5 QueryService quality evidence", () => {
       commitSha: "phase5-state-before",
     });
 
-    expect(queryService.getContext(store, "statefulAuthService")).toEqual({
+    expect(queryService.getContext(store, "statefulAuthService")).toStrictEqual({
       incoming: [],
       outgoing: [],
     });
@@ -279,8 +342,14 @@ describe("Phase 5 QueryService quality evidence", () => {
       linkType: "calls",
     });
 
-    expect(queryService.getContext(store, "statefulAuthService")).toEqual({
-      incoming: [{ name: "statefulCaller", linkType: "calls" }],
+    expect(queryService.getContext(store, "statefulAuthService")).toStrictEqual({
+      incoming: [
+        {
+          name: "statefulCaller",
+          linkType: "calls",
+          callResolutions: [unknownCallResolution],
+        },
+      ],
       outgoing: [],
     });
   });

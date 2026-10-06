@@ -4,6 +4,7 @@ import {
   docuviaMemory,
   RiskLevels,
   type BlastRadiusEntry,
+  type CallResolutionSummary,
   type RiskLevel,
   type TierBCoverageHint,
   MemoryKeys,
@@ -43,6 +44,24 @@ function printEntryWhy(entryName: string, why: BlastRadiusEntry["why"]): void {
   }
 }
 
+function formatImpactCallResolution(resolution: CallResolutionSummary): string {
+  const target = resolution.selectedTargetNodeKey
+    ? ` → ${resolution.selectedTargetNodeKey}`
+    : "";
+  const confidence =
+    resolution.confidence === undefined ? "" : ` (${resolution.confidence})`;
+  const evidenceLabel = resolution.evidenceLabel
+    ? `; evidence: ${resolution.evidenceLabel}`
+    : "";
+  const candidates =
+    resolution.alternatives.length > 0
+      ? `; alternatives: ${resolution.alternatives.join(", ")}`
+      : resolution.candidates.length > 0
+        ? `; candidates: ${resolution.candidates.join(", ")}`
+        : "";
+  return `${resolution.resolutionClass}/${resolution.verificationStatus}${target}${confidence}${evidenceLabel}${candidates}`;
+}
+
 /** Issue #217: the Source column appears only when at least one entry came from the
  *  ast_call_sites fallback -- a fully-static result keeps its two-column shape, and the mixed
  *  case lets the reader see exactly which dependents are lower-confidence. Split out of
@@ -55,6 +74,9 @@ function printBlastRadiusTable(blastRadius: BlastRadiusEntry[]): void {
     [
       { header: UI_MESSAGES.IMPACT_COL_NAME },
       { header: UI_MESSAGES.IMPACT_COL_TYPE },
+      ...(blastRadius.some((entry) => entry.callResolutions)
+        ? [{ header: "Call certainty" }]
+        : []),
       ...(hasFallbackEntries
         ? [{ header: UI_MESSAGES.IMPACT_COL_SOURCE }]
         : []),
@@ -62,6 +84,13 @@ function printBlastRadiusTable(blastRadius: BlastRadiusEntry[]): void {
     blastRadius.map((entry) => [
       entry.name,
       entry.type,
+      ...(blastRadius.some((row) => row.callResolutions)
+        ? [
+            (entry.callResolutions ?? [])
+              .map(formatImpactCallResolution)
+              .join("; "),
+          ]
+        : []),
       ...(hasFallbackEntries
         ? [entry.edgeSource ?? UI_MESSAGES.IMPACT_EDGE_SOURCE_STATIC]
         : []),
@@ -69,46 +98,49 @@ function printBlastRadiusTable(blastRadius: BlastRadiusEntry[]): void {
   );
 }
 
-function printBlastRadius(
-  blastRadius: BlastRadiusEntry[],
-  riskLevel: RiskLevel,
+function printCallResolutionBreakdown(
+  breakdown: ImpactResult["callResolutionBreakdown"],
+): void {
+  if (!breakdown) return;
+  ui.log(
+    `Call edges — verified/proven: ${breakdown.verifiedProven}; heuristic/provisional: ${breakdown.heuristicProvisional}; unknown: ${breakdown.unknown}`,
+  );
+}
+
+function printNoDependents(
   tierBCoverage?: TierBCoverageHint,
   coverageNote?: string,
-  riskNote?: string,
 ): void {
-  ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
+  ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
+  if (coverageNote) ui.warn(coverageNote);
+  if (
+    tierBCoverage &&
+    tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
+  ) {
+    ui.warn(
+      UI_MESSAGES.IMPACT_TIER_B_INCOMPLETE(
+        tierBCoverage.workspaceFilesTotal -
+          tierBCoverage.workspaceFilesProcessed,
+        tierBCoverage.workspaceFilesTotal,
+      ),
+    );
+  }
+}
 
-  if (blastRadius.length === 0) {
-    ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
-    if (coverageNote) {
-      ui.warn(coverageNote);
-    }
-    if (
-      tierBCoverage &&
-      tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
-    ) {
-      ui.warn(
-        UI_MESSAGES.IMPACT_TIER_B_INCOMPLETE(
-          tierBCoverage.workspaceFilesTotal -
-            tierBCoverage.workspaceFilesProcessed,
-          tierBCoverage.workspaceFilesTotal,
-        ),
-      );
-    }
-  } else {
-    printBlastRadiusTable(blastRadius);
-    ui.log(FORMAT_MARKERS.EMPTY);
-    for (const entry of blastRadius) {
-      printEntryWhy(entry.name, entry.why);
+function printBlastRadiusEntries(blastRadius: BlastRadiusEntry[]): void {
+  printBlastRadiusTable(blastRadius);
+  ui.log(FORMAT_MARKERS.EMPTY);
+  for (const entry of blastRadius) {
+    printEntryWhy(entry.name, entry.why);
+    for (const resolution of entry.callResolutions ?? []) {
+      if (resolution.evidence) {
+        ui.log(JSON.stringify(resolution.evidence, null, 2));
+      }
     }
   }
+}
 
-  // Issue #192: an empty result is UNKNOWN (never a false-safe LOW), and a lower-bound result
-  // carries the reason -- always surface it so "zero" can never read as a confident answer.
-  if (riskNote) {
-    ui.warn(UI_MESSAGES.IMPACT_RISK_NOTE_PREFIX + riskNote);
-  }
-
+function printRiskLevel(riskLevel: RiskLevel): void {
   ui.log(FORMAT_MARKERS.EMPTY);
   const riskLine = UI_MESSAGES.IMPACT_RISK_PREFIX + riskLevel;
   if (riskLevel === RiskLevels.CRITICAL) {
@@ -122,6 +154,41 @@ function printBlastRadius(
     ui.log(riskLine);
   }
   ui.log(FORMAT_MARKERS.EMPTY);
+}
+
+function printBlastRadius(
+  blastRadius: BlastRadiusEntry[],
+  riskLevel: RiskLevel,
+  tierBCoverage?: TierBCoverageHint,
+  coverageNote?: string,
+  riskNote?: string,
+  callResolutionBreakdown?: ImpactResult["callResolutionBreakdown"],
+): void {
+  ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
+
+  if (blastRadius.length === 0) {
+    printNoDependents(tierBCoverage, coverageNote);
+  } else {
+    printBlastRadiusEntries(blastRadius);
+  }
+  printCallResolutionBreakdown(callResolutionBreakdown);
+
+  // Issue #192: an empty result is UNKNOWN (never a false-safe LOW), and a lower-bound result
+  // carries the reason -- always surface it so "zero" can never read as a confident answer.
+  if (riskNote) {
+    ui.warn(UI_MESSAGES.IMPACT_RISK_NOTE_PREFIX + riskNote);
+  }
+
+  printRiskLevel(riskLevel);
+}
+
+function setExplainResolutionOption(
+  scopeId: string,
+  explainResolution: boolean | undefined,
+): void {
+  if (explainResolution) {
+    docuviaMemory.set(scopeId, MemoryKeys.EXPLAIN_RESOLUTION, true);
+  }
 }
 
 /** Human-mode success rendering -- separated from `impactCommand` to keep its cyclomatic
@@ -145,6 +212,7 @@ function printHumanResult(
     result.tierBCoverage,
     result.coverageNote,
     result.riskNote,
+    result.callResolutionBreakdown,
   );
 }
 
@@ -173,7 +241,7 @@ function printNotFound(
  */
 export async function impactCommand(
   target: string,
-  options: { format?: CliOutputFormat } = {},
+  options: { format?: CliOutputFormat; explainResolution?: boolean } = {},
   cwd: string = process.cwd(),
 ): Promise<void> {
   const isJsonFormat = options.format === CLI_OUTPUT_FORMATS.JSON;
@@ -203,6 +271,7 @@ export async function impactCommand(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.TARGET, target);
+  setExplainResolutionOption(scopeId, options.explainResolution);
 
   try {
     const result = await docuviaApi.impact(scopeId, logger);

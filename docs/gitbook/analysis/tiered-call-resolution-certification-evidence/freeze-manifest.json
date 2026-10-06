@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "protocol": "tiered-call-resolution/final-certification-freeze/1",
+  "frozenAtUtc": "2026-10-06T09:23:31.927Z",
+  "implementationHead": "63cbe205731d2b1eb7276ceeba604d7a5bad2214",
+  "resolverRuleSignatures": {
+    "q1:named-import:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b"
+    },
+    "q2:reexport-trace:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/core/src/semantic/call-resolution-reexport-proof.ts": "fcbb7acf7019ad667dc89587aa67d8137355e9f23de0eec952c1678bbdc889e9",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "f94fc6e2a74682622f7d464ed745a9142c2c893dc990ec57f454aac2de7b1a88"
+    },
+    "q3:super-call:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238"
+    },
+    "q3:this-inherited:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238"
+    },
+    "q3:typed-receiver:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238"
+    },
+    "q3:new-receiver:v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+        "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+      },
+      "combinedSha256": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238"
+    },
+    "single-candidate-this-v1": {
+      "implementationConfigurationFiles": {
+        "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+        "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+        "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+        "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+        "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+        "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646"
+      },
+      "combinedSha256": "e9c025800d2d3e679e3415715587e3c1cc4fe5ff75535247ba9a850439d80f13"
+    }
+  },
+  "implementationFileHashes": {
+    "lib/core/src/semantic/call-resolution-hypothesis.service.ts": {
+      "sha256": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+      "matchesImplementationHead": true
+    },
+    "lib/core/src/semantic/call-resolution-hypothesis-index.ts": {
+      "sha256": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+      "matchesImplementationHead": true
+    },
+    "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": {
+      "sha256": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+      "matchesImplementationHead": true
+    },
+    "lib/core/src/semantic/call-resolution-strict-proof.ts": {
+      "sha256": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+      "matchesImplementationHead": true
+    },
+    "lib/core/src/semantic/call-resolution-reexport-proof.ts": {
+      "sha256": "fcbb7acf7019ad667dc89587aa67d8137355e9f23de0eec952c1678bbdc889e9",
+      "matchesImplementationHead": true
+    },
+    "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": {
+      "sha256": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+      "matchesImplementationHead": true
+    },
+    "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": {
+      "sha256": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+      "matchesImplementationHead": true
+    },
+    "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": {
+      "sha256": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+      "matchesImplementationHead": true
+    },
+    "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": {
+      "sha256": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c",
+      "matchesImplementationHead": true
+    }
+  },
+  "sourceToolingHashes": {
+    "scripts/semantic-corpus/prelabel-manifest.mts": "089c144100b10e270ec2ae7c6f210712284a6f180756be57d41e448993616cc5",
+    "scripts/semantic-corpus/prelabel-collect.mts": "fc6eae889dd65a1f10f7b82dc4de53e897c3bd96ace02b4fa13b9874dda79f2d",
+    "scripts/semantic-corpus/collect.mts": "ffd072e62b2e2bb844b6b9c13fa152dad4717f3a5cd113078e7bd6f5c1f39e65",
+    "scripts/semantic-corpus/checker.mts": "81967e6df548385b4570da6fe298cf73b50be53638f0c64587bacbd4f17b7d8e",
+    "scripts/semantic-corpus/tier-a.mts": "50dd5a452b04c524fab8a6b336ee83af29586adc5afb00e45c74caba244f1554",
+    "scripts/semantic-corpus/snapshot.mts": "a23af91beda4efdcb0a1a145385b3d819d0af707750bc7a22d71c01fe35fc02b",
+    "scripts/semantic-corpus/memory-guard.mts": "4e890ac5c293ba53303b5c3b4e60359ac642b236432aada4979f114f68859dcd",
+    "scripts/semantic-corpus/run-support.mts": "7787ab5b3e5a309bc64c7601e9a969d245cfc99bdccf430cef44239f866262e7",
+    "scripts/semantic-corpus/oracle.mts": "52f61c353193fdf11d55c8888fbf2b244deebe8b498ccefc83c93ccb425ea3e1",
+    "scripts/semantic-corpus/typescript-language-server.mts": "350bd9f0988b1d9afd79100c73f9766b317c4590af9fe3a9a811a53a5d8b6f70",
+    "scripts/semantic-corpus/certification-evaluate.mts": "e912c85b45f9424cd2836e3ac9d63c31497c28723b9b84de8c510f2b44abea4b",
+    "scripts/semantic-corpus/certification-proof-scope.mts": "996f4ca0c974ef9ec43a36d3a429ad7e0c50e0c3a0b95ffb6645a2b82dbfaec6",
+    "scripts/semantic-corpus/phase3-q1-named-import-whole-source-parity.mts": "77ad7fd57937187044953b3f0c60a5bba1e74babf94f0372ae0459bd51611c34",
+    "scripts/semantic-corpus/phase3-q2-reexport-whole-source-parity.mts": "ff8e58b91607ddb710c1523841ea6be40304478961049feccc1aecf15c95aa71",
+    "scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts": "15be1e8a31e9a392c48739d54581220ac012cfb2f456f747395a073eb7e611c2",
+    "scripts/semantic-corpus/parity-utils.mts": "4971f08c99d9604ccfab59f6e6d97225e36f15afe0ce76102175162338d17618",
+    "test/semantic-corpus/prelabel-manifest.unit.test.ts": "0e5fad70b85a3ff4843589d7c2f1fbbc6c2336fe36e75bb05d6782b642a73fd4",
+    "test/semantic-corpus/certification-proof-scope.unit.test.ts": "2d72b9d589b03edf7cd3fb6a445de3dcf8da9e389e1c8370821daa6abb03e448",
+    "test/semantic-corpus/phase3-whole-source-parity.unit.test.ts": "119dc89437e68ba0229c1eaba51c7318dfa53bd8b2516433d65de1e96209c119",
+    "package.json": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911"
+  },
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3",
+      "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+    },
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "nodeVersion": "v24.14.1",
+    "noOracleInvocationsDuringPrelabel": true
+  },
+  "tracks": {
+    "newFamily": {
+      "repository": "abhigyanpatwari/GitNexus",
+      "homepage": "https://github.com/abhigyanpatwari/GitNexus",
+      "license": "PolyForm Noncommercial License 1.0.0",
+      "commit": "58be52885deee423e2079ae05b4a860ab0f3df75",
+      "committedAt": "2026-09-25T06:21:30Z",
+      "specPath": "docs/gitbook/analysis/tiered-call-resolution-certification-evidence/gitnexus/corpus-spec.json",
+      "prelabelManifest": {
+        "path": "docs/gitbook/analysis/tiered-call-resolution-certification-evidence/gitnexus/prelabel-manifest.json",
+        "artifactSha256": "c6cd102f882ab59f3707b56f3067801d122dec53d314ed0e996a1c227462889d",
+        "canonicalManifestSha256": "1adec1c80fa535b80321a2fa08276f1054732d6c8e1abd436b3f5507b1f87fe0",
+        "specSha256": "4ad7f5ff7da89abef1c2fecc309485556f815b6d4d19c14474832fb8f3fb3e54"
+      },
+      "sourceSnapshotHashes": {
+        "gitnexus-58be5288": "0e2ed9c2689a93ddcf8f8f3bd10f481421f57d13f376292855dd8f77a2566342"
+      },
+      "sampleCount": 8229,
+      "independentDuplicateGroups": 7212,
+      "splitHashes": {
+        "test": "8f5587f8653986f3437de00b37852d8a63d33d9147b1f191dba26547560e86ef",
+        "temporal": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "calibration": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "temporalOrder": {},
+      "snapshots": [
+        {
+          "snapshotId": "gitnexus-58be5288",
+          "repoId": "abhigyanpatwari/GitNexus",
+          "family": "gitnexus",
+          "revision": "58be52885deee423e2079ae05b4a860ab0f3df75",
+          "committedAt": "2026-09-25T06:21:30Z",
+          "baselineOnly": false,
+          "subtree": null,
+          "snapshotHash": "0e2ed9c2689a93ddcf8f8f3bd10f481421f57d13f376292855dd8f77a2566342",
+          "checker": {
+            "typescriptVersion": "5.9.3",
+            "programs": 6,
+            "uniqueCallSites": 295198,
+            "eligible": 8229,
+            "sampled": 8229
+          }
+        }
+      ],
+      "specArtifactSha256": "4ad7f5ff7da89abef1c2fecc309485556f815b6d4d19c14474832fb8f3fb3e54"
+    },
+    "temporal": {
+      "repository": "nestjs/nest",
+      "license": "MIT",
+      "corpusPinnedRevision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "corpusPinnedCommittedAt": "2026-09-25T08:26:15+02:00",
+      "certifiedRevision": "35142c3eca8edaaf6abc5984d915da2fbd458aa2",
+      "certifiedCommittedAt": "2026-10-02T14:07:21+02:00",
+      "ancestry": {
+        "corpusPinnedRevisionIsAncestor": true,
+        "commitsAfterCorpusPin": 95
+      },
+      "specPath": "docs/gitbook/analysis/tiered-call-resolution-certification-evidence/nest/corpus-spec.json",
+      "prelabelManifest": {
+        "path": "docs/gitbook/analysis/tiered-call-resolution-certification-evidence/nest/prelabel-manifest.json",
+        "artifactSha256": "5bba3e0c39a21af872fa03ee4e6549686d3dcba997a7c12433d8e28c2136e91d",
+        "canonicalManifestSha256": "43aa0b00ed20873c289e31b35e52871bce168972a49e8cae8dd79fdfc0d8089b",
+        "specSha256": "a685daba03cb77083b61dda1e7d1b34476d400879c613d4ee9a84e973d2d00b5"
+      },
+      "sourceSnapshotHashes": {
+        "nestjs-base-b1014b6862": "a50e72b10ae438d46fcddb3412e42dfc8bea9647f9f33a2c0bc07afe6064cf66",
+        "nestjs-temporal-35142c3eca": "aaf52fd909fb8c38726b82f59c625bdb777797aabcd37a53f7f794a011c15fbe"
+      },
+      "sampleCount": 516,
+      "independentDuplicateGroups": 493,
+      "splitHashes": {
+        "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "temporal": "3b242ac5a9c80ad16d88e4e343b4600fa95fdc0081537e9d58d6404be6900db4",
+        "calibration": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "temporalOrder": {
+        "nestjs-temporal-35142c3eca": true
+      },
+      "snapshots": [
+        {
+          "snapshotId": "nestjs-base-b1014b6862",
+          "repoId": "nestjs/nest",
+          "family": "nestjs",
+          "revision": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+          "committedAt": "2026-09-25T08:26:15+02:00",
+          "baselineOnly": true,
+          "subtree": null,
+          "snapshotHash": "a50e72b10ae438d46fcddb3412e42dfc8bea9647f9f33a2c0bc07afe6064cf66",
+          "checker": {
+            "typescriptVersion": "5.9.3",
+            "programs": 92,
+            "uniqueCallSites": 52164,
+            "eligible": 8350,
+            "sampled": 0
+          }
+        },
+        {
+          "snapshotId": "nestjs-temporal-35142c3eca",
+          "repoId": "nestjs/nest",
+          "family": "nestjs",
+          "revision": "35142c3eca8edaaf6abc5984d915da2fbd458aa2",
+          "committedAt": "2026-10-02T14:07:21+02:00",
+          "baselineOnly": false,
+          "subtree": null,
+          "snapshotHash": "aaf52fd909fb8c38726b82f59c625bdb777797aabcd37a53f7f794a011c15fbe",
+          "checker": {
+            "typescriptVersion": "5.9.3",
+            "programs": 93,
+            "uniqueCallSites": 56149,
+            "eligible": 8856,
+            "sampled": 8856
+          }
+        }
+      ],
+      "specArtifactSha256": "a685daba03cb77083b61dda1e7d1b34476d400879c613d4ee9a84e973d2d00b5"
+    }
+  },
+  "labelsOpened": false,
+  "certificationOutcomesOpened": false,
+  "toolingRevision": 3,
+  "preLabelToolingCorrection": {
+    "previousAttemptFailure": "GitNexus Q1 parity comparison threw RangeError: Invalid string length while serializing full non-Q1 result maps.",
+    "correction": "Replaced whole-map JSON serialization with exact size and key/value comparison; resolver implementation and prelabel corpora are unchanged. No oracle labels or certification outcomes had been opened."
+  },
+  "preLabelToolingFinalization": {
+    "resolverRuleCodeChanged": false,
+    "changes": [
+      "Finalized the deterministic source-only prelabel collector and manifest/split hashing.",
+      "Finalized proof-scope matching and exact parity map comparison before oracle labeling.",
+      "Recorded source tooling, evaluator, focused test, and package configuration SHA-256 values."
+    ]
+  }
+}

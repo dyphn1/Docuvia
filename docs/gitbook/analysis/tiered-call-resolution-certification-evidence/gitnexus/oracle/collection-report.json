@@ -1,0 +1,111 @@
+{
+  "collector": "semantic-corpus-collector/1",
+  "featureSchema": "tier-a-name-match/v1",
+  "limits": {
+    "maxCandidates": 32,
+    "maxInputBytes": 32768
+  },
+  "oracle": {
+    "server": "typescript-language-server",
+    "version": "5.3.0+tsserver@5.9.3",
+    "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "gitnexus-58be5288",
+      "repoId": "abhigyanpatwari/GitNexus",
+      "family": "gitnexus",
+      "revision": "58be52885deee423e2079ae05b4a860ab0f3df75",
+      "committedAt": "2026-09-25T06:21:30Z",
+      "subtree": null,
+      "snapshotHash": "0e2ed9c2689a93ddcf8f8f3bd10f481421f57d13f376292855dd8f77a2566342",
+      "snapshotHashesAgree": true,
+      "trackedSnapshotFiles": 2927,
+      "tierA": {
+        "nodes": 79531,
+        "edges": 71661,
+        "callSites": 295202,
+        "durationMs": 43666.393832999995
+      },
+      "checker": {
+        "typescriptVersion": "5.9.3",
+        "programs": 6,
+        "uniqueCallSites": 295198,
+        "exclusions": {
+          "checker-unresolved": 11454,
+          "external-target": 21737,
+          "no-configured-project": 207469,
+          "non-typescript-file": 30356,
+          "same-file-target": 15339,
+          "unmappable-target": 614
+        },
+        "population": 8229,
+        "sampled": 8229,
+        "audit": {
+          "match": 6105,
+          "not-applicable:export-not-found": 34,
+          "not-applicable:receiver-not-a-class": 2,
+          "not-applicable:receiver-not-imported": 1937,
+          "not-applicable:unresolved-specifier": 7,
+          "not-applicable:unsupported-callee-kind": 144
+        },
+        "durationMs": 17647.579165999996
+      },
+      "candidates": {
+        "empty": 19,
+        "truncated": 39,
+        "goldCovered": 8208
+      },
+      "oracle": {
+        "statuses": {
+          "resolved": 8229
+        },
+        "unmappedLocations": 12,
+        "requests": 8229,
+        "readinessProbeRequests": 11,
+        "processStarts": 5,
+        "groups": 5,
+        "notReadyGroups": 0,
+        "readiness": [
+          {
+            "projectId": "gitnexus-shared/tsconfig.json",
+            "ready": true,
+            "readyMs": 737.4697500000038
+          },
+          {
+            "projectId": "gitnexus-web/tsconfig.app.json",
+            "ready": true,
+            "readyMs": 693.9359169999952
+          },
+          {
+            "projectId": "gitnexus/test/fixtures/lang-resolution/typescript-pnpm-workspace-imports/apps/web/tsconfig.json",
+            "ready": true,
+            "readyMs": 695.4966249999998
+          },
+          {
+            "projectId": "gitnexus/test/fixtures/lang-resolution/typescript-tsconfig-aliases/tsconfig.json",
+            "ready": true,
+            "readyMs": 697.6251250000059
+          },
+          {
+            "projectId": "gitnexus/tsconfig.json",
+            "ready": true,
+            "readyMs": 1227.080999999991
+          }
+        ],
+        "durationMs": 6435.919374999998
+      },
+      "durationMs": 73839.7005
+    }
+  ],
+  "temporalOrderVerified": {},
+  "baselineOnlySnapshots": [],
+  "familyRelations": [],
+  "splitDrops": {},
+  "samples": 8229,
+  "datasetHash": "a11504bbd524050ba01f59b954bd82a95822c18470fac5d2c801b842b0cb7661",
+  "gates": {
+    "sampleSize": "insufficient-evidence",
+    "candidateRecall": "pass"
+  }
+}

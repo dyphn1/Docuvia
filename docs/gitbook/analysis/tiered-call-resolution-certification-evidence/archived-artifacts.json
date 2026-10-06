@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "note": "Per-sample certification artifacts are kept out of the repository (GitNexus is PolyForm Noncommercial 1.0.0; evaluation-only). Each entry records the SHA-256 and size of the archived file so results remain verifiable.",
+  "files": [
+    {
+      "path": "gitnexus/evaluation-results.json",
+      "bytes": 6900042,
+      "sha256": "c4a9e1fb1b5f9901e2d32266a92c9349eca1040b75d6d22ccd54c3e947f78b3b"
+    },
+    {
+      "path": "gitnexus/oracle/corpus-manifest.json",
+      "bytes": 14933825,
+      "sha256": "121431d072e5b1ea5b1931a00070c9a868df13466efb8029e54069a8a909343f"
+    },
+    {
+      "path": "gitnexus/prelabel-manifest.json",
+      "bytes": 5807223,
+      "sha256": "c6cd102f882ab59f3707b56f3067801d122dec53d314ed0e996a1c227462889d"
+    },
+    {
+      "path": "gitnexus/proof-sites.json",
+      "bytes": 7649260,
+      "sha256": "9bd282720fdc54f03f2572340e2cca42a1fd5fdb9dca60838f9a0ffc2785daaf"
+    },
+    {
+      "path": "gitnexus/source-parity/q3-summary.jsonl",
+      "bytes": 1923448,
+      "sha256": "94b9262ab926e5a30a22064a6fcee65f2716e03a709d9531caecd37d55cc9997"
+    },
+    {
+      "path": "nest/oracle/corpus-manifest.json",
+      "bytes": 1419189,
+      "sha256": "376f10329063d81e9c128465f95562c2d284122cbd4a5e24ab6f6958f5fd2054"
+    },
+    {
+      "path": "nest/prelabel-manifest.json",
+      "bytes": 348336,
+      "sha256": "5bba3e0c39a21af872fa03ee4e6549686d3dcba997a7c12433d8e28c2136e91d"
+    },
+    {
+      "path": "nest/proof-sites.json",
+      "bytes": 645471,
+      "sha256": "01c2115cf0dec17356d67f299a66c48edf5e3f32f4a1a28bf839dd65c44ebff4"
+    },
+    {
+      "path": "nest/source-parity/q2-summary.jsonl",
+      "bytes": 266316,
+      "sha256": "58801ab505c00e139a02c3e58943e95910479e979ccbdd68a1d58123a5a8631c"
+    },
+    {
+      "path": "nest/source-parity/q3-summary.jsonl",
+      "bytes": 765735,
+      "sha256": "3e9a5a921c19a4f1eb32733737604a15b4f8fe965b0ef0b6236105a45782b46d"
+    }
+  ]
+}

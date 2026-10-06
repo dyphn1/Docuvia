@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "tracks": {
+    "gitnexus": {
+      "startedAtUtc": "2026-10-06T09:55:05Z",
+      "status": "completed",
+      "datasetHash": "a11504bbd524050ba01f59b954bd82a95822c18470fac5d2c801b842b0cb7661",
+      "corpusManifestSha256": "121431d072e5b1ea5b1931a00070c9a868df13466efb8029e54069a8a909343f",
+      "collectionReportSha256": "23cef80a4c2d024b99f36b74158bbe172529cda52b3e42e9ce7ea091ac3dd1b2",
+      "proofSitesFileSha256": "9bd282720fdc54f03f2572340e2cca42a1fd5fdb9dca60838f9a0ffc2785daaf",
+      "proofSiteCount": 18001,
+      "proofFilePath": "/private/tmp/claude-501/-Users-daniel-chang-Desktop-GitHub/9a31c62e-65fd-4957-8671-984b186fab1e/scratchpad/cert/evaluation/gitnexus/proofs.json",
+      "evaluationResultsSha256": "c4a9e1fb1b5f9901e2d32266a92c9349eca1040b75d6d22ccd54c3e947f78b3b",
+      "sourceProofManifestSha256": "f1b71904276faec80e87c59c0cd011eb2c6b61b3c8da3012c1ffebff89930314"
+    },
+    "nest": {
+      "startedAtUtc": "2026-10-06T09:56:38Z",
+      "status": "completed",
+      "datasetHash": "98e07c6a51305f480f8a82c39b704e8a960770d89c87141ac543109807a66be2",
+      "corpusManifestSha256": "376f10329063d81e9c128465f95562c2d284122cbd4a5e24ab6f6958f5fd2054",
+      "collectionReportSha256": "60d5238c6184125317d4fda9bf3f720d34d91f45289dc10c16f6c18dfdd135d4",
+      "proofSitesFileSha256": "01c2115cf0dec17356d67f299a66c48edf5e3f32f4a1a28bf839dd65c44ebff4",
+      "proofSiteCount": 1610,
+      "proofFilePath": "/private/tmp/claude-501/-Users-daniel-chang-Desktop-GitHub/9a31c62e-65fd-4957-8671-984b186fab1e/scratchpad/cert/evaluation/nest/proofs.json",
+      "evaluationResultsSha256": "9698b420b4c0718eba3721490d9122d05e43ec40a89913d8714664c59c286109",
+      "sourceProofManifestSha256": "a74409fcefa5a8a1243057a7a1a90ed027cdb383ef1f7946f5c83c584d3dd4f5"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "docuviaCommit": "63cbe205731d2b1eb7276ceeba604d7a5bad2214",
+  "docuviaDirty": true,
+  "node": "v24.14.1",
+  "pnpm": "9.15.9",
+  "os": "Darwin 25.6.0 arm64",
+  "osVersion": "26.6.2",
+  "cpuModel": "Apple M4",
+  "logicalCpus": 10,
+  "memoryBytes": 17179869184,
+  "typescript": "5.9.3",
+  "oracle": {
+    "server": "typescript-language-server",
+    "version": "5.3.0+tsserver@5.9.3",
+    "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+  },
+  "corpus": {
+    "corpusId": "tiered-call-resolution-cert-gitnexus",
+    "corpusVersion": "1",
+    "splitSeed": "tiered-call-resolution-cert-2026-10-06-v1",
+    "maxSamplesPerSnapshot": 500000,
+    "tierAHeapMb": 4096,
+    "memoryFloorPercent": 5,
+    "oracleOptions": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    }
+  }
+}

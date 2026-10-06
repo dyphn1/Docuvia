@@ -1,0 +1,30 @@
+{
+  "corpusId": "tiered-call-resolution-cert-gitnexus",
+  "corpusVersion": "1",
+  "splitSeed": "tiered-call-resolution-cert-2026-10-06-v1",
+  "maxSamplesPerSnapshot": 500000,
+  "memoryFloorPercent": 5,
+  "tierAHeapMb": 4096,
+  "oracle": {
+    "requestTimeoutMs": 30000,
+    "readinessCapMs": 60000,
+    "readinessPollMs": 500,
+    "maxTsServerMemoryMb": 4096
+  },
+  "families": {
+    "gitnexus": "test"
+  },
+  "snapshots": [
+    {
+      "snapshotId": "gitnexus-58be5288",
+      "repoId": "abhigyanpatwari/GitNexus",
+      "family": "gitnexus",
+      "sourceDir": "gitnexus-git",
+      "revision": "58be52885deee423e2079ae05b4a860ab0f3df75",
+      "subtree": null,
+      "license": "PolyForm Noncommercial License 1.0.0",
+      "usage": "evaluation-only",
+      "temporalOf": null
+    }
+  ]
+}

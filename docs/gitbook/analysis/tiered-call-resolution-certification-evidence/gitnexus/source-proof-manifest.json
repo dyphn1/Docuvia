@@ -1,0 +1,349 @@
+{
+  "corpusManifestSha256": "121431d072e5b1ea5b1931a00070c9a868df13466efb8029e54069a8a909343f",
+  "collectionReportSha256": "23cef80a4c2d024b99f36b74158bbe172529cda52b3e42e9ce7ea091ac3dd1b2",
+  "combinedProofSitesSha256": "9bd282720fdc54f03f2572340e2cca42a1fd5fdb9dca60838f9a0ffc2785daaf",
+  "evaluationResultsSha256": "c4a9e1fb1b5f9901e2d32266a92c9349eca1040b75d6d22ccd54c3e947f78b3b",
+  "datasetHash": "a11504bbd524050ba01f59b954bd82a95822c18470fac5d2c801b842b0cb7661",
+  "prelabelSamples": 8229,
+  "prelabelDuplicateGroups": 7212,
+  "sourceProofSites": 18001,
+  "proofSitesInFrozenCorpus": 5454,
+  "proofSitesOutsideFrozenCorpus": 12547,
+  "ruleProofs": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "wholeSourcePersistedProofSites": 14954,
+      "inFrozenSampleProofSites": 3895,
+      "outsideFrozenSampleProofSites": 11059,
+      "inFrozenSampleDuplicateGroups": 3603
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "wholeSourcePersistedProofSites": 516,
+      "inFrozenSampleProofSites": 82,
+      "outsideFrozenSampleProofSites": 434,
+      "inFrozenSampleDuplicateGroups": 82
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "wholeSourcePersistedProofSites": 1,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 1,
+      "inFrozenSampleDuplicateGroups": 0
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "wholeSourcePersistedProofSites": 0,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 0,
+      "inFrozenSampleDuplicateGroups": 0
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "wholeSourcePersistedProofSites": 1342,
+      "inFrozenSampleProofSites": 1138,
+      "outsideFrozenSampleProofSites": 204,
+      "inFrozenSampleDuplicateGroups": 726
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "wholeSourcePersistedProofSites": 1188,
+      "inFrozenSampleProofSites": 339,
+      "outsideFrozenSampleProofSites": 849,
+      "inFrozenSampleDuplicateGroups": 225
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "wholeSourcePersistedProofSites": 0,
+      "inFrozenSampleProofSites": 0,
+      "outsideFrozenSampleProofSites": 0,
+      "inFrozenSampleDuplicateGroups": 0
+    }
+  ],
+  "sourceParity": {
+    "q1": {
+      "sourceManifestSha256": "d104f739b6c0ed034d16fdfa49746a8e9b44b67ee4dde2e212c7f080746f5a4a",
+      "sourceFiles": 4596,
+      "parsedFiles": 4596,
+      "parseFailures": 0,
+      "proofSites": 14956,
+      "persistedResolutionRows": 14954,
+      "allServiceProofsPersisted": false,
+      "missingPersistenceCounts": {
+        "caller-function-node-missing-or-ambiguous": 2
+      },
+      "missingPersistenceExamples": [
+        {
+          "callerFilePath": "gitnexus/test/unit/analyzer-identity.test.ts",
+          "line": 1459,
+          "callee": "resolveAnalyzerRunnerIdentity",
+          "callMatches": 1,
+          "sourceFunction": "resolveAnalyzerRunnerIdentity",
+          "enclosingFunctionCount": 4,
+          "callerMatchCount": 0,
+          "targetFilePath": "gitnexus/src/core/analyzer-identity.ts",
+          "targetFunctionMatches": 1,
+          "cause": "caller-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/test/unit/stream-graph-emit-config.test.ts",
+          "line": 94,
+          "callee": "buildPhaseList",
+          "callMatches": 1,
+          "sourceFunction": "o",
+          "enclosingFunctionCount": 3,
+          "callerMatchCount": 0,
+          "targetFilePath": "gitnexus/src/core/ingestion/pipeline.ts",
+          "targetFunctionMatches": 1,
+          "cause": "caller-function-node-missing-or-ambiguous"
+        }
+      ],
+      "peakRssBytes": 4928061440
+    },
+    "q2": {
+      "sourceManifestSha256": "d104f739b6c0ed034d16fdfa49746a8e9b44b67ee4dde2e212c7f080746f5a4a",
+      "sourceFiles": 4596,
+      "parsedFiles": 4596,
+      "parseFailures": 0,
+      "proofSites": 516,
+      "persistedResolutionRows": 516,
+      "allServiceProofsPersisted": true,
+      "missingPersistenceCounts": {},
+      "missingPersistenceExamples": [],
+      "peakRssBytes": 4303093760
+    },
+    "q3": {
+      "sourceManifestSha256": "d104f739b6c0ed034d16fdfa49746a8e9b44b67ee4dde2e212c7f080746f5a4a",
+      "sourceFiles": 4596,
+      "parsedFiles": 4596,
+      "parseFailures": 0,
+      "proofSites": 2538,
+      "persistedResolutionRows": 2531,
+      "allServiceProofsPersisted": false,
+      "missingPersistenceCounts": {
+        "target-function-node-missing-or-ambiguous": 6,
+        "caller-function-node-missing-or-ambiguous": 1
+      },
+      "missingPersistenceExamples": [
+        {
+          "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+          "line": 274,
+          "callee": "resolveRepo",
+          "callMatches": 1,
+          "sourceFunction": "resolveRepo",
+          "enclosingFunctionCount": 1,
+          "callerMatchCount": 1,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+          "line": 275,
+          "callee": "resolveRepo",
+          "callMatches": 1,
+          "sourceFunction": "resolveRepo",
+          "enclosingFunctionCount": 1,
+          "callerMatchCount": 1,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+          "line": 277,
+          "callee": "resolveRepo",
+          "callMatches": 1,
+          "sourceFunction": "resolveRepo",
+          "enclosingFunctionCount": 1,
+          "callerMatchCount": 1,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+          "line": 293,
+          "callee": "resolveRepo",
+          "callMatches": 1,
+          "sourceFunction": "selectToolRepository",
+          "enclosingFunctionCount": 1,
+          "callerMatchCount": 1,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/src/mcp/resources.ts",
+          "line": 335,
+          "callee": "resolveRepo",
+          "callMatches": 1,
+          "sourceFunction": "getContextResource",
+          "enclosingFunctionCount": 1,
+          "callerMatchCount": 0,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/test/unit/cfg/cfg-builder.test.ts",
+          "line": 158,
+          "callee": "withNesting",
+          "callMatches": 1,
+          "sourceFunction": "b",
+          "enclosingFunctionCount": 4,
+          "callerMatchCount": 0,
+          "targetFilePath": "gitnexus/src/core/ingestion/cfg/cfg-builder.ts",
+          "targetFunctionMatches": 1,
+          "cause": "caller-function-node-missing-or-ambiguous"
+        },
+        {
+          "callerFilePath": "gitnexus/test/unit/group/impact-by-uid.test.ts",
+          "line": 16,
+          "callee": "impactByUid",
+          "callMatches": 1,
+          "sourceFunction": "backend",
+          "enclosingFunctionCount": 2,
+          "callerMatchCount": 0,
+          "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+          "targetFunctionMatches": 2,
+          "cause": "target-function-node-missing-or-ambiguous"
+        }
+      ],
+      "peakRssBytes": 4608737280
+    }
+  },
+  "q3UnpersistedCandidatesAtFrozenLocations": [
+    {
+      "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+      "line": 274,
+      "callee": "resolveRepo",
+      "callMatches": 1,
+      "sourceFunction": "resolveRepo",
+      "enclosingFunctionCount": 1,
+      "callerMatchCount": 1,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [
+        "abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/mcp/repository-policy.ts:274:41"
+      ],
+      "matchingFrozenDuplicateGroups": [
+        "5a577ea4cb867d4a4c147c1d5c0c394e15f5ae12fe7a017f52ce7e740453dd4e"
+      ]
+    },
+    {
+      "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+      "line": 275,
+      "callee": "resolveRepo",
+      "callMatches": 1,
+      "sourceFunction": "resolveRepo",
+      "enclosingFunctionCount": 1,
+      "callerMatchCount": 1,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [
+        "abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/mcp/repository-policy.ts:275:41"
+      ],
+      "matchingFrozenDuplicateGroups": [
+        "ec00fac05d8f71c2fb17bce21bcf7e390d92d81a8b550f7142e5c5f529dea086"
+      ]
+    },
+    {
+      "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+      "line": 277,
+      "callee": "resolveRepo",
+      "callMatches": 1,
+      "sourceFunction": "resolveRepo",
+      "enclosingFunctionCount": 1,
+      "callerMatchCount": 1,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [
+        "abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/mcp/repository-policy.ts:277:19"
+      ],
+      "matchingFrozenDuplicateGroups": [
+        "85fb54055e86369f82859497dd1b63906cc67de754797e386a873312610d982a"
+      ]
+    },
+    {
+      "callerFilePath": "gitnexus/src/mcp/repository-policy.ts",
+      "line": 293,
+      "callee": "resolveRepo",
+      "callMatches": 1,
+      "sourceFunction": "selectToolRepository",
+      "enclosingFunctionCount": 1,
+      "callerMatchCount": 1,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [
+        "abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/mcp/repository-policy.ts:293:19"
+      ],
+      "matchingFrozenDuplicateGroups": [
+        "d80e69a026624c49b089d0c3ef7f6a8ae27bc8a2150206ba3e4b66ebfc80b678"
+      ]
+    },
+    {
+      "callerFilePath": "gitnexus/src/mcp/resources.ts",
+      "line": 335,
+      "callee": "resolveRepo",
+      "callMatches": 1,
+      "sourceFunction": "getContextResource",
+      "enclosingFunctionCount": 1,
+      "callerMatchCount": 0,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [
+        "abhigyanpatwari/GitNexus@58be52885dee::gitnexus/src/mcp/resources.ts:335:29"
+      ],
+      "matchingFrozenDuplicateGroups": [
+        "305e68d11de2568c9da8445c3994f5444ffd4d94f877162a4b639de1e8c59afd"
+      ]
+    }
+  ],
+  "q3UnpersistedCandidatesOutsideFrozenLocations": [
+    {
+      "callerFilePath": "gitnexus/test/unit/cfg/cfg-builder.test.ts",
+      "line": 158,
+      "callee": "withNesting",
+      "callMatches": 1,
+      "sourceFunction": "b",
+      "enclosingFunctionCount": 4,
+      "callerMatchCount": 0,
+      "targetFilePath": "gitnexus/src/core/ingestion/cfg/cfg-builder.ts",
+      "targetFunctionMatches": 1,
+      "cause": "caller-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [],
+      "matchingFrozenDuplicateGroups": []
+    },
+    {
+      "callerFilePath": "gitnexus/test/unit/group/impact-by-uid.test.ts",
+      "line": 16,
+      "callee": "impactByUid",
+      "callMatches": 1,
+      "sourceFunction": "backend",
+      "enclosingFunctionCount": 2,
+      "callerMatchCount": 0,
+      "targetFilePath": "gitnexus/src/mcp/local/local-backend.ts",
+      "targetFunctionMatches": 2,
+      "cause": "target-function-node-missing-or-ambiguous",
+      "matchingFrozenSampleIds": [],
+      "matchingFrozenDuplicateGroups": []
+    }
+  ],
+  "copiedArtifactSha256": {
+    "gitnexus/oracle/corpus-manifest.json": "121431d072e5b1ea5b1931a00070c9a868df13466efb8029e54069a8a909343f",
+    "gitnexus/oracle/collection-report.json": "23cef80a4c2d024b99f36b74158bbe172529cda52b3e42e9ce7ea091ac3dd1b2",
+    "gitnexus/oracle/run-manifest.json": "50c54dd2a043e337635587e8d74175a1f8ba4a021b46bacc030840d84746881b",
+    "gitnexus/oracle/collection-progress.json": "3c51c8621989af8154e93549de73286a82a553d4cbe39d4cbed0181834813666",
+    "gitnexus/proof-sites.json": "9bd282720fdc54f03f2572340e2cca42a1fd5fdb9dca60838f9a0ffc2785daaf",
+    "gitnexus/evaluation-results.json": "c4a9e1fb1b5f9901e2d32266a92c9349eca1040b75d6d22ccd54c3e947f78b3b",
+    "gitnexus/source-parity/q1-summary.jsonl": "c42ca140df175090305d99e204601088ad42f8be0409d137ee080280cff0e836",
+    "gitnexus/source-parity/q2-summary.jsonl": "e0c814a9f37a78852524c1dc0068c2df84702dcdcb4ab926ea105c48c9c1588e",
+    "gitnexus/source-parity/q3-summary.jsonl": "94b9262ab926e5a30a22064a6fcee65f2716e03a709d9531caecd37d55cc9997"
+  }
+}

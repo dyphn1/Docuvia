@@ -80,7 +80,9 @@ function markdownMetricLabels(markdown: string): string[] {
   return markdown.split("\n").flatMap((line) => {
     const heading = /^#{1,6}\s+(.+?)\s*$/.exec(line)?.[1];
     if (heading) return [heading];
-    const bulletLabel = /^-\s+([^:]+):/.exec(line)?.[1];
+    const bulletLabel = /^-\s+([A-Za-z][A-Za-z0-9 /-]*):(?:\s|$)/.exec(
+      line,
+    )?.[1];
     return bulletLabel ? [bulletLabel] : [];
   });
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import type { DiscoveredFile } from "@workspace/contracts";
 import { AstProcessingService } from "./ast-processing.service.js";
 import type { IASTWorkerPool } from "./ast-worker-pool.js";
@@ -61,7 +62,7 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
     expect(terminate).toHaveBeenCalledOnce();
   });
 
-  it("returns the complete parsed result contract for a successful file", async () => {
+  it("[happy] returns the complete parsed result contract for a successful file", async () => {
     const file = makeFile("feature.ts");
     const pool = makeFakePool(async () => ({
       taskId: "task-success",
@@ -77,6 +78,9 @@ describe("AstProcessingService.processFiles() contract evidence", () => {
         {
           file: "feature.ts",
           hash: "hash-feature.ts",
+          sourceContentHash: createHash("sha256")
+            .update(file.code, "utf8")
+            .digest("hex"),
           data: emptyData,
           language: "typescript",
         },

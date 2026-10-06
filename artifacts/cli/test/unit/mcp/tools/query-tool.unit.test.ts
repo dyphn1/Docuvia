@@ -66,6 +66,51 @@ describe("docuvia_query MCP tool", () => {
     expect(setSpy).toHaveBeenCalled();
   });
 
+  it("[positive] accepts explainResolution and scopes it for query detail output", async () => {
+    const setValues = new Map<string, unknown>();
+    const realSet = docuviaMemory.set.bind(docuviaMemory);
+    vi.spyOn(docuviaMemory, "set").mockImplementation((id, key, value) => {
+      realSet(id, key, value);
+      setValues.set(key, value);
+    });
+    mockQuery.mockResolvedValue({
+      ...BASE_RESULT,
+      context: {
+        incoming: [
+          {
+            name: "caller",
+            linkType: "calls",
+            callResolutions: [
+              {
+                callSiteKey: "call-site:v1:abc",
+                resolutionClass: "likely",
+                verificationStatus: "unverified",
+                selectedTargetNodeKey: "l2:authService",
+                confidence: 0.91,
+                isStale: false,
+                alternatives: ["l2:alternateAuthService"],
+                candidates: [],
+              },
+            ],
+          },
+        ],
+        outgoing: [],
+      },
+    });
+
+    const response = await queryTool.handler({
+      target: "authService",
+      explainResolution: true,
+    });
+
+    expect(setValues.get("explainResolution")).toBe(true);
+    expect(
+      response.content[0].text.match(/<call_resolution\b[^>]*\/>/)?.[0],
+    ).toBe(
+      '<call_resolution class="likely" verification="unverified" target="l2:authService" confidence="0.91" alternatives="l2:alternateAuthService" />',
+    );
+  });
+
   it("deletes the memory scope even when the workflow rejects", async () => {
     const realDeleteScope = docuviaMemory.deleteScope.bind(docuviaMemory);
     const deleteSpy = vi

@@ -163,7 +163,14 @@ async function handleImpact(ctx: CommandContext): Promise<void> {
     return;
   }
   const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
-  await impactCommand(target, { format }, ctx.workspaceRoot);
+  await impactCommand(
+    target,
+    {
+      format,
+      explainResolution: ctx.parser.hasFlag(CLI_FLAGS.EXPLAIN_RESOLUTION),
+    },
+    ctx.workspaceRoot,
+  );
 }
 
 async function handleQuery(ctx: CommandContext): Promise<void> {
@@ -174,7 +181,11 @@ async function handleQuery(ctx: CommandContext): Promise<void> {
   const limit = limitRaw ? Number(limitRaw) : undefined;
   await queryCommand(
     target,
-    { format, limit },
+    {
+      format,
+      limit,
+      explainResolution: ctx.parser.hasFlag(CLI_FLAGS.EXPLAIN_RESOLUTION),
+    },
     ctx.workspaceRoot,
     ctx.isInteractive,
   );

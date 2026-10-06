@@ -44,6 +44,84 @@ describe("docuvia_impact MCP tool", () => {
     expect(response.content).toHaveLength(1);
   });
 
+  it("[positive] accepts explainResolution and scopes full impact evidence", async () => {
+    const setValues = new Map<string, unknown>();
+    const realSet = docuviaMemory.set.bind(docuviaMemory);
+    vi.spyOn(docuviaMemory, "set").mockImplementation((id, key, value) => {
+      realSet(id, key, value);
+      setValues.set(key, value);
+    });
+    mockImpact.mockResolvedValue({
+      blastRadius: [
+        {
+          name: "caller",
+          type: "module",
+          callResolutions: [
+            {
+              callSiteKey: "call-site:v1:abc",
+              resolutionClass: "proven",
+              verificationStatus: "verified",
+              selectedTargetNodeKey: "l2:authService",
+              evidenceLabel: "tier-b-verified",
+              isStale: false,
+              alternatives: [],
+              candidates: [],
+            },
+          ],
+        },
+      ],
+      riskLevel: "HIGH",
+      callResolutionBreakdown: {
+        verifiedProven: 1,
+        heuristicProvisional: 0,
+        unknown: 0,
+      },
+    });
+
+    const response = await impactTool.handler({
+      target: "authService",
+      explainResolution: true,
+    });
+
+    expect(setValues.get("explainResolution")).toBe(true);
+    const output = JSON.parse(response.content[0].text) as {
+      blastRadius: {
+        callResolutions: {
+          callSiteKey: string;
+          resolutionClass: string;
+          verificationStatus: string;
+          selectedTargetNodeKey: string;
+          evidenceLabel: string;
+          isStale: boolean;
+          alternatives: string[];
+          candidates: string[];
+        }[];
+      }[];
+      callResolutionBreakdown: {
+        verifiedProven: number;
+        heuristicProvisional: number;
+        unknown: number;
+      };
+    };
+    expect(output.callResolutionBreakdown).toStrictEqual({
+      verifiedProven: 1,
+      heuristicProvisional: 0,
+      unknown: 0,
+    });
+    expect(output.blastRadius[0]?.callResolutions).toStrictEqual([
+      {
+        callSiteKey: "call-site:v1:abc",
+        resolutionClass: "proven",
+        verificationStatus: "verified",
+        selectedTargetNodeKey: "l2:authService",
+        evidenceLabel: "tier-b-verified",
+        isStale: false,
+        alternatives: [],
+        candidates: [],
+      },
+    ]);
+  });
+
   it("returns literal null (not isError) with a resolution hint when the target is unknown", async () => {
     mockImpact.mockResolvedValue(null);
 

@@ -154,6 +154,89 @@ describe("formatPromptOutput()", () => {
     );
   });
 
+  it("[positive] renders bounded call certainty and gates resolver evidence on detail mode", () => {
+    const summary = {
+      callSiteKey: "site-a",
+      resolutionClass: "likely" as const,
+      verificationStatus: "unverified" as const,
+      selectedTargetNodeKey: "src/target.ts#run",
+      confidence: 0.84,
+      isStale: false,
+      alternatives: ["src/other.ts#run", "src/third.ts#run"],
+      candidates: [],
+    };
+    const result = {
+      l2: null,
+      l3: [],
+      context: {
+        incoming: [
+          { name: "caller", linkType: "calls", callResolutions: [summary] },
+        ],
+        outgoing: [],
+      },
+    };
+    const bounded = formatPromptOutput(result);
+    expect(bounded).toContain(
+      '<call_resolution class="likely" verification="unverified" target="src/target.ts#run" confidence="0.84" alternatives="src/other.ts#run,src/third.ts#run" />',
+    );
+    expect(bounded).not.toContain("rule-v1");
+
+    const detailed = formatPromptOutput({
+      ...result,
+      context: {
+        ...result.context,
+        incoming: [
+          {
+            ...result.context.incoming[0]!,
+            callResolutions: [
+              {
+                ...summary,
+                evidence: {
+                  resolver: "typed-hypothesis",
+                  ruleSignature: "rule-v1",
+                } as never,
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(detailed).toContain("rule-v1");
+    expect(detailed).toContain("<resolution_evidence>");
+  });
+
+  it("[positive] prints the evidence label for a proven call edge", () => {
+    const output = formatPromptOutput({
+      l2: null,
+      l3: [],
+      context: {
+        incoming: [
+          {
+            name: "caller",
+            linkType: "calls",
+            callResolutions: [
+              {
+                callSiteKey: "site-proof",
+                resolutionClass: "proven",
+                verificationStatus: "unverified",
+                selectedTargetNodeKey: "src/target.ts#run",
+                evidenceLabel: "static-proof",
+                isStale: false,
+                alternatives: [],
+                candidates: [],
+              },
+            ],
+          },
+        ],
+        outgoing: [],
+      },
+    });
+
+    expect(output).toContain(
+      '<call_resolution class="proven" verification="unverified" target="src/target.ts#run" evidence_label="static-proof" />',
+    );
+  });
+
   it("omits the l2/incoming/outgoing sections when there is nothing to report", () => {
     const output = formatPromptOutput({ l2: null, l3: [], context: null });
     expect(output).not.toContain("<l2_module");
@@ -215,6 +298,7 @@ describe("queryCommand", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("resolves the query and prints human-readable results by default", async () => {
@@ -231,6 +315,24 @@ describe("queryCommand", () => {
     expect(ui.info).toHaveBeenCalledWith(
       expect.stringContaining("authService"),
     );
+  });
+
+  it("[positive] stores explain-resolution when explicitly requested", async () => {
+    const setValues = new Map<string, unknown>();
+    const realSet = docuviaMemory.set.bind(docuviaMemory);
+    vi.spyOn(docuviaMemory, "set").mockImplementation((scopeId, key, value) => {
+      realSet(scopeId, key, value);
+      setValues.set(key, value);
+    });
+    mockQuery.mockResolvedValue({ l2: null, l3: [], context: null });
+
+    await queryCommand(
+      "authService",
+      { explainResolution: true },
+      "/workspace/demo",
+    );
+
+    expect(setValues.get("explainResolution")).toBe(true);
   });
 
   it.each([

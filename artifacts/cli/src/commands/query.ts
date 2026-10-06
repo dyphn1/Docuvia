@@ -98,15 +98,52 @@ function printHumanEdgeList(
     ui.log(FORMAT_MARKERS.EMPTY);
     return;
   }
+  const hasCallResolutions = edges.some(
+    (edge) => edge.callResolutions !== undefined,
+  );
   ui.section(header);
   ui.table(
     [
       { header: UI_MESSAGES.QUERY_COL_NAME },
       { header: UI_MESSAGES.QUERY_COL_RELATION },
+      ...(hasCallResolutions ? [{ header: "Call certainty" }] : []),
     ],
-    edges.map((edge) => [edge.name, edge.linkType]),
+    edges.map((edge) => [
+      edge.name,
+      edge.linkType,
+      ...(hasCallResolutions
+        ? [(edge.callResolutions ?? []).map(formatCallResolution).join("; ")]
+        : []),
+    ]),
   );
+  for (const edge of edges) {
+    for (const resolution of edge.callResolutions ?? []) {
+      if (resolution.evidence) {
+        ui.log(JSON.stringify(resolution.evidence, null, 2));
+      }
+    }
+  }
   ui.log(FORMAT_MARKERS.EMPTY);
+}
+
+function formatCallResolution(
+  resolution: NonNullable<GraphEdgeRef["callResolutions"]>[number],
+): string {
+  const target = resolution.selectedTargetNodeKey
+    ? ` → ${resolution.selectedTargetNodeKey}`
+    : "";
+  const confidence =
+    resolution.confidence === undefined ? "" : ` (${resolution.confidence})`;
+  const evidenceLabel = resolution.evidenceLabel
+    ? `; evidence: ${resolution.evidenceLabel}`
+    : "";
+  const candidates =
+    resolution.alternatives.length > 0
+      ? `; alternatives: ${resolution.alternatives.join(", ")}`
+      : resolution.candidates.length > 0
+        ? `; candidates: ${resolution.candidates.join(", ")}`
+        : "";
+  return `${resolution.resolutionClass}/${resolution.verificationStatus}${target}${confidence}${evidenceLabel}${candidates}`;
 }
 
 /** `printHumanResults`'s incoming-direction unprocessed-warning text, split out purely to keep
@@ -231,12 +268,16 @@ async function runQuery(
   cwd: string,
   queryTarget: string,
   limit: number | undefined,
+  explainResolution: boolean,
   spinner: ReturnType<typeof ui.spinner> | undefined,
 ): Promise<LocalQueryResult | undefined> {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.TARGET, queryTarget);
   if (limit !== undefined) docuviaMemory.set(scopeId, MemoryKeys.LIMIT, limit);
+  if (explainResolution) {
+    docuviaMemory.set(scopeId, MemoryKeys.EXPLAIN_RESOLUTION, true);
+  }
 
   try {
     const result = await docuviaApi.query(scopeId, logger);
@@ -264,7 +305,11 @@ async function runQuery(
 /** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
 export async function queryCommand(
   target?: string,
-  options: { format?: CliOutputFormat; limit?: number } = {},
+  options: {
+    format?: CliOutputFormat;
+    limit?: number;
+    explainResolution?: boolean;
+  } = {},
   cwd: string = process.cwd(),
   isInteractive: boolean = false,
 ) {
@@ -284,6 +329,7 @@ export async function queryCommand(
     cwd,
     queryTarget,
     limit,
+    options.explainResolution ?? false,
     spinner,
   );
   if (!result) return;

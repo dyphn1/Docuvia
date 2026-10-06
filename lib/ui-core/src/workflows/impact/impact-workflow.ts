@@ -1,12 +1,14 @@
 import {
   BlastRadiusEdgeSources,
   DynamicEvidenceAvailabilityStates,
+  LinkTypes,
   docuviaFactory,
   TOKENS,
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
   type BlastRadiusEntry,
+  type CallResolutionSummary,
   type DynamicDependencyEvidence,
   type IGraphStore,
   type IImpactService,
@@ -110,7 +112,10 @@ export class ImpactWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  public async execute(target: string): Promise<ImpactResult | null> {
+  public async execute(
+    target: string,
+    options?: { explainResolution?: boolean },
+  ): Promise<ImpactResult | null> {
     const { workspaceRoot, logger } = this;
 
     logger.info(IMPACT_MESSAGES.RESOLVING);
@@ -148,9 +153,13 @@ export class ImpactWorkflow {
       const impactService = docuviaFactory.resolve(TOKENS.ImpactService, {
         logger,
       });
-      const blastRadius = impactService.getBlastRadius(store, target);
+      const initialBlastRadius = impactService.getBlastRadius(
+        store,
+        target,
+        options,
+      );
 
-      if (!blastRadius) {
+      if (!initialBlastRadius) {
         await appendImpactLogLine(workspaceRoot, {
           event: IMPACT_EVENTS.SUMMARY,
           target,
@@ -160,6 +169,14 @@ export class ImpactWorkflow {
         });
         return null;
       }
+
+      const blastRadius = attachCallResolutionCertainty(
+        store,
+        impactService,
+        target,
+        initialBlastRadius,
+        options,
+      );
 
       const dynamicEvidence =
         impactService.getDynamicEvidence?.(store, target) ?? [];
@@ -194,6 +211,7 @@ export class ImpactWorkflow {
 
       return {
         blastRadius,
+        ...resolveCallResolutionBreakdownField(blastRadius),
         ...freshnessField,
         ...(dynamicEvidence.length > 0 ? { dynamicEvidence } : {}),
         ...(dynamicEvidenceUnavailable ? { dynamicEvidenceUnavailable } : {}),
@@ -333,4 +351,177 @@ export class ImpactWorkflow {
     }
     return /docuviaFactory|TOKENS\./.test(content);
   }
+}
+
+function attachCallResolutionCertainty(
+  store: IGraphStore,
+  impactService: IImpactService,
+  target: string,
+  entries: BlastRadiusEntry[],
+  options?: { explainResolution?: boolean },
+): BlastRadiusEntry[] {
+  const targetNode = store.graph.findNodeByName(target);
+  if (!targetNode) return entries;
+  const isFileTarget =
+    targetNode.filePath !== undefined &&
+    targetNode.name === targetNode.filePath;
+  const targetIds = getCallTargetIds(store, targetNode.id, isFileTarget);
+  const result = [...entries];
+  for (const targetId of targetIds) {
+    attachCallCertaintyForTarget(
+      result,
+      store,
+      impactService,
+      targetId,
+      isFileTarget,
+      options,
+    );
+  }
+  return result;
+}
+
+function getCallTargetIds(
+  store: IGraphStore,
+  targetNodeId: number,
+  isFileTarget: boolean,
+): number[] {
+  if (!isFileTarget) return [targetNodeId];
+  const containingSymbols = (
+    store.graph.getOutgoingRelations(targetNodeId) ?? []
+  )
+    .filter((relation) => relation.linkType === LinkTypes.CONTAINS)
+    .map((relation) => relation.id);
+  return [targetNodeId, ...containingSymbols];
+}
+
+function attachCallCertaintyForTarget(
+  entries: BlastRadiusEntry[],
+  store: IGraphStore,
+  impactService: IImpactService,
+  targetId: number,
+  isFileTarget: boolean,
+  options?: { explainResolution?: boolean },
+): void {
+  const targetNodeKey = store.graph.getNodeKeyById?.(targetId);
+  for (const relation of store.graph.getIncomingRelations(targetId) ?? []) {
+    if (relation.linkType !== LinkTypes.CALLS) continue;
+    const dependent = getCallDependent(store, relation, isFileTarget);
+    const entryIndex = entries.findIndex(
+      (entry) => entry.name === dependent.name && entry.type === dependent.type,
+    );
+    if (entryIndex < 0) continue;
+    const callResolutions = getCallEdgeSummaries(
+      store,
+      impactService,
+      relation.id,
+      targetNodeKey,
+      options,
+    );
+    entries[entryIndex] = mergeCallEdgeSummaries(
+      entries[entryIndex]!,
+      callResolutions,
+    );
+  }
+}
+
+function getCallDependent(
+  store: IGraphStore,
+  relation: NonNullable<
+    ReturnType<IGraphStore["graph"]["getIncomingRelations"]>
+  >[number],
+  isFileTarget: boolean,
+) {
+  if (!isFileTarget) return relation;
+  return (
+    store.graph
+      .getIncomingRelations(relation.id)
+      ?.find((edge) => edge.linkType === LinkTypes.CONTAINS) ?? relation
+  );
+}
+
+function getCallEdgeSummaries(
+  store: IGraphStore,
+  impactService: IImpactService,
+  callerId: number,
+  targetNodeKey: string | undefined,
+  options?: { explainResolution?: boolean },
+): CallResolutionSummary[] {
+  return (
+    impactService.getCallResolutionForEdge?.(
+      store,
+      store.graph.getNodeKeyById?.(callerId),
+      targetNodeKey,
+      options,
+    ) ?? [unknownImpactCallResolution()]
+  );
+}
+
+function mergeCallEdgeSummaries(
+  entry: BlastRadiusEntry,
+  callResolutions: CallResolutionSummary[],
+): BlastRadiusEntry {
+  const existingResolutions = entry.callResolutions ?? [];
+  const knownKeys = new Set(
+    existingResolutions.map((resolution) => resolution.callSiteKey),
+  );
+  const newResolutions = callResolutions.filter((resolution) => {
+    if (knownKeys.has(resolution.callSiteKey)) return false;
+    knownKeys.add(resolution.callSiteKey);
+    return true;
+  });
+  const mergedResolutions = [...existingResolutions, ...newResolutions];
+  return {
+    ...entry,
+    callResolutions: mergedResolutions,
+  };
+}
+
+function resolveCallResolutionBreakdownField(
+  entries: BlastRadiusEntry[],
+): Pick<ImpactResult, "callResolutionBreakdown"> | Record<string, never> {
+  const callResolutionBreakdown = resolveCallResolutionBreakdown(entries);
+  if (!callResolutionBreakdown) return {};
+  return { callResolutionBreakdown };
+}
+
+function unknownImpactCallResolution() {
+  return {
+    callSiteKey: null,
+    resolutionClass: "unknown" as const,
+    verificationStatus: "unknown" as const,
+    selectedTargetNodeKey: null,
+    isStale: false,
+    alternatives: [],
+    candidates: [],
+  };
+}
+
+function resolveCallResolutionBreakdown(
+  entries: BlastRadiusEntry[],
+): ImpactResult["callResolutionBreakdown"] {
+  const breakdown = { verifiedProven: 0, heuristicProvisional: 0, unknown: 0 };
+  let foundCallContribution = false;
+  for (const entry of entries) {
+    if (entry.edgeSource === BlastRadiusEdgeSources.DYNAMIC_CANDIDATE) {
+      continue;
+    }
+    if (entry.callResolutions && entry.callResolutions.length > 0) {
+      foundCallContribution = true;
+      for (const resolution of entry.callResolutions) {
+        if (resolution.evidenceLabel !== undefined) {
+          breakdown.verifiedProven++;
+        } else if (resolution.resolutionClass === "unknown") {
+          breakdown.unknown++;
+        } else {
+          breakdown.heuristicProvisional++;
+        }
+      }
+      continue;
+    }
+    if (entry.edgeSource === BlastRadiusEdgeSources.LSP_FALLBACK) {
+      foundCallContribution = true;
+      breakdown.heuristicProvisional++;
+    }
+  }
+  return foundCallContribution ? breakdown : undefined;
 }

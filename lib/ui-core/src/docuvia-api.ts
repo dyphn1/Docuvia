@@ -327,7 +327,13 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     const target = requireMemory<string>(scopeId, MemoryKeys.TARGET);
-    return new ImpactWorkflow(workspaceRoot, logger).execute(target);
+    const explainResolution = docuviaMemory.get<boolean>(
+      scopeId,
+      MemoryKeys.EXPLAIN_RESOLUTION,
+    );
+    return new ImpactWorkflow(workspaceRoot, logger).execute(target, {
+      explainResolution,
+    });
   },
 
   async query(scopeId: string, logger: ILogger): Promise<QueryResult> {
@@ -337,7 +343,13 @@ export const docuviaApi = {
     );
     const target = requireMemory<string>(scopeId, MemoryKeys.TARGET);
     const limit = docuviaMemory.get<number>(scopeId, MemoryKeys.LIMIT);
-    return new QueryWorkflow(workspaceRoot, logger).execute(target, limit);
+    const explainResolution = docuviaMemory.get<boolean>(
+      scopeId,
+      MemoryKeys.EXPLAIN_RESOLUTION,
+    );
+    return new QueryWorkflow(workspaceRoot, logger).execute(target, limit, {
+      explainResolution,
+    });
   },
 
   async exportTopology(

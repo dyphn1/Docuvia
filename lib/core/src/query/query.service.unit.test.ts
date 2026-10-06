@@ -3,7 +3,11 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { GraphStore } from "@workspace/schema";
-import { createMockLogger } from "@workspace/contracts";
+import {
+  createMockLogger,
+  createPortableCallSiteKey,
+  type CallSiteResolutionRecord,
+} from "@workspace/contracts";
 import { QueryService } from "./query.service.js";
 
 describe("QueryService", () => {
@@ -89,6 +93,151 @@ describe("QueryService", () => {
         incoming: [{ name: "caller", linkType: "implements" }],
         outgoing: [{ name: "callee", linkType: "extends" }],
       });
+    });
+
+    it("[positive] attaches bounded per-site certainty and expands evidence only on request", () => {
+      const callerNodeKey = "src/caller.ts#caller";
+      const targetNodeKey = "src/target.ts#run";
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/caller.ts"],
+        nodeKey: callerNodeKey,
+      });
+      store.graph.insertNode({
+        projectId,
+        name: "run",
+        pathPatterns: ["src/target.ts"],
+        nodeKey: targetNodeKey,
+      });
+      const row: CallSiteResolutionRecord = {
+        callSiteKey: createPortableCallSiteKey({
+          filePath: "src/caller.ts",
+          sourceContentHash: "d".repeat(64),
+          startLine: 2,
+          startColumn: 7,
+          calleeKind: "bare",
+          calleeName: "run",
+        }),
+        identityVersion: 1,
+        filePath: "src/caller.ts",
+        sourceContentHash: "d".repeat(64),
+        startLine: 2,
+        startColumn: 7,
+        calleeKind: "bare",
+        calleeName: "run",
+        callerNodeKey,
+        resolutionClass: "likely",
+        selectedTargetNodeKey: targetNodeKey,
+        confidence: 0.82,
+        resolver: "typed-hypothesis",
+        ruleSignature: "rule-v1",
+        dependencyFingerprint: "e".repeat(64),
+        dependencies: [
+          { filePath: "src/caller.ts", contentHash: "d".repeat(64) },
+        ],
+        verificationStatus: "unverified",
+        verifiedTargetNodeKey: null,
+        isStale: false,
+        candidates: [
+          { targetNodeKey, ordinal: 0, evidenceJson: '{"rank":0}' },
+          {
+            targetNodeKey: "src/other.ts#run",
+            ordinal: 1,
+            evidenceJson: '{"rank":1}',
+          },
+          {
+            targetNodeKey: "src/third.ts#run",
+            ordinal: 2,
+            evidenceJson: '{"rank":2}',
+          },
+          {
+            targetNodeKey: "src/fourth.ts#run",
+            ordinal: 3,
+            evidenceJson: '{"rank":3}',
+          },
+        ],
+      };
+      store.callSiteResolutions.replaceForFile(
+        projectId,
+        row.filePath,
+        [row],
+        [{ callSiteKey: row.callSiteKey, callerNodeKey }],
+      );
+
+      expect(queryService.getContext(store, "run")).toStrictEqual({
+        incoming: [
+          {
+            name: "caller",
+            linkType: "calls",
+            callResolutions: [
+              {
+                callSiteKey: row.callSiteKey,
+                resolutionClass: "likely",
+                verificationStatus: "unverified",
+                selectedTargetNodeKey: targetNodeKey,
+                confidence: 0.82,
+                isStale: false,
+                alternatives: ["src/other.ts#run", "src/third.ts#run"],
+                candidates: [],
+              },
+            ],
+          },
+        ],
+        outgoing: [],
+        tierBCoverage: {
+          ownFileLastProcessedAt: null,
+          workspaceFilesProcessed: 0,
+          workspaceFilesTotal: 0,
+        },
+      });
+
+      expect(
+        queryService.getContext(store, "run", { explainResolution: true })
+          ?.incoming[0]?.callResolutions?.[0]?.evidence,
+      ).toStrictEqual({
+        ...row,
+        projectionCallerNodeKey: callerNodeKey,
+      });
+      expect(store.graph.findNodeByName("caller")?.id).toBe(callerId);
+    });
+
+    it("[negative] never treats an aggregate calls edge as proven certainty", () => {
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "aggregate caller",
+        pathPatterns: ["src/aggregate.ts"],
+      });
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "aggregate target",
+        pathPatterns: ["src/target.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+
+      expect(
+        queryService.getContext(store, "aggregate target")?.incoming,
+      ).toStrictEqual([
+        {
+          name: "aggregate caller",
+          linkType: "calls",
+          callResolutions: [
+            {
+              callSiteKey: null,
+              resolutionClass: "unknown",
+              verificationStatus: "unknown",
+              selectedTargetNodeKey: null,
+              isStale: false,
+              alternatives: [],
+              candidates: [],
+            },
+          ],
+        },
+      ]);
     });
 
     it("excludes contains edges — a symbol's own containing file is not a caller/callee", () => {
@@ -202,8 +351,26 @@ describe("QueryService", () => {
         filePath: "src/auth.ts",
         matchType: "exact",
       });
-      expect(result.context).toEqual({
-        incoming: [{ name: "caller", linkType: "calls" }],
+      // #559 requires every calls edge to carry per-site certainty; this legacy aggregate edge
+      // remains in the same structural result and is explicitly labeled unknown without a row.
+      expect(result.context).toStrictEqual({
+        incoming: [
+          {
+            name: "caller",
+            linkType: "calls",
+            callResolutions: [
+              {
+                callSiteKey: null,
+                resolutionClass: "unknown",
+                verificationStatus: "unknown",
+                selectedTargetNodeKey: null,
+                isStale: false,
+                alternatives: [],
+                candidates: [],
+              },
+            ],
+          },
+        ],
         outgoing: [],
       });
     });

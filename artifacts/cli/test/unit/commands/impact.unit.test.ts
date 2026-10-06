@@ -45,6 +45,7 @@ describe("impactCommand", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("errors immediately without calling docuviaApi.impact() when target is empty", async () => {
@@ -53,6 +54,20 @@ describe("impactCommand", () => {
     expect(mockImpact).not.toHaveBeenCalled();
     expect(ui.error).toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
+  });
+
+  it("[positive] stores explain-resolution when explicitly requested", async () => {
+    const setValues = new Map<string, unknown>();
+    const realSet = docuviaMemory.set.bind(docuviaMemory);
+    vi.spyOn(docuviaMemory, "set").mockImplementation((scopeId, key, value) => {
+      realSet(scopeId, key, value);
+      setValues.set(key, value);
+    });
+    mockImpact.mockResolvedValue({ blastRadius: [], riskLevel: "UNKNOWN" });
+
+    await impactCommand("target", { explainResolution: true });
+
+    expect(setValues.get("explainResolution")).toBe(true);
   });
 
   it("prints the blast radius as a Name/Type table and the risk level on success", async () => {
@@ -70,6 +85,48 @@ describe("impactCommand", () => {
     expect(ui.table).toHaveBeenCalledWith(expect.anything(), [
       ["caller", "module"],
     ]);
+  });
+
+  it("[positive] prints bounded call certainty and separate impact contribution counts", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [
+        {
+          name: "caller",
+          type: "module",
+          callResolutions: [
+            {
+              callSiteKey: "site-a",
+              resolutionClass: "likely",
+              verificationStatus: "unverified",
+              selectedTargetNodeKey: "src/target.ts#run",
+              confidence: 0.84,
+              isStale: false,
+              alternatives: ["src/other.ts#run"],
+              candidates: [],
+            },
+          ],
+        },
+      ],
+      riskLevel: "MEDIUM",
+      callResolutionBreakdown: {
+        verifiedProven: 1,
+        heuristicProvisional: 2,
+        unknown: 3,
+      },
+    });
+
+    await impactCommand("target");
+
+    expect(ui.table.mock.calls.at(-1)?.[1]).toStrictEqual([
+      [
+        "caller",
+        "module",
+        "likely/unverified → src/target.ts#run (0.84); alternatives: src/other.ts#run",
+      ],
+    ]);
+    expect(ui.log).toHaveBeenCalledWith(
+      "Call edges — verified/proven: 1; heuristic/provisional: 2; unknown: 3",
+    );
   });
 
   it("prints L3 'why' data for a blast-radius entry that carries it", async () => {

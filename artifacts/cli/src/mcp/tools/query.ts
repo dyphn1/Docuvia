@@ -13,6 +13,7 @@ const QueryToolInputSchema = z
   .object({
     target: z.string().min(1),
     limit: z.number().int().positive().optional(),
+    explainResolution: z.boolean().optional(),
   })
   .strict();
 
@@ -34,6 +35,11 @@ export const queryTool: McpTool = {
           type: "number",
           description: "Maximum number of L3 decisions to return.",
         },
+        explainResolution: {
+          type: "boolean",
+          description:
+            "Include the full resolver, dependency, and candidate evidence for call edges.",
+        },
       },
       required: ["target"],
     },
@@ -48,6 +54,9 @@ export const queryTool: McpTool = {
     docuviaMemory.set(scopeId, MemoryKeys.TARGET, input.target);
     if (input.limit !== undefined) {
       docuviaMemory.set(scopeId, MemoryKeys.LIMIT, input.limit);
+    }
+    if (input.explainResolution) {
+      docuviaMemory.set(scopeId, MemoryKeys.EXPLAIN_RESOLUTION, true);
     }
 
     try {

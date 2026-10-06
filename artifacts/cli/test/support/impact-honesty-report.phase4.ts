@@ -259,7 +259,10 @@ function sortedExclusions(
   values: readonly Phase4Exclusion[],
 ): Phase4Exclusion[] {
   return [...values]
-    .map((value) => ({ caseId: value.caseId, reason: value.reason }))
+    .map((value) => ({
+      caseId: phase4RecordCaseId(value.caseId),
+      reason: value.reason,
+    }))
     .sort(
       (a, b) =>
         compareText(a.caseId, b.caseId) || compareText(a.reason, b.reason),
@@ -273,6 +276,10 @@ export function phase4RecordCaseId(scenario: string): string {
   return transitionTarget < 0
     ? withoutIntent
     : withoutIntent.slice(0, transitionTarget);
+}
+
+function canonicalCaseIds(values: readonly string[]): string[] {
+  return sortedUnique(values.map((value) => phase4RecordCaseId(value)));
 }
 
 function difference(
@@ -342,22 +349,24 @@ function honestyConfusionCounts(
 }
 
 function buildLegacySlice(input: Phase4LegacyInput): Phase4SliceReport {
-  const observed = input.results.map((result) => result.scenario);
-  const declared = sortedUnique(input.declaredCaseIds);
+  const observed = canonicalCaseIds(
+    input.results.map((result) => result.scenario),
+  );
+  const declared = canonicalCaseIds(input.declaredCaseIds);
   return {
     id: PHASE4_SLICE_IDS.LEGACY,
     scope: input.scope,
     caseFamily: input.caseFamily,
     sampleCount: declared.length,
     caseIds: declared,
-    observedCaseIds: sortedUnique(observed),
-    missingCaseIds: sortedUnique([
+    observedCaseIds: observed,
+    missingCaseIds: canonicalCaseIds([
       ...difference(declared, observed),
       ...(input.missingCaseIds ?? []),
     ]),
     unexpectedCaseIds: difference(observed, declared),
-    regressedCaseIds: sortedUnique(input.regressedCaseIds ?? []),
-    errorCaseIds: sortedUnique(
+    regressedCaseIds: canonicalCaseIds(input.regressedCaseIds ?? []),
+    errorCaseIds: canonicalCaseIds(
       input.results
         .filter((result) => result.status === "error")
         .map((result) => result.scenario),
@@ -370,21 +379,21 @@ function buildHonestySlice(
   id: Exclude<Phase4SliceId, typeof PHASE4_SLICE_IDS.LEGACY>,
   input: Phase4HonestySliceInput,
 ): Phase4SliceReport {
-  const observed = input.records.map((record) =>
-    phase4RecordCaseId(record.scenario),
+  const observed = canonicalCaseIds(
+    input.records.map((record) => record.scenario),
   );
-  const declared = sortedUnique(input.declaredCaseIds);
+  const declared = canonicalCaseIds(input.declaredCaseIds);
   return {
     id,
     scope: input.scope,
     caseFamily: input.caseFamily,
     sampleCount: declared.length,
     caseIds: declared,
-    observedCaseIds: sortedUnique(observed),
+    observedCaseIds: observed,
     missingCaseIds: difference(declared, observed),
     unexpectedCaseIds: difference(observed, declared),
     regressedCaseIds: [],
-    errorCaseIds: sortedUnique(
+    errorCaseIds: canonicalCaseIds(
       input.records
         .filter((record) => record.observedStatus === "error")
         .map((record) => record.scenario),

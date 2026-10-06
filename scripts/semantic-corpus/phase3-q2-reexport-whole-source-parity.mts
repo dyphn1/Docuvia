@@ -33,19 +33,21 @@ import {
   buildUniqueNodeKey,
 } from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
+import { equalStringMaps } from "./parity-utils.mts";
 
 const Q2 = CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE;
 
 function parseOptions(argv: readonly string[]): {
   readonly snapshotRoot: string;
   readonly outputPath: string;
+  readonly sitesOutputPath: string | null;
 } {
   const values = new Map<string, string>();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
     if (
-      !["--snapshot-root", "--out"].includes(key ?? "") ||
+      !["--snapshot-root", "--out", "--sites-out"].includes(key ?? "") ||
       !value ||
       value.startsWith("--")
     )
@@ -56,6 +58,7 @@ function parseOptions(argv: readonly string[]): {
   }
   const snapshotRoot = values.get("--snapshot-root");
   const outputPath = values.get("--out");
+  const sitesOutputPath = values.get("--sites-out");
   if (!snapshotRoot || !outputPath)
     throw new Error(
       "Usage: phase3-q2-reexport-whole-source-parity.mts --snapshot-root <HEAD archive> --out <summary.jsonl>",
@@ -63,6 +66,7 @@ function parseOptions(argv: readonly string[]): {
   return {
     snapshotRoot: path.resolve(snapshotRoot),
     outputPath: path.resolve(outputPath),
+    sitesOutputPath: sitesOutputPath ? path.resolve(sitesOutputPath) : null,
   };
 }
 type StableRow = Record<string, unknown>;
@@ -342,6 +346,7 @@ async function persistProjection(
           startLine: row.startLine,
           startColumn: row.startColumn,
           calleeName: row.calleeName,
+          ruleSignature: Q2,
         })),
     );
     const persistedKeys = new Set(persistedQ2.map((row) => row.callSiteKey));
@@ -441,7 +446,9 @@ async function persistProjection(
 }
 
 async function main() {
-  const { snapshotRoot, outputPath } = parseOptions(process.argv.slice(2));
+  const { snapshotRoot, outputPath, sitesOutputPath } = parseOptions(
+    process.argv.slice(2),
+  );
   const discoveredFiles = walkSourceFiles(snapshotRoot);
   const pool = new AstWorkerPool();
   const processor = new AstProcessingService({
@@ -708,9 +715,10 @@ async function main() {
       modulePath: site.modulePath,
       provenTarget: `${site.targetFilePath}#${site.targetName}`,
     }));
-  const nonQ2HypothesesSame =
-    JSON.stringify([...baseline.nonQ2Results].sort()) ===
-    JSON.stringify([...working.nonQ2Results].sort());
+  const nonQ2HypothesesSame = equalStringMaps(
+    baseline.nonQ2Results,
+    working.nonQ2Results,
+  );
   const summary = {
     comparison:
       "same committed HEAD source snapshot parsed once; Q2 proven proofs suppressed in baseline, enabled in working projection",
@@ -793,6 +801,12 @@ async function main() {
     ),
   ];
   writeFileSync(outputPath, `${artifactRows.join("\n")}\n`, "utf8");
+  if (sitesOutputPath)
+    writeFileSync(
+      sitesOutputPath,
+      `${JSON.stringify(working.persistedQ2)}\n`,
+      "utf8",
+    );
   process.stdout.write(
     `${JSON.stringify({ outputPath, sourceManifestSha256, ...summaryRow }, null, 2)}\n`,
   );

@@ -31,19 +31,21 @@ import {
   buildUniqueNodeKey,
 } from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
+import { equalStringMaps } from "./parity-utils.mts";
 
 const Q1 = "q1:named-import:v1";
 
 function parseOptions(argv: readonly string[]): {
   readonly snapshotRoot: string;
   readonly outputPath: string;
+  readonly sitesOutputPath: string | null;
 } {
   const values = new Map<string, string>();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
     if (
-      !["--snapshot-root", "--out"].includes(key ?? "") ||
+      !["--snapshot-root", "--out", "--sites-out"].includes(key ?? "") ||
       !value ||
       value.startsWith("--")
     )
@@ -54,6 +56,7 @@ function parseOptions(argv: readonly string[]): {
   }
   const snapshotRoot = values.get("--snapshot-root");
   const outputPath = values.get("--out");
+  const sitesOutputPath = values.get("--sites-out");
   if (!snapshotRoot || !outputPath)
     throw new Error(
       "Usage: phase3-q1-named-import-whole-source-parity.mts --snapshot-root <HEAD archive> --out <summary.jsonl>",
@@ -61,6 +64,7 @@ function parseOptions(argv: readonly string[]): {
   return {
     snapshotRoot: path.resolve(snapshotRoot),
     outputPath: path.resolve(outputPath),
+    sitesOutputPath: sitesOutputPath ? path.resolve(sitesOutputPath) : null,
   };
 }
 type StableRow = Record<string, unknown>;
@@ -341,6 +345,7 @@ async function persistProjection(
           startLine: row.startLine,
           startColumn: row.startColumn,
           calleeName: row.calleeName,
+          ruleSignature: Q1,
         })),
     );
     const persistedKeys = new Set(persistedQ1.map((row) => row.callSiteKey));
@@ -438,7 +443,9 @@ async function persistProjection(
 }
 
 async function main() {
-  const { snapshotRoot, outputPath } = parseOptions(process.argv.slice(2));
+  const { snapshotRoot, outputPath, sitesOutputPath } = parseOptions(
+    process.argv.slice(2),
+  );
   const discoveredFiles = walkSourceFiles(snapshotRoot);
   const pool = new AstWorkerPool();
   const processor = new AstProcessingService({
@@ -689,9 +696,10 @@ async function main() {
       modulePath: site.modulePath,
       provenTarget: `${site.targetFilePath}#${site.targetName}`,
     }));
-  const nonQ1HypothesesSame =
-    JSON.stringify([...baseline.nonQ1Results].sort()) ===
-    JSON.stringify([...working.nonQ1Results].sort());
+  const nonQ1HypothesesSame = equalStringMaps(
+    baseline.nonQ1Results,
+    working.nonQ1Results,
+  );
   const summary = {
     comparison:
       "same committed HEAD source snapshot parsed once; Q1 proven proofs suppressed in baseline, enabled in working projection",
@@ -769,6 +777,12 @@ async function main() {
     ),
   ];
   writeFileSync(outputPath, `${artifactRows.join("\n")}\n`, "utf8");
+  if (sitesOutputPath)
+    writeFileSync(
+      sitesOutputPath,
+      `${JSON.stringify(working.persistedQ1)}\n`,
+      "utf8",
+    );
   process.stdout.write(
     `${JSON.stringify({ outputPath, sourceManifestSha256, ...summaryRow }, null, 2)}\n`,
   );

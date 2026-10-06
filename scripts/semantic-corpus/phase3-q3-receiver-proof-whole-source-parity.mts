@@ -37,12 +37,17 @@ import {
   buildUniqueNodeKey,
 } from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
+import { equalStringMaps } from "./parity-utils.mts";
 
 const Q3_RULES = new Set<string>([
   CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
   CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
   CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE,
   CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE,
+]);
+const CERTIFICATION_RULES = new Set<string>([
+  ...Q3_RULES,
+  "single-candidate-this-v1",
 ]);
 
 type Q3ProvenProof = Extract<CallResolutionStrictProof, { status: "proven" }>;
@@ -54,13 +59,14 @@ function isQ3Proof(proof: CallResolutionStrictProof): proof is Q3ProvenProof {
 function parseOptions(argv: readonly string[]): {
   readonly snapshotRoot: string;
   readonly outputPath: string;
+  readonly sitesOutputPath: string | null;
 } {
   const values = new Map<string, string>();
   for (let index = 0; index < argv.length; index += 2) {
     const key = argv[index];
     const value = argv[index + 1];
     if (
-      !["--snapshot-root", "--out"].includes(key ?? "") ||
+      !["--snapshot-root", "--out", "--sites-out"].includes(key ?? "") ||
       !value ||
       value.startsWith("--")
     )
@@ -71,6 +77,7 @@ function parseOptions(argv: readonly string[]): {
   }
   const snapshotRoot = values.get("--snapshot-root");
   const outputPath = values.get("--out");
+  const sitesOutputPath = values.get("--sites-out");
   if (!snapshotRoot || !outputPath)
     throw new Error(
       "Usage: phase3-q3-receiver-proof-whole-source-parity.mts --snapshot-root <HEAD archive> --out <summary.jsonl>",
@@ -78,6 +85,7 @@ function parseOptions(argv: readonly string[]): {
   return {
     snapshotRoot: path.resolve(snapshotRoot),
     outputPath: path.resolve(outputPath),
+    sitesOutputPath: sitesOutputPath ? path.resolve(sitesOutputPath) : null,
   };
 }
 type StableRow = Record<string, unknown>;
@@ -301,6 +309,15 @@ type Projection = {
     startColumn: number;
     calleeName: string;
   }>;
+  certificationProofs: Array<{
+    callSiteKey: string;
+    filePath: string;
+    startLine: number;
+    startColumn: number;
+    calleeName: string;
+    targetNodeKey: string;
+    ruleSignature: string;
+  }>;
   q3Sites: TrackedHypothesisService["q3Sites"];
   nonQ3Results: Map<string, string>;
   q3HeuristicOutputs: Map<string, string>;
@@ -362,6 +379,20 @@ async function persistProjection(
           startLine: row.startLine,
           startColumn: row.startColumn,
           calleeName: row.calleeName,
+        })),
+    );
+    const certificationProofs = parsedResults.flatMap((result) =>
+      store.callSiteResolutions
+        .getForFile(projectId, result.file)
+        .filter((row) => CERTIFICATION_RULES.has(row.ruleSignature))
+        .map((row) => ({
+          callSiteKey: row.callSiteKey,
+          filePath: row.filePath,
+          startLine: row.startLine,
+          startColumn: row.startColumn,
+          calleeName: row.calleeName,
+          targetNodeKey: row.selectedTargetNodeKey!,
+          ruleSignature: row.ruleSignature,
         })),
     );
     const persistedKeys = new Set(persistedQ3.map((row) => row.callSiteKey));
@@ -447,6 +478,7 @@ async function persistProjection(
         links.filter((link) => link.link_type !== "calls"),
       ),
       persistedQ3,
+      certificationProofs,
       q3Sites: service.q3Sites,
       nonQ3Results: service.nonQ3Results,
       q3HeuristicOutputs: service.q3HeuristicOutputs,
@@ -464,7 +496,9 @@ async function persistProjection(
 }
 
 async function main() {
-  const { snapshotRoot, outputPath } = parseOptions(process.argv.slice(2));
+  const { snapshotRoot, outputPath, sitesOutputPath } = parseOptions(
+    process.argv.slice(2),
+  );
   const discoveredFiles = walkSourceFiles(snapshotRoot);
   const pool = new AstWorkerPool();
   const processor = new AstProcessingService({
@@ -710,12 +744,14 @@ async function main() {
   const everyRemovedCallLinkReplacesWrongTarget = callsLinkDiffs
     .filter((row) => row.direction === "removed")
     .every((row) => row.wrongTargetReplacement);
-  const q3HeuristicOutputsSame =
-    JSON.stringify([...baseline.q3HeuristicOutputs].sort()) ===
-    JSON.stringify([...working.q3HeuristicOutputs].sort());
-  const nonQ3HypothesesSame =
-    JSON.stringify([...baseline.nonQ3Results].sort()) ===
-    JSON.stringify([...working.nonQ3Results].sort());
+  const q3HeuristicOutputsSame = equalStringMaps(
+    baseline.q3HeuristicOutputs,
+    working.q3HeuristicOutputs,
+  );
+  const nonQ3HypothesesSame = equalStringMaps(
+    baseline.nonQ3Results,
+    working.nonQ3Results,
+  );
   const replacedTargets = q3SiteProjectionEdges
     .filter(
       (site) =>
@@ -824,6 +860,12 @@ async function main() {
     ),
   ];
   writeFileSync(outputPath, `${artifactRows.join("\n")}\n`, "utf8");
+  if (sitesOutputPath)
+    writeFileSync(
+      sitesOutputPath,
+      `${JSON.stringify(working.certificationProofs)}\n`,
+      "utf8",
+    );
   process.stdout.write(
     `${JSON.stringify({ outputPath, sourceManifestSha256, ...summaryRow }, null, 2)}\n`,
   );

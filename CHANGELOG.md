@@ -2,6 +2,63 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.18.0](https://github.com/dyphn1/Docuvia/compare/v1.17.2...v1.18.0) (2026-10-06)
+
+### Bug Fixes
+
+- allow calibrated likely with incomplete inventory ([3db88ae](https://github.com/dyphn1/Docuvia/commit/3db88ae9c3415150646b246ac365c578ef408c8f))
+- **ast:** expose declared facts on worker response ([cb40ddf](https://github.com/dyphn1/Docuvia/commit/cb40ddf6332bcb9cd7e47f563007ae58287b61e7))
+- **ast:** fingerprint development worker inputs ([64cd974](https://github.com/dyphn1/Docuvia/commit/64cd9748045f9744774fac27382e2bcc06ea66ad))
+- **ast:** index call shape bindings safely ([0743f33](https://github.com/dyphn1/Docuvia/commit/0743f3387511efd40b2251c165f9a741202c3274))
+- **ast:** keep returned factory arrows anonymous ([beed802](https://github.com/dyphn1/Docuvia/commit/beed80203be6671a4fe58b1d8242499d1311ee5f))
+- **ci:** exclude node_modules from test quality scan ([117ca50](https://github.com/dyphn1/Docuvia/commit/117ca50667329f27cd80a561f39e704f11759a9b))
+- **discovery:** preflight regular file sizes ([6dac6a1](https://github.com/dyphn1/Docuvia/commit/6dac6a1f82f1f54e55d4f2c5c85e8f531284ba33))
+- **graph:** retire call resolutions with source files ([91f3a20](https://github.com/dyphn1/Docuvia/commit/91f3a204498c5a25efadb0187beeddc7815f1c4a))
+- **semantic-corpus:** scope evaluation aliases by snapshot ([926cf54](https://github.com/dyphn1/Docuvia/commit/926cf54671e6252626ca050f02a4e587a72d0bbb))
+- **semantic-corpus:** skip non-hash oversized sources ([fde5717](https://github.com/dyphn1/Docuvia/commit/fde5717c29f99418e77d58492b46163dced35d9e))
+- **semantic-corpus:** use UTF-16 call-site positions ([e2a9032](https://github.com/dyphn1/Docuvia/commit/e2a9032648f225749154dd5c973e3ef1996376e8))
+- **semantic:** abstain on unbound call targets ([c499e6c](https://github.com/dyphn1/Docuvia/commit/c499e6c5e6002c29cd4af21a9a573f1d29b7ef96))
+- **semantic:** clarify calibration reliability bin boundaries ([c729b93](https://github.com/dyphn1/Docuvia/commit/c729b9394a56e45937ac74455d1d0ea5cea2ea95))
+- **semantic:** compare PartialSemantic root files by canonical identity ([d05386d](https://github.com/dyphn1/Docuvia/commit/d05386d1347c90f856a31d8ce58e5216aa343cfa))
+
+### Features
+
+- add deterministic Tier B callsite canary scheduling ([70df115](https://github.com/dyphn1/Docuvia/commit/70df11514a879d3301778eab874d68533233c760))
+- **analyze:** invalidate dependent proofs before serving changed sources ([aae08e2](https://github.com/dyphn1/Docuvia/commit/aae08e2bddeda38f5c1734e9bb7ece522c0a1538))
+- **ast:** add binding-scoped call shape facts ([00145e1](https://github.com/dyphn1/Docuvia/commit/00145e1eeb4a677443db28fd0a800226ce0357c2))
+- **ast:** add deterministic declared type facts ([1e1da7b](https://github.com/dyphn1/Docuvia/commit/1e1da7b32619aaa1e24ec75b81029b117436653f))
+- **ast:** parse TSX with its own grammar ([97807ab](https://github.com/dyphn1/Docuvia/commit/97807ab115e16ee2a6aa7580b1b29334ad739a13))
+- **core:** add call hypothesis service ([3d0a59b](https://github.com/dyphn1/Docuvia/commit/3d0a59b4b6a4dc303097c29115959ccce1ddd7db))
+- **eval:** add ScopeResolver replay helpers ([98f08a5](https://github.com/dyphn1/Docuvia/commit/98f08a57002b5f98550ea80a2825e9e870bc4b56))
+- **eval:** map deterministic queries to exact call sites ([1c24d4d](https://github.com/dyphn1/Docuvia/commit/1c24d4df075008dbc1f575493d772ff1d972d764)), closes [#559](https://github.com/dyphn1/Docuvia/issues/559)
+- **eval:** measure TypeScript PartialSemantic calls ([ec26887](https://github.com/dyphn1/Docuvia/commit/ec26887653387dd3b44f7b72cb92978b2461e483))
+- **graph:** add portable call-site identities ([bc6dafd](https://github.com/dyphn1/Docuvia/commit/bc6dafd402cec0da5d7f06975d93000c57dee9b7))
+- **graph:** invalidate resolutions by dependency hash ([d2df5df](https://github.com/dyphn1/Docuvia/commit/d2df5df3595fc4795b1a7985407991c59861c585))
+- **graph:** persist per-call-site resolutions ([aaa3abd](https://github.com/dyphn1/Docuvia/commit/aaa3abdd9941bfafeb93159c0967cb6548329197))
+- **graph:** schedule Tier B by resolution class and apply verified targets ([cdd8356](https://github.com/dyphn1/Docuvia/commit/cdd835604a5e9e955f5196fcbedf599253a7803f))
+- persist strict per-site this-member proofs ([8fb523e](https://github.com/dyphn1/Docuvia/commit/8fb523ec9f25b96b7b5dbfedf3cc9d017c227870))
+- prioritize Tier B by call resolution ([dff2f2e](https://github.com/dyphn1/Docuvia/commit/dff2f2ede005de612ac17d901315a67e71273237))
+- project call-site resolutions into graph links ([c5b03a6](https://github.com/dyphn1/Docuvia/commit/c5b03a69922d8fb1488cae3c4bd2048774c09c2d))
+- quarantine contradicted call resolution rules ([283f4b3](https://github.com/dyphn1/Docuvia/commit/283f4b3245fe635128a605bd0b11ecb0bf65b51f))
+- **query:** label call certainty in query, impact and MCP output ([ae26b88](https://github.com/dyphn1/Docuvia/commit/ae26b88efa9ccc46a6812b69961da567cb4fd2dc))
+- require pinned call resolution certification ([f2ff4ea](https://github.com/dyphn1/Docuvia/commit/f2ff4eadaa4988a36504541568051ca5ddba7ef5))
+- **schema:** invalidate call-site proofs by dependency fingerprint ([7badd44](https://github.com/dyphn1/Docuvia/commit/7badd44297a83c1cd296c51446750a624dda9452))
+- **semantic-corpus:** add pre-label collection and certification evaluator ([a22b399](https://github.com/dyphn1/Docuvia/commit/a22b399a2c15f763dc770a4c2f0a11844cc0fd9c))
+- **semantic-corpus:** replay PartialSemantic results ([c9e59a6](https://github.com/dyphn1/Docuvia/commit/c9e59a641f1745fff8a335a0eac6812c8aa65c48))
+- **semantic-corpus:** run Phase 0 resolution evaluation ([9637aef](https://github.com/dyphn1/Docuvia/commit/9637aef16bea398bbf0e1cede96b0b3d55bc72de))
+- **semantic:** add combined default import candidates ([f57fa76](https://github.com/dyphn1/Docuvia/commit/f57fa762f5686b45056845091ecfee5324125889))
+- **semantic:** add group-cross-fitted rank calibration evidence ([4e629db](https://github.com/dyphn1/Docuvia/commit/4e629db93525a0232bd1374a4b2111f02ef46022))
+- **semantic:** add phase 2 calibration harness ([be1213c](https://github.com/dyphn1/Docuvia/commit/be1213c01661011e8684ca4cb8f3e133dae67706))
+- **semantic:** add snapshot-bound strict this proof ([ee74703](https://github.com/dyphn1/Docuvia/commit/ee7470379e1ce4f239e16293534b0d15096ef558))
+- **semantic:** capture candidate stage evidence in train replay ([f7eb343](https://github.com/dyphn1/Docuvia/commit/f7eb3434923bc7cdefd1788db9f284991320d01f))
+- **semantic:** enrich candidates for direct import aliases ([3fdaf44](https://github.com/dyphn1/Docuvia/commit/3fdaf44aefa4bf6c5b9065369d5049d23f2e0148))
+- **semantic:** measure P2-A candidate recall ([7e3646e](https://github.com/dyphn1/Docuvia/commit/7e3646eb5ac897630eadf03d29f3f42ef0166336))
+- **semantic:** prove calls through re-export chains (Q2) ([3640cfe](https://github.com/dyphn1/Docuvia/commit/3640cfe36f5fae3152274675d73fec883472789d)), closes [namespace/type-only/default-throu#star](https://github.com/namespace/type-only/default-throu/issues/star)
+- **semantic:** prove direct named-import calls (Q1) ([fa2f5bf](https://github.com/dyphn1/Docuvia/commit/fa2f5bfcdb35310954b4882c68b6cf7bf43c8817))
+- **semantic:** prove explicit receiver-type member calls (Q3) ([f391a0f](https://github.com/dyphn1/Docuvia/commit/f391a0fd46f92fd0dd1c16f38c2d8ed40ef83224))
+- **semantic:** resolve configured named import aliases ([ce54a1f](https://github.com/dyphn1/Docuvia/commit/ce54a1fa18852a9293e0edf0d30b6e5bfd1d0772))
+- **snapshot:** export and hydrate per-call-site resolution certainty ([619be11](https://github.com/dyphn1/Docuvia/commit/619be11ad6a428c12122b07c11f7ff4be2a7a7ff))
+
 ## [1.17.2](https://github.com/dyphn1/Docuvia/compare/v1.17.1...v1.17.2) (2026-10-06)
 
 ### Bug Fixes

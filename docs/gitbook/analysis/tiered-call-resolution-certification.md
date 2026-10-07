@@ -1,5 +1,11 @@
 # Tiered call resolution certification report
 
+## Cross-track update — Docuvia temporal and VS Code
+
+The later MIT-licensed Docuvia temporal track passed Q1 with 502 sites / 477 groups / 477 successes / 0 contradictions / lower bound `0.993739`. The VS Code new-family track recorded one valid Q1 contradiction (10,532 sites / 10,312 groups / 10,311 successes; lower bound `0.999540`), so `q1:named-import:v1` does not pass the required zero-contradiction gate in both tracks. No signature is promoted and no candidate or runtime certification artifact was produced. VS Code `q3:typed-receiver:v1` has 3,034 successful groups, but Docuvia temporal has only 4, so it remains underpowered cross-track.
+
+Details: [Docuvia temporal results](tiered-call-resolution-certification-temporal-2.md) and [VS Code amendment, labels, and evaluation](tiered-call-resolution-certification-vscode.md).
+
 ## Result
 
 **No signature is certified for promotion.** The evaluated persisted proof sites produced zero valid contradictions, but every signature is underpowered in at least one track. The GitNexus and Nest datasets are now **regression-only**. No production certification record was written and no Tier B skip was enabled.

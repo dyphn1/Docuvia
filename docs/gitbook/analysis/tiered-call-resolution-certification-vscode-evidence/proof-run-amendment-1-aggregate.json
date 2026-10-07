@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "track": "vscode-new-family",
+  "amendment": 1,
+  "frozenAtUtc": "2026-10-07T02:04:13.000Z",
+  "implementationCommit": "d325bf3ff32b8326769d116009543ba96143a2c6",
+  "implementationUpdate": {
+    "reason": "pre-label amendment for the #571 persisted-proof projection fix",
+    "projectionFile": "lib/core/src/graph/call-resolution-graph-projection.ts",
+    "projectionFileSha256": "509abac6c8e080d4c17b1993ee3b37df529bd33479f17623c09d1aa298a40e17"
+  },
+  "callSiteSampleUnchanged": true,
+  "sampleCount": 46468,
+  "independentSampleGroups": 45091,
+  "prelabelManifestSha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+  "sourceSnapshotSha256": "10ee8a0703dc08f2dd2f32148e5dfe0f7261cf5f18edbea81b0da7f7efb68162",
+  "runnerResults": {
+    "q1": {
+      "serviceProofSites": 10532,
+      "persistedResolutionRows": 10532,
+      "missingPersistenceCounts": {},
+      "persistedProofGap": 0,
+      "allServiceProofsPersisted": true,
+      "sourceFiles": 3247,
+      "parsedFiles": 3247,
+      "parseFailures": 0,
+      "peakRssBytes": 4477009920,
+      "commandExitCode": 0
+    },
+    "q2": {
+      "serviceProofSites": 1130,
+      "persistedResolutionRows": 1130,
+      "missingPersistenceCounts": {},
+      "persistedProofGap": 0,
+      "allServiceProofsPersisted": true,
+      "sourceFiles": 3247,
+      "parsedFiles": 3247,
+      "parseFailures": 0,
+      "peakRssBytes": 4506140672,
+      "commandExitCode": 0
+    },
+    "q3": {
+      "serviceProofSites": 5429,
+      "persistedResolutionRows": 5429,
+      "missingPersistenceCounts": {},
+      "persistedProofGap": 0,
+      "allServiceProofsPersisted": true,
+      "sourceFiles": 3247,
+      "parsedFiles": 3247,
+      "parseFailures": 0,
+      "peakRssBytes": 4533338112,
+      "parityInvariantFlags": {
+        "allServiceProofsPersisted": true,
+        "callLinksChangedOnlyForQ3Sites": false,
+        "zeroCallerOnlyChanges": false,
+        "everyRemovedCallLinkReplacesWrongTarget": true
+      },
+      "commandExitCode": 1
+    }
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "persistedProofSites": 10532,
+      "independentDuplicateGroups": 10312,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "persistedProofSites": 1130,
+      "independentDuplicateGroups": 1117,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "persistedProofSites": 35,
+      "independentDuplicateGroups": 35,
+      "requiredGroups": 299,
+      "gate": "underpowered"
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "persistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "persistedProofSites": 3094,
+      "independentDuplicateGroups": 3034,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "persistedProofSites": 1170,
+      "independentDuplicateGroups": 1122,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "persistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    }
+  ],
+  "proofRowsInScope": 15961,
+  "proofRowsOutsideScope": 1130,
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-summary.jsonl",
+      "sha256": "f6db32df286cf6c98f13f61a769c9174fc482ace80687c7f54e7fcbddc5c164b",
+      "sizeBytes": 301485,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-proofs.json",
+      "sha256": "544794d707b339a52226b479a504d623b237832bc0036d420f44297176ec6efe",
+      "sizeBytes": 4721925,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-summary.jsonl",
+      "sha256": "9ca0da7e3a63f2105a4c5f02932041de9d31982350e636441df04abaf89f43ea",
+      "sizeBytes": 1910099,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-proofs.json",
+      "sha256": "394bceb3be36d9c9a2f249a247bab55bafc921870b6af058b081701339c456f5",
+      "sizeBytes": 552114,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-summary.jsonl",
+      "sha256": "e30c3c3f1dc5ab1cc226448ff55168da0cfe4e81ef8a246f1cf7ad540e4bad56",
+      "sizeBytes": 5516239,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-proofs.json",
+      "sha256": "c3041d14ac5e2d0b3ec4cac98e244991c8c74cda7553a5e72a95de4c8821e9f9",
+      "sizeBytes": 1959628,
+      "containsPerSampleRows": true
+    }
+  ]
+}

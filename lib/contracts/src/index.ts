@@ -235,6 +235,7 @@ export {
   ProjectStatuses,
   L2NodeTypes,
   LinkTypes,
+  StructuralLinkTypes,
   L3NodeTypes,
   ValidityStatuses,
   L3DecisionSources,
@@ -461,6 +462,16 @@ export {
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallResolutionAvailabilityStates,
 } from "./constants/knowledge-snapshot.js";
+export {
+  CallsProjectionCallerPolicies,
+  isCallsProjectionCallerPolicy,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  CALLS_PROJECTION_CALLER_POLICY_ENV,
+  resolveActiveCallsProjectionCallerPolicy,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+} from "./constants/calls-projection-policy.js";
+export type { CallsProjectionCallerPolicy } from "./constants/calls-projection-policy.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,

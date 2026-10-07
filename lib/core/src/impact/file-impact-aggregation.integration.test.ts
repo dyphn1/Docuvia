@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { GraphStore } from "@workspace/schema";
 import {
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
   ErrorCodes,
   LinkTypes,
   type ParsedAstFileResult,
@@ -55,6 +57,64 @@ describe("file-level impact aggregation", () => {
       nodeKey: `${filePath}#${name}`,
     });
   }
+
+  it.each([
+    {
+      label: "lexical parent inserted before file ownership",
+      lexicalFirst: true,
+    },
+    {
+      label: "lexical parent inserted after file ownership",
+      lexicalFirst: false,
+    },
+  ])(
+    "[regression] resolves callback callers to their file when $label",
+    ({ lexicalFirst }) => {
+      const targetFile = "src/ordered-target.ts";
+      const callerFile = "src/ordered-caller.ts";
+      const targetFileId = insertFile(targetFile);
+      const targetId = insertSymbol(targetFile, "orderedTarget");
+      const callerFileId = insertFile(callerFile);
+      const outerId = insertSymbol(callerFile, "outer");
+      const callbackId = insertSymbol(callerFile, "callback");
+
+      store.graph.insertLink({
+        sourceNodeId: targetFileId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.CONTAINS,
+      });
+      const lexicalLink = {
+        sourceNodeId: outerId,
+        targetNodeId: callbackId,
+        linkType: LinkTypes.LEXICAL_PARENT,
+      } as const;
+      if (lexicalFirst) store.graph.insertLink(lexicalLink);
+      store.graph.insertLink({
+        sourceNodeId: callerFileId,
+        targetNodeId: outerId,
+        linkType: LinkTypes.CONTAINS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerFileId,
+        targetNodeId: callbackId,
+        linkType: LinkTypes.CONTAINS,
+      });
+      if (!lexicalFirst) store.graph.insertLink(lexicalLink);
+      store.graph.insertLink({
+        sourceNodeId: callbackId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.CALLS,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      expect(impactService.getBlastRadius(store, targetFile)).toEqual([
+        { name: callerFile, type: "module" },
+      ]);
+    },
+  );
 
   it("[happy] projects symbol callers back to their containing file for a file target", () => {
     const targetFile = "lib/core/src/graph/scope-resolver.ts";

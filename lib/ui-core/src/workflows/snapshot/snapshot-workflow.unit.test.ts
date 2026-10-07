@@ -14,6 +14,9 @@ import {
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_SITES_VERSION,
   SnapshotCallSiteAvailabilityStates,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   type GraphStoreOpenOptions,
   type IGraphStore,
   type IKnowledgeGitService,
@@ -126,6 +129,28 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.reset();
   });
 
+  it("[state-diff] snapshots the persisted calls caller policy as a versioned capability", async () => {
+    const store = makeMockStore();
+    const project = {
+      id: 9,
+      name: "demo",
+      repo_url: "file:///demo",
+    } as NonNullable<ReturnType<IGraphStore["projects"]["getFirst"]>>;
+    vi.mocked(store.projects.getFirst).mockReturnValue(project);
+    vi.mocked(store.meta.get).mockImplementation((key) =>
+      key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${project.id}`
+        ? CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1
+        : undefined,
+    );
+
+    const input = await packStoreAndCaptureInput(store);
+
+    expect(input.metadata?.capabilities?.callsProjectionCallerPolicy).toEqual({
+      version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+      policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1,
+    });
+  });
+
   it("[state-diff] preserves unavailable call-site and missing dynamic-evidence capabilities when re-snapshotting", async () => {
     const store = makeMockStore();
     const project = {
@@ -215,7 +240,7 @@ describe("SnapshotWorkflow.execute()", () => {
     },
   );
 
-  it("bulk-reads the store, renders via ISnapshotRenderer, packs onto the knowledge branch, then closes the store", async () => {
+  it("[regression][exact-v2] passes lexical edges through snapshot packing to the renderer", async () => {
     const store = makeMockStore({
       graph: {
         deleteNodesForPath: vi.fn(),
@@ -233,7 +258,9 @@ describe("SnapshotWorkflow.execute()", () => {
         getIncomingRelations: vi.fn(),
         getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn().mockReturnValue([{ id: 1 }]),
-        getAllLinks: vi.fn().mockReturnValue([{ id: 1 }]),
+        getAllLinks: vi
+          .fn()
+          .mockReturnValue([{ id: 1, link_type: "lexical_parent" }]),
         bulkLoadGraph: vi.fn(),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
         getExternalIncomingLinks: vi.fn().mockReturnValue([]),
@@ -283,7 +310,7 @@ describe("SnapshotWorkflow.execute()", () => {
     expect(renderer.render).toHaveBeenCalledWith(
       expect.objectContaining({
         l2Rows: [{ id: 1 }],
-        linkRows: [{ id: 1 }],
+        linkRows: [{ id: 1, link_type: "lexical_parent" }],
         metadata: {
           project: undefined,
           files: [],
@@ -616,6 +643,10 @@ describe("SnapshotWorkflow.execute()", () => {
           capabilities: {
             dynamicDependencyEvidence: { version: 1, payload: evidenceJson },
             callSites: { version: 1 },
+            callsProjectionCallerPolicy: {
+              version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+              policy: CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1,
+            },
           },
         }),
       }),

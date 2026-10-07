@@ -11,6 +11,10 @@ import {
   LinkTypes,
   DocuviaError,
   ErrorCodes,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  type CallsProjectionCallerPolicy,
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
@@ -18,6 +22,7 @@ import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
 import {
   collectStrictCallSiteProofs,
   createFunctionNodeReference,
+  exactCallerNodeForCall,
   isSha256,
   portableCallSiteKeyForCall,
   sourceContentHashForProof,
@@ -85,6 +90,7 @@ function closeCallResolutionCounters(
 export class GraphPersisterService implements IGraphPersister {
   constructor(
     private readonly hypothesisService?: ICallResolutionHypothesisService,
+    private readonly callsProjectionCallerPolicy: CallsProjectionCallerPolicy = DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
   ) {}
 
   public async persist(input: {
@@ -178,6 +184,7 @@ export class GraphPersisterService implements IGraphPersister {
           fileIdMap,
           symbolIdMap,
           functionNodeRefsByFile,
+          this.callsProjectionCallerPolicy,
         );
       });
       const updatedCount = this.linkParsedResults(
@@ -187,6 +194,8 @@ export class GraphPersisterService implements IGraphPersister {
         parsedResults,
         fileIdMap,
         symbolIdMap,
+        functionNodeRefsByFile,
+        this.callsProjectionCallerPolicy,
         callResolutionByFile,
       );
       const strictCallProofExclusions = this.persistStrictCallSiteProofs(
@@ -198,8 +207,15 @@ export class GraphPersisterService implements IGraphPersister {
         symbolIdMap,
         functionNodeRefsByFile,
         resolver,
+        this.callsProjectionCallerPolicy,
       );
       this.reattachExternalIncomingLinks(store, externalIncoming);
+      if (sourceIndexComplete) {
+        store.meta.set(
+          `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+          this.callsProjectionCallerPolicy,
+        );
+      }
 
       const files = Object.keys(callResolutionByFile);
       const callResolution =
@@ -282,6 +298,7 @@ export class GraphPersisterService implements IGraphPersister {
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
     functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
+    callerPolicy: CallsProjectionCallerPolicy,
   ): void {
     for (const result of parsedResults) {
       // Current per-site decisions are file-version scoped: retire them with the old symbols
@@ -362,6 +379,70 @@ export class GraphPersisterService implements IGraphPersister {
         symbolsForFile,
         usedNodeKeys,
       );
+      if (callerPolicy === CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2) {
+        this.linkLexicalFunctionContainment(
+          store,
+          symbolsForFile,
+          functionNodeRefs,
+        );
+      }
+    }
+  }
+
+  /**
+   * Persists exact-caller-v2 lexical context separately from file ownership. Nested functions use
+   * `lexical_parent`; a function without an enclosing function span uses `lexical_owner` when the
+   * parser identifies a class/struct owner. The owner edge is terminal for impact. Every symbol
+   * keeps its file `contains` edge, and equal or crossing spans stay unlinked because caller
+   * projection falls back to the file for ties.
+   */
+  private linkLexicalFunctionContainment(
+    store: IGraphStore,
+    symbolsForFile: ReadonlyMap<string, number>,
+    functionNodes: readonly FunctionNodeReference[],
+  ): void {
+    for (const child of functionNodes) {
+      if (child.graphNodeId === undefined) continue;
+      const enclosingFunctions = functionNodes.filter(
+        (candidate) =>
+          candidate !== child &&
+          candidate.graphNodeId !== undefined &&
+          candidate.startLine <= child.startLine &&
+          candidate.endLine >= child.endLine &&
+          (candidate.startLine < child.startLine ||
+            candidate.endLine > child.endLine),
+      );
+      if (enclosingFunctions.length > 0) {
+        const smallestSpan = Math.min(
+          ...enclosingFunctions.map(
+            (candidate) => candidate.endLine - candidate.startLine,
+          ),
+        );
+        const innermost = enclosingFunctions.filter(
+          (candidate) =>
+            candidate.endLine - candidate.startLine === smallestSpan,
+        );
+        const [parent] = innermost;
+        if (innermost.length === 1 && parent?.graphNodeId !== undefined) {
+          store.graph.insertLink({
+            sourceNodeId: parent.graphNodeId,
+            targetNodeId: child.graphNodeId,
+            linkType: LinkTypes.LEXICAL_PARENT,
+          });
+        }
+        continue;
+      }
+
+      // A class/struct member function or field initializer has no enclosing function span.
+      // Attach it to its owner when known; ordinary top-level functions remain file children.
+      if (child.containerName === undefined) continue;
+      const classId = symbolsForFile.get(child.containerName);
+      if (classId === undefined) continue;
+      store.graph.insertLink({
+        sourceNodeId: classId,
+        targetNodeId: child.graphNodeId,
+        linkType: LinkTypes.LEXICAL_OWNER,
+      });
     }
   }
 
@@ -401,7 +482,9 @@ export class GraphPersisterService implements IGraphPersister {
         nodeKey,
         contentHash: fn.contentHash,
       });
-      functionNodeRefs.push(createFunctionNodeReference(result, fn, nodeKey));
+      functionNodeRefs.push(
+        createFunctionNodeReference(result, fn, nodeKey, fnId),
+      );
       symbolsForFile.set(fn.name, fnId);
       store.graph.insertLink({
         sourceNodeId: fileId,
@@ -489,6 +572,8 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
+    callerPolicy: CallsProjectionCallerPolicy,
     callResolutionByFile: Record<string, CallResolutionStats>,
   ): number {
     let updatedCount = 0;
@@ -504,6 +589,8 @@ export class GraphPersisterService implements IGraphPersister {
         sourceFileId,
         fileIdMap,
         symbolIdMap,
+        functionNodeRefsByFile.get(result.file) ?? [],
+        callerPolicy,
         counters,
       );
       if (counters.total > 0) {
@@ -522,9 +609,9 @@ export class GraphPersisterService implements IGraphPersister {
     return updatedCount;
   }
 
-  /** Persists only source-bound Q1/Q2/Q3 proofs for a complete source index. ScopeResolver
-   *  links are initially written unchanged; the per-site projection replaces a proved site, then
-   *  the legacy proposal edges for every other site are restored inside the same transaction. */
+  /** Persists source-bound Q1/Q2/Q3 proofs for a complete source index. Every call edge starts
+   *  under the active caller policy; the per-site projection replaces a proved target and then
+   *  restores unproven sites under that same policy inside the transaction. */
   private persistStrictCallSiteProofs(
     store: IGraphStore,
     projectId: number,
@@ -534,6 +621,7 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
     functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
     resolver: ScopeResolver,
+    callerPolicy: CallsProjectionCallerPolicy,
   ): StrictCallProofExclusion[] {
     const repo = store.callSiteResolutions;
     const service = this.hypothesisService;
@@ -590,6 +678,7 @@ export class GraphPersisterService implements IGraphPersister {
           symbolIdMap,
           nodeKeyById,
           resolver,
+          callerPolicy,
         ),
       );
     }
@@ -610,6 +699,7 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
     nodeKeyById: ReadonlyMap<number, string>,
     resolver: ScopeResolver,
+    callerPolicy: CallsProjectionCallerPolicy,
   ): StrictCallProofExclusion[] {
     const collection = collectStrictCallSiteProofs({
       service,
@@ -628,6 +718,8 @@ export class GraphPersisterService implements IGraphPersister {
       sourceFileId,
       symbolIdMap.get(result.file),
       nodeKeyById,
+      functionNodeRefsByFile.get(result.file) ?? [],
+      callerPolicy,
     );
     repo.replaceForFile(
       projectId,
@@ -640,7 +732,7 @@ export class GraphPersisterService implements IGraphPersister {
     }
 
     const provenKeys = new Set(proofs.map(({ callSiteKey }) => callSiteKey));
-    this.restoreScopeResolverCallsForUnprovenSites(
+    this.restoreUnprovenCallsForCallerPolicy(
       store,
       resolver,
       result,
@@ -649,11 +741,13 @@ export class GraphPersisterService implements IGraphPersister {
       fileIdMap,
       symbolIdMap,
       provenKeys,
+      functionNodeRefsByFile.get(result.file) ?? [],
+      callerPolicy,
     );
     return [...collection.exclusions];
   }
 
-  private restoreScopeResolverCallsForUnprovenSites(
+  private restoreUnprovenCallsForCallerPolicy(
     store: IGraphStore,
     resolver: ScopeResolver,
     result: ParsedAstFileResult,
@@ -662,12 +756,22 @@ export class GraphPersisterService implements IGraphPersister {
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
     provenCallSiteKeys: ReadonlySet<string>,
+    functionNodes: readonly FunctionNodeReference[],
+    callerPolicy: CallsProjectionCallerPolicy,
   ): void {
     if (!sourceFileId) return;
     for (const call of result.data.calls ?? []) {
       const callSiteKey = portableCallSiteKeyForCall(result, call);
       if (callSiteKey && provenCallSiteKeys.has(callSiteKey)) continue;
 
+      const projectionCaller = this.resolveCallsProjectionCaller(
+        callerPolicy,
+        result,
+        call,
+        functionNodes,
+        sourceSymbols,
+        sourceFileId,
+      );
       this.linkSymbolReference(
         store,
         resolver,
@@ -686,6 +790,7 @@ export class GraphPersisterService implements IGraphPersister {
           receiverText: call.receiverText,
           calleeKind: call.calleeKind,
         },
+        projectionCaller.nodeId,
       );
     }
   }
@@ -696,6 +801,8 @@ export class GraphPersisterService implements IGraphPersister {
     sourceFileId: number,
     sourceSymbols: Map<string, number> | undefined,
     nodeKeyById: ReadonlyMap<number, string>,
+    functionNodes: readonly FunctionNodeReference[],
+    callerPolicy: CallsProjectionCallerPolicy,
   ): CallSiteResolutionProjectionCallerInput[] {
     const callBySiteKey = new Map(
       (result.data.calls ?? []).flatMap((call) => {
@@ -711,16 +818,20 @@ export class GraphPersisterService implements IGraphPersister {
           `Strict proof call site ${callSiteKey} has no parsed call`,
         );
       }
-      const sourceNodeId = this.resolveSourceNodeId(
+      const caller = this.resolveCallsProjectionCaller(
+        callerPolicy,
+        result,
+        call,
+        functionNodes,
         sourceSymbols,
-        call.sourceFunction,
         sourceFileId,
+        nodeKeyById,
       );
-      const callerNodeKey = nodeKeyById.get(sourceNodeId);
+      const callerNodeKey = caller.nodeKey ?? nodeKeyById.get(caller.nodeId);
       if (!callerNodeKey) {
         throw new DocuviaError(
           ErrorCodes.CALL_RESOLUTION_PROJECTION_SOURCE_MISSING,
-          `ScopeResolver caller node ${sourceNodeId} has no portable key`,
+          `Calls projection caller node ${caller.nodeId} has no portable key`,
         );
       }
       return { callSiteKey, callerNodeKey };
@@ -734,11 +845,21 @@ export class GraphPersisterService implements IGraphPersister {
     sourceFileId: number,
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
+    functionNodes: readonly FunctionNodeReference[],
+    callerPolicy: CallsProjectionCallerPolicy,
     counters: CallResolutionCounters,
   ): void {
     const sourceSymbols = symbolIdMap.get(result.file);
 
     for (const call of result.data.calls ?? []) {
+      const projectionCaller = this.resolveCallsProjectionCaller(
+        callerPolicy,
+        result,
+        call,
+        functionNodes,
+        sourceSymbols,
+        sourceFileId,
+      );
       this.linkSymbolReference(
         store,
         resolver,
@@ -757,6 +878,7 @@ export class GraphPersisterService implements IGraphPersister {
           receiverText: call.receiverText,
           calleeKind: call.calleeKind,
         },
+        projectionCaller.nodeId,
       );
     }
     for (const impl of result.data.implements ?? []) {
@@ -810,6 +932,34 @@ export class GraphPersisterService implements IGraphPersister {
       fileIdMap,
       symbolIdMap,
     );
+  }
+
+  private resolveCallsProjectionCaller(
+    policy: CallsProjectionCallerPolicy,
+    result: ParsedAstFileResult,
+    call: NonNullable<ParsedAstFileResult["data"]["calls"]>[number],
+    functionNodes: readonly FunctionNodeReference[],
+    sourceSymbols: Map<string, number> | undefined,
+    sourceFileId: number,
+    nodeKeyById?: ReadonlyMap<number, string>,
+  ): { readonly nodeId: number; readonly nodeKey?: string } {
+    if (
+      policy === CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1 ||
+      policy === CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2
+    ) {
+      const caller = exactCallerNodeForCall(result, call, functionNodes);
+      return {
+        nodeId: caller.graphNodeId ?? sourceFileId,
+        nodeKey: caller.nodeKey,
+      };
+    }
+
+    const nodeId = this.resolveSourceNodeId(
+      sourceSymbols,
+      call.sourceFunction,
+      sourceFileId,
+    );
+    return { nodeId, nodeKey: nodeKeyById?.get(nodeId) };
   }
 
   /** Issue #192 gap 2: a barrel re-export (`export { X } from "../deep/util"`) is a real
@@ -1060,6 +1210,7 @@ export class GraphPersisterService implements IGraphPersister {
       receiverText?: string;
       calleeKind?: "bare" | "member" | "this" | "arg-chain" | "computed";
     },
+    sourceNodeIdOverride?: number,
   ): void {
     if (callCounters) callCounters.total++;
 
@@ -1088,6 +1239,7 @@ export class GraphPersisterService implements IGraphPersister {
       fileIdMap,
       symbolIdMap,
       linkType,
+      sourceNodeIdOverride,
     );
     if (!callCounters) return;
     if (outcome === "linked") {
@@ -1129,6 +1281,7 @@ export class GraphPersisterService implements IGraphPersister {
     fileIdMap: Map<string, number>,
     symbolIdMap: Map<string, Map<string, number>>,
     linkType: string,
+    sourceNodeIdOverride?: number,
   ): "linked" | "self-discarded" | "no-target" {
     const targetNodeId = resolved
       ? this.resolveTargetNodeId(
@@ -1143,11 +1296,9 @@ export class GraphPersisterService implements IGraphPersister {
         : undefined;
     if (!targetNodeId) return "no-target";
 
-    const sourceNodeId = this.resolveSourceNodeId(
-      sourceSymbols,
-      sourceSymbolName,
-      sourceFileId,
-    );
+    const sourceNodeId =
+      sourceNodeIdOverride ??
+      this.resolveSourceNodeId(sourceSymbols, sourceSymbolName, sourceFileId);
 
     // Self-call: the site resolved to the caller's own node -- structurally unresolvable into a
     // usable edge by design (persisted nowhere), so tracked separately from unresolved and

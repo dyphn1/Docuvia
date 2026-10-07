@@ -14,6 +14,7 @@ import type {
 import {
   TOPOLOGY_VERSION,
   LinkTypes,
+  StructuralLinkTypes,
   TopologyNodeKinds,
   TopologyCollapseModes,
   TopologyGroupSources,
@@ -245,14 +246,20 @@ function buildSymbolLevel(
     l2Type: row.type,
   }));
 
-  const links: TopologyLink[] = linkRows.map((link) => ({
-    source: toL2NodeId(link.sourceNodeId),
-    target: toL2NodeId(link.targetNodeId),
-    linkType: link.linkType,
-    confidence: 1,
-    commitSha: link.commitSha,
-    diffSummary: link.diffSummary,
-  }));
+  const links: TopologyLink[] = linkRows
+    .filter(
+      ({ linkType }) =>
+        linkType !== LinkTypes.LEXICAL_PARENT &&
+        linkType !== LinkTypes.LEXICAL_OWNER,
+    )
+    .map((link) => ({
+      source: toL2NodeId(link.sourceNodeId),
+      target: toL2NodeId(link.targetNodeId),
+      linkType: link.linkType,
+      confidence: 1,
+      commitSha: link.commitSha,
+      diffSummary: link.diffSummary,
+    }));
 
   appendDecisions(nodes, links, l3Rows, filePathById);
   return { nodes, links, foldedLinkCount: 0 };
@@ -292,7 +299,7 @@ function buildCollapsed(
   const seen = new Set<string>();
   let foldedLinkCount = 0;
   for (const link of linkRows) {
-    if (link.linkType === LinkTypes.CONTAINS) continue;
+    if (StructuralLinkTypes.includes(link.linkType)) continue;
     const source = toFileId(link.sourceNodeId);
     const target = toFileId(link.targetNodeId);
     if (source === target) {

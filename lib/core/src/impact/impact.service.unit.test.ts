@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   RiskLevels,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  LinkTypes,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
 } from "@workspace/contracts";
@@ -199,6 +202,167 @@ describe("ImpactService", () => {
 
       const result = impactService.getBlastRadius(store, "sharedUtil");
       expect(result).toEqual([{ name: "caller", type: "module" }]);
+    });
+
+    it("[happy][state-diff] expands exact callback callers to their enclosing function, callers, and files", () => {
+      const insertNode = (name: string, nodeKey: string): number =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          type: "module",
+          pathPatterns: [nodeKey.split("#")[0]!],
+          nodeKey,
+        });
+      const targetFile = insertNode("src/target.ts", "src/target.ts");
+      const callerFile = insertNode("src/caller.ts", "src/caller.ts");
+      const consumerFile = insertNode("src/consumer.ts", "src/consumer.ts");
+      const target = insertNode("target", "src/target.ts#target");
+      const outer = insertNode("outer", "src/caller.ts#outer");
+      const callback = insertNode("anonymous", "src/caller.ts#anonymous@L4");
+      const outerCaller = insertNode(
+        "invokeOuter",
+        "src/consumer.ts#invokeOuter",
+      );
+
+      store.graph.insertLink({
+        sourceNodeId: targetFile,
+        targetNodeId: target,
+        linkType: "contains",
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerFile,
+        targetNodeId: outer,
+        linkType: "contains",
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerFile,
+        targetNodeId: callback,
+        linkType: "contains",
+      });
+      store.graph.insertLink({
+        sourceNodeId: outer,
+        targetNodeId: callback,
+        linkType: LinkTypes.LEXICAL_PARENT,
+      });
+      store.graph.insertLink({
+        sourceNodeId: callback,
+        targetNodeId: target,
+        linkType: "calls",
+      });
+      store.graph.insertLink({
+        sourceNodeId: consumerFile,
+        targetNodeId: outerCaller,
+        linkType: "contains",
+      });
+      store.graph.insertLink({
+        sourceNodeId: outerCaller,
+        targetNodeId: outer,
+        linkType: "calls",
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const result = impactService.getBlastRadius(store, "target");
+      const impactedNames = result?.map(({ name }) => name) ?? [];
+
+      expect(impactedNames).toEqual(
+        expect.arrayContaining([
+          "anonymous",
+          "outer",
+          "invokeOuter",
+          "src/caller.ts",
+          "src/consumer.ts",
+        ]),
+      );
+    });
+
+    it("[regression][exact-v2] includes method and class context but stops at the class owner", () => {
+      const insertNode = (name: string, nodeKey: string): number =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          type: "module",
+          pathPatterns: [nodeKey.split("#")[0]!],
+          nodeKey,
+        });
+      const targetFile = insertNode("src/target.ts", "src/target.ts");
+      const ownerFile = insertNode("src/owner.ts", "src/owner.ts");
+      const consumerFile = insertNode("src/consumer.ts", "src/consumer.ts");
+      const target = insertNode("target", "src/target.ts#target");
+      const owner = insertNode("Owner", "src/owner.ts#Owner");
+      const fieldCallback = insertNode(
+        "fieldCallback",
+        "src/owner.ts#Owner.field@L2",
+      );
+      const method = insertNode("method", "src/owner.ts#Owner.method");
+      const methodCallback = insertNode(
+        "methodCallback",
+        "src/owner.ts#Owner.method@L5",
+      );
+      const consumer = insertNode("instantiateOwner", "src/consumer.ts#use");
+
+      for (const [fileId, symbolId] of [
+        [targetFile, target],
+        [ownerFile, owner],
+        [ownerFile, fieldCallback],
+        [ownerFile, method],
+        [ownerFile, methodCallback],
+        [consumerFile, consumer],
+      ]) {
+        store.graph.insertLink({
+          sourceNodeId: fileId!,
+          targetNodeId: symbolId!,
+          linkType: LinkTypes.CONTAINS,
+        });
+      }
+      store.graph.insertLink({
+        sourceNodeId: owner,
+        targetNodeId: fieldCallback,
+        linkType: LinkTypes.LEXICAL_OWNER,
+      });
+      store.graph.insertLink({
+        sourceNodeId: owner,
+        targetNodeId: method,
+        linkType: LinkTypes.LEXICAL_OWNER,
+      });
+      store.graph.insertLink({
+        sourceNodeId: method,
+        targetNodeId: methodCallback,
+        linkType: LinkTypes.LEXICAL_PARENT,
+      });
+      for (const caller of [fieldCallback, methodCallback]) {
+        store.graph.insertLink({
+          sourceNodeId: caller,
+          targetNodeId: target,
+          linkType: LinkTypes.CALLS,
+        });
+      }
+      store.graph.insertLink({
+        sourceNodeId: consumer,
+        targetNodeId: owner,
+        linkType: LinkTypes.CALLS,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const names = impactService
+        .getBlastRadius(store, "target")
+        ?.map(({ name }) => name);
+
+      expect(names).toEqual(
+        expect.arrayContaining([
+          "fieldCallback",
+          "methodCallback",
+          "method",
+          "Owner",
+        ]),
+      );
+      expect(names).not.toContain("instantiateOwner");
+      expect(names).not.toContain("src/consumer.ts");
     });
 
     it("returns multiple callers for a widely-used symbol", () => {

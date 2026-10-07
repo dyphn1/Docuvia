@@ -200,7 +200,8 @@ export class GraphNodesRepo implements IGraphNodesRepo {
                 s.${SchemaColumns.PATH_PATTERNS} AS sourcePathPatterns
          FROM ${SchemaTables.NODE_LINKS} nl
          JOIN ${SchemaTables.L2_NODES} s ON s.id = nl.${SchemaColumns.SOURCE_NODE_ID}
-         WHERE nl.${SchemaColumns.TARGET_NODE_ID} = ? AND nl.${SchemaColumns.LINK_TYPE} != ?`,
+         WHERE nl.${SchemaColumns.TARGET_NODE_ID} = ?
+           AND nl.${SchemaColumns.LINK_TYPE} NOT IN (?, ?, ?)`,
       );
       const links: ExternalIncomingLink[] = [];
       const seen = new Set<string>();
@@ -211,7 +212,12 @@ export class GraphNodesRepo implements IGraphNodesRepo {
           `${filePath}${NODE_KEY_RANGE_END}`,
         ) as Array<{ id: number; nodeKey: string }>;
         for (const target of targets) {
-          const rows = incomingOf.all(target.id, LinkTypes.CONTAINS) as Array<{
+          const rows = incomingOf.all(
+            target.id,
+            LinkTypes.CONTAINS,
+            LinkTypes.LEXICAL_PARENT,
+            LinkTypes.LEXICAL_OWNER,
+          ) as Array<{
             sourceNodeId: number;
             linkType: string;
             sourcePathPatterns: string | null;
@@ -451,9 +457,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   }
 
   /**
-   * Nodes with an outgoing node_links edge INTO nodeId — the 1-hop "blast radius". `DISTINCT`
-   * dedupes a neighbor that's connected by more than one edge type (e.g. both a `calls` and a
-   * `depends_on` link between the same pair of nodes), so it isn't double-counted.
+   * Nodes with a dependency edge INTO nodeId — the 1-hop "blast radius". Lexical context links
+   * are omitted here and remain available through `getIncomingRelations()`. `DISTINCT` dedupes a
+   * neighbor that's connected by more than one dependency type, so it isn't double-counted.
    */
   getIncomingEdges(
     nodeId: number,
@@ -464,9 +470,18 @@ export class GraphNodesRepo implements IGraphNodesRepo {
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
            FROM ${SchemaTables.NODE_LINKS} l
            JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.SOURCE_NODE_ID}
-           WHERE l.${SchemaColumns.TARGET_NODE_ID} = ?`,
+           WHERE l.${SchemaColumns.TARGET_NODE_ID} = ?
+             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?)`,
         )
-        .all(nodeId) as Array<{ id: number; name: string; type: string }>;
+        .all(
+          nodeId,
+          LinkTypes.LEXICAL_PARENT,
+          LinkTypes.LEXICAL_OWNER,
+        ) as Array<{
+        id: number;
+        name: string;
+        type: string;
+      }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
@@ -476,7 +491,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     }
   }
 
-  /** Nodes nodeId links out to. See `getIncomingEdges()`'s doc comment on the `DISTINCT`. */
+  /** Nodes nodeId has dependency links to. Lexical context links are omitted. */
   getOutgoingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }> {
@@ -486,9 +501,18 @@ export class GraphNodesRepo implements IGraphNodesRepo {
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
            FROM ${SchemaTables.NODE_LINKS} l
            JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.TARGET_NODE_ID}
-           WHERE l.${SchemaColumns.SOURCE_NODE_ID} = ?`,
+           WHERE l.${SchemaColumns.SOURCE_NODE_ID} = ?
+             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?)`,
         )
-        .all(nodeId) as Array<{ id: number; name: string; type: string }>;
+        .all(
+          nodeId,
+          LinkTypes.LEXICAL_PARENT,
+          LinkTypes.LEXICAL_OWNER,
+        ) as Array<{
+        id: number;
+        name: string;
+        type: string;
+      }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,

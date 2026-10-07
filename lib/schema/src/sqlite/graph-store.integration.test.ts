@@ -1028,6 +1028,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
         prefixTwin: node("src/a.tsx", "evalTwin"),
         caller: node("src/b.ts", "evalCaller"),
         sub: node("src/c.ts", "EvalSub"),
+        lexicalOnly: node("src/c.ts", "lexicalOnly"),
         barrel: node("src/barrel.ts", "src/barrel.ts"),
         sibling: node("src/a2.ts", "evalSibling"),
       };
@@ -1050,6 +1051,16 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
 
     it("[happy] getExternalIncomingLinks returns external incoming edges by node_key, deduplicated, without contains", () => {
       const ids = seed();
+      store.graph.insertLink({
+        sourceNodeId: ids.lexicalOnly,
+        targetNodeId: ids.target,
+        linkType: "lexical_parent",
+      });
+      store.graph.insertLink({
+        sourceNodeId: ids.lexicalOnly,
+        targetNodeId: ids.target,
+        linkType: "lexical_owner",
+      });
       const links = store.graph.getExternalIncomingLinks(["src/a.ts"]);
       expect(
         links
@@ -1063,6 +1074,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
           `${ids.sub}>src/a.ts#EvalBase:extends`,
         ].sort(),
       );
+      expect(
+        store.graph.getIncomingEdges(ids.target).map(({ name }) => name),
+      ).not.toContain("lexicalOnly");
+      expect(store.graph.getOutgoingEdges(ids.lexicalOnly)).toEqual([]);
     });
 
     it("[state-diff] sources inside the re-parse batch are excluded (the linking pass re-derives them)", () => {

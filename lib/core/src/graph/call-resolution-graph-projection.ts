@@ -20,6 +20,8 @@ import { candidateTargetKeyForDeclaration } from "../semantic/call-resolution-hy
 
 export type FunctionNodeReference = {
   readonly nodeKey: string;
+  /** Transient local id; omitted from portable proof records and offline parity fixtures. */
+  readonly graphNodeId?: number;
   readonly name: string;
   readonly containerName?: string;
   readonly startLine: number;
@@ -122,6 +124,7 @@ export function createFunctionNodeReference(
   result: ParsedAstFileResult,
   fn: NonNullable<ParsedAstFileResult["data"]["functions"]>[number],
   nodeKey: string,
+  graphNodeId?: number,
 ): FunctionNodeReference {
   const span = fn.declarationSpan;
   const declarationTargetKeys = span
@@ -138,6 +141,7 @@ export function createFunctionNodeReference(
     : [];
   return {
     nodeKey,
+    ...(graphNodeId !== undefined ? { graphNodeId } : {}),
     name: fn.name,
     containerName: fn.containerName,
     startLine: fn.startLine,
@@ -256,21 +260,6 @@ function strictTargetFunction(
   });
 }
 
-function callerFunctionForCall(
-  call: ParsedCall,
-  callSite: CallSiteShape,
-  functionNodes: readonly FunctionNodeReference[],
-): FunctionNodeReference | undefined {
-  const matches = functionNodes.filter(
-    (fn) =>
-      fn.name === call.sourceFunction &&
-      fn.containerName === callSite.callerType?.name &&
-      fn.startLine <= callSite.startLine &&
-      fn.endLine >= callSite.startLine,
-  );
-  return matches.length === 1 ? matches[0] : undefined;
-}
-
 function fileNodeForCall(
   result: ParsedAstFileResult,
   call: ParsedCall,
@@ -284,17 +273,27 @@ function fileNodeForCall(
   };
 }
 
-function callerNodeForCall(
+/**
+ * Selects the unique innermost graph function containing this call. Legacy source-function
+ * hints are deliberately ignored: callbacks and arrows can be nested inside a wider function
+ * while carrying the outer name (or a parameter name) in the parsed call record. Equal-span
+ * ties and calls outside function bodies fall back to the file node, matching #573.
+ */
+export function exactCallerNodeForCall(
   result: ParsedAstFileResult,
   call: ParsedCall,
-  callSite: CallSiteShape,
   functionNodes: readonly FunctionNodeReference[],
-): FunctionNodeReference | undefined {
-  const matchingCaller = callerFunctionForCall(call, callSite, functionNodes);
-  if (matchingCaller) return matchingCaller;
+): FunctionNodeReference {
+  if (!Number.isSafeInteger(call.startLine) || call.startLine < 0) {
+    return fileNodeForCall(result, call);
+  }
 
   const enclosingFunctions = functionNodes.filter(
-    (fn) => fn.startLine <= call.startLine && fn.endLine >= call.startLine,
+    (fn) =>
+      Number.isSafeInteger(fn.startLine) &&
+      Number.isSafeInteger(fn.endLine) &&
+      fn.startLine <= call.startLine &&
+      fn.endLine >= call.startLine,
   );
   if (enclosingFunctions.length > 0) {
     const smallestSpan = Math.min(
@@ -303,16 +302,9 @@ function callerNodeForCall(
     const innermostFunctions = enclosingFunctions.filter(
       (fn) => fn.endLine - fn.startLine === smallestSpan,
     );
-    if (innermostFunctions.length !== 1) {
-      // Keep the already-proven target and conservatively attribute its caller to the file node.
-      return fileNodeForCall(result, call);
-    }
-
-    // Calls inside callbacks can carry a parameter or local name in sourceFunction
-    // instead of the graph's enclosing function name. The unique smallest AST
-    // function span identifies that caller without trusting the legacy hint.
+    if (innermostFunctions.length !== 1) return fileNodeForCall(result, call);
     const [innermostFunction] = innermostFunctions;
-    return innermostFunction;
+    if (innermostFunction) return innermostFunction;
   }
   return fileNodeForCall(result, call);
 }
@@ -469,13 +461,7 @@ function proofForCall(
       },
     };
   }
-  const callerFunction = callerNodeForCall(
-    result,
-    call,
-    callSite,
-    functionNodes,
-  );
-  if (!callerFunction) return {};
+  const callerFunction = exactCallerNodeForCall(result, call, functionNodes);
 
   return {
     proof: createCallSiteProof({

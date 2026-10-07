@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import type { L2NodeRow, L3NodeRow, NodeLinkRow } from "@workspace/contracts";
+import {
+  LinkTypes,
+  type L2NodeRow,
+  type L3NodeRow,
+  type NodeLinkRow,
+} from "@workspace/contracts";
 import { TopologyBuilderService } from "./topology-builder.service.js";
 
 function makeL2(overrides: Partial<L2NodeRow> = {}): L2NodeRow {
@@ -248,6 +253,69 @@ describe("TopologyBuilderService.build()", () => {
     expect(graph.stats.foldedLinkCount).toBe(0);
   });
 
+  it("[regression][exact-v2] excludes lexical links from symbol and file topology projections", () => {
+    const rows = [
+      makeL2({ id: 1, name: "src/a.ts", path_patterns: '["src/a.ts"]' }),
+      makeL2({ id: 2, name: "outer", path_patterns: '["src/a.ts"]' }),
+      makeL2({ id: 3, name: "callback", path_patterns: '["src/a.ts"]' }),
+      makeL2({ id: 4, name: "src/b.ts", path_patterns: '["src/b.ts"]' }),
+      makeL2({ id: 5, name: "target", path_patterns: '["src/b.ts"]' }),
+    ];
+    const commonLinks = [
+      makeLink({
+        id: 1,
+        source_node_id: 1,
+        target_node_id: 2,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 2,
+        source_node_id: 1,
+        target_node_id: 3,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 3,
+        source_node_id: 4,
+        target_node_id: 5,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 4,
+        source_node_id: 3,
+        target_node_id: 5,
+        link_type: LinkTypes.CALLS,
+      }),
+    ];
+    const v2Links = [
+      ...commonLinks,
+      makeLink({
+        id: 5,
+        source_node_id: 2,
+        target_node_id: 3,
+        link_type: LinkTypes.LEXICAL_PARENT,
+      }),
+    ];
+    const build = (linkRows: NodeLinkRow[], collapse: "file" | "symbol") =>
+      builder.build(
+        {
+          workspaceRoot: "/workspace",
+          l2Rows: rows,
+          linkRows,
+          l3Rows: [],
+          tagRows: [],
+        },
+        { collapse },
+      );
+
+    for (const collapse of ["file", "symbol"] as const) {
+      const v1 = build(commonLinks, collapse);
+      const v2 = build(v2Links, collapse);
+      expect(v2.links).toEqual(v1.links);
+      expect(v2.stats.foldedLinkCount).toBe(v1.stats.foldedLinkCount);
+    }
+  });
+
   it("counts same-file relationships folded away by collapse, instead of silently dropping them", () => {
     const fileNode = makeL2({
       id: 1,
@@ -374,7 +442,7 @@ describe("TopologyBuilderService.build()", () => {
     ]);
   });
 
-  it("folds a graph down to a small surviving cross-file link set, matching the fold arithmetic exactly (links.length + foldedLinkCount === total non-CONTAINS edges fed in)", () => {
+  it("folds a graph down to a small surviving cross-file link set, matching the arithmetic for all non-structural edges fed in", () => {
     const file1 = makeL2({
       id: 1,
       path_patterns: JSON.stringify(["src/a.ts"]),

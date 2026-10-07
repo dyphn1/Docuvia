@@ -21,6 +21,10 @@ import {
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_RESOLUTIONS_JSONL_FILE_NAME,
   SNAPSHOT_CALL_RESOLUTIONS_VERSION,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  isCallsProjectionCallerPolicy,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
   SnapshotCallSiteAvailabilityStates,
   SnapshotCallResolutionAvailabilityStates,
@@ -661,6 +665,10 @@ export class HydrationService implements IHydrationService {
         metadata.lastIngestedSourceSha,
       );
     }
+    store.meta.set(
+      `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      snapshotCallerPolicy(metadata),
+    );
     this.restoreDynamicEvidence(store, projectId, metadata);
     return projectId;
   }
@@ -879,4 +887,21 @@ export class HydrationService implements IHydrationService {
       ),
     );
   }
+}
+
+function snapshotCallerPolicy(
+  metadata: ParsedSnapshotMetadata | undefined,
+): string {
+  if (!isRecord(metadata?.capabilities)) {
+    return CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+  }
+  const capability = metadata.capabilities.callsProjectionCallerPolicy;
+  if (
+    !isRecord(capability) ||
+    capability.version !== SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION ||
+    !isCallsProjectionCallerPolicy(capability.policy)
+  ) {
+    return CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+  }
+  return capability.policy;
 }

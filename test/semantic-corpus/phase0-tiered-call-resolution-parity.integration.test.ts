@@ -12,6 +12,7 @@ import {
   it,
 } from "vitest";
 import {
+  CallsProjectionCallerPolicies,
   LinkTypes,
   type ParsedAstFileResult,
 } from "../../lib/contracts/src/index.js";
@@ -22,17 +23,20 @@ import { ScopeResolver } from "../../lib/core/src/graph/scope-resolver.js";
 import {
   buildParsedSymbolNodeKeyIndex,
   nodeKeyForResolverTarget,
-  nodeKeyForSourceFunction,
   registerScopeResolverFiles,
   resolveScopeResolverProposal,
 } from "../../scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts";
+import { exactCallerNodeKeyForCall } from "../../scripts/semantic-corpus/parity-utils.mts";
 
 type Sources = Record<string, string>;
 
 const workerPool = new AstWorkerPool();
-const persister = new GraphPersisterService();
+const persister = new GraphPersisterService(
+  undefined,
+  CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+);
 
-describe("Phase 0 scope resolver parity with persisted graph state", () => {
+describe("Phase 0 target parity under the exact caller projection", () => {
   let workspaceRoot: string;
   let store: GraphStore;
   let projectId: number;
@@ -124,11 +128,9 @@ describe("Phase 0 scope resolver parity with persisted graph state", () => {
           file: result.file,
           call,
           proposal,
-          sourceNodeKey: nodeKeyForSourceFunction(
-            index,
-            result.file,
-            call.sourceFunction,
-          ),
+          // ScopeResolver still supplies the target proposal, while persisted calls edges use
+          // the uniform exact caller policy independently of proof status.
+          sourceNodeKey: exactCallerNodeKeyForCall(result, call),
           targetNodeKey:
             proposal.status === "resolved"
               ? nodeKeyForResolverTarget(index, proposal.target)

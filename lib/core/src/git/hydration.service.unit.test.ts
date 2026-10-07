@@ -6,6 +6,10 @@ import {
   DynamicEvidenceUnavailableReasons,
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_RESOLUTIONS_VERSION,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  LinkTypes,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   type IGitProvider,
   type IGraphStore,
 } from "@workspace/contracts";
@@ -547,6 +551,10 @@ describe("HydrationService.hydrate()", () => {
       capabilities: {
         callSites: { version: 1 },
         callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION },
+        callsProjectionCallerPolicy: {
+          version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+          policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1,
+        },
       },
     });
     const git = makeMockGitProvider({
@@ -597,6 +605,9 @@ describe("HydrationService.hydrate()", () => {
         `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
       ),
     ).toBe("available");
+    expect(
+      meta.values.get(`${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}42`),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1);
   });
 
   it("[negative] never derives proven certainty from legacy aggregate calls edges", async () => {
@@ -662,6 +673,62 @@ describe("HydrationService.hydrate()", () => {
         `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
       ),
     ).toBe("unavailable");
+    expect(
+      meta.values.get(`${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}42`),
+    ).toBe(CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1);
+  });
+
+  it("[regression][exact-v2] preserves lexical parent and owner edges during hydration", async () => {
+    const lexicalEdges = [
+      {
+        source: "src/owner.ts#Owner.method",
+        target: "src/owner.ts#Owner.method@L5",
+        type: LinkTypes.LEXICAL_PARENT,
+      },
+      {
+        source: "src/owner.ts#Owner",
+        target: "src/owner.ts#Owner.field@L2",
+        type: LinkTypes.LEXICAL_OWNER,
+      },
+    ];
+    const metadataJson = JSON.stringify({
+      project: { name: "demo", repoUrl: "file:///demo" },
+      files: [],
+      snapshotVersion: 1,
+    });
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-v2"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(
+            filePath === "graph/metadata.json"
+              ? metadataJson
+              : filePath === "graph/edges.jsonl"
+                ? lexicalEdges.map((edge) => JSON.stringify(edge)).join("\n") +
+                  "\n"
+                : filePath === "graph/call-sites.jsonl" ||
+                    filePath === "graph/call-resolutions.jsonl"
+                  ? ""
+                  : undefined,
+          ),
+        ),
+    });
+    const store = makeMockGraphStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 42 }),
+        insert: vi.fn(),
+        getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
+        count: vi.fn(),
+      },
+    });
+
+    await new HydrationService(git).hydrate("/workspace", store);
+
+    expect(
+      vi.mocked(store.graph.bulkLoadGraph).mock.calls[0]?.[0]?.edges,
+    ).toStrictEqual(lexicalEdges);
   });
 
   it.each([

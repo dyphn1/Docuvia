@@ -1,7 +1,9 @@
 import type {
+  CallsProjectionCallerPolicy,
   ICallResolutionHypothesisService,
   IGraphPersister,
 } from "@workspace/contracts";
+import { DEFAULT_CALLS_PROJECTION_CALLER_POLICY as DEFAULT_CALLER_POLICY } from "@workspace/contracts";
 import { GraphPersisterService as Phase6GraphPersisterService } from "./phase6-graph-persister.js";
 import { persistDynamicDependencyEvidence } from "../impact/dynamic-dependency-evidence.js";
 
@@ -16,8 +18,14 @@ import { persistDynamicDependencyEvidence } from "../impact/dynamic-dependency-e
 export class GraphPersisterService implements IGraphPersister {
   private readonly base: Phase6GraphPersisterService;
 
-  constructor(hypothesisService?: ICallResolutionHypothesisService) {
-    this.base = new Phase6GraphPersisterService(hypothesisService);
+  constructor(
+    hypothesisService?: ICallResolutionHypothesisService,
+    callerPolicy: CallsProjectionCallerPolicy = DEFAULT_CALLER_POLICY,
+  ) {
+    this.base = new Phase6GraphPersisterService(
+      hypothesisService,
+      callerPolicy,
+    );
   }
 
   public async persist(

@@ -1,6 +1,8 @@
 import * as path from "path";
 import {
   LinkTypes,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  type CallsProjectionCallerPolicy,
   type ICallResolutionHypothesisService,
   type IGraphPersister,
   type IGraphStore,
@@ -63,8 +65,11 @@ function localSymbols(result: ParsedAstFileResult): string[] {
 export class GraphPersisterService implements IGraphPersister {
   private readonly base: BaseGraphPersisterService;
 
-  constructor(hypothesisService?: ICallResolutionHypothesisService) {
-    this.base = new BaseGraphPersisterService(hypothesisService);
+  constructor(
+    hypothesisService?: ICallResolutionHypothesisService,
+    callerPolicy: CallsProjectionCallerPolicy = DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  ) {
+    this.base = new BaseGraphPersisterService(hypothesisService, callerPolicy);
   }
 
   public async persist(

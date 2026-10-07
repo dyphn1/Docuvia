@@ -91,6 +91,8 @@ export interface L2NodeRow {
 
 export const LinkTypes = {
   CONTAINS: "contains",
+  LEXICAL_PARENT: "lexical_parent",
+  LEXICAL_OWNER: "lexical_owner",
   CALLS: "calls",
   IMPLEMENTS: "implements",
   EXTENDS: "extends",
@@ -99,6 +101,13 @@ export const LinkTypes = {
   DECISION: "decision",
 } as const;
 export type LinkType = (typeof LinkTypes)[keyof typeof LinkTypes];
+
+/** Relationships that describe graph structure rather than dependency edges. */
+export const StructuralLinkTypes: readonly string[] = [
+  LinkTypes.CONTAINS,
+  LinkTypes.LEXICAL_PARENT,
+  LinkTypes.LEXICAL_OWNER,
+];
 
 export interface NodeLinkRow {
   id: number;
@@ -321,8 +330,9 @@ export interface IGraphNodesRepo {
    */
   deleteNodesForPath(filePath: string): number[];
   /**
-   * Issue #508 Phase 3 (D9): incoming `node_links` rows (`contains` excluded) into the nodes of
-   * `filePaths` whose source node belongs to a file outside `filePaths`, deduplicated. Target
+   * Issue #508 Phase 3 (D9): dependency `node_links` rows (`contains` and v2 lexical context
+   * excluded) into the nodes of `filePaths` whose source node belongs to a file outside
+   * `filePaths`, deduplicated. Target
    * nodes are found through the `node_key` index (`<path>` and `<path>#...`) and sources through
    * `node_links.target_node_id`'s index -- no full scan of `l2_nodes`, so it is safe per re-parse
    * batch at 100k+ nodes. Rows with no `node_key` (pre-STOR-005) are not returned.
@@ -391,9 +401,9 @@ export interface IGraphNodesRepo {
    * the neighbor node's own kind (currently always `"module"` — every symbol/file row shares one
    * `L2NodeType`, see `persist-ast-graph.ts`); `linkType` is the actual relationship
    * (`calls`/`implements`/`extends`/`contains`/...) — the two are easy to conflate but distinct.
-   * `impact`'s blast radius intentionally includes every link type here, `contains` included
-   * (IMPT-001's documented single-hop heuristic); `query`'s `getContext()` is the one place that
-   * filters `contains` out, since a symbol's own containing file isn't a "caller".
+   * The neighbor set includes file ownership (`contains`) as impact context (IMPT-001's
+   * documented single-hop heuristic), but omits `lexical_parent` and `lexical_owner`; the
+   * versioned impact walk reads those relationships through `getIncomingRelations()`.
    */
   /**
    * Issue #135: L2 semantic coverage — how many `l2_nodes` rows carry a non-empty `description`.
@@ -414,7 +424,7 @@ export interface IGraphNodesRepo {
   getIncomingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;
-  /** Nodes `nodeId` links out to. See `getIncomingEdges()`'s doc comment on the `DISTINCT`. */
+  /** Nodes `nodeId` links out to, excluding v2 lexical context links. */
   getOutgoingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;

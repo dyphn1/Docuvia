@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/ast/tier-a-declaration-index.ts#callableName
+id: lib/core/src/ast/tier-a-declaration-index.ts#CallableName
 type: symbol
-name: callableName
+name: CallableName
 filePath: lib/core/src/ast/tier-a-declaration-index.ts
 ---
-# Symbol: callableName
+# Symbol: CallableName
 
 File: `lib/core/src/ast/tier-a-declaration-index.ts`

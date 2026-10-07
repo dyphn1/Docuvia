@@ -948,9 +948,9 @@
     },
     {
       "filePath": "artifacts/cli/tsup.config.ts",
-      "contentHash": "006569bc666c7951dea670130b2d24e100ed2cba",
-      "lastTierBProcessedAt": "2026-10-07 11:15:50",
-      "lastTierBCommitSha": "17cba0c1fce7d43c8b823234c682a37230b26e02"
+      "contentHash": "085eca96dbfcd2d95e75f273a13a5a1aa8ef10d6",
+      "lastTierBProcessedAt": "2026-10-07 11:35:15",
+      "lastTierBCommitSha": "71a5983eb7d552dd50fb0c7594f67d0020c9f1c1"
     },
     {
       "filePath": "artifacts/cli/vitest.config.ts",
@@ -3828,7 +3828,7 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/call-resolution-certification.ts",
-      "contentHash": "c2526febe4d111858125812f8032ba64c5bf0066",
+      "contentHash": "03ac6f2148e11e163bf5a6cf4e5244bcedfdfa63",
       "lastTierBProcessedAt": "2026-10-07 11:15:50",
       "lastTierBCommitSha": "17cba0c1fce7d43c8b823234c682a37230b26e02"
     },
@@ -5531,7 +5531,7 @@
       "lastTierBCommitSha": "fc1ed2f8ed45e38d3e7e860c9acbd2a76994f442"
     }
   ],
-  "lastIngestedSourceSha": "17cba0c1fce7d43c8b823234c682a37230b26e02",
+  "lastIngestedSourceSha": "71a5983eb7d552dd50fb0c7594f67d0020c9f1c1",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

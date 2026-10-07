@@ -24360,7 +24360,7 @@
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#validateArtifactProvenance","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#validateTrustedPin","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
+{"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#createDecision","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#matchesExpectedInputs","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#sameTemporalTrackIdentity","type":"calls"}
 {"source":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#matchesExpectedInputs","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#sameTrackIdentity","type":"calls"}
@@ -30265,13 +30265,6 @@
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#makeMockKnowledgeGitService","type":"contains"}
 {"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#ExpectedCertificationInputs","type":"imports"}
 {"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadCallResolutionCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts#anonymous","type":"contains"}
 {"source":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts","target":"lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts#anonymous@L49","type":"contains"}
@@ -30290,10 +30283,6 @@
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/contracts/src/index.ts","type":"imports"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-tier-b-canary.ts#isCallResolutionTierBCanary","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-tier-b-canary.ts#isCallResolutionTierBCanary","type":"calls"}
@@ -30361,12 +30350,6 @@
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts#resolveSites","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.integration.test.ts#resolveSites","target":"lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts#resolveEdgesForLanguageBuckets","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#isRuleSignatureCertified","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
-{"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/call-resolution-certification.ts#loadShippedQ1NamedImportCertificationArtifact","type":"calls"}
 {"source":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts","target":"lib/ui-core/test/call-resolution-certification-runtime.unit.test.ts#anonymous","type":"contains"}

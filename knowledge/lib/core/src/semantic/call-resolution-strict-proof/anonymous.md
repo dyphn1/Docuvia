@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-strict-proof.ts#anonymous@L425
+id: lib/core/src/semantic/call-resolution-strict-proof.ts#anonymous@L578
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-strict-proof.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/core/edge-computer.ts#anonymous@L364
+id: lib/ast-core/src/core/edge-computer.ts#anonymous@L795
 type: symbol
 name: anonymous
 filePath: lib/ast-core/src/core/edge-computer.ts

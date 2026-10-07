@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase3-q2-reexport-proof-audit.mts#anonymous@L477
+id: scripts/semantic-corpus/phase3-q2-reexport-proof-audit.mts#anonymous@L462
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase3-q2-reexport-proof-audit.mts

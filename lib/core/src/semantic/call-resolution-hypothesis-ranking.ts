@@ -348,6 +348,16 @@ export function decideResolution(
 ): ResolutionDecision {
   if (proposals.length === 0) return ambiguous("no-supported-candidates");
   if (unsupportedCallShape) return ambiguous("unsupported-call-shape");
+  if (
+    proposals.some(
+      (candidate) =>
+        candidate.declarations.length === 0 ||
+        candidate.declarations.some(
+          ({ kind, owner }) => kind === "unknown" && owner.kind === "program",
+        ),
+    )
+  )
+    return ambiguous("uncalibrated-signature");
   if (truncated) return ambiguous("candidate-list-truncated");
   if (!record)
     return ambiguous(

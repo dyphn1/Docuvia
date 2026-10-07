@@ -20,6 +20,7 @@ import type {
   CallResolutionHypothesisService,
 } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import {
+  candidateTargetKeyForExportedValue,
   candidateTargetKeyForDeclaration,
   resolveDirectConfiguredImportPath,
   resolveDirectRelativeImportPath,
@@ -55,6 +56,12 @@ export interface Phase2PinnedSnapshot {
   readonly snapshotHash: string;
 }
 
+export function rankingSignalsForTopCandidate(
+  candidates: readonly { readonly rankingSignals: readonly string[] }[],
+): readonly string[] {
+  return candidates[0]?.rankingSignals ?? [];
+}
+
 export interface Phase2SnapshotSourceResult {
   readonly snapshotId: string;
   readonly snapshotHash: string;
@@ -74,6 +81,7 @@ export interface Phase2SnapshotSourceResult {
   readonly ambiguousCandidateMappingCount: number;
   readonly parsedCallFileCount: number;
   readonly parsedImportTargetFileCount: number;
+  readonly parsedExportSourceFileCount: number;
   readonly parseFailureCount: number;
   readonly parseWallMs: number;
   readonly hypothesisWallMs: number;
@@ -102,6 +110,7 @@ function candidateAlias(
 
 function candidateAliasIndex(
   factRows: readonly Phase2FactFile[],
+  parsedByFile: ReadonlyMap<string, ParsedAstFileResult> = new Map(),
 ): ReadonlyMap<string, CandidateAliasInfo> {
   const byKey = new Map<string, CandidateAliasInfo>();
   for (const row of factRows) {
@@ -116,6 +125,18 @@ function candidateAliasIndex(
       current.aliases.add(alias);
       current.declarationCount++;
       byKey.set(key, current);
+    }
+    for (const exported of parsedByFile.get(row.filePath)?.data.exports ?? []) {
+      if (exported.type !== "variable") continue;
+      const key = candidateTargetKeyForExportedValue(
+        row.filePath,
+        exported.name,
+      );
+      if (byKey.has(key)) continue;
+      byKey.set(key, {
+        aliases: new Set([`${row.filePath}#${exported.name}`]),
+        declarationCount: 1,
+      });
     }
   }
   return byKey;
@@ -159,6 +180,20 @@ function addCandidateAliases(
   return { aliases: [...aliases].sort(), unmapped, ambiguous };
 }
 
+function candidateListAliases(
+  keys: readonly string[],
+  byKey: ReadonlyMap<string, CandidateAliasInfo>,
+): string[] {
+  const aliases = new Set<string>();
+  for (const key of keys) {
+    const info = byKey.get(key);
+    if (info?.aliases.size !== 1) continue;
+    const [alias] = info.aliases;
+    if (alias) aliases.add(alias);
+  }
+  return [...aliases].sort();
+}
+
 function candidateTargetMappingForKey(
   key: string,
   byKey: ReadonlyMap<string, CandidateAliasInfo>,
@@ -190,8 +225,9 @@ function candidateTargetMappingForKey(
 export function mapCandidateKeysToUnambiguousAliases(
   keys: readonly string[],
   factRows: readonly Phase2FactFile[],
+  parsedByFile: ReadonlyMap<string, ParsedAstFileResult> = new Map(),
 ): { aliases: string[]; unmapped: number; ambiguous: number } {
-  const byKey = candidateAliasIndex(factRows);
+  const byKey = candidateAliasIndex(factRows, parsedByFile);
   return addCandidateAliases(keys, byKey, aliasCollisionCounts(byKey));
 }
 
@@ -262,8 +298,11 @@ function observationWithoutCall(
     repoFamily: source.repoFamily,
     snapshotId: source.snapshotId,
     repoId: source.repoId,
+    callerFilePath: source.filePath,
+    revision: source.revision,
     ruleSignature: null,
     candidateTargetIds: [],
+    proposedCandidateTargetIds: [],
     topTargetId: null,
     topRankScore: null,
     tied: false,
@@ -336,6 +375,14 @@ function observationFromResult(
     aliasesByKey,
     aliasesByName,
   );
+  const proposedAliases = candidateListAliases(
+    result.candidates.map(({ targetKey }) => targetKey),
+    aliasesByKey,
+  );
+  const generatedListAliases = candidateListAliases(
+    result.generatedCandidateKeys,
+    aliasesByKey,
+  );
   const top = result.candidates[0];
   const topInfo = top ? aliasesByKey.get(top.targetKey) : undefined;
   const topAlias = topInfo?.aliases.size === 1 ? [...topInfo.aliases][0] : null;
@@ -390,11 +437,16 @@ function observationFromResult(
       repoFamily: source.repoFamily,
       snapshotId: source.snapshotId,
       repoId: source.repoId,
+      callerFilePath: source.filePath,
+      revision: source.revision,
       calleeKind: callSite.calleeKind,
       ruleSignature: result.ruleSignature,
       candidateTargetIds: generated.aliases,
+      generatedCandidateTargetIds: generatedListAliases,
+      proposedCandidateTargetIds: proposedAliases,
       topTargetId,
       topRankScore: top?.rankScore ?? null,
+      topRankingSignals: rankingSignalsForTopCandidate(result.candidates),
       tied:
         top !== undefined && result.candidates[1]?.rankScore === top.rankScore,
       candidateSetComplete: result.candidateSetComplete,
@@ -913,12 +965,34 @@ export async function processPhase2Snapshot(input: {
         frontier = [...new Set([...nextReexports, ...nextImports])];
       }
     }
+    const alreadyParsedPaths = new Set(
+      [
+        ...parsedCallFiles.parsed,
+        ...parsedAliasTargets.parsed,
+        ...parsedReexportTargets,
+      ].map(({ file }) => file),
+    );
+    const discoveredExportSources = factRows.flatMap((row) => {
+      if (alreadyParsedPaths.has(row.filePath)) return [];
+      const source = sourceBytesForPath(input.temporaryDirectory, row.filePath);
+      if (!source) return [];
+      if (source.hash !== row.fileContentSha256)
+        throw new Error(`Export source hash differs for ${row.filePath}.`);
+      return [source];
+    });
+    const parsedExportSources = discoveredExportSources.length
+      ? await input.processor.processFiles(
+          input.temporaryDirectory,
+          discoveredExportSources,
+        )
+      : { parsed: [], failures: [] };
     const parseWallMs = performance.now() - parseStarted;
     const parsedByFile = new Map<string, ParsedAstFileResult>(
       [
         ...parsedCallFiles.parsed,
         ...parsedAliasTargets.parsed,
         ...parsedReexportTargets,
+        ...parsedExportSources.parsed,
       ].map((row) => [row.file, row]),
     );
     const sourceHashesByFile = new Map(
@@ -926,12 +1000,13 @@ export async function processPhase2Snapshot(input: {
         ...discovered,
         ...discoveredAliasTargets,
         ...discoveredReexportTargets,
+        ...discoveredExportSources,
       ].map(({ file, hash }) => [file, hash]),
     );
     const factsByFile = new Map(
       factRows.map((row) => [row.filePath, row.declaredTypeFacts]),
     );
-    const aliasesByKey = candidateAliasIndex(factRows);
+    const aliasesByKey = candidateAliasIndex(factRows, parsedByFile);
     const aliasesByName = aliasCollisionCounts(aliasesByKey);
     const sourceFingerprint = canonicalHash({
       snapshotHash: snapshot.snapshotHash,
@@ -944,6 +1019,7 @@ export async function processPhase2Snapshot(input: {
         ...discovered,
         ...discoveredAliasTargets,
         ...discoveredReexportTargets,
+        ...discoveredExportSources,
       ].map(({ file, hash }) => ({ file, hash })),
     });
     const workspaceIndex = input.service.indexWorkspace({
@@ -1103,9 +1179,11 @@ export async function processPhase2Snapshot(input: {
       parsedCallFileCount: parsedCallFiles.parsed.length,
       parsedImportTargetFileCount:
         parsedAliasTargets.parsed.length + parsedReexportTargets.length,
+      parsedExportSourceFileCount: parsedExportSources.parsed.length,
       parseFailureCount:
         parsedCallFiles.failures.length +
         parsedAliasTargets.failures.length +
+        parsedExportSources.failures.length +
         reexportTargetFailures.length,
       parseWallMs,
       hypothesisWallMs: performance.now() - hypothesisStarted,

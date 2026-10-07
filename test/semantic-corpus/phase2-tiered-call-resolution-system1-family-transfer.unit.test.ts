@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateSystemOneFamilyTransferTrain } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mjs";
+import { evaluateSystemOneFamilyTransferAtThreshold } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-system1-family-transfer.mjs";
 import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
@@ -29,6 +29,7 @@ function observation(
     candidateSetComplete: false,
     truncated: false,
     unsupportedCallShape: false,
+    topRankingSignals: ["compatible-argument-count"],
     generatedCandidateCount: 1,
     proposedCandidateCount: 1,
     ...overrides,
@@ -90,10 +91,11 @@ describe("P2-B train-family transfer diagnostic", () => {
         label(sampleId, repoFamily, duplicateGroup),
     );
 
-    const result = evaluateSystemOneFamilyTransferTrain(
+    const result = evaluateSystemOneFamilyTransferAtThreshold(
       observations,
       labels,
       aliases,
+      0,
     );
     const familyA = result.folds.find(
       ({ heldOutFamily }) => heldOutFamily === "family-a",
@@ -123,20 +125,22 @@ describe("P2-B train-family transfer diagnostic", () => {
       "family-b",
       "family-c",
     );
-    const baseline = evaluateSystemOneFamilyTransferTrain(
+    const baseline = evaluateSystemOneFamilyTransferAtThreshold(
       observations,
       labels,
       aliases,
+      5,
     );
     const changedLabels = labels.map((row) =>
-      row.repoFamily === "family-a" && row.sampleId === "family-a-0"
+      row.repoFamily === "family-a" && row.sampleId === "family-a-5"
         ? { ...row, positiveTargetIds: [wrongTarget] }
         : row,
     );
-    const changed = evaluateSystemOneFamilyTransferTrain(
+    const changed = evaluateSystemOneFamilyTransferAtThreshold(
       observations,
       changedLabels,
       aliases,
+      5,
     );
     const before = baseline.folds.find(
       ({ heldOutFamily }) => heldOutFamily === "family-a",
@@ -147,6 +151,8 @@ describe("P2-B train-family transfer diagnostic", () => {
 
     expect(before.trainingLabelRowsHash).toBe(after.trainingLabelRowsHash);
     expect(before.thresholdScore).toBe(after.thresholdScore);
+    expect(before.thresholdScore).toBe(5);
+    expect(baseline.thresholdSelectionSource).toBe("calibration-freeze");
     expect(before.probabilityMap.fitHash).toBe(after.probabilityMap.fitHash);
     expect(before.heldOutMetrics.selectedCorrectSiteCount).toBeGreaterThan(
       after.heldOutMetrics.selectedCorrectSiteCount,
@@ -182,10 +188,11 @@ describe("P2-B train-family transfer diagnostic", () => {
       }),
     );
 
-    const result = evaluateSystemOneFamilyTransferTrain(
+    const result = evaluateSystemOneFamilyTransferAtThreshold(
       observations,
       labels,
       aliases,
+      0,
     );
     const held = result.folds.find(
       ({ heldOutFamily }) => heldOutFamily === "family-a",
@@ -210,6 +217,33 @@ describe("P2-B train-family transfer diagnostic", () => {
     });
     expect(held.candidateAvailability.allEligibleSiteCount).toBe(64);
     expect(held.candidateAvailability.generatedCandidateZeroSiteCount).toBe(1);
+    expect(held.abstentionAttribution).toMatchObject({
+      eligibleSiteCount: 64,
+      abstainedSiteCount: 3,
+      byCallShapeAndReason: [
+        {
+          callShape: "bare",
+          reason: "no-ranked-candidate",
+          abstainedSiteCount: 1,
+          zeroRankScoreSiteCount: 0,
+          missingSignalCounts: {},
+        },
+        {
+          callShape: "bare",
+          reason: "rank-tie",
+          abstainedSiteCount: 1,
+          zeroRankScoreSiteCount: 0,
+          missingSignalCounts: { "same-directory": 1 },
+        },
+        {
+          callShape: "bare",
+          reason: "unsupported-call-shape",
+          abstainedSiteCount: 1,
+          zeroRankScoreSiteCount: 0,
+          missingSignalCounts: { "same-directory": 1 },
+        },
+      ],
+    });
   });
 
   it("[happy][state-diff] reports probability mapping unsupported when the retained families have too few groups", () => {
@@ -222,10 +256,11 @@ describe("P2-B train-family transfer diagnostic", () => {
         label(sampleId, repoFamily, duplicateGroup),
     );
 
-    const result = evaluateSystemOneFamilyTransferTrain(
+    const result = evaluateSystemOneFamilyTransferAtThreshold(
       observations,
       labels,
       aliases,
+      0,
     );
 
     expect(result.folds).toHaveLength(2);
@@ -254,11 +289,74 @@ describe("P2-B train-family transfer diagnostic", () => {
     });
 
     expect(() =>
-      evaluateSystemOneFamilyTransferTrain(
+      evaluateSystemOneFamilyTransferAtThreshold(
         [testObservation],
         [testLabel],
         aliases,
+        0,
       ),
     ).toThrow(/TRAIN/);
+  });
+
+  it("[state-diff] attributes missing peer evidence and weak scores by held family and call shape", () => {
+    const { observations, labels } = combineFamilies(
+      "family-a",
+      "family-b",
+      "family-c",
+    );
+    observations.push(
+      observation("a-member-weak", "family-a", "a-member-weak-group", {
+        calleeKind: "member",
+        topRankScore: 10,
+        topRankingSignals: ["compatible-argument-count"],
+      }),
+      observation("a-member-partial", "family-a", "a-member-partial-group", {
+        calleeKind: "member",
+        topRankScore: 5,
+        topRankingSignals: ["partial-binding-peer-member-usage"],
+        unsupportedCallShape: true,
+      }),
+    );
+    labels.push(
+      label("a-member-weak", "family-a", "a-member-weak-group"),
+      label("a-member-partial", "family-a", "a-member-partial-group"),
+    );
+
+    const result = evaluateSystemOneFamilyTransferAtThreshold(
+      observations,
+      labels,
+      aliases,
+      20,
+    );
+    const held = result.folds.find(
+      ({ heldOutFamily }) => heldOutFamily === "family-a",
+    )!;
+
+    expect(held.abstentionAttribution.byCallShapeAndReason).toContainEqual(
+      expect.objectContaining({
+        callShape: "member",
+        reason: "score-below-threshold",
+        abstainedSiteCount: 1,
+        lowRankScoreSiteCount: 1,
+        missingSignalCounts: {
+          "explicit-receiver-type": 1,
+          "structural-peer-member-usage": 1,
+          "same-directory": 1,
+        },
+      }),
+    );
+    expect(held.abstentionAttribution.byCallShapeAndReason).toContainEqual(
+      expect.objectContaining({
+        callShape: "member",
+        reason: "unsupported-call-shape",
+        abstainedSiteCount: 1,
+        lowRankScoreSiteCount: 1,
+        missingSignalCounts: {
+          "explicit-receiver-type": 1,
+          "compatible-argument-count": 1,
+          "same-directory": 1,
+        },
+      }),
+    );
   });
 });

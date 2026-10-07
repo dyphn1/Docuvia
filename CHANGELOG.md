@@ -2,6 +2,12 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.19.2](https://github.com/dyphn1/Docuvia/compare/v1.19.1...v1.19.2) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** bring in [#573](https://github.com/dyphn1/Docuvia/issues/573) projection fixes for recertification ([ffbd597](https://github.com/dyphn1/Docuvia/commit/ffbd59732bf423c292ac5ea91e55df059f2af7b6))
+
 ## [1.19.1](https://github.com/dyphn1/Docuvia/compare/v1.19.0...v1.19.1) (2026-10-07)
 
 ### Bug Fixes

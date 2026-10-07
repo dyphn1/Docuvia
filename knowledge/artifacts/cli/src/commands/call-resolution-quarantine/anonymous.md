@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/call-resolution-quarantine.ts#anonymous@L157
+id: artifacts/cli/src/commands/call-resolution-quarantine.ts#anonymous@L119
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/call-resolution-quarantine.ts

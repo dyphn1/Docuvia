@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.unit.test.ts#isFile@L139
+id: lib/core/src/graph/scope-resolver.unit.test.ts#isFile@L489
 type: symbol
 name: isFile
 filePath: lib/core/src/graph/scope-resolver.unit.test.ts

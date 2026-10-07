@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/test/integration/commands/call-resolution-delta-reproof.integration.test.ts#anonymous@L550
+id: artifacts/cli/test/integration/commands/call-resolution-delta-reproof.integration.test.ts#callerSource
 type: symbol
-name: anonymous
+name: callerSource
 filePath: artifacts/cli/test/integration/commands/call-resolution-delta-reproof.integration.test.ts
 ---
-# Symbol: anonymous
+# Symbol: callerSource
 
 File: `artifacts/cli/test/integration/commands/call-resolution-delta-reproof.integration.test.ts`

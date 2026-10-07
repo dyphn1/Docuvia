@@ -1,9 +1,0 @@
----
-id: lib/core/src/semantic/system1/eval/system1-eval-policy.ts#exact
-type: symbol
-name: exact
-filePath: lib/core/src/semantic/system1/eval/system1-eval-policy.ts
----
-# Symbol: exact
-
-File: `lib/core/src/semantic/system1/eval/system1-eval-policy.ts`

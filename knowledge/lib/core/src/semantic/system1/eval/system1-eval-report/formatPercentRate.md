@@ -1,9 +1,0 @@
----
-id: lib/core/src/semantic/system1/eval/system1-eval-report.ts#formatPercentRate
-type: symbol
-name: formatPercentRate
-filePath: lib/core/src/semantic/system1/eval/system1-eval-report.ts
----
-# Symbol: formatPercentRate
-
-File: `lib/core/src/semantic/system1/eval/system1-eval-report.ts`

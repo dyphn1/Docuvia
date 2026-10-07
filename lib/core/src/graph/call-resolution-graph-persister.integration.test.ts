@@ -223,8 +223,8 @@ describe("GraphPersister call-resolution integration", () => {
     const owner = nodes.find((node) => node.node_key === `${filePath}#Owner`);
     const method = nodes.find((node) => node.name === "method");
     const links = store.graph.getAllLinks();
-    expect(owner).toBeDefined();
-    expect(method).toBeDefined();
+    expect(owner?.node_key).toBe(`${filePath}#Owner`);
+    expect(method?.name).toBe("method");
     expect(
       links.some(
         (link) =>
@@ -1037,7 +1037,7 @@ describe("GraphPersister call-resolution integration", () => {
       .find(
         (node) => node.node_key?.startsWith("src/caller.ts#anonymous") === true,
       );
-    expect(callbackNode).toBeDefined();
+    expect(callbackNode?.node_key).toMatch(/^src\/caller\.ts#anonymous/);
     expect(store.graph.getIncomingRelations(callbackNode!.id)).toContainEqual(
       expect.objectContaining({
         name: "outer",

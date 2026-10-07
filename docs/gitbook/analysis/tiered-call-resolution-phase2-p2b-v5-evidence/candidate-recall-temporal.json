@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-candidate-list-recall/1",
+  "evaluatedAt": "2026-10-06T20:05:56.719Z",
+  "split": "temporal",
+  "licenseExcludedEnterprisePathSampleCount": 0,
+  "provenance": {
+    "licensePolicyVersion": "phase2-evaluation-license-v1",
+    "predictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+    "labelRowsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "correctedFactsSha256": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87",
+    "sourceInputHashes": {
+      "callsites.jsonl": "ee757c0d9cddfc4628d9ab89b1c79bf653c0bc3f0f66ae474a87df5685407bce",
+      "declared-type-facts-pass-a.jsonl": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87"
+    },
+    "implementationHash": "27bb8f869ea9b664e78170ff25b84e66ae93b5684b873ebe47cb16301c45b286",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v7",
+    "snapshotScopedOracleMappingHash": "bf6b303fe926abf288b3d34248e4b728f68dc72d582cac3947359755781c5589",
+    "uniqueOracleAliasCount": 59175,
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "candidateOracleMappingScopeCount": 8,
+    "allOracleAliasCount": 73824,
+    "candidateOracleMappingImplementationHash": "3d2b7530abcb054fe549315e771e14b11c6274ce3f3e087ece0324f0eaace03b",
+    "candidateOracleMappingImplementationFiles": {
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts": "6196ea238af4dfb45b9a97b74fbbd9abd9116657abd1e28ff66ac3c921064978",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-evaluation.mts": "fdf2fbf5b8c5f093263ab06cf7d305da9ef7962c86d3364ba9fb6e55e5ae73b6",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "63df45e95908655de6b48e2e7f32f46052e93d7e4ee0259112d71bb9a71fb310"
+    }
+  },
+  "candidateRecallDomain": {
+    "totalConfirmedPositiveSiteCount": 0,
+    "uniqueMappedPositiveTargetOccurrenceCount": 0,
+    "ambiguousPositiveTargetOccurrenceCount": 0,
+    "unmappedPositiveTargetOccurrenceCount": 0,
+    "uniqueMappedPositiveSiteCount": 0,
+    "sitesWithoutUniquePositiveTargetCount": 0
+  },
+  "metrics": {
+    "split": "temporal",
+    "eligibleSiteCount": 0,
+    "candidateGoldTargetCount": 0,
+    "coveredGoldTargetCount": 0,
+    "candidateRecall": 0,
+    "zeroCandidateSiteCount": 0,
+    "zeroCandidateRate": 0,
+    "missSiteCount": 0,
+    "zeroCandidateMissSiteCount": 0,
+    "candidateButMissSiteCount": 0,
+    "candidateWithoutOracleIdSiteCount": 0,
+    "unmappedCandidateCount": 0,
+    "ambiguousCandidateMappingCount": 0,
+    "candidateSetSizeP50": 0,
+    "candidateSetSizeP95": 0,
+    "candidateSetSizeMax": 0,
+    "families": [],
+    "callShapes": [],
+    "missingEvidenceReasons": {}
+  },
+  "tierACandidateListRecall": {
+    "split": "temporal",
+    "observedSiteCount": 0,
+    "ambiguousTargetSiteCount": 0,
+    "resolvedSiteCount": 0,
+    "candidateCoveredSiteCount": 0,
+    "candidateRecall": 0,
+    "familyMeanRecall": null,
+    "worstFamilyRecall": null,
+    "families": [],
+    "callShapes": [],
+    "zeroCandidateSiteCount": 0,
+    "candidateListSize": {
+      "p50": 0,
+      "p75": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "multiCandidateSiteCount": 0,
+    "multiCandidateSiteRate": 0,
+    "singleCandidateSiteCount": 0,
+    "singleCandidateSiteRate": 0,
+    "correctSingleCandidateCount": 0,
+    "noLspResolvableRate": 0,
+    "singleCandidateAcceptedPrecision": null,
+    "truncatedSiteCount": 0,
+    "truncatedSiteRate": 0,
+    "boundedProposalList": {
+      "resolvedSiteCount": 0,
+      "candidateCoveredSiteCount": 0,
+      "candidateRecall": 0,
+      "familyMeanRecall": null,
+      "worstFamilyRecall": null,
+      "families": [],
+      "callShapes": [],
+      "zeroCandidateSiteCount": 0,
+      "candidateListSize": {
+        "p50": 0,
+        "p75": 0,
+        "p90": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "multiCandidateSiteCount": 0,
+      "multiCandidateSiteRate": 0,
+      "singleCandidateSiteCount": 0,
+      "singleCandidateSiteRate": 0,
+      "correctSingleCandidateCount": 0,
+      "noLspResolvableRate": 0,
+      "singleCandidateAcceptedPrecision": null,
+      "truncatedSiteCount": 0,
+      "truncatedSiteRate": 0
+    }
+  },
+  "candidateSetDistribution": {
+    "overall": {
+      "name": "all eligible sites",
+      "eligibleSiteCount": 0,
+      "zeroCandidateSiteCount": 0,
+      "zeroCandidateRate": 0,
+      "candidateSetSizeP50": 0,
+      "candidateSetSizeP95": 0,
+      "candidateSetSizeMax": 0,
+      "candidateWithoutOracleIdSiteCount": 0,
+      "ambiguousCandidateMappingCount": 0,
+      "unmappedCandidateCount": 0
+    },
+    "byFamily": [],
+    "byCallShape": []
+  }
+}

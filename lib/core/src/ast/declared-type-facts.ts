@@ -1114,6 +1114,52 @@ function appendFreeCallableDeclaration(
   accumulator.declarations.push(freeCallableDeclaration(node));
 }
 
+function isSimpleTopLevelValueNode(node: Node): boolean {
+  if (node.type !== "variable_declarator" || node.hasError) return false;
+  const nameNode = node.childForFieldName("name");
+  if (
+    !nameNode ||
+    !SIMPLE_NAME_NODE_TYPES.has(nameNode.type) ||
+    nearestOwner(node.parent).kind !== "program"
+  )
+    return false;
+  const value = node.childForFieldName("value");
+  return !value || !FREE_CALLABLE_NODE_TYPES.has(value.type);
+}
+
+function hasDirectExportAncestor(node: Node): boolean {
+  let current: Node | null = node.parent;
+  while (current && current.type !== "program") {
+    if (current.type === "export_statement") return true;
+    if (OWNER_NODE_KINDS.has(current.type)) return false;
+    current = current.parent;
+  }
+  return false;
+}
+
+function directlyExportedTopLevelValue(
+  node: Node,
+): AstDeclaredDeclaration | null {
+  if (!isSimpleTopLevelValueNode(node) || !hasDirectExportAncestor(node))
+    return null;
+  const nameNode = node.childForFieldName("name");
+  if (!nameNode) return null;
+  const owner = nearestOwner(node.parent);
+  return {
+    kind: "unknown",
+    name: nameNode.text,
+    declarationSpan: span(node),
+    owner,
+    lexicalScopeSpan: lexicalScope(node),
+    visibility: null,
+    isStatic: false,
+    isAbstract: false,
+    isOptional: false,
+    arity: null,
+    genericTypeParameterNames: [],
+  };
+}
+
 function collectDeclaredFactsForNode(
   node: Node,
   language: AstDeclaredTypeLanguage,
@@ -1123,6 +1169,8 @@ function collectDeclaredFactsForNode(
   appendNodeTypeFacts(node, language, writePositionsByName, accumulator);
   appendOwnerInventory(node, accumulator);
   appendFreeCallableDeclaration(node, accumulator);
+  const exportedValue = directlyExportedTopLevelValue(node);
+  if (exportedValue) accumulator.declarations.push(exportedValue);
 }
 
 /**

@@ -16,6 +16,10 @@ import type {
   Phase2EvaluationLabel,
   Phase2EvaluationObservation,
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
+import {
+  classifyEvaluationRowLicense,
+  filterEvaluationRowsByLicense,
+} from "./phase2-tiered-call-resolution-license-policy.mjs";
 
 export const PHASE2_ROOT = path.resolve(import.meta.dirname, "../..");
 export const PHASE2_DEFAULT_REPOSITORIES = path.join(
@@ -239,16 +243,14 @@ export function labelsForSplit(
   split: string,
   expectedSampleIds: ReadonlySet<string>,
 ): Phase2LabelsRow[] {
-  const rows = readJsonl<Phase2LabelsRow>(
+  const splitRows = readJsonl<Phase2LabelsRow>(
     path.join(PHASE2_PHASE1, "labels.jsonl"),
   ).filter((row) => row.split === split);
+  const rows = splitRows.filter((row) => expectedSampleIds.has(row.sampleId));
   if (rows.length !== expectedSampleIds.size)
-    throw new Error(
-      `${split} label count ${rows.length} differs from source denominator ${expectedSampleIds.size}.`,
-    );
-  for (const row of rows)
-    if (!expectedSampleIds.has(row.sampleId))
-      throw new Error(`Unexpected ${split} label ${row.sampleId}.`);
+    throw new Error(`${split} labels do not cover the requested source rows.`);
+  if (new Set(rows.map((row) => row.sampleId)).size !== rows.length)
+    throw new Error(`${split} labels contain duplicate requested sample IDs.`);
   return rows;
 }
 
@@ -263,15 +265,12 @@ export async function labelsForSplitIsolated(
   const lines = createInterface({ input, crlfDelay: Infinity });
   for await (const line of lines) {
     const row = parseJsonlRowForSplit<Phase2LabelsRow>(line, split);
-    if (row) rows.push(row);
+    if (row && expectedSampleIds.has(row.sampleId)) rows.push(row);
   }
   if (rows.length !== expectedSampleIds.size)
-    throw new Error(
-      `${split} label count ${rows.length} differs from source denominator ${expectedSampleIds.size}.`,
-    );
-  for (const row of rows)
-    if (!expectedSampleIds.has(row.sampleId))
-      throw new Error(`Unexpected ${split} label ${row.sampleId}.`);
+    throw new Error(`${split} labels do not cover the requested source rows.`);
+  if (new Set(rows.map((row) => row.sampleId)).size !== rows.length)
+    throw new Error(`${split} labels contain duplicate requested sample IDs.`);
   return rows;
 }
 
@@ -285,6 +284,48 @@ export function allFactRows(): Phase2FactFile[] {
   return readJsonl<Phase2FactFile>(
     path.join(PHASE2_PHASE1_PARITY, "declared-type-facts-pass-a.jsonl"),
   );
+}
+
+export interface LicensedPhase2CorpusInputs {
+  readonly sourceRows: readonly Phase2CorpusSource[];
+  readonly factRows: readonly Phase2FactFile[];
+  readonly sourceInputHashes: Readonly<Record<string, string>>;
+  readonly excludedRepositorySampleCount: number;
+  readonly excludedEnterprisePathSampleCount: number;
+}
+
+export function licensedPhase2CorpusInputs(): LicensedPhase2CorpusInputs {
+  const sourceResult = filterEvaluationRowsByLicense(
+    allSourceRows().map((row) => ({ ...row, callerFilePath: row.filePath })),
+  );
+  const sourceRows = sourceResult.allowedRows.map(
+    ({ callerFilePath: _callerFilePath, ...row }) => row,
+  );
+  const factResult = filterEvaluationRowsByLicense(
+    allFactRows().map((row) => ({ ...row, callerFilePath: row.filePath })),
+  );
+  const factRows = factResult.allowedRows.map(
+    ({ callerFilePath: _callerFilePath, ...row }) => row,
+  );
+  if (new Set(sourceRows.map((row) => row.sampleId)).size !== sourceRows.length)
+    throw new Error(
+      "Licensed Phase 1 source rows contain duplicate sample IDs.",
+    );
+  return {
+    sourceRows,
+    factRows,
+    sourceInputHashes: {
+      "callsites.jsonl": canonicalHash(sourceRows),
+      "declared-type-facts-pass-a.jsonl": canonicalHash(factRows),
+    },
+    excludedRepositorySampleCount: sourceResult.excludedRepositoryRowCount,
+    excludedEnterprisePathSampleCount: sourceResult.excludedPathRowCount,
+  };
+}
+
+export function assertCorpusSnapshotAllowed(repoId: string): void {
+  if (classifyEvaluationRowLicense({ repoId }) !== "allowed")
+    throw new Error(`Excluded repository ${repoId} cannot enter a corpus run.`);
 }
 
 export function sortedRows<T extends { readonly sampleId: string }>(

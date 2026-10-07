@@ -56,6 +56,8 @@ export interface ParsedImportDescriptor {
   isTypeOnly?: boolean;
   /** True only for the default binding in an ordinary `import X, { y }` statement. */
   isCombinedDefaultImport?: boolean;
+  /** True for an ordinary standalone `import X from "..."` default binding. */
+  isDefaultImport?: boolean;
 }
 
 /**
@@ -271,6 +273,7 @@ function collectDefaultImport(
       localName: defaultId.text,
       originalName: WILDCARD_IMPORT_MARKER,
       modulePath,
+      isDefaultImport: true,
       ...(isTypeOnly ? { isTypeOnly: true } : {}),
     });
 }

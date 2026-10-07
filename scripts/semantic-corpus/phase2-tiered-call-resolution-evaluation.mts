@@ -16,11 +16,20 @@ export interface Phase2EvaluationObservation {
   readonly snapshotId?: string;
   /** Repository identity from the pinned source sidecar, not the oracle label. */
   readonly repoId?: string;
+  /** Caller path is required for license-guarded split evaluation artifacts. */
+  readonly callerFilePath?: string;
+  /** Pinned source revision, used to keep regression-only snapshots out of tuning. */
+  readonly revision?: string;
   readonly calleeKind?: AstCallSiteShapeFact["calleeKind"] | "unmapped";
   readonly ruleSignature: string | null;
   readonly candidateTargetIds: readonly string[];
+  /** Unique oracle target IDs in the bounded proposal list passed downstream. */
+  readonly proposedCandidateTargetIds?: readonly string[];
+  /** Candidate symbol IDs before proposal filtering and the candidate cap. */
+  readonly generatedCandidateTargetIds?: readonly string[];
   readonly topTargetId: string | null;
   readonly topRankScore: number | null;
+  readonly topRankingSignals?: readonly string[];
   readonly tied: boolean;
   readonly candidateSetComplete: boolean;
   readonly truncated: boolean;
@@ -62,6 +71,67 @@ export interface Phase2CandidateRecallMetrics {
   readonly families: readonly Phase2CandidateRecallGroupMetrics[];
   readonly callShapes: readonly Phase2CandidateRecallGroupMetrics[];
   readonly missingEvidenceReasons: Readonly<Record<string, number>>;
+}
+
+export interface TierACandidateListGroupMetrics {
+  readonly name: string;
+  readonly resolvedSiteCount: number;
+  readonly candidateCoveredSiteCount: number;
+  readonly candidateRecall: number;
+  readonly zeroCandidateSiteCount: number;
+  readonly singleCandidateSiteCount: number;
+  readonly multiCandidateSiteCount: number;
+  readonly correctSingleCandidateCount: number;
+  readonly noLspResolvableRate: number;
+  readonly singleCandidateAcceptedPrecision: number | null;
+  readonly truncatedSiteCount: number;
+  readonly truncatedSiteRate: number;
+}
+
+export interface TierACandidateListRecallMetrics extends TierACandidateListSummary {
+  readonly split: string;
+  readonly observedSiteCount: number;
+  readonly ambiguousTargetSiteCount: number;
+  /** Ranked proposal list after filters and the configured candidate bound. */
+  readonly boundedProposalList: TierACandidateListSummary;
+}
+
+export interface TierACandidateListSummary {
+  readonly resolvedSiteCount: number;
+  readonly candidateCoveredSiteCount: number;
+  readonly candidateRecall: number;
+  readonly familyMeanRecall: number | null;
+  readonly worstFamilyRecall: number | null;
+  readonly families: readonly TierACandidateListGroupMetrics[];
+  readonly callShapes: readonly TierACandidateListGroupMetrics[];
+  readonly zeroCandidateSiteCount: number;
+  readonly candidateListSize: {
+    readonly p50: number;
+    readonly p75: number;
+    readonly p90: number;
+    readonly p99: number;
+    readonly max: number;
+  };
+  readonly multiCandidateSiteCount: number;
+  readonly multiCandidateSiteRate: number;
+  readonly singleCandidateSiteCount: number;
+  readonly singleCandidateSiteRate: number;
+  readonly correctSingleCandidateCount: number;
+  readonly noLspResolvableRate: number;
+  readonly singleCandidateAcceptedPrecision: number | null;
+  readonly truncatedSiteCount: number;
+  readonly truncatedSiteRate: number;
+}
+
+interface TierACandidateListBucket {
+  resolvedSiteCount: number;
+  candidateCoveredSiteCount: number;
+  zeroCandidateSiteCount: number;
+  singleCandidateSiteCount: number;
+  multiCandidateSiteCount: number;
+  correctSingleCandidateCount: number;
+  truncatedSiteCount: number;
+  readonly candidateListSizes: number[];
 }
 
 interface CandidateRecallBucket {
@@ -312,6 +382,225 @@ function candidateSetQuantile(
 ): number {
   const sorted = [...candidateSetSizes].sort((left, right) => left - right);
   return sorted[Math.max(0, Math.ceil(quantile * sorted.length) - 1)] ?? 0;
+}
+
+function tierACandidateListBucket(): TierACandidateListBucket {
+  return {
+    resolvedSiteCount: 0,
+    candidateCoveredSiteCount: 0,
+    zeroCandidateSiteCount: 0,
+    singleCandidateSiteCount: 0,
+    multiCandidateSiteCount: 0,
+    correctSingleCandidateCount: 0,
+    truncatedSiteCount: 0,
+    candidateListSizes: [],
+  };
+}
+
+function tierAGroupMetrics(
+  name: string,
+  bucket: TierACandidateListBucket,
+): TierACandidateListGroupMetrics {
+  const candidateRecall =
+    bucket.resolvedSiteCount === 0
+      ? 0
+      : bucket.candidateCoveredSiteCount / bucket.resolvedSiteCount;
+  return {
+    name,
+    resolvedSiteCount: bucket.resolvedSiteCount,
+    candidateCoveredSiteCount: bucket.candidateCoveredSiteCount,
+    candidateRecall,
+    zeroCandidateSiteCount: bucket.zeroCandidateSiteCount,
+    singleCandidateSiteCount: bucket.singleCandidateSiteCount,
+    multiCandidateSiteCount: bucket.multiCandidateSiteCount,
+    correctSingleCandidateCount: bucket.correctSingleCandidateCount,
+    noLspResolvableRate:
+      bucket.resolvedSiteCount === 0
+        ? 0
+        : bucket.correctSingleCandidateCount / bucket.resolvedSiteCount,
+    singleCandidateAcceptedPrecision:
+      bucket.singleCandidateSiteCount === 0
+        ? null
+        : bucket.correctSingleCandidateCount / bucket.singleCandidateSiteCount,
+    truncatedSiteCount: bucket.truncatedSiteCount,
+    truncatedSiteRate:
+      bucket.resolvedSiteCount === 0
+        ? 0
+        : bucket.truncatedSiteCount / bucket.resolvedSiteCount,
+  };
+}
+
+/**
+ * Measures raw candidate generation and the bounded proposal list for every
+ * confirmed single-target oracle site. Neither list is restricted to Tier-A
+ * ranking-eligible sites.
+ */
+export function evaluateTierACandidateListRecall(
+  observations: readonly Phase2EvaluationObservation[],
+  labels: readonly Phase2EvaluationLabel[],
+  split = observations[0]?.split ?? "unknown",
+): TierACandidateListRecallMetrics {
+  const labelsBySample = labelIndex(observations, labels, split);
+  const generatedOverall = tierACandidateListBucket();
+  const proposalOverall = tierACandidateListBucket();
+  const generatedFamilyBuckets = new Map<string, TierACandidateListBucket>();
+  const proposalFamilyBuckets = new Map<string, TierACandidateListBucket>();
+  const generatedCallShapeBuckets = new Map<string, TierACandidateListBucket>();
+  const proposalCallShapeBuckets = new Map<string, TierACandidateListBucket>();
+  let ambiguousTargetSiteCount = 0;
+
+  for (const observation of observations) {
+    const label = labelsBySample.get(observation.sampleId)!;
+    if (
+      label.reviewStatus !== "confirmed" ||
+      label.positiveTargetIds.length === 0
+    )
+      continue;
+    if (label.positiveTargetIds.length !== 1) {
+      ambiguousTargetSiteCount++;
+      continue;
+    }
+
+    const goldTargetId = candidateListTargetId(label.positiveTargetIds[0]!);
+    const generatedIds =
+      observation.generatedCandidateTargetIds ?? observation.candidateTargetIds;
+    const proposalIds =
+      observation.proposedCandidateTargetIds ?? observation.candidateTargetIds;
+    const generatedCount =
+      observation.generatedCandidateCount ?? generatedIds.length;
+    const proposalCount =
+      observation.proposedCandidateCount ?? proposalIds.length;
+    const addTo = (
+      bucket: TierACandidateListBucket,
+      ids: readonly string[],
+      candidateCount: number,
+      isTruncated: boolean,
+    ) => {
+      const covered = new Set(ids.map(candidateListTargetId)).has(goldTargetId);
+      const singleCandidate = candidateCount === 1;
+      const correctSingleCandidate = singleCandidate && covered;
+      bucket.resolvedSiteCount++;
+      if (covered) bucket.candidateCoveredSiteCount++;
+      if (candidateCount === 0) bucket.zeroCandidateSiteCount++;
+      if (singleCandidate) bucket.singleCandidateSiteCount++;
+      if (candidateCount > 1) bucket.multiCandidateSiteCount++;
+      if (correctSingleCandidate) bucket.correctSingleCandidateCount++;
+      if (isTruncated) bucket.truncatedSiteCount++;
+      bucket.candidateListSizes.push(candidateCount);
+    };
+    addTo(generatedOverall, generatedIds, generatedCount, false);
+    addTo(proposalOverall, proposalIds, proposalCount, observation.truncated);
+    const generatedFamily =
+      generatedFamilyBuckets.get(label.repoFamily) ??
+      tierACandidateListBucket();
+    const proposalFamily =
+      proposalFamilyBuckets.get(label.repoFamily) ?? tierACandidateListBucket();
+    addTo(generatedFamily, generatedIds, generatedCount, false);
+    addTo(proposalFamily, proposalIds, proposalCount, observation.truncated);
+    generatedFamilyBuckets.set(label.repoFamily, generatedFamily);
+    proposalFamilyBuckets.set(label.repoFamily, proposalFamily);
+    const callShape = observation.calleeKind ?? "unmapped";
+    const generatedShape =
+      generatedCallShapeBuckets.get(callShape) ?? tierACandidateListBucket();
+    const proposalShape =
+      proposalCallShapeBuckets.get(callShape) ?? tierACandidateListBucket();
+    addTo(generatedShape, generatedIds, generatedCount, false);
+    addTo(proposalShape, proposalIds, proposalCount, observation.truncated);
+    generatedCallShapeBuckets.set(callShape, generatedShape);
+    proposalCallShapeBuckets.set(callShape, proposalShape);
+  }
+
+  const generatedSummary = tierAListSummary(
+    generatedOverall,
+    generatedFamilyBuckets,
+    generatedCallShapeBuckets,
+  );
+  const proposalSummary = tierAListSummary(
+    proposalOverall,
+    proposalFamilyBuckets,
+    proposalCallShapeBuckets,
+  );
+  return {
+    split,
+    observedSiteCount: observations.length,
+    ambiguousTargetSiteCount,
+    ...generatedSummary,
+    boundedProposalList: proposalSummary,
+  };
+}
+
+function tierAListSummary(
+  overall: TierACandidateListBucket,
+  familyBuckets: ReadonlyMap<string, TierACandidateListBucket>,
+  callShapeBuckets: ReadonlyMap<string, TierACandidateListBucket>,
+): TierACandidateListSummary {
+  const families = [...familyBuckets]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, bucket]) => tierAGroupMetrics(name, bucket));
+  const callShapes = [...callShapeBuckets]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([name, bucket]) => tierAGroupMetrics(name, bucket));
+  const familyRecalls = families.map(({ candidateRecall }) => candidateRecall);
+  return {
+    resolvedSiteCount: overall.resolvedSiteCount,
+    candidateCoveredSiteCount: overall.candidateCoveredSiteCount,
+    candidateRecall:
+      overall.resolvedSiteCount === 0
+        ? 0
+        : overall.candidateCoveredSiteCount / overall.resolvedSiteCount,
+    familyMeanRecall:
+      familyRecalls.length === 0
+        ? null
+        : familyRecalls.reduce((sum, value) => sum + value, 0) /
+          familyRecalls.length,
+    worstFamilyRecall:
+      familyRecalls.length === 0 ? null : Math.min(...familyRecalls),
+    families,
+    callShapes,
+    zeroCandidateSiteCount: overall.zeroCandidateSiteCount,
+    candidateListSize: {
+      p50: candidateSetQuantile(overall.candidateListSizes, 0.5),
+      p75: candidateSetQuantile(overall.candidateListSizes, 0.75),
+      p90: candidateSetQuantile(overall.candidateListSizes, 0.9),
+      p99: candidateSetQuantile(overall.candidateListSizes, 0.99),
+      max: Math.max(0, ...overall.candidateListSizes),
+    },
+    multiCandidateSiteCount: overall.multiCandidateSiteCount,
+    multiCandidateSiteRate:
+      overall.resolvedSiteCount === 0
+        ? 0
+        : overall.multiCandidateSiteCount / overall.resolvedSiteCount,
+    singleCandidateSiteCount: overall.singleCandidateSiteCount,
+    singleCandidateSiteRate:
+      overall.resolvedSiteCount === 0
+        ? 0
+        : overall.singleCandidateSiteCount / overall.resolvedSiteCount,
+    correctSingleCandidateCount: overall.correctSingleCandidateCount,
+    noLspResolvableRate:
+      overall.resolvedSiteCount === 0
+        ? 0
+        : overall.correctSingleCandidateCount / overall.resolvedSiteCount,
+    singleCandidateAcceptedPrecision:
+      overall.singleCandidateSiteCount === 0
+        ? null
+        : overall.correctSingleCandidateCount /
+          overall.singleCandidateSiteCount,
+    truncatedSiteCount: overall.truncatedSiteCount,
+    truncatedSiteRate:
+      overall.resolvedSiteCount === 0
+        ? 0
+        : overall.truncatedSiteCount / overall.resolvedSiteCount,
+  };
+}
+
+/** Oracle labels carry target file plus member name; candidate IDs may include owner names. */
+function candidateListTargetId(targetId: string): string {
+  const canonical = targetId.replace(/@L\d+(?:#\d+)?$/u, "");
+  const separator = canonical.indexOf("#");
+  if (separator < 0) return canonical;
+  const filePath = canonical.slice(0, separator);
+  const symbol = canonical.slice(separator + 1);
+  return `${filePath}#${symbol.slice(symbol.lastIndexOf(".") + 1)}`;
 }
 
 /** Candidate recall deliberately keeps incomplete and unsupported rows in the denominator. */

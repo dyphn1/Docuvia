@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-system1-v6-v7-calibration-and-transfer-comparison/2",
+  "licensePolicyVersion": "phase2-evaluation-license-v1",
+  "splitsRead": ["calibration", "train", "test"],
+  "labelSource": "pinned Phase 1 oracle labels; calibration used for threshold selection; TRAIN LOFO descriptive; TEST regression-only",
+  "currentV7Provenance": {
+    "candidateGeneratorVersion": "declared-member-hypothesis-v7",
+    "rankingPolicyVersion": "ordered-evidence-v1",
+    "threshold": 0,
+    "thresholdCandidateCount": 9,
+    "thresholdQualifyingCount": 9,
+    "sourcePredictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+    "sourceImplementationHash": "27bb8f869ea9b664e78170ff25b84e66ae93b5684b873ebe47cb16301c45b286"
+  },
+  "calibration": {
+    "v6": {
+      "generator": "declared-member-hypothesis-v6",
+      "rankingPolicy": "ordered-evidence-v1",
+      "threshold": 0,
+      "thresholdCandidateCount": 9,
+      "thresholdQualifyingCount": 9,
+      "eligibleSiteCount": 2966,
+      "selectedSiteCount": 2669,
+      "coverage": 0.8998651382333108,
+      "selectedCorrectSiteCount": 2662,
+      "acceptedSitePrecision": 0.9973772948669913,
+      "duplicateGroupPrecision": 0.9910057236304171,
+      "rawTop1": 0.8985165205664194,
+      "endToEndTop1": 0.8975050573162509,
+      "familyMeanEndToEndTop1": 0.9066973825698397,
+      "worstFamilyEndToEndTop1": 0.8573052870949404,
+      "siteWeightedEce": 0.04044390122572323,
+      "siteWeightedBrier": 0.04879699330765023,
+      "duplicateGroupWeightedEce": 0.004184029431416047,
+      "duplicateGroupWeightedBrier": 0.006271242095000871
+    },
+    "v7": {
+      "generator": "declared-member-hypothesis-v7",
+      "rankingPolicy": "ordered-evidence-v1",
+      "threshold": 0,
+      "thresholdCandidateCount": 9,
+      "thresholdQualifyingCount": 9,
+      "eligibleSiteCount": 2966,
+      "selectedSiteCount": 2682,
+      "coverage": 0.904248145650708,
+      "selectedCorrectSiteCount": 2675,
+      "acceptedSitePrecision": 0.9973900074571216,
+      "duplicateGroupPrecision": 0.9910496338486574,
+      "rawTop1": 0.9076196898179366,
+      "endToEndTop1": 0.901888064733648,
+      "familyMeanEndToEndTop1": 0.912082635262466,
+      "worstFamilyEndToEndTop1": 0.8573052870949404,
+      "siteWeightedEce": 0.04025004907022968,
+      "siteWeightedBrier": 0.04856402229111676,
+      "duplicateGroupWeightedEce": 0.004161787267975882,
+      "duplicateGroupWeightedBrier": 0.006240641035279697,
+      "wrongAcceptedSiteCount": 7,
+      "wrongAccepts": [
+        {
+          "site": "src/app/actions.ts:404:31",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+          "oracleTargets": ["src/lib/github.ts#getProfile"],
+          "score": 1,
+          "rankingSignals": ["same-directory"],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+            "score": 1,
+            "rankingSignals": ["same-directory"]
+          },
+          "previousV7AddedOracleCandidate": ["src/lib/github.ts#getProfile"],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/app/actions.ts:439:11",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+          "oracleTargets": ["src/lib/github.ts#getProfile"],
+          "score": 1,
+          "rankingSignals": ["same-directory"],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+            "score": 1,
+            "rankingSignals": ["same-directory"]
+          },
+          "previousV7AddedOracleCandidate": ["src/lib/github.ts#getProfile"],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/app/actions.ts:448:30",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+          "oracleTargets": ["src/lib/github.ts#getProfile"],
+          "score": 1,
+          "rankingSignals": ["same-directory"],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/actions.scan-policy.test.ts#getProfile",
+            "score": 1,
+            "rankingSignals": ["same-directory"]
+          },
+          "previousV7AddedOracleCandidate": ["src/lib/github.ts#getProfile"],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/app/actions.ts:506:24",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/actions.scan-policy.test.ts#getUserRepos",
+          "oracleTargets": ["src/lib/github.ts#getUserRepos"],
+          "score": 1,
+          "rankingSignals": ["same-directory"],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/actions.scan-policy.test.ts#getUserRepos",
+            "score": 1,
+            "rankingSignals": ["same-directory"]
+          },
+          "previousV7AddedOracleCandidate": ["src/lib/github.ts#getUserRepos"],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/app/admin/stats/page.tsx:21:23",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/admin/stats/page.test.tsx#getAdminAnalyticsSnapshot",
+          "oracleTargets": ["src/lib/analytics.ts#getAdminAnalyticsSnapshot"],
+          "score": 1,
+          "rankingSignals": ["same-directory"],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/admin/stats/page.test.tsx#getAdminAnalyticsSnapshot",
+            "score": 1,
+            "rankingSignals": ["same-directory"]
+          },
+          "previousV7AddedOracleCandidate": [
+            "src/lib/analytics.ts#getAdminAnalyticsSnapshot"
+          ],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/lib/__tests__/github-context.test.ts:178:30",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/repo/[owner]/[repo]/page.test.tsx#getRepoFullContext",
+          "oracleTargets": ["src/lib/github.ts#getRepoFullContext"],
+          "score": 0,
+          "rankingSignals": [],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/repo/[owner]/[repo]/page.test.tsx#getRepoFullContext",
+            "score": 0,
+            "rankingSignals": null
+          },
+          "previousV7AddedOracleCandidate": [
+            "src/lib/github.ts#getRepoFullContext"
+          ],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        },
+        {
+          "site": "src/lib/__tests__/github-context.test.ts:240:30",
+          "callShape": "bare",
+          "family": "403errors/repomind",
+          "chosenTarget": "src/app/repo/[owner]/[repo]/page.test.tsx#getRepoFullContext",
+          "oracleTargets": ["src/lib/github.ts#getRepoFullContext"],
+          "score": 0,
+          "rankingSignals": [],
+          "currentGeneratedListContainsOracle": false,
+          "previousV6Choice": {
+            "chosenTarget": "src/app/repo/[owner]/[repo]/page.test.tsx#getRepoFullContext",
+            "score": 0,
+            "rankingSignals": null
+          },
+          "previousV7AddedOracleCandidate": [
+            "src/lib/github.ts#getRepoFullContext"
+          ],
+          "generatorDiagnosis": "The candidate-only workspace export scan had supplied this oracle despite no supported direct function candidate; the fail-closed import/export boundary now leaves this case for LSP. The unchanged top choice/score comes from ordinary same-name ranking or score zero."
+        }
+      ]
+    }
+  },
+  "trainLofo": {
+    "v6": {
+      "eligibleSiteCount": 13496,
+      "selectedSiteCount": 9194,
+      "coverage": 0.6812388855957321,
+      "selectedCorrectSiteCount": 9184,
+      "acceptedSitePrecision": 0.9989123341309549,
+      "endToEndTop1": 0.6804979253112033,
+      "familyMeanEndToEndTop1": 0.752531350759874,
+      "worstFamilyEndToEndTop1": 0.6340933767643865,
+      "graft": {
+        "family": "trailhq/Graft",
+        "eligibleSiteCount": 888,
+        "selectedSiteCount": 875,
+        "selectedCorrectSiteCount": 868,
+        "acceptedSitePrecision": 0.992,
+        "endToEndTop1": 0.9774774774774775
+      }
+    },
+    "v7": {
+      "eligibleSiteCount": 13496,
+      "selectedSiteCount": 8648,
+      "coverage": 0.6407824540604624,
+      "selectedCorrectSiteCount": 8639,
+      "acceptedSitePrecision": 0.998959296947271,
+      "endToEndTop1": 0.6401155898043864,
+      "familyMeanEndToEndTop1": 0.7376218643815831,
+      "worstFamilyEndToEndTop1": 0.60475,
+      "graft": {
+        "eligibleSiteCount": 888,
+        "selectedSiteCount": 870,
+        "selectedCorrectSiteCount": 863,
+        "acceptedSitePrecision": 0.9919540229885058,
+        "endToEndTop1": 0.9718468468468469
+      },
+      "families": [
+        {
+          "family": "dyphn1/Docuvia",
+          "eligibleSiteCount": 3610,
+          "selectedSiteCount": 2290,
+          "selectedCorrectSiteCount": 2290,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.6343490304709142
+        },
+        {
+          "family": "nestjs/nest",
+          "eligibleSiteCount": 8000,
+          "selectedSiteCount": 4839,
+          "selectedCorrectSiteCount": 4838,
+          "acceptedSitePrecision": 0.9997933457325894,
+          "endToEndTop1": 0.60475
+        },
+        {
+          "family": "tirth8205/code-review-graph",
+          "eligibleSiteCount": 77,
+          "selectedSiteCount": 65,
+          "selectedCorrectSiteCount": 65,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.8441558441558441
+        },
+        {
+          "family": "trailhq/Graft",
+          "eligibleSiteCount": 888,
+          "selectedSiteCount": 870,
+          "selectedCorrectSiteCount": 863,
+          "acceptedSitePrecision": 0.9919540229885058,
+          "endToEndTop1": 0.9718468468468469
+        },
+        {
+          "family": "typescript-language-server/typescript-language-server",
+          "eligibleSiteCount": 921,
+          "selectedSiteCount": 584,
+          "selectedCorrectSiteCount": 583,
+          "acceptedSitePrecision": 0.9982876712328768,
+          "endToEndTop1": 0.6330076004343105
+        }
+      ]
+    }
+  },
+  "testRegression": {
+    "v6": {
+      "eligibleSiteCount": 6039,
+      "selectedSiteCount": 4691,
+      "coverage": 0.7767842358006293,
+      "selectedCorrectSiteCount": 4596,
+      "acceptedSitePrecision": 0.9797484544873162,
+      "endToEndTop1": 0.7610531544957775,
+      "rawTop1": 0.7812551746977976,
+      "licenseExcludedEnterprisePathSampleCount": 3
+    },
+    "v7": {
+      "eligibleSiteCount": 6039,
+      "selectedSiteCount": 4345,
+      "coverage": 0.7194899817850637,
+      "selectedCorrectSiteCount": 4250,
+      "acceptedSitePrecision": 0.9781357882623706,
+      "endToEndTop1": 0.703758900480212,
+      "wrongAcceptCount": 95,
+      "wrongAcceptsByCallShapeAndReason": [
+        {
+          "callShape": "bare",
+          "reason": "selected-by-calibrated-threshold",
+          "count": 86
+        },
+        {
+          "callShape": "member",
+          "reason": "selected-by-calibrated-threshold",
+          "count": 9
+        }
+      ],
+      "licenseExcludedEnterprisePathSampleCount": 3
+    }
+  },
+  "licenseExclusions": {
+    "onyxCallerPathSamplesDuringSourceReplay": 131,
+    "onyxTargetPathSamplesDuringTestEvaluation": 3,
+    "total": 134
+  }
+}

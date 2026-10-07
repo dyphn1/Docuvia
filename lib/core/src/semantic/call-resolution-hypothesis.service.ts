@@ -1,4 +1,5 @@
 import type {
+  AstDeclaredTypeOwner,
   AstCallSiteShapeFact,
   CallResolutionHypothesisRequest,
   CallResolutionHypothesisResult,
@@ -29,6 +30,10 @@ import {
   createRuleSignature,
   getReceiverTypeFact,
   hashFeatureInput,
+  canSearchWorkspaceExportsForImportSpecifier,
+  isWorkspaceBoundSourcePath,
+  resolveDirectConfiguredImportPath,
+  resolveDirectRelativeImportPath,
 } from "./call-resolution-hypothesis-index.js";
 import {
   boundProposals,
@@ -72,6 +77,266 @@ function sameCalleeBinding(
     left.scopeSpan.start === right.scopeSpan.start &&
     left.scopeSpan.end === right.scopeSpan.end
   );
+}
+
+function receiverTypeUsesReexportedBinding(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+): boolean {
+  const descriptor = receiverTypeImportDescriptor(request, workspace);
+  return descriptor
+    ? hasNamedReexportBinding(request, workspace, descriptor)
+    : false;
+}
+
+function receiverTypeImportDescriptor(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+) {
+  if (request.callSite.calleeKind !== "member") return undefined;
+  const receiverFact = getReceiverTypeFact(workspace, request);
+  if (!receiverFact) return undefined;
+  const caller = workspace.sourceFilesByPath.get(request.callerFilePath);
+  if (!caller) return undefined;
+  const descriptors = (caller.imports ?? []).filter(
+    ({ localName }) => localName === receiverFact.typeName,
+  );
+  const [descriptor] = descriptors;
+  return descriptors.length === 1 && descriptor && !descriptor.isTypeOnly
+    ? descriptor
+    : undefined;
+}
+
+function hasNamedReexportBinding(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+  descriptor: NonNullable<
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+  >[number],
+): boolean {
+  const availableFilePaths = [...workspace.sourceFilesByPath.keys()];
+  const targetPath =
+    resolveDirectRelativeImportPath(
+      request.callerFilePath,
+      descriptor.modulePath,
+      availableFilePaths,
+    ) ??
+    resolveDirectConfiguredImportPath(
+      request.callerFilePath,
+      descriptor.modulePath,
+      availableFilePaths,
+      workspace.configuredPathAliases,
+    );
+  if (!targetPath) return false;
+  const target = workspace.sourceFilesByPath.get(targetPath);
+  return Boolean(
+    target?.reexports?.some(
+      (route) =>
+        route.kind === "named" &&
+        route.exportedName === descriptor.originalName &&
+        !route.isTypeOnly,
+    ),
+  );
+}
+
+function strictProofForCandidates(
+  request: CallResolutionHypothesisRequest,
+  workspace: IndexedWorkspace,
+  generated: CallResolutionHypothesisResult["candidates"],
+  truncated: boolean,
+) {
+  const namedImportProof = proveUniqueNamedImport(
+    request,
+    workspace,
+    truncated,
+  );
+  if (namedImportProof?.status === "proven") return namedImportProof;
+  const reexportProof = proveUniqueReexportedNamedImport(
+    request,
+    workspace,
+    truncated,
+  );
+  if (reexportProof) return reexportProof;
+  if (namedImportProof) return namedImportProof;
+  const thisMemberProof = proveUniqueThisMember(
+    request,
+    generated,
+    workspace,
+    truncated,
+  );
+  if (
+    thisMemberProof.status === "proven" &&
+    thisMemberProof.reason === "unique-typed-receiver-member" &&
+    receiverTypeUsesReexportedBinding(request, workspace)
+  )
+    return {
+      status: "abstained" as const,
+      targetKey: null,
+      ruleSignature: null,
+      reason: "unresolved-type-binding" as const,
+    };
+  return thisMemberProof;
+}
+
+function localClassStaticCandidates(
+  callerFacts: NonNullable<
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["declaredTypeFacts"]
+  >,
+  callerFilePath: string,
+  receiverName: string,
+  importDescriptors: readonly NonNullable<
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+  >[number][],
+  baseCandidates: readonly CandidateWithoutRank[],
+): readonly CandidateWithoutRank[] | null | undefined {
+  const localOwners = callerFacts.ownerInventories.filter(
+    ({ owner }) => owner.kind === "class" && owner.name === receiverName,
+  );
+  if (localOwners.length === 1 && importDescriptors.length === 0)
+    return baseCandidates.filter(
+      ({ filePath, owner, isStatic }) =>
+        filePath === callerFilePath &&
+        owner.kind === "class" &&
+        owner.name === receiverName &&
+        isStatic,
+    );
+  if (localOwners.length > 0 || importDescriptors.length !== 1)
+    return undefined;
+  return null;
+}
+
+function isSupportedClassImport(
+  descriptor:
+    | NonNullable<
+        CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+      >[number]
+    | undefined,
+  callerFilePath: string,
+): descriptor is NonNullable<
+  CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+>[number] {
+  if (!descriptor || descriptor.viaReexport || descriptor.isTypeOnly)
+    return false;
+  if (
+    descriptor.originalName === "default" &&
+    descriptor.isDefaultImport !== true &&
+    descriptor.isCombinedDefaultImport !== true
+  )
+    return false;
+  const importedName = importedClassName(descriptor);
+  return (
+    importedName !== null &&
+    importedName !== "*" &&
+    (importedName !== "default" || isWorkspaceBoundSourcePath(callerFilePath))
+  );
+}
+
+function importedClassName(
+  descriptor: NonNullable<
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+  >[number],
+): string {
+  return descriptor.isDefaultImport === true ||
+    (descriptor.isCombinedDefaultImport === true &&
+      descriptor.originalName === "default")
+    ? "default"
+    : descriptor.originalName;
+}
+
+function isSimpleIdentifier(value: string | null): value is string {
+  return value !== null && /^[$A-Z_a-z][$\w]*$/u.test(value);
+}
+
+function importedClassTargetPath(
+  callerFilePath: string,
+  descriptor: NonNullable<
+    CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+  >[number],
+  workspace: IndexedWorkspace,
+): string | undefined {
+  const availableFilePaths = [...workspace.sourceFilesByPath.keys()];
+  return (
+    resolveDirectRelativeImportPath(
+      callerFilePath,
+      descriptor.modulePath,
+      availableFilePaths,
+    ) ??
+    resolveDirectConfiguredImportPath(
+      callerFilePath,
+      descriptor.modulePath,
+      availableFilePaths,
+      workspace.configuredPathAliases,
+    )
+  );
+}
+
+function importedClassStaticCandidates(
+  callerFilePath: string,
+  workspace: IndexedWorkspace,
+  descriptor:
+    | NonNullable<
+        CallResolutionHypothesisWorkspaceInput["sourceFiles"][number]["imports"]
+      >[number]
+    | undefined,
+  baseCandidates: readonly CandidateWithoutRank[],
+): readonly CandidateWithoutRank[] | undefined {
+  if (!isSupportedClassImport(descriptor, callerFilePath) || !descriptor)
+    return undefined;
+  const importedName = importedClassName(descriptor);
+  const targetPath = importedClassTargetPath(
+    callerFilePath,
+    descriptor,
+    workspace,
+  );
+  if (
+    !targetPath &&
+    !canSearchWorkspaceExportsForImportSpecifier(descriptor.modulePath)
+  )
+    return undefined;
+  const classTargets = classTargetsForImportedName(
+    workspace,
+    importedName,
+    targetPath,
+  );
+  if (classTargets.size === 0) return undefined;
+  return baseCandidates.filter(
+    ({ filePath, owner, isStatic }) =>
+      owner.kind === "class" &&
+      owner.name !== null &&
+      classTargets.get(filePath)?.has(owner.name) &&
+      isStatic,
+  );
+}
+
+function uniqueExportedClassName(
+  source: CallResolutionHypothesisWorkspaceInput["sourceFiles"][number],
+  importedName: string,
+): string | null {
+  const directExports = source.exports?.filter(
+    ({ name, type }) => name === importedName && type === "class",
+  );
+  if (directExports?.length !== 1) return null;
+  const classOwners = (source.declaredTypeFacts?.ownerInventories ?? [])
+    .map(({ owner }) => owner)
+    .filter((owner) => owner.kind === "class");
+  const className = importedClassOwnerName(importedName, classOwners);
+  if (
+    !className ||
+    classOwners.filter(({ name }) => name === className).length !== 1
+  )
+    return null;
+  return className;
+}
+
+function importedClassOwnerName(
+  importedName: string,
+  classOwners: readonly AstDeclaredTypeOwner[],
+): string | undefined {
+  if (importedName !== "default") return importedName;
+  const [owner] = classOwners;
+  return classOwners.length === 1 && owner?.kind === "class"
+    ? (owner.name ?? undefined)
+    : undefined;
 }
 
 export class CallResolutionHypothesisService implements ICallResolutionHypothesisService {
@@ -159,22 +424,12 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       filtered.candidates,
       this.options,
     );
-    const namedImportProof = proveUniqueNamedImport(
+    const strictProof = strictProofForCandidates(
       request,
       workspace,
+      generated,
       truncated,
     );
-    const reexportProof = proveUniqueReexportedNamedImport(
-      request,
-      workspace,
-      truncated,
-    );
-    const strictProof =
-      namedImportProof?.status === "proven"
-        ? namedImportProof
-        : (reexportProof ??
-          namedImportProof ??
-          proveUniqueThisMember(request, generated, workspace, truncated));
     const matchingRecords = matchingCalibrationRecords(
       this.options.calibrationRecords,
       ruleSignature,
@@ -201,7 +456,9 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
       sourceFingerprint: workspace.handle.sourceFingerprint,
       featureInputHash,
       ruleSignature,
-      candidateSetComplete: workspace.complete,
+      candidateSetComplete:
+        workspace.complete &&
+        indexedCandidates.every(({ declarations }) => declarations.length > 0),
       truncated,
       generatedCandidateKeys: indexedCandidates.map(
         ({ targetKey }) => targetKey,
@@ -247,12 +504,76 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
     workspace: IndexedWorkspace,
     baseCandidates: readonly CandidateWithoutRank[],
   ): readonly CandidateWithoutRank[] {
+    const classQualifiedCandidates = this.candidatesForSyntaxBoundClass(
+      request,
+      workspace,
+      baseCandidates,
+    );
+    if (classQualifiedCandidates !== undefined) return classQualifiedCandidates;
     if (!this.canEnrichImportAlias(request, workspace)) return baseCandidates;
     const aliases =
       workspace.directImportAliasCandidatesByCallerFile
         .get(request.callerFilePath)
         ?.get(request.callSite.calleeName) ?? [];
     return mergeCandidatesByTargetKey(baseCandidates, aliases);
+  }
+
+  /**
+   * A simple class identifier in `ClassName.member()` is direct syntax evidence.
+   * Resolve only a unique declaration or direct import; all other receivers keep
+   * the ordinary candidate set for LSP to decide.
+   */
+  private candidatesForSyntaxBoundClass(
+    request: CallResolutionHypothesisRequest,
+    workspace: IndexedWorkspace,
+    baseCandidates: readonly CandidateWithoutRank[],
+  ): readonly CandidateWithoutRank[] | undefined {
+    const callSite = request.callSite;
+    const receiverName = callSite.receiverText;
+    if (!receiverName || !this.isSourceBoundClassReceiver(request, workspace))
+      return undefined;
+
+    const caller = workspace.sourceFilesByPath.get(request.callerFilePath);
+    const callerFacts = caller?.declaredTypeFacts;
+    if (!caller || !callerFacts) return undefined;
+
+    const importDescriptors = (caller.imports ?? []).filter(
+      ({ localName }) => localName === receiverName,
+    );
+    const localCandidates = localClassStaticCandidates(
+      callerFacts,
+      request.callerFilePath,
+      receiverName,
+      importDescriptors,
+      baseCandidates,
+    );
+    if (localCandidates !== null) return localCandidates;
+    return importedClassStaticCandidates(
+      request.callerFilePath,
+      workspace,
+      importDescriptors[0],
+      baseCandidates,
+    );
+  }
+
+  private isSourceBoundClassReceiver(
+    request: CallResolutionHypothesisRequest,
+    workspace: IndexedWorkspace,
+  ): boolean {
+    const callSite = request.callSite;
+    return (
+      callSite.calleeKind === "member" &&
+      callSite.receiverBinding === null &&
+      isSimpleIdentifier(callSite.receiverText) &&
+      this.isCallSiteBoundToCaller(
+        callSite,
+        workspace,
+        request.callerFilePath,
+      ) &&
+      !!request.callerSourceContentHash &&
+      workspace.sourceContentHashByFile.get(request.callerFilePath) ===
+        request.callerSourceContentHash
+    );
   }
 
   private canEnrichImportAlias(
@@ -315,4 +636,29 @@ function mergeCandidatesByTargetKey(
   );
   for (const candidate of aliases) combined.set(candidate.targetKey, candidate);
   return [...combined.values()];
+}
+
+function classTargetsForImportedName(
+  workspace: IndexedWorkspace,
+  importedName: string,
+  preferredPath: string | undefined,
+): ReadonlyMap<string, ReadonlySet<string>> {
+  const paths = preferredPath
+    ? [preferredPath]
+    : [...workspace.sourceFilesByPath.keys()].sort((left, right) =>
+        left.localeCompare(right),
+      );
+  const targets = new Map<string, Set<string>>();
+  for (const filePath of paths) {
+    const source = workspace.sourceFilesByPath.get(filePath);
+    if (!source) continue;
+    const className = uniqueExportedClassName(source, importedName);
+    if (!className) continue;
+    const names = targets.get(filePath) ?? new Set<string>();
+    names.add(className);
+    targets.set(filePath, names);
+  }
+  if (targets.size === 0 && preferredPath)
+    return classTargetsForImportedName(workspace, importedName, undefined);
+  return targets;
 }

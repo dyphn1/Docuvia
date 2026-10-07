@@ -2,6 +2,17 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.22.0](https://github.com/dyphn1/Docuvia/compare/v1.21.0...v1.22.0) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** separate v2 lexical links from file ownership ([#580](https://github.com/dyphn1/Docuvia/issues/580) review) ([9b15cb5](https://github.com/dyphn1/Docuvia/commit/9b15cb5b1e9bfd757ca3ae942939392a34801066))
+
+### Features
+
+- **call-resolution:** selectable exact-caller calls projection policy ([#559](https://github.com/dyphn1/Docuvia/issues/559)) ([8598250](https://github.com/dyphn1/Docuvia/commit/8598250f940e4920a771d05b572b156db4481021))
+- **call-resolution:** wire the active caller policy through the product path ([#580](https://github.com/dyphn1/Docuvia/issues/580) review) ([f448666](https://github.com/dyphn1/Docuvia/commit/f4486667417aaa9539ed86ac0cd2fccdb1c570d9))
+
 # [1.21.0](https://github.com/dyphn1/Docuvia/compare/v1.20.1...v1.21.0) (2026-10-07)
 
 ### Bug Fixes

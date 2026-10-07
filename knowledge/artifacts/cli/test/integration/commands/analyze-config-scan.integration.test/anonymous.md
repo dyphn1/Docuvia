@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/commands/analyze-config-scan.integratio
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/analyze-config-scan.integration.test.ts`
-

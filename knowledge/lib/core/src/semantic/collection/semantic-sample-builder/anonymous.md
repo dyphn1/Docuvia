@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/collection/semantic-sample-builder.ts#anonymous@L86
+id: lib/core/src/semantic/collection/semantic-sample-builder.ts#anonymous@L70
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/collection/semantic-sample-builder.ts

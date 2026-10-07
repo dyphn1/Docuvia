@@ -14,10 +14,10 @@ const REPORTED_BOUND_TOLERANCE = 1e-6;
 const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs =
   Object.freeze({
     artifactSha256:
-      "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
-    implementationCommitSha: "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+      "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+    implementationCommitSha: "8013b99b1410f1302c576178e557c4484735077a",
     ruleConfigurationSha256:
-      "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+      "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
     oracleIdentity: "typescript-language-server",
     oracleVersion: "5.3.0+tsserver@5.9.3",
     oracleConfigurationSha256:
@@ -39,11 +39,10 @@ const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs
     }),
   });
 
-/** This source pin is guarded by the Q1 rule-configuration unit test. It records the current
- *  source digest; the artifact's independent input remains frozen above, so changed code rejects
- *  the old evidence until new certification evidence is supplied. */
+/** This source pin is guarded by the Q1 rule-configuration unit test and matches the active
+ *  amendment-3 evidence. Any change to a frozen Q1 input requires a new digest and certification. */
 export const CURRENT_Q1_RULE_CONFIGURATION_SHA256 =
-  "fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab";
+  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
 
 const Q1_CERTIFICATION_RESOURCE =
   "./q1-named-import-candidate-certification.json";

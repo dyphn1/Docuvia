@@ -29,7 +29,7 @@ const OTHER_SIGNATURE = "q2:reexport-trace:v1";
 const FILE_PATH = "caller.ts";
 const CANARY_RATE = 0.1;
 const FROZEN_Q1_RULE_CONFIGURATION_SHA256 =
-  "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b";
+  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
 
 interface FixtureSite {
   calleeName: string;
@@ -72,7 +72,7 @@ describe("Q1 certification runtime scheduling", () => {
     expect(scheduled[1]).toMatchObject({ verificationMode: "tier-b" });
   });
 
-  it("[invalid-input][state-diff] rejects frozen evidence on this branch and schedules every site", async () => {
+  it("[state-diff] trusts recertified evidence and still schedules canary and non-Q1 sites", async () => {
     const decision = loadShippedQ1NamedImportCertificationArtifact();
     const sites = fixtureSites();
     const scheduled = await resolveSites(sites, {
@@ -80,16 +80,13 @@ describe("Q1 certification runtime scheduling", () => {
       canaryRate: CANARY_RATE,
     });
 
-    expect(decision.status).toBe("rejected");
-    expect(decision.rejectionReasons.length).toBeGreaterThan(0);
+    expect(decision.status).toBe("loaded");
     expect(scheduled.map((site) => site.targetFunction)).toEqual([
-      sites.q1NonCanary.calleeName,
       sites.q1Canary.calleeName,
       sites.other.calleeName,
     ]);
-    expect(scheduled.every((site) => site.verificationMode === "tier-b")).toBe(
-      true,
-    );
+    expect(scheduled[0]).toMatchObject({ verificationMode: "canary" });
+    expect(scheduled[1]).toMatchObject({ verificationMode: "tier-b" });
   });
 
   it("[invalid-input] rejects tampered artifact bytes and schedules every site", async () => {
@@ -136,7 +133,7 @@ describe("Q1 certification runtime scheduling", () => {
       loadShippedQ1NamedImportCertificationArtifact(),
     );
 
-    expect(decisions.every((decision) => decision.status === "rejected")).toBe(
+    expect(decisions.every((decision) => decision.status === "loaded")).toBe(
       true,
     );
     expect(

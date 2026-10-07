@@ -84,13 +84,13 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
     ) as { files?: string[] };
 
     expect(hash).toBe(
-      "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
+      "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
     );
     expect(packageJson.files).toContain("dist");
   });
 
   it(
-    "[happy][state-diff] loads the packaged Q1 certification in the bundled CLI and records its status (rejected until evidence covers the current Q1 rule hash)",
+    "[happy][state-diff] loads the packaged Q1 certification in the bundled CLI and records its trusted status",
     async () => {
       const init = await sandbox.runDistCli(["init"]);
       expect(init.exitCode).toBe(0);
@@ -113,10 +113,10 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
 
       expect(certificationEvents).toHaveLength(1);
       expect(certificationEvents[0]).toMatchObject({
-        certificationStatus: "rejected",
-        certifiedRuleSignatures: [],
+        certificationStatus: "trusted",
+        certifiedRuleSignatures: ["q1:named-import:v1"],
         artifactSha256:
-          "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
+          "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
       });
     },
     SUBPROCESS_TEST_TIMEOUT_MS,

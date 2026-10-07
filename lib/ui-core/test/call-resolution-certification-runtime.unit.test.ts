@@ -14,7 +14,7 @@ const rawArtifact = readFileSync(
   "utf8",
 );
 const FROZEN_Q1_RULE_CONFIGURATION_SHA256 =
-  "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b";
+  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
 
 describe("shipped Q1 call-resolution certification", () => {
   it("[happy] trusts only the pinned Q1 named-import signature at its certified source hash", () => {
@@ -30,14 +30,13 @@ describe("shipped Q1 call-resolution certification", () => {
     );
   });
 
-  it("[state-diff] rejects the shipped Q1 artifact against this branch's rule source", () => {
+  it("[state-diff] trusts the shipped Q1 artifact against this branch's rule source", () => {
     const decision = loadShippedQ1NamedImportCertificationArtifact();
 
-    expect(decision.status).toBe("rejected");
-    expect(decision.rejectionReasons.length).toBeGreaterThan(0);
-    expect(isRuleSignatureCertified(decision, "q1:named-import:v1")).toBe(
-      false,
-    );
+    expect(decision.status).toBe("loaded");
+    expect(decision.rejectionReasons).toEqual([]);
+    expect(decision.certifiedRuleSignatures).toEqual(["q1:named-import:v1"]);
+    expect(isRuleSignatureCertified(decision, "q1:named-import:v1")).toBe(true);
   });
 
   it("[invalid-input] rejects changed bytes and a changed Q1 rule hash", () => {

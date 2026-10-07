@@ -24,6 +24,17 @@ export type FunctionNodeReference = {
   readonly containerName?: string;
   readonly startLine: number;
   readonly endLine: number;
+  readonly declarationSpan?: { readonly start: number; readonly end: number };
+  readonly declarationTargetKeys: readonly string[];
+};
+
+export type StrictCallProofExclusion = {
+  readonly callSiteKey: string;
+  readonly filePath: string;
+  readonly ruleSignature: string;
+  readonly reason:
+    "target-declaration-node-unmatched" | "ambiguous-target-declaration-node";
+  readonly count: 1;
 };
 
 export type CallSiteProof = {
@@ -106,6 +117,67 @@ function uniqueCallSiteShape(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+/** Construct a graph reference that binds the AST function span to its proof declaration key. */
+export function createFunctionNodeReference(
+  result: ParsedAstFileResult,
+  fn: NonNullable<ParsedAstFileResult["data"]["functions"]>[number],
+  nodeKey: string,
+): FunctionNodeReference {
+  const span = fn.declarationSpan;
+  const declarationTargetKeys = span
+    ? (result.data.declaredTypeFacts?.declarations ?? [])
+        .filter(
+          (declaration) =>
+            declaration.declarationSpan.start === span.start &&
+            declaration.declarationSpan.end === span.end,
+        )
+        .map((declaration) =>
+          candidateTargetKeyForDeclaration(result.file, declaration),
+        )
+        .filter((key): key is string => key !== undefined)
+    : [];
+  return {
+    nodeKey,
+    name: fn.name,
+    containerName: fn.containerName,
+    startLine: fn.startLine,
+    endLine: fn.endLine,
+    ...(span ? { declarationSpan: span } : {}),
+    declarationTargetKeys: [...new Set(declarationTargetKeys)],
+  };
+}
+
+type TargetFunctionMatch =
+  | { readonly functionNode: FunctionNodeReference }
+  | {
+      readonly exclusionReason: StrictCallProofExclusion["reason"];
+    };
+
+function functionNodeForTargetKey(input: {
+  targetKey: string;
+  functionNodes: readonly FunctionNodeReference[];
+  targetName?: string;
+  targetOwnerName?: string;
+}): TargetFunctionMatch {
+  const matches = input.functionNodes.filter(
+    (fn) =>
+      fn.declarationTargetKeys.includes(input.targetKey) &&
+      (input.targetName === undefined || fn.name === input.targetName) &&
+      (input.targetOwnerName === undefined ||
+        fn.containerName === input.targetOwnerName),
+  );
+  if (matches.length === 1) {
+    const [functionNode] = matches;
+    if (functionNode) return { functionNode };
+  }
+  return {
+    exclusionReason:
+      matches.length === 0
+        ? "target-declaration-node-unmatched"
+        : "ambiguous-target-declaration-node",
+  };
+}
+
 function portableCallSiteKey(
   filePath: string,
   sourceContentHash: string,
@@ -133,7 +205,7 @@ export function portableCallSiteKeyForCall(
     : undefined;
 }
 
-function strictTargetDeclaration(
+function strictTargetDeclarations(
   result: ParsedAstFileResult,
   targetKey: string,
 ) {
@@ -141,35 +213,47 @@ function strictTargetDeclaration(
     (declaration) =>
       candidateTargetKeyForDeclaration(result.file, declaration) === targetKey,
   );
-  if (matches.length !== 1) return undefined;
-
-  const [declaration] = matches;
   if (
-    !declaration ||
-    declaration.kind !== "method" ||
-    declaration.owner.kind !== "class" ||
-    !declaration.owner.name ||
-    !declaration.name ||
-    declaration.isStatic
+    matches.length === 0 ||
+    matches.some(
+      (declaration) =>
+        declaration.kind !== "method" ||
+        declaration.owner.kind !== "class" ||
+        !declaration.owner.name ||
+        !declaration.name ||
+        declaration.isStatic,
+    )
   ) {
     return undefined;
   }
-  return declaration;
+  const first = matches[0];
+  if (
+    !first ||
+    matches.some(
+      (declaration) =>
+        declaration.name !== first.name ||
+        declaration.owner.name !== first.owner.name,
+    )
+  )
+    return undefined;
+  return matches;
 }
 
 function strictTargetFunction(
   result: ParsedAstFileResult,
   targetKey: string,
   functionNodes: readonly FunctionNodeReference[],
-): FunctionNodeReference | undefined {
-  const declaration = strictTargetDeclaration(result, targetKey);
-  if (!declaration) return undefined;
-  const matches = functionNodes.filter(
-    (fn) =>
-      fn.name === declaration.name &&
-      fn.containerName === declaration.owner.name,
-  );
-  return matches.length === 1 ? matches[0] : undefined;
+): TargetFunctionMatch {
+  const declarations = strictTargetDeclarations(result, targetKey);
+  const declaration = declarations?.[0];
+  if (!declaration?.name || !declaration.owner.name)
+    return { exclusionReason: "target-declaration-node-unmatched" };
+  return functionNodeForTargetKey({
+    targetKey,
+    functionNodes,
+    targetName: declaration.name,
+    targetOwnerName: declaration.owner.name,
+  });
 }
 
 function callerFunctionForCall(
@@ -185,6 +269,19 @@ function callerFunctionForCall(
       fn.endLine >= callSite.startLine,
   );
   return matches.length === 1 ? matches[0] : undefined;
+}
+
+function fileNodeForCall(
+  result: ParsedAstFileResult,
+  call: ParsedCall,
+): FunctionNodeReference {
+  return {
+    nodeKey: result.file,
+    name: result.file,
+    startLine: call.startLine,
+    endLine: call.startLine,
+    declarationTargetKeys: [],
+  };
 }
 
 function callerNodeForCall(
@@ -206,7 +303,10 @@ function callerNodeForCall(
     const innermostFunctions = enclosingFunctions.filter(
       (fn) => fn.endLine - fn.startLine === smallestSpan,
     );
-    if (innermostFunctions.length !== 1) return undefined;
+    if (innermostFunctions.length !== 1) {
+      // Keep the already-proven target and conservatively attribute its caller to the file node.
+      return fileNodeForCall(result, call);
+    }
 
     // Calls inside callbacks can carry a parameter or local name in sourceFunction
     // instead of the graph's enclosing function name. The unique smallest AST
@@ -214,12 +314,7 @@ function callerNodeForCall(
     const [innermostFunction] = innermostFunctions;
     return innermostFunction;
   }
-  return {
-    nodeKey: result.file,
-    name: result.file,
-    startLine: call.startLine,
-    endLine: call.startLine,
-  };
+  return fileNodeForCall(result, call);
 }
 
 function namedImportTargetFunction(
@@ -232,23 +327,24 @@ function namedImportTargetFunction(
     }
   >,
   functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
-): FunctionNodeReference | undefined {
-  const matches = (functionNodesByFile.get(proof.targetFilePath) ?? []).filter(
-    (fn) => fn.name === proof.targetName && fn.containerName === undefined,
-  );
-  return matches.length === 1 ? matches[0] : undefined;
+): TargetFunctionMatch {
+  return functionNodeForTargetKey({
+    targetKey: proof.targetKey,
+    functionNodes: functionNodesByFile.get(proof.targetFilePath) ?? [],
+    targetName: proof.targetName,
+  });
 }
 
 function q3TargetFunction(
   proof: Q3ReceiverProof,
   functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
-): FunctionNodeReference | undefined {
-  const matches = (functionNodesByFile.get(proof.targetFilePath) ?? []).filter(
-    (fn) =>
-      fn.name === proof.targetName &&
-      fn.containerName === proof.targetOwnerName,
-  );
-  return matches.length === 1 ? matches[0] : undefined;
+): TargetFunctionMatch {
+  return functionNodeForTargetKey({
+    targetKey: proof.targetKey,
+    functionNodes: functionNodesByFile.get(proof.targetFilePath) ?? [],
+    targetName: proof.targetName,
+    targetOwnerName: proof.targetOwnerName,
+  });
 }
 
 function isQ3ReceiverProof(
@@ -339,9 +435,12 @@ function proofForCall(
   functionNodes: readonly FunctionNodeReference[],
   functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>,
   call: ParsedCall,
-): CallSiteProof | undefined {
+): {
+  readonly proof?: CallSiteProof;
+  readonly exclusion?: StrictCallProofExclusion;
+} {
   const callSite = uniqueCallSiteShape(call, result);
-  if (!callSite) return undefined;
+  if (!callSite) return {};
 
   const sourceHash = sourceContentHashForProof(result);
   const hypothesis = service.hypothesize({
@@ -351,34 +450,47 @@ function proofForCall(
     workspaceIndex,
   });
   const { strictProof } = hypothesis;
-  if (strictProof.status !== "proven") return undefined;
+  if (strictProof.status !== "proven") return {};
 
-  const targetFunction = isQ3ReceiverProof(strictProof)
+  const targetMatch = isQ3ReceiverProof(strictProof)
     ? q3TargetFunction(strictProof, functionNodesByFile)
     : strictProof.ruleSignature === "q1:named-import:v1" ||
         strictProof.ruleSignature === CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE
       ? namedImportTargetFunction(strictProof, functionNodesByFile)
       : strictTargetFunction(result, strictProof.targetKey, functionNodes);
+  if (!("functionNode" in targetMatch)) {
+    return {
+      exclusion: {
+        callSiteKey: portableCallSiteKey(result.file, sourceHash, callSite),
+        filePath: result.file,
+        ruleSignature: strictProof.ruleSignature,
+        reason: targetMatch.exclusionReason,
+        count: 1,
+      },
+    };
+  }
   const callerFunction = callerNodeForCall(
     result,
     call,
     callSite,
     functionNodes,
   );
-  if (!targetFunction || !callerFunction) return undefined;
+  if (!callerFunction) return {};
 
-  return createCallSiteProof({
-    result,
-    callSite,
-    callSiteKey: portableCallSiteKey(result.file, sourceHash, callSite),
-    sourceHash,
-    sourceFingerprint: hypothesis.sourceFingerprint,
-    sourceCandidateKey: strictProof.targetKey,
-    ruleSignature: strictProof.ruleSignature,
-    strictProof,
-    callerFunction,
-    targetFunction,
-  });
+  return {
+    proof: createCallSiteProof({
+      result,
+      callSite,
+      callSiteKey: portableCallSiteKey(result.file, sourceHash, callSite),
+      sourceHash,
+      sourceFingerprint: hypothesis.sourceFingerprint,
+      sourceCandidateKey: strictProof.targetKey,
+      ruleSignature: strictProof.ruleSignature,
+      strictProof,
+      callerFunction,
+      targetFunction: targetMatch.functionNode,
+    }),
+  };
 }
 
 export function collectStrictCallSiteProofs(input: {
@@ -387,10 +499,14 @@ export function collectStrictCallSiteProofs(input: {
   result: ParsedAstFileResult;
   functionNodes: readonly FunctionNodeReference[];
   functionNodesByFile: ReadonlyMap<string, readonly FunctionNodeReference[]>;
-}): CallSiteProof[] {
+}): {
+  readonly proofs: readonly CallSiteProof[];
+  readonly exclusions: readonly StrictCallProofExclusion[];
+} {
   const proofs: CallSiteProof[] = [];
+  const exclusions: StrictCallProofExclusion[] = [];
   for (const call of input.result.data.calls ?? []) {
-    const proof = proofForCall(
+    const outcome = proofForCall(
       input.service,
       input.workspaceIndex,
       input.result,
@@ -398,7 +514,8 @@ export function collectStrictCallSiteProofs(input: {
       input.functionNodesByFile,
       call,
     );
-    if (proof) proofs.push(proof);
+    if (outcome.proof) proofs.push(outcome.proof);
+    if (outcome.exclusion) exclusions.push(outcome.exclusion);
   }
-  return proofs;
+  return { proofs, exclusions };
 }

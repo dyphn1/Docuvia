@@ -80,6 +80,7 @@ export interface AstParseResponse {
       name: string;
       startLine: number;
       endLine: number;
+      declarationSpan?: { readonly start: number; readonly end: number };
       contentHash?: string;
       containerName?: string; // NEW — the enclosing class/struct name, or undefined for a top-level function
     }>;

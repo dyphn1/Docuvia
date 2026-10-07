@@ -785,6 +785,7 @@ async function scoreStates(
         args: external.args,
         batchTimeoutMs: external.batchTimeoutMs,
         workingDirectory: ROOT_DIRECTORY,
+        containmentRoot: ROOT_DIRECTORY,
       });
       responses.push(
         ...batchResponses.map((response, index) =>

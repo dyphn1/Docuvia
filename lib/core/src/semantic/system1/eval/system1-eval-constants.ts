@@ -130,6 +130,11 @@ export const SYSTEM1_EVAL_BATCH_TIMEOUT_MS = 30_000;
 export const SYSTEM1_EVAL_STDOUT_LIMIT_BYTES = 64 * 1024 * 1024;
 export const SYSTEM1_EVAL_STDERR_LIMIT_BYTES = 4 * 1024 * 1024;
 
+/** Interpreter basenames an external scorer may name without living under the containment root
+ *  (#563). Any other executable must be an absolute path inside that root. */
+export const SYSTEM1_EVAL_SCORER_INTERPRETER_ALLOWLIST: readonly string[] =
+  Object.freeze(["node", "python", "python3"]);
+
 export const SYSTEM1_EVAL_LABEL_STATUSES = {
   REVIEW_CONFIRMED: "confirmed",
   REVIEW_CONFLICT: "conflict",

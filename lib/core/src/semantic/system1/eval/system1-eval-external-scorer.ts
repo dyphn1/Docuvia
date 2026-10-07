@@ -8,6 +8,7 @@ import {
   SYSTEM1_EVAL_STDOUT_LIMIT_BYTES,
 } from "./system1-eval-constants.js";
 import { validateSystem1ScorerResponse } from "./system1-eval-scorer.js";
+import { resolveSystem1ExternalScorerCommand } from "./system1-eval-external-scorer-command.js";
 import type { System1DatasetRecord } from "../system1-types.js";
 import type { System1ScorerResponse } from "./system1-eval-types.js";
 
@@ -16,6 +17,8 @@ export interface System1ExternalScorerBatchSettings {
   readonly args: readonly string[];
   readonly batchTimeoutMs: number;
   readonly workingDirectory: string;
+  /** Directory the working directory and any non-interpreter executable must stay inside. */
+  readonly containmentRoot: string;
 }
 
 function errorResponse(requestId: string): System1ScorerResponse {
@@ -62,6 +65,22 @@ function parseExternalResponses(
   );
 }
 
+/** Releases every handle the batch holds on the child (#564): listeners, stdio streams, the
+ *  process group, and the event-loop reference. A no-op error listener stays on each stream so a
+ *  late EPIPE from a destroyed pipe cannot surface as an unhandled error. */
+export function teardownProcess(child: ChildProcessWithoutNullStreams): void {
+  const ignore = (): void => undefined;
+  child.removeAllListeners();
+  child.on("error", ignore);
+  for (const stream of [child.stdin, child.stdout, child.stderr]) {
+    stream.removeAllListeners();
+    stream.on("error", ignore);
+    stream.destroy();
+  }
+  if (child.exitCode === null && child.signalCode === null) killProcess(child);
+  child.unref();
+}
+
 function killProcess(child: ChildProcessWithoutNullStreams): void {
   if (child.pid === undefined) return;
   try {
@@ -77,10 +96,14 @@ export async function runSystem1ExternalScorerBatch(
   states: readonly System1DatasetRecord[],
   settings: System1ExternalScorerBatchSettings,
 ): Promise<System1ScorerResponse[]> {
+  const invocation = resolveSystem1ExternalScorerCommand(settings);
+  if (!invocation)
+    return errorResponses(states, SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
   return new Promise((resolve) => {
-    const child = spawn(settings.command, [...settings.args], {
-      cwd: settings.workingDirectory,
+    const child = spawn(invocation.executable, [...invocation.args], {
+      cwd: invocation.workingDirectory,
       detached: process.platform !== "win32",
+      shell: false,
       stdio: ["pipe", "pipe", "pipe"],
     });
     const stdoutChunks: Buffer[] = [];
@@ -92,17 +115,17 @@ export async function runSystem1ExternalScorerBatch(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      teardownProcess(child);
       resolve(responses);
     };
     const timer = setTimeout(() => {
-      killProcess(child);
       finish(errorResponses(states, SYSTEM1_EVAL_SCORER_STATUSES.TIMEOUT));
     }, settings.batchTimeoutMs);
     child.stdout.on("data", (chunk: Buffer) => {
       stdoutSize += chunk.length;
       if (stdoutSize > SYSTEM1_EVAL_STDOUT_LIMIT_BYTES) {
         outputOverflow = true;
-        killProcess(child);
+        finish(errorResponses(states, SYSTEM1_EVAL_SCORER_STATUSES.ERROR));
         return;
       }
       stdoutChunks.push(chunk);

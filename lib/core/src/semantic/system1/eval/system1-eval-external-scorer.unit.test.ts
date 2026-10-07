@@ -1,3 +1,9 @@
+import { EventEmitter } from "node:events";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { PassThrough } from "node:stream";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import {
@@ -6,7 +12,11 @@ import {
   SYSTEM1_EVAL_SCORER_STATUSES,
 } from "./system1-eval-constants.js";
 import { decideSystem1Request } from "./system1-eval-policy.js";
-import { runSystem1ExternalScorerBatch } from "./system1-eval-external-scorer.js";
+import {
+  runSystem1ExternalScorerBatch,
+  teardownProcess,
+} from "./system1-eval-external-scorer.js";
+import { resolveSystem1ExternalScorerCommand } from "./system1-eval-external-scorer-command.js";
 import type { System1DatasetRecord } from "../system1-types.js";
 import type { System1EvaluationPolicy } from "./system1-eval-types.js";
 
@@ -107,6 +117,7 @@ function run(
     args: ["-e", script],
     batchTimeoutMs,
     workingDirectory,
+    containmentRoot: workingDirectory,
   });
 }
 
@@ -213,5 +224,111 @@ describe("System-1 external JSONL scorer", () => {
 
     expect(responses[0]?.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
     expectVerifyForNonOk(states, responses);
+  });
+
+  it("[security] rejects a non-allowlisted executable outside the root without spawning it", async () => {
+    const outside = mkdtempSync(path.join(tmpdir(), "system1-scorer-"));
+    const marker = path.join(outside, "spawned");
+    try {
+      const responses = await runSystem1ExternalScorerBatch(
+        [stateRecord("external-shell")],
+        {
+          command: "/bin/sh",
+          args: ["-c", `touch '${marker}'`],
+          batchTimeoutMs: SUBPROCESS_TEST_TIMEOUT_MS,
+          workingDirectory,
+          containmentRoot: workingDirectory,
+        },
+      );
+      expect(responses[0]?.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
+      expect(existsSync(marker)).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("System-1 external scorer command validation", () => {
+  const base = {
+    command,
+    args: ["scorer.js"],
+    workingDirectory,
+    containmentRoot: workingDirectory,
+  };
+
+  it("[happy] accepts an absolute allowlisted interpreter outside the containment root", () => {
+    expect(resolveSystem1ExternalScorerCommand(base)?.args).toEqual([
+      "scorer.js",
+    ]);
+  });
+
+  it("[happy] resolves a bare allowlisted interpreter through PATH", () => {
+    expect(
+      resolveSystem1ExternalScorerCommand({ ...base, command: "node" })
+        ?.executable,
+    ).toMatch(/node(\.exe)?$/i);
+  });
+
+  it("[security] rejects relative paths, unknown bare names and NUL bytes", () => {
+    for (const input of [
+      { ...base, command: "./node" },
+      { ...base, command: "../bin/node" },
+      { ...base, command: "sh" },
+      { ...base, command: "" },
+      { ...base, args: ["ok\0bad"] },
+    ]) {
+      expect(resolveSystem1ExternalScorerCommand(input)).toBeNull();
+    }
+  });
+
+  it("[security] rejects a working directory outside the containment root", () => {
+    expect(
+      resolveSystem1ExternalScorerCommand({
+        ...base,
+        workingDirectory: path.dirname(workingDirectory),
+      }),
+    ).toBeNull();
+    expect(
+      resolveSystem1ExternalScorerCommand({
+        ...base,
+        workingDirectory: path.join(workingDirectory, "does-not-exist"),
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("System-1 external scorer teardown", () => {
+  it("[resource] removes listeners, destroys stdio and unrefs the child", () => {
+    const child = new EventEmitter() as EventEmitter & {
+      stdin: PassThrough;
+      stdout: PassThrough;
+      stderr: PassThrough;
+      pid: undefined;
+      exitCode: number;
+      signalCode: null;
+      unrefCalls: number;
+      unref: () => void;
+    };
+    child.stdin = new PassThrough();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.pid = undefined;
+    child.exitCode = 0;
+    child.signalCode = null;
+    child.unrefCalls = 0;
+    child.unref = () => {
+      child.unrefCalls++;
+    };
+    child.on("close", () => undefined);
+    child.stdout.on("data", () => undefined);
+
+    teardownProcess(child as unknown as ChildProcessWithoutNullStreams);
+
+    expect(child.listenerCount("close")).toBe(0);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+    for (const stream of [child.stdin, child.stdout, child.stderr]) {
+      expect(stream.destroyed).toBe(true);
+    }
+    expect(child.unrefCalls).toBe(1);
   });
 });

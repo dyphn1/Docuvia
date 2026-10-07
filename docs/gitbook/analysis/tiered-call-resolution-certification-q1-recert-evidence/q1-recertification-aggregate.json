@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "currentImplementationHead": "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+  "newFamily": {
+    "familyId": "microsoft/vscode",
+    "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+    "license": "MIT",
+    "callerSlice": ["src/vs/workbench/api/**", "src/vs/workbench/common/**"],
+    "exclusions": [
+      "all node_modules path segments",
+      "test/tests/__tests__/fixture/fixtures/__fixtures__ path segments",
+      "*.test.ts, *.spec.ts and declaration files",
+      "burned src/vs/base/**, src/vs/platform/**, and src/vs/editor/** as caller paths"
+    ],
+    "resolutionSupport": [
+      "src/vs/base/** excluding tests and fixtures",
+      "src/vs/platform/** excluding agentHost and tests/fixtures",
+      "src/tsconfig*.json",
+      "src/typings/**",
+      "src/vscode-dts/**",
+      "src/vs/amdX.ts",
+      "src/vs/nls.ts",
+      "src/vs/monaco.d.ts"
+    ],
+    "freezeSha256": "3282da0abb1f045685648898a14b804493ed02181aadb427591af178e8648d02",
+    "supersededFreezeSha256": "74a9190d2d6b3667d4962465ab025558a3435d275acb208bd08faba3b5ca00a8",
+    "prelabelManifestSha256": "e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692",
+    "sourceSnapshotSha256": "850a548733820aa4159cb93c71aab702b94ef88fee3143777dd3e8cf8780fe5a",
+    "sampleSites": 6397,
+    "sampleGroups": 6219,
+    "proofCounts": [
+      {
+        "ruleSignature": "q1:named-import:v1",
+        "sites": 1153,
+        "independentGroups": 1131
+      },
+      {
+        "ruleSignature": "q2:reexport-trace:v1",
+        "sites": 299,
+        "independentGroups": 297
+      },
+      {
+        "ruleSignature": "q3:super-call:v1",
+        "sites": 19,
+        "independentGroups": 19
+      },
+      {
+        "ruleSignature": "q3:this-inherited:v1",
+        "sites": 0,
+        "independentGroups": 0
+      },
+      {
+        "ruleSignature": "q3:typed-receiver:v1",
+        "sites": 320,
+        "independentGroups": 304
+      },
+      {
+        "ruleSignature": "q3:new-receiver:v1",
+        "sites": 227,
+        "independentGroups": 220
+      },
+      {
+        "ruleSignature": "single-candidate-this-v1",
+        "sites": 0,
+        "independentGroups": 0
+      }
+    ],
+    "parity": {
+      "Q1": {
+        "parseFailures": 0,
+        "sourceFiles": 1455,
+        "peakRssBytes": 2770747392,
+        "summarySha256": "d51afb3d4f95326f392758bb773d1a2866bd2471e22e097807f6a76cb53c6f1c",
+        "proofSitesSha256": "fb18c3325b40ec53d49e17ab214eab22ea9b8e9f2e4fc993244565bfc10613cb",
+        "proposals": 5673,
+        "persisted": 5673,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b"
+      },
+      "Q2": {
+        "parseFailures": 0,
+        "sourceFiles": 1455,
+        "peakRssBytes": 2838052864,
+        "summarySha256": "098145b87f0f92bbb8128e88fa5d2bea6be632de3446a093f9c1cacb8fd5deb5",
+        "proofSitesSha256": "09d7676b120ec3b361ca18519370fb0071ccc5d534bd249dd36970d522787336",
+        "proposals": 392,
+        "persisted": 392,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b"
+      },
+      "Q3": {
+        "parseFailures": 0,
+        "sourceFiles": 1455,
+        "peakRssBytes": 2767044608,
+        "summarySha256": "1f77b28aabf1e4754aa34ca5fd00da9d8b4c0ed2d0517d1f21c32824db1889bb",
+        "proofSitesSha256": "7fab1e3ae900e6326d9b29b1a28f94dd83c12979be3a0c35b2fe284a66f7b702",
+        "proposals": 2137,
+        "persisted": 2137,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b"
+      }
+    },
+    "labels": {
+      "labelsOpenedAtUtc": "2026-10-07T04:47:59.662Z",
+      "labelsCompletedAtUtc": "2026-10-07T04:48:02.189Z",
+      "elapsedMs": 2526,
+      "proofSiteSamplesLabeled": 2018,
+      "requests": 2018,
+      "readinessProbeRequests": 4,
+      "allResolved": true,
+      "peakParentRssBytes": 495583232,
+      "tsServerMemoryCapMb": 4096,
+      "tsServerPeakRssMeasured": false,
+      "labelsSha256": "0fa6f2facec99ce22f99280747f726f3e57aabca7e8bd7be7c7d4f49a333c66f"
+    },
+    "certification": {
+      "resultsSha256": "758bb23970735c2c9e9f923260d57534e2af7033d3bcb9fb60326e8ea2f97e45",
+      "signatures": [
+        {
+          "ruleSignature": "q1:named-import:v1",
+          "sites": 1153,
+          "n": 1131,
+          "successes": 1131,
+          "validContradictions": 0,
+          "lowerBound95": 0.997354758349681
+        },
+        {
+          "ruleSignature": "q2:reexport-trace:v1",
+          "sites": 299,
+          "n": 297,
+          "successes": 297,
+          "validContradictions": 0,
+          "lowerBound95": 0.9899640589022075
+        },
+        {
+          "ruleSignature": "q3:super-call:v1",
+          "sites": 19,
+          "n": 19,
+          "successes": 19,
+          "validContradictions": 0,
+          "lowerBound95": 0.8541314966877566
+        },
+        {
+          "ruleSignature": "q3:this-inherited:v1",
+          "sites": 0,
+          "n": 0,
+          "successes": 0,
+          "validContradictions": 0,
+          "lowerBound95": 0
+        },
+        {
+          "ruleSignature": "q3:typed-receiver:v1",
+          "sites": 320,
+          "n": 304,
+          "successes": 304,
+          "validContradictions": 0,
+          "lowerBound95": 0.9901940128490738
+        },
+        {
+          "ruleSignature": "q3:new-receiver:v1",
+          "sites": 227,
+          "n": 220,
+          "successes": 220,
+          "validContradictions": 0,
+          "lowerBound95": 0.9864753266015994
+        },
+        {
+          "ruleSignature": "single-candidate-this-v1",
+          "sites": 0,
+          "n": 0,
+          "successes": 0,
+          "validContradictions": 0,
+          "lowerBound95": 0
+        }
+      ]
+    },
+    "supersededFreezePath": "/private/tmp/docuvia-q1-recert/vscode/freeze-manifest-v1.json"
+  },
+  "temporal": {
+    "familyId": "dyphn1/Docuvia",
+    "revision": "113a2afe97d2407d0b6ba19624f42408875831cf",
+    "baseRevision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+    "freezeSha256": "526b5e656ed23b00879386cf842e0901530fc3ca3fd450f91aa33a59af5103b5",
+    "prelabelManifestSha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841",
+    "labelsSha256": "397626b438267e43320d01ef5a646ccda29060d222b74136d156da033412a2a3",
+    "parity": {
+      "Q1": {
+        "parseFailures": 0,
+        "sourceFiles": 907,
+        "peakRssBytes": 2018361344,
+        "summarySha256": "395239ac228e20a3fb9a3f3a837f2417574339e597a663dff068e4470e689cce",
+        "proofSitesSha256": "b1a66c9d54f96d5642c6c70748af599bad62c2365328a210a89dd94af56dd8b0",
+        "proposals": 3347,
+        "persisted": 3347,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70"
+      },
+      "Q2": {
+        "parseFailures": 0,
+        "sourceFiles": 907,
+        "peakRssBytes": 1951956992,
+        "summarySha256": "ede20ba09ea26114f90aa52b5b77fcc80e623276a88189f447a59b1308d26bcf",
+        "proofSitesSha256": "aa0ef3244d71e9eeb9dbfbf2e9658380e41179140915c74b3357de502f831d95",
+        "proposals": 47,
+        "persisted": 47,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70"
+      },
+      "Q3": {
+        "parseFailures": 0,
+        "sourceFiles": 907,
+        "peakRssBytes": 2002190336,
+        "summarySha256": "2174bec4ff80e4d80a61cfec6818945a2c891b7b50274702261ec31cf72e4815",
+        "proofSitesSha256": "418a0623ed53d45b8cf19a516d59abaf7d88ac21f3a7021e67398130736b0500",
+        "proposals": 1190,
+        "persisted": 1190,
+        "countedExclusions": 0,
+        "silentGap": 0,
+        "proposalsPersistedOrCountedExcluded": true,
+        "sourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70"
+      }
+    },
+    "proofCounts": [
+      {
+        "ruleSignature": "q1:named-import:v1",
+        "sites": 502,
+        "independentGroups": 477
+      },
+      {
+        "ruleSignature": "q2:reexport-trace:v1",
+        "sites": 12,
+        "independentGroups": 12
+      },
+      {
+        "ruleSignature": "q3:super-call:v1",
+        "sites": 0,
+        "independentGroups": 0
+      },
+      {
+        "ruleSignature": "q3:this-inherited:v1",
+        "sites": 0,
+        "independentGroups": 0
+      },
+      {
+        "ruleSignature": "q3:typed-receiver:v1",
+        "sites": 4,
+        "independentGroups": 4
+      },
+      {
+        "ruleSignature": "q3:new-receiver:v1",
+        "sites": 104,
+        "independentGroups": 95
+      },
+      {
+        "ruleSignature": "single-candidate-this-v1",
+        "sites": 0,
+        "independentGroups": 0
+      }
+    ],
+    "certificationResultsSha256": "f53d41ab12d92b228538778e3739ca8afad34a53392acff4d6ecc1a3351cc2bc",
+    "signatures": [
+      {
+        "ruleSignature": "q1:named-import:v1",
+        "sites": 502,
+        "n": 477,
+        "successes": 477,
+        "validContradictions": 0,
+        "lowerBound95": 0.9937393190864231
+      },
+      {
+        "ruleSignature": "q2:reexport-trace:v1",
+        "sites": 12,
+        "n": 12,
+        "successes": 12,
+        "validContradictions": 0,
+        "lowerBound95": 0.7790778080544442
+      },
+      {
+        "ruleSignature": "q3:super-call:v1",
+        "sites": 0,
+        "n": 0,
+        "successes": 0,
+        "validContradictions": 0,
+        "lowerBound95": 0
+      },
+      {
+        "ruleSignature": "q3:this-inherited:v1",
+        "sites": 0,
+        "n": 0,
+        "successes": 0,
+        "validContradictions": 0,
+        "lowerBound95": 0
+      },
+      {
+        "ruleSignature": "q3:typed-receiver:v1",
+        "sites": 4,
+        "n": 4,
+        "successes": 4,
+        "validContradictions": 0,
+        "lowerBound95": 0.4728708045015879
+      },
+      {
+        "ruleSignature": "q3:new-receiver:v1",
+        "sites": 104,
+        "n": 95,
+        "successes": 95,
+        "validContradictions": 0,
+        "lowerBound95": 0.9689579881320451
+      },
+      {
+        "ruleSignature": "single-candidate-this-v1",
+        "sites": 0,
+        "n": 0,
+        "successes": 0,
+        "validContradictions": 0,
+        "lowerBound95": 0
+      }
+    ],
+    "comparisonWithAmendment1": {
+      "priorCertificationResultsSha256": "695e7b11f286bde3579b4965a461297ffcb9a2a2f5aaa54e6e12cafdeb441b81",
+      "changed": false,
+      "changedSignatures": []
+    },
+    "labelsOpeningTimestampRecorded": false
+  },
+  "candidateArtifact": {
+    "path": "docs/gitbook/analysis/tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification.json",
+    "sha256": "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
+    "certifiedSignatures": ["q1:named-import:v1"],
+    "runtimeWired": false,
+    "corpusManifestSha256": "597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2",
+    "timestamps": {
+      "frozenAt": "2026-10-07T04:34:09.000Z",
+      "labelsOpenedAt": "2026-10-07T04:47:59.662Z",
+      "resultsRecordedAt": "2026-10-07T04:59:08.000Z"
+    }
+  }
+}

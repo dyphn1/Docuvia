@@ -1,14 +1,16 @@
 # Tiered call resolution certification report
 
-## Cross-track update — Docuvia temporal and VS Code
+## Current cross-track update — Q1 recertification
 
-The later MIT-licensed Docuvia temporal track passed Q1 with 502 sites / 477 groups / 477 successes / 0 contradictions / lower bound `0.993739`. The VS Code new-family track recorded one valid Q1 contradiction (10,532 sites / 10,312 groups / 10,311 successes; lower bound `0.999540`), so `q1:named-import:v1` does not pass the required zero-contradiction gate in both tracks. No signature is promoted and no candidate or runtime certification artifact was produced. VS Code `q3:typed-receiver:v1` has 3,034 successful groups, but Docuvia temporal has only 4, so it remains underpowered cross-track.
+On implementation `ffbd59732bf423c292ac5ea91e55df059f2af7b6`, the fresh MIT-licensed VS Code slice passed `q1:named-import:v1` with 1,153 sites / 1,131 groups / 1,131 successes / 0 valid contradictions / lower bound `0.997355`. The unchanged, previously labeled Docuvia temporal sample passed with 502 sites / 477 groups / 477 successes / 0 valid contradictions / lower bound `0.993739`. Both tracks clear the zero-contradiction and `.990` lower-bound gates under the same implementation.
 
-Details: [Docuvia temporal results](tiered-call-resolution-certification-temporal-2.md) and [VS Code amendment, labels, and evaluation](tiered-call-resolution-certification-vscode.md).
+The only passing signature is `q1:named-import:v1`. Its candidate artifact is [q1-named-import-candidate-certification.json](tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification.json); it is evidence-only and is not loaded by runtime code. No production certification record or Tier B skip was enabled. The previous VS Code `src/vs/{base,platform,editor}` sample remains burned and was not reused; the fresh sample uses `src/vs/workbench/api/**` and `src/vs/workbench/common/**` as callers.
 
-## Result
+Details: [Q1 recertification report](tiered-call-resolution-certification-q1-recert.md), [Docuvia temporal results](tiered-call-resolution-certification-temporal-2.md), and [VS Code pre-registration](tiered-call-resolution-certification-vscode.md).
 
-**No signature is certified for promotion.** The evaluated persisted proof sites produced zero valid contradictions, but every signature is underpowered in at least one track. The GitNexus and Nest datasets are now **regression-only**. No production certification record was written and no Tier B skip was enabled.
+## Historical first-certification result (superseded for current Q1 promotion)
+
+This section preserves the earlier study's report. Its datasets and labels were not reused for the Q1 recertification above. In that historical study, **no signature passed both tracks**; no production certification record was written and no Tier B skip was enabled.
 
 The comparison used frozen source proofs matched to the sample manifests by exact repository-relative file path, line, column, and callee. Duplicate groups are the independent trials. A valid contradiction requires a normal oracle response with exactly one repo-local target that differs from the frozen proof target.
 

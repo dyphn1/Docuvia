@@ -1,9 +1,0 @@
----
-id: lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts#CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE
-type: symbol
-name: CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE
-filePath: lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts
----
-# Symbol: CALL_RESOLUTION_Q3_THIS_INHERITED_RULE_SIGNATURE
-
-File: `lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts`

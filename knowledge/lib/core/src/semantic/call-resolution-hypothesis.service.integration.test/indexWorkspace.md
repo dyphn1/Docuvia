@@ -1,9 +1,0 @@
----
-id: lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts#indexWorkspace
-type: symbol
-name: indexWorkspace
-filePath: lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts
----
-# Symbol: indexWorkspace
-
-File: `lib/core/src/semantic/call-resolution-hypothesis.service.integration.test.ts`

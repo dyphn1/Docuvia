@@ -64,6 +64,7 @@ export interface SystemOneSplitMetrics {
 export interface SystemOneThresholdSelection {
   readonly thresholdScore: number | null;
   readonly targetAcceptedPrecision: number;
+  readonly targetDuplicateGroupPrecision: number;
   readonly candidateThresholdCount: number;
   readonly qualifyingThresholdCount: number;
   readonly metrics: SystemOneSplitMetrics | null;
@@ -468,13 +469,17 @@ export function selectSystemOneThreshold(
   labels: readonly Phase2EvaluationLabel[],
   oracleAliases: SystemOneOracleAliases,
   targetAcceptedPrecision = 0.9,
+  targetDuplicateGroupPrecision = 0.9,
 ): SystemOneThresholdSelection {
   if (
     !Number.isFinite(targetAcceptedPrecision) ||
     targetAcceptedPrecision <= 0 ||
-    targetAcceptedPrecision > 1
+    targetAcceptedPrecision > 1 ||
+    !Number.isFinite(targetDuplicateGroupPrecision) ||
+    targetDuplicateGroupPrecision <= 0 ||
+    targetDuplicateGroupPrecision > 1
   )
-    throw new Error("Target accepted precision must be in (0, 1].");
+    throw new Error("Precision targets must be in (0, 1].");
   const labelsBySample = validateSplitInputs(
     observations,
     labels,
@@ -515,7 +520,7 @@ export function selectSystemOneThreshold(
         metrics.acceptedSitePrecision !== null &&
         metrics.duplicateGroupPrecision !== null &&
         metrics.acceptedSitePrecision >= targetAcceptedPrecision &&
-        metrics.duplicateGroupPrecision >= targetAcceptedPrecision,
+        metrics.duplicateGroupPrecision >= targetDuplicateGroupPrecision,
     )
     .sort(
       (left, right) =>
@@ -530,6 +535,7 @@ export function selectSystemOneThreshold(
   return {
     thresholdScore: selected?.thresholdScore ?? null,
     targetAcceptedPrecision,
+    targetDuplicateGroupPrecision,
     candidateThresholdCount: thresholds.length,
     qualifyingThresholdCount: qualifying.length,
     metrics: selected?.metrics ?? null,

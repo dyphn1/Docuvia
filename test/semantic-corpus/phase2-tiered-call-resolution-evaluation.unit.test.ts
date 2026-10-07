@@ -3,6 +3,7 @@ import {
   buildCalibrationRecords,
   calibrationSourceSidecarHashes,
   evaluateCandidateRecallSplit,
+  evaluateTierACandidateListRecall,
   evaluatePhase2Split,
   type Phase2EvaluationLabel,
   type Phase2EvaluationObservation,
@@ -60,6 +61,124 @@ function records(
 }
 
 describe("Phase 2 call-resolution evaluation", () => {
+  it("[happy] reports resolved-site candidate recall and singleton resolution separately", () => {
+    const observations = [
+      observation("one", "group-one", {
+        split: "train",
+        repoFamily: "family-a",
+        calleeKind: "bare",
+        generatedCandidateCount: 1,
+        proposedCandidateCount: 1,
+        candidateTargetIds: ["src/wrong.ts#run"],
+        generatedCandidateTargetIds: ["src/a.ts#Worker.run"],
+        proposedCandidateTargetIds: ["src/a.ts#Worker.run"],
+      }),
+      observation("two", "group-two", {
+        split: "train",
+        repoFamily: "family-b",
+        calleeKind: "member",
+        generatedCandidateCount: 3,
+        proposedCandidateCount: 2,
+        generatedCandidateTargetIds: [
+          "src/b.ts#Socket.open",
+          "src/c.ts#Channel.open",
+          "src/other.ts#open",
+        ],
+        proposedCandidateTargetIds: ["src/c.ts#Channel.open"],
+        truncated: true,
+        candidateTargetIds: ["src/b.ts#open", "src/c.ts#open"],
+      }),
+      observation("none", "group-none", {
+        split: "train",
+        repoFamily: "family-b",
+        calleeKind: "this",
+        generatedCandidateCount: 0,
+        proposedCandidateCount: 0,
+        generatedCandidateTargetIds: [],
+        proposedCandidateTargetIds: [],
+        candidateTargetIds: [],
+      }),
+      observation("unresolved", "group-unresolved", {
+        split: "train",
+        generatedCandidateCount: 1,
+      }),
+    ];
+    const labels = [
+      label("one", {
+        split: "train",
+        duplicateGroup: "group-one",
+        repoFamily: "family-a",
+        positiveTargetIds: ["src/a.ts#run"],
+      }),
+      label("two", {
+        split: "train",
+        duplicateGroup: "group-two",
+        repoFamily: "family-b",
+        positiveTargetIds: ["src/b.ts#open"],
+      }),
+      label("none", {
+        split: "train",
+        duplicateGroup: "group-none",
+        repoFamily: "family-b",
+        positiveTargetIds: ["src/z.ts#call"],
+      }),
+      label("unresolved", {
+        split: "train",
+        duplicateGroup: "group-unresolved",
+        positiveTargetIds: [],
+      }),
+    ];
+
+    expect(
+      evaluateTierACandidateListRecall(observations, labels, "train"),
+    ).toMatchObject({
+      resolvedSiteCount: 3,
+      candidateCoveredSiteCount: 2,
+      candidateRecall: 2 / 3,
+      zeroCandidateSiteCount: 1,
+      multiCandidateSiteCount: 1,
+      multiCandidateSiteRate: 1 / 3,
+      familyMeanRecall: 0.75,
+      worstFamilyRecall: 0.5,
+      candidateListSize: {
+        p50: 1,
+        p75: 3,
+        p90: 3,
+        p99: 3,
+        max: 3,
+      },
+      singleCandidateSiteCount: 1,
+      singleCandidateSiteRate: 1 / 3,
+      correctSingleCandidateCount: 1,
+      noLspResolvableRate: 1 / 3,
+      singleCandidateAcceptedPrecision: 1,
+      truncatedSiteCount: 0,
+      truncatedSiteRate: 0,
+      families: [
+        { name: "family-a", resolvedSiteCount: 1, candidateRecall: 1 },
+        { name: "family-b", resolvedSiteCount: 2, candidateRecall: 0.5 },
+      ],
+      callShapes: [
+        { name: "bare", resolvedSiteCount: 1, candidateRecall: 1 },
+        { name: "member", resolvedSiteCount: 1, candidateRecall: 1 },
+        { name: "this", resolvedSiteCount: 1, candidateRecall: 0 },
+      ],
+      boundedProposalList: {
+        candidateCoveredSiteCount: 1,
+        candidateRecall: 1 / 3,
+        zeroCandidateSiteCount: 1,
+        multiCandidateSiteCount: 1,
+        multiCandidateSiteRate: 1 / 3,
+        familyMeanRecall: 0.5,
+        worstFamilyRecall: 0,
+        candidateListSize: { p50: 1, p75: 2, p90: 2, p99: 2, max: 2 },
+        correctSingleCandidateCount: 1,
+        truncatedSiteCount: 1,
+        truncatedSiteRate: 1 / 3,
+      },
+    });
+  });
+
   it("[error-handling] parses only the requested split's label rows", () => {
     const rows = parseJsonlRowsForSplit<{ sampleId: string; split: string }>(
       [

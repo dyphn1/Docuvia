@@ -12,7 +12,6 @@ import type {
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
 import { canonicalHash } from "./phase2-tiered-call-resolution-support.mjs";
 
-const TARGET_ACCEPTED_PRECISION = 0.9;
 const PROBABILITY_BIN_COUNT = 10;
 const MINIMUM_MAP_GROUP_COUNT = 50;
 const MINIMUM_MAP_SCORE_LEVEL_COUNT = 5;
@@ -129,14 +128,27 @@ export interface SystemOneFamilyTransferFold {
     readonly byCallShape: readonly SystemOneFamilyTransferCandidateMetric[];
   };
   readonly selectedProbabilityMetrics: SystemOneFamilyTransferProbabilityMetrics;
+  readonly abstentionAttribution: {
+    readonly eligibleSiteCount: number;
+    readonly abstainedSiteCount: number;
+    readonly byCallShapeAndReason: readonly {
+      readonly callShape: string;
+      readonly reason: string;
+      readonly abstainedSiteCount: number;
+      readonly zeroRankScoreSiteCount: number;
+      readonly lowRankScoreSiteCount: number;
+      readonly missingSignalCounts: Readonly<Record<string, number>>;
+    }[];
+  };
 }
 
 export interface SystemOneFamilyTransferTrainResult {
   readonly schemaVersion: 1;
-  readonly measurement: "phase2-p2b-system1-family-transfer-train/1";
+  readonly measurement: "phase2-p2b-system1-family-transfer-calibrated-lofo/1";
   readonly split: "train";
+  readonly thresholdSelectionSource: "calibration-freeze";
+  readonly thresholdScore: number | null;
   readonly probabilityMapMethod: string;
-  readonly targetAcceptedPrecision: number;
   readonly probabilityMapSupportRule: {
     readonly minimumTrainingDuplicateGroups: number;
     readonly minimumTrainingScoreLevels: number;
@@ -153,13 +165,6 @@ export interface SystemOneFamilyTransferTrainResult {
   readonly worstFamilyEndToEndTop1: number | null;
   readonly folds: readonly SystemOneFamilyTransferFold[];
   readonly limitations: readonly string[];
-}
-
-interface ThresholdChoice {
-  readonly thresholdScore: number | null;
-  readonly candidateCount: number;
-  readonly qualifyingCount: number;
-  readonly metrics: SystemOneSplitMetrics | null;
 }
 
 interface CandidateSizeAccumulator {
@@ -311,69 +316,6 @@ function labelRowsHash(labels: readonly Phase2EvaluationLabel[]): string {
       left.sampleId.localeCompare(right.sampleId),
     ),
   );
-}
-
-function candidateScores(
-  observations: readonly Phase2EvaluationObservation[],
-  labelsBySample: ReadonlyMap<string, Phase2EvaluationLabel>,
-  aliases: SystemOneOracleAliases,
-): number[] {
-  return [
-    ...new Set(
-      observations.flatMap((observation) => {
-        const label = labelsBySample.get(observation.sampleId)!;
-        return eligible(label) &&
-          observation.topRankScore !== null &&
-          selectSystemOne(observation, Number.NEGATIVE_INFINITY, aliases)
-            .status === "likely"
-          ? [observation.topRankScore]
-          : [];
-      }),
-    ),
-  ].sort((left, right) => left - right);
-}
-
-function chooseThreshold(
-  observations: readonly Phase2EvaluationObservation[],
-  labels: readonly Phase2EvaluationLabel[],
-  labelsBySample: ReadonlyMap<string, Phase2EvaluationLabel>,
-  aliases: SystemOneOracleAliases,
-): ThresholdChoice {
-  const scores = candidateScores(observations, labelsBySample, aliases);
-  const evaluations = scores.map((thresholdScore) => ({
-    thresholdScore,
-    metrics: evaluateSystemOneSplit(
-      observations,
-      labels,
-      aliases,
-      thresholdScore,
-      "train",
-    ),
-  }));
-  const qualifying = evaluations
-    .filter(
-      ({ metrics }) =>
-        metrics.selectedSiteCount > 0 &&
-        metrics.acceptedSitePrecision !== null &&
-        metrics.duplicateGroupPrecision !== null &&
-        metrics.acceptedSitePrecision >= TARGET_ACCEPTED_PRECISION &&
-        metrics.duplicateGroupPrecision >= TARGET_ACCEPTED_PRECISION,
-    )
-    .sort(
-      (left, right) =>
-        right.metrics.selectedSiteCount - left.metrics.selectedSiteCount ||
-        (right.metrics.acceptedSitePrecision ?? 0) -
-          (left.metrics.acceptedSitePrecision ?? 0) ||
-        (right.metrics.duplicateGroupPrecision ?? 0) -
-          (left.metrics.duplicateGroupPrecision ?? 0) ||
-        right.thresholdScore - left.thresholdScore,
-    );
-  return {
-    thresholdScore: qualifying[0]?.thresholdScore ?? null,
-    candidateCount: scores.length,
-    qualifyingCount: qualifying.length,
-    metrics: qualifying[0]?.metrics ?? null,
-  };
 }
 
 function selectedRows(
@@ -741,6 +683,87 @@ function candidateAvailability(
   };
 }
 
+function abstentionAttribution(
+  observations: readonly Phase2EvaluationObservation[],
+  labelsBySample: ReadonlyMap<string, Phase2EvaluationLabel>,
+  aliases: SystemOneOracleAliases,
+  thresholdScore: number | null,
+): SystemOneFamilyTransferFold["abstentionAttribution"] {
+  const groups = new Map<
+    string,
+    {
+      callShape: string;
+      reason: string;
+      abstainedSiteCount: number;
+      zeroRankScoreSiteCount: number;
+      lowRankScoreSiteCount: number;
+      missingSignalCounts: Record<string, number>;
+    }
+  >();
+  let eligibleCount = 0;
+  let abstainedCount = 0;
+  for (const observation of observations) {
+    if (!eligible(labelsBySample.get(observation.sampleId)!)) continue;
+    eligibleCount++;
+    const decision = selectSystemOne(observation, thresholdScore, aliases);
+    if (decision.status !== "ambiguous") continue;
+    abstainedCount++;
+    const callShape = observation.calleeKind ?? "unknown";
+    const reason = decision.reason ?? "unknown";
+    const key = `${callShape}\0${reason}`;
+    const group = groups.get(key) ?? {
+      callShape,
+      reason,
+      abstainedSiteCount: 0,
+      zeroRankScoreSiteCount: 0,
+      lowRankScoreSiteCount: 0,
+      missingSignalCounts: {},
+    };
+    group.abstainedSiteCount++;
+    if (observation.topRankScore === 0) group.zeroRankScoreSiteCount++;
+    if (
+      observation.topRankScore !== null &&
+      observation.topRankScore > 0 &&
+      thresholdScore !== null &&
+      observation.topRankScore < thresholdScore
+    )
+      group.lowRankScoreSiteCount++;
+    if (observation.topTargetId !== null && observation.topRankScore !== null) {
+      const signals = new Set(observation.topRankingSignals ?? []);
+      const presentSignals = new Set<string>();
+      if (signals.has("explicit-receiver-type"))
+        presentSignals.add("explicit-receiver-type");
+      if (
+        signals.has("same-binding-peer-members") ||
+        signals.has("partial-binding-peer-member-usage")
+      )
+        presentSignals.add("structural-peer-member-usage");
+      if (signals.has("compatible-argument-count"))
+        presentSignals.add("compatible-argument-count");
+      if (signals.has("same-directory")) presentSignals.add("same-directory");
+      for (const signal of [
+        "explicit-receiver-type",
+        "structural-peer-member-usage",
+        "compatible-argument-count",
+        "same-directory",
+      ])
+        if (!presentSignals.has(signal))
+          group.missingSignalCounts[signal] =
+            (group.missingSignalCounts[signal] ?? 0) + 1;
+    }
+    groups.set(key, group);
+  }
+  return {
+    eligibleSiteCount: eligibleCount,
+    abstainedSiteCount: abstainedCount,
+    byCallShapeAndReason: [...groups.values()].sort(
+      (left, right) =>
+        left.callShape.localeCompare(right.callShape) ||
+        left.reason.localeCompare(right.reason),
+    ),
+  };
+}
+
 function conservativeDuplicateGroupMetrics(
   metrics: SystemOneSplitMetrics,
   selected: readonly EvaluatedSite[],
@@ -776,6 +799,7 @@ function transferFold(
   aliases: SystemOneOracleAliases,
   crossGroups: ReadonlyMap<string, readonly string[]>,
   allConflicts: ReadonlySet<string>,
+  thresholdScore: number | null,
 ): SystemOneFamilyTransferFold {
   const held = observations.filter((row) => row.repoFamily === heldOutFamily);
   const possibleTraining = observations.filter(
@@ -803,17 +827,11 @@ function transferFold(
   const trainingLabelMap = new Map(
     trainingLabels.map((label) => [label.sampleId, label]),
   );
-  const choice = chooseThreshold(
-    training,
-    trainingLabels,
-    trainingLabelMap,
-    aliases,
-  );
   const selectedTraining = selectedRows(
     training,
     trainingLabelMap,
     aliases,
-    choice.thresholdScore,
+    thresholdScore,
     allConflicts,
   );
   const probabilityMap = fitProbabilityMap(
@@ -823,27 +841,15 @@ function transferFold(
     heldLabels.map((label) => [label.sampleId, label]),
   );
   const heldMetrics = conservativeDuplicateGroupMetrics(
-    evaluateSystemOneSplit(
-      held,
-      heldLabels,
-      aliases,
-      choice.thresholdScore,
-      "train",
-    ),
-    selectedRows(
-      held,
-      heldLabelMap,
-      aliases,
-      choice.thresholdScore,
-      allConflicts,
-    ),
+    evaluateSystemOneSplit(held, heldLabels, aliases, thresholdScore, "train"),
+    selectedRows(held, heldLabelMap, aliases, thresholdScore, allConflicts),
     allConflicts,
   );
   const heldEvaluatedRows = selectedRows(
     held,
     heldLabelMap,
     aliases,
-    choice.thresholdScore,
+    thresholdScore,
     allConflicts,
   );
   const excludedCrossGroupNames = [
@@ -880,10 +886,10 @@ function transferFold(
     trainingLabelRowsHash: labelRowsHash(trainingLabels),
     heldOutLabelRowsHash: labelRowsHash(heldLabels),
     excludedCrossFamilyGroupsHash: canonicalHash(excludedCrossGroupNames),
-    thresholdScore: choice.thresholdScore,
-    thresholdCandidateCount: choice.candidateCount,
-    thresholdQualifyingCount: choice.qualifyingCount,
-    thresholdTrainingMetrics: choice.metrics,
+    thresholdScore,
+    thresholdCandidateCount: 0,
+    thresholdQualifyingCount: 0,
+    thresholdTrainingMetrics: null,
     probabilityMap: {
       status: probabilityMap.status,
       reason: probabilityMap.reason,
@@ -899,13 +905,20 @@ function transferFold(
       heldEvaluatedRows,
       probabilityMap,
     ),
+    abstentionAttribution: abstentionAttribution(
+      held,
+      heldLabelMap,
+      aliases,
+      thresholdScore,
+    ),
   };
 }
 
-export function evaluateSystemOneFamilyTransferTrain(
+export function evaluateSystemOneFamilyTransferAtThreshold(
   observations: readonly Phase2EvaluationObservation[],
   labels: readonly Phase2EvaluationLabel[],
   aliases: SystemOneOracleAliases,
+  thresholdScore: number | null,
 ): SystemOneFamilyTransferTrainResult {
   const labelsBySample = validateTrainInputs(observations, labels);
   const familiesByGroup = groupFamilies(labels);
@@ -922,6 +935,7 @@ export function evaluateSystemOneFamilyTransferTrain(
       aliases,
       crossGroups,
       conflicts,
+      thresholdScore,
     ),
   );
   const heldMetrics = folds.map(({ heldOutMetrics }) => heldOutMetrics);
@@ -934,10 +948,11 @@ export function evaluateSystemOneFamilyTransferTrain(
   );
   return {
     schemaVersion: 1,
-    measurement: "phase2-p2b-system1-family-transfer-train/1",
+    measurement: "phase2-p2b-system1-family-transfer-calibrated-lofo/1",
     split: "train",
+    thresholdSelectionSource: "calibration-freeze",
+    thresholdScore,
     probabilityMapMethod: PROBABILITY_MAP_METHOD,
-    targetAcceptedPrecision: TARGET_ACCEPTED_PRECISION,
     probabilityMapSupportRule: {
       minimumTrainingDuplicateGroups: MINIMUM_MAP_GROUP_COUNT,
       minimumTrainingScoreLevels: MINIMUM_MAP_SCORE_LEVEL_COUNT,
@@ -970,7 +985,7 @@ export function evaluateSystemOneFamilyTransferTrain(
     folds,
     limitations: [
       "This is train-family transfer analysis, not unseen-family certification.",
-      "For each held family, threshold and probability map fit use only other TRAIN families.",
+      "The threshold is frozen from calibration; each held-family probability map fits only on other TRAIN families.",
       "Cross-family duplicate groups are excluded from each fold's fit rows and retained in held-family evaluation.",
       "The probability map is a Beta-smoothed isotonic estimate with conservative unscorable outcomes; abstentions receive no probability.",
       "No calibration, test, or temporal labels are read; no System One heldout mode is invoked.",

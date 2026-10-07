@@ -180,8 +180,10 @@ describe("P2-B duplicate-group cross-fitted confidence calibration", () => {
     );
 
     expect(result).toMatchObject({
-      schemaVersion: 3,
-      measurement: "phase2-p2b-system1-calibration-quality-oof/3",
+      schemaVersion: 4,
+      measurement: "phase2-p2b-system1-calibration-quality-oof/4",
+      targetAcceptedPrecision: 0.9,
+      targetDuplicateGroupPrecision: 0.9,
     });
     expect(result).toMatchObject({
       eligibleSiteCount: 30,

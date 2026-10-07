@@ -9,21 +9,23 @@ import {
 } from "../../scripts/semantic-corpus/phase2-tiered-call-resolution-system1-runner.mjs";
 
 describe("P2-B runner provenance", () => {
-  it("[happy] accepts the TRAIN family-transfer runner mode", () => {
+  it("[happy] accepts calibration-frozen TRAIN family-transfer mode", () => {
     expect(
       parseOptions([
         "--mode",
-        "family-transfer-train",
+        "family-transfer-calibrated-lofo",
         "--predictions",
         "predictions.jsonl",
         "--out",
         "output",
+        "--freeze",
+        "freeze.json",
       ]),
     ).toEqual({
-      mode: "family-transfer-train",
+      mode: "family-transfer-calibrated-lofo",
       predictionsPath: path.resolve("predictions.jsonl"),
       outputDirectory: path.resolve("output"),
-      freezePath: null,
+      freezePath: path.resolve("freeze.json"),
     });
   });
 
@@ -40,7 +42,7 @@ describe("P2-B runner provenance", () => {
     ).toThrow("Mode, source predictions, and output directory are required.");
   });
 
-  it("[invalid-input][error-handling] requires freeze only for heldout mode", () => {
+  it("[invalid-input][error-handling] requires freeze for heldout and calibrated LOFO modes", () => {
     expect(() =>
       parseOptions([
         "--mode",
@@ -50,7 +52,17 @@ describe("P2-B runner provenance", () => {
         "--out",
         "output",
       ]),
-    ).toThrow("Only heldout mode requires --freeze.");
+    ).toThrow("Calibration-frozen LOFO and heldout modes require --freeze.");
+    expect(() =>
+      parseOptions([
+        "--mode",
+        "family-transfer-calibrated-lofo",
+        "--predictions",
+        "predictions.jsonl",
+        "--out",
+        "output",
+      ]),
+    ).toThrow("Calibration-frozen LOFO and heldout modes require --freeze.");
     expect(() =>
       parseOptions([
         "--mode",
@@ -62,7 +74,7 @@ describe("P2-B runner provenance", () => {
         "--freeze",
         "freeze.json",
       ]),
-    ).toThrow("Only heldout mode requires --freeze.");
+    ).toThrow("Calibration-frozen LOFO and heldout modes require --freeze.");
   });
 
   it("[state-diff] fingerprints the exact runner source bytes", () => {

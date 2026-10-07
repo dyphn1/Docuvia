@@ -22,7 +22,7 @@ export class GraphPersisterService implements IGraphPersister {
 
   public async persist(
     input: Parameters<IGraphPersister["persist"]>[0],
-  ): Promise<Awaited<ReturnType<IGraphPersister["persist"]>>> {
+  ): Promise<Awaited<ReturnType<Phase6GraphPersisterService["persist"]>>> {
     const result = await this.base.persist(input);
     await input.store.withWriteLock(() =>
       input.store.withTransaction(() => {

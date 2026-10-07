@@ -54,6 +54,8 @@ export interface AstImportDescriptor {
   isTypeOnly?: boolean;
   /** True only for the default binding in an ordinary `import X, { y }` statement. */
   isCombinedDefaultImport?: boolean;
+  /** True for an ordinary standalone `import X from "..."` default binding. */
+  isDefaultImport?: boolean;
 }
 
 export interface AstExportDescriptor {
@@ -72,6 +74,8 @@ export interface ParsedAstFileData {
     name: string;
     startLine: number;
     endLine: number;
+    /** Exact tree-sitter source span for declaration-to-proof target mapping. */
+    declarationSpan?: AstUtf16Span;
     contentHash?: string;
     containerName?: string; // NEW — the enclosing class/struct name, or undefined for a top-level function
   }>;

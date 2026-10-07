@@ -106,6 +106,18 @@ function uniqueCallSiteShape(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+/**
+ * Multiple AST nodes can represent the same source-level function or method symbol (for
+ * example an object-literal method shadowed by an exported function, or overload declarations).
+ * The graph persister inserts these nodes in source order and keeps the last node for a name in
+ * its symbol lookup map, so strict proofs use that same canonical graph representative.
+ */
+function lastMatchingFunctionNode(
+  functionNodes: readonly FunctionNodeReference[],
+): FunctionNodeReference | undefined {
+  return functionNodes[functionNodes.length - 1];
+}
+
 function portableCallSiteKey(
   filePath: string,
   sourceContentHash: string,
@@ -169,7 +181,7 @@ function strictTargetFunction(
       fn.name === declaration.name &&
       fn.containerName === declaration.owner.name,
   );
-  return matches.length === 1 ? matches[0] : undefined;
+  return lastMatchingFunctionNode(matches);
 }
 
 function callerFunctionForCall(
@@ -185,6 +197,18 @@ function callerFunctionForCall(
       fn.endLine >= callSite.startLine,
   );
   return matches.length === 1 ? matches[0] : undefined;
+}
+
+function fileNodeForCall(
+  result: ParsedAstFileResult,
+  call: ParsedCall,
+): FunctionNodeReference {
+  return {
+    nodeKey: result.file,
+    name: result.file,
+    startLine: call.startLine,
+    endLine: call.startLine,
+  };
 }
 
 function callerNodeForCall(
@@ -206,7 +230,10 @@ function callerNodeForCall(
     const innermostFunctions = enclosingFunctions.filter(
       (fn) => fn.endLine - fn.startLine === smallestSpan,
     );
-    if (innermostFunctions.length !== 1) return undefined;
+    if (innermostFunctions.length !== 1) {
+      // Keep the already-proven target and conservatively attribute its caller to the file node.
+      return fileNodeForCall(result, call);
+    }
 
     // Calls inside callbacks can carry a parameter or local name in sourceFunction
     // instead of the graph's enclosing function name. The unique smallest AST
@@ -214,12 +241,7 @@ function callerNodeForCall(
     const [innermostFunction] = innermostFunctions;
     return innermostFunction;
   }
-  return {
-    nodeKey: result.file,
-    name: result.file,
-    startLine: call.startLine,
-    endLine: call.startLine,
-  };
+  return fileNodeForCall(result, call);
 }
 
 function namedImportTargetFunction(
@@ -236,7 +258,7 @@ function namedImportTargetFunction(
   const matches = (functionNodesByFile.get(proof.targetFilePath) ?? []).filter(
     (fn) => fn.name === proof.targetName && fn.containerName === undefined,
   );
-  return matches.length === 1 ? matches[0] : undefined;
+  return lastMatchingFunctionNode(matches);
 }
 
 function q3TargetFunction(
@@ -248,7 +270,7 @@ function q3TargetFunction(
       fn.name === proof.targetName &&
       fn.containerName === proof.targetOwnerName,
   );
-  return matches.length === 1 ? matches[0] : undefined;
+  return lastMatchingFunctionNode(matches);
 }
 
 function isQ3ReceiverProof(

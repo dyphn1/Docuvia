@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.mts#anonymous
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.mts#anonymous@L140
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.mts
@@ -7,5 +7,3 @@ filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.m
 # Symbol: anonymous
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.mts`
-ts`
-

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/mcp/tools/read-path-tools.unit.test.ts#anonymous@L24
+id: artifacts/cli/test/unit/mcp/tools/read-path-tools.unit.test.ts#anonymous@L49
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/mcp/tools/read-path-tools.unit.test.ts

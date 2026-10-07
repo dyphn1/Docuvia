@@ -7,4 +7,5 @@ filePath: lib/core/src/discovery/config-scanner.service.ts
 # Symbol: detect
 
 File: `lib/core/src/discovery/config-scanner.service.ts`
-.ts`
+ts`
+

@@ -318,14 +318,20 @@ async function readEvidenceFile(
       "Certification evidence files must be inside the workspace",
     );
   }
-  const stat = await fs.stat(actualPath);
-  if (!stat.isFile() || stat.size > MAX_EVIDENCE_FILE_BYTES) {
-    throw new DocuviaError(
-      ErrorCodes.INVALID_INPUT,
-      `Certification evidence files must be regular files no larger than ${MAX_EVIDENCE_FILE_BYTES} bytes`,
-    );
+  // Check and read through one handle so the file cannot be swapped between the two steps.
+  const handle = await fs.open(actualPath, "r");
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size > MAX_EVIDENCE_FILE_BYTES) {
+      throw new DocuviaError(
+        ErrorCodes.INVALID_INPUT,
+        `Certification evidence files must be regular files no larger than ${MAX_EVIDENCE_FILE_BYTES} bytes`,
+      );
+    }
+    return await handle.readFile("utf8");
+  } finally {
+    await handle.close();
   }
-  return fs.readFile(actualPath, "utf8");
 }
 
 function cryptoRandomId(): string {

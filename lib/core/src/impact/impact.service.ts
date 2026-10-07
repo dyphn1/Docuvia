@@ -317,54 +317,73 @@ export class ImpactService implements IImpactService {
       entries.push(this.buildEntry(store, node.id, node.name, node.type));
     };
 
-    const appendContainerChain = (nodeId: number): void => {
-      const containers = [nodeId];
-      const visited = new Set<number>();
-      while (containers.length > 0) {
-        const childId = containers.shift();
-        if (childId === undefined || visited.has(childId)) continue;
-        visited.add(childId);
-        for (const parent of store.graph
-          .getIncomingRelations(childId)
-          .filter(({ linkType }) => linkType === LinkTypes.CONTAINS)) {
-          append(parent);
-          if (store.graph.getNodeKeyById?.(parent.id)?.includes("#")) {
-            containers.push(parent.id);
-          }
-        }
-      }
-    };
-
     while (queue.length > 0) {
       const callerId = queue.shift();
       if (callerId === undefined || visitedCallerIds.has(callerId)) continue;
       visitedCallerIds.add(callerId);
 
-      const lexicalParents = store.graph
-        .getIncomingRelations(callerId)
-        .filter(({ linkType }) => linkType === LinkTypes.CONTAINS);
-      for (const parent of lexicalParents) {
+      for (const parent of this.lexicalParents(store, callerId)) {
         append(parent);
         if (visitedParentIds.has(parent.id)) continue;
         visitedParentIds.add(parent.id);
-
-        const parentKey = store.graph.getNodeKeyById?.(parent.id);
-        if (!parentKey?.includes("#")) continue;
-
-        for (const dependent of store.graph.getIncomingRelations(parent.id)) {
-          append(dependent);
-          appendContainerChain(dependent.id);
-          if (
-            dependent.linkType === LinkTypes.CONTAINS &&
-            store.graph.getNodeKeyById?.(dependent.id)?.includes("#")
-          ) {
-            queue.push(dependent.id);
-          }
-        }
+        if (!this.isFunctionNode(store, parent.id)) continue;
+        queue.push(...this.appendParentDependents(store, parent.id, append));
       }
     }
 
     return entries;
+  }
+
+  private lexicalParents(
+    store: IGraphStore,
+    childId: number,
+  ): ReturnType<IGraphStore["graph"]["getIncomingRelations"]> {
+    return store.graph
+      .getIncomingRelations(childId)
+      .filter(({ linkType }) => linkType === LinkTypes.CONTAINS);
+  }
+
+  /** Function node keys carry `#`; file and class owner keys do not continue the lexical walk. */
+  private isFunctionNode(store: IGraphStore, nodeId: number): boolean {
+    return store.graph.getNodeKeyById?.(nodeId)?.includes("#") ?? false;
+  }
+
+  /** Appends one incoming hop from an enclosing function and returns nested callers to revisit. */
+  private appendParentDependents(
+    store: IGraphStore,
+    parentId: number,
+    append: (node: { id: number; name: string; type: string }) => void,
+  ): number[] {
+    const nestedCallers: number[] = [];
+    for (const dependent of store.graph.getIncomingRelations(parentId)) {
+      append(dependent);
+      this.appendContainerChain(store, dependent.id, append);
+      if (
+        dependent.linkType === LinkTypes.CONTAINS &&
+        this.isFunctionNode(store, dependent.id)
+      ) {
+        nestedCallers.push(dependent.id);
+      }
+    }
+    return nestedCallers;
+  }
+
+  private appendContainerChain(
+    store: IGraphStore,
+    nodeId: number,
+    append: (node: { id: number; name: string; type: string }) => void,
+  ): void {
+    const containers = [nodeId];
+    const visited = new Set<number>();
+    while (containers.length > 0) {
+      const childId = containers.shift();
+      if (childId === undefined || visited.has(childId)) continue;
+      visited.add(childId);
+      for (const parent of this.lexicalParents(store, childId)) {
+        append(parent);
+        if (this.isFunctionNode(store, parent.id)) containers.push(parent.id);
+      }
+    }
   }
 
   /**

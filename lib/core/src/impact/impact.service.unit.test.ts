@@ -205,7 +205,7 @@ describe("ImpactService", () => {
       expect(result).toEqual([{ name: "caller", type: "module" }]);
     });
 
-    it("[happy][state-diff] expands exact callback callers to their enclosing function, callers, and files", () => {
+    it("[happy][state-diff] expands exact callback callers to their enclosing function but not its callers or files", () => {
       const insertNode = (name: string, nodeKey: string): number =>
         store.graph.insertNode({
           projectId,
@@ -269,17 +269,58 @@ describe("ImpactService", () => {
       const impactedNames = result?.map(({ name }) => name) ?? [];
 
       expect(impactedNames).toEqual(
-        expect.arrayContaining([
-          "anonymous",
-          "outer",
-          "invokeOuter",
-          "src/caller.ts",
-          "src/consumer.ts",
-        ]),
+        expect.arrayContaining(["anonymous", "outer"]),
       );
+      expect(impactedNames).not.toContain("invokeOuter");
+      expect(impactedNames).not.toContain("src/consumer.ts");
+      expect(impactedNames).not.toContain("src/caller.ts");
     });
 
-    it("[regression][exact-v2] includes method and class context but stops at the class owner", () => {
+    it("[regression][exact-v2] falls back to the file for a top-level anonymous callback", () => {
+      const callerFile = store.graph.insertNode({
+        projectId,
+        name: "src/caller.ts",
+        type: "module",
+        pathPatterns: ["src/caller.ts"],
+        nodeKey: "src/caller.ts",
+      });
+      const target = store.graph.insertNode({
+        projectId,
+        name: "target",
+        type: "module",
+        pathPatterns: ["src/target.ts"],
+        nodeKey: "src/target.ts#target",
+      });
+      const callback = store.graph.insertNode({
+        projectId,
+        name: "anonymous",
+        type: "module",
+        pathPatterns: ["src/caller.ts"],
+        nodeKey: "src/caller.ts#anonymous@L1",
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerFile,
+        targetNodeId: callback,
+        linkType: LinkTypes.CONTAINS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: callback,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLS,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const names = impactService
+        .getBlastRadius(store, "target")
+        ?.map(({ name }) => name);
+
+      expect(names).toEqual(["anonymous", "src/caller.ts"]);
+    });
+
+    it("[regression][exact-v2] includes the enclosing method and, for anonymous field callbacks, the class owner", () => {
       const insertNode = (name: string, nodeKey: string): number =>
         store.graph.insertNode({
           projectId,
@@ -294,7 +335,7 @@ describe("ImpactService", () => {
       const target = insertNode("target", "src/target.ts#target");
       const owner = insertNode("Owner", "src/owner.ts#Owner");
       const fieldCallback = insertNode(
-        "fieldCallback",
+        "anonymous",
         "src/owner.ts#Owner.field@L2",
       );
       const method = insertNode("method", "src/owner.ts#Owner.method");
@@ -356,7 +397,7 @@ describe("ImpactService", () => {
 
       expect(names).toEqual(
         expect.arrayContaining([
-          "fieldCallback",
+          "anonymous",
           "methodCallback",
           "method",
           "Owner",

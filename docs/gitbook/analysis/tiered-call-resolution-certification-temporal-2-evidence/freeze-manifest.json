@@ -1,0 +1,491 @@
+{
+  "schemaVersion": 1,
+  "protocol": "tiered-call-resolution/temporal-pre-registration-freeze/1",
+  "frozenAtUtc": "2026-10-06T23:03:09.075Z",
+  "status": "preregistered-q1-count-gate-passed-labeling-authorized",
+  "implementationHead": "113a2afe97d2407d0b6ba19624f42408875831cf",
+  "branch": "feat/559-temporal-certification",
+  "sourceFamily": {
+    "repoId": "github.com/dyphn1/Docuvia",
+    "family": "dyphn1/Docuvia",
+    "license": "MIT",
+    "licenseDeclaredBy": "evaluate/semantic-corpus/corpus-spec.v1.json and package.json",
+    "usage": "evaluation-only for target snapshot"
+  },
+  "temporalWindow": {
+    "trainingBaselineRevision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+    "targetRevision": "113a2afe97d2407d0b6ba19624f42408875831cf",
+    "commitsBetween": 189,
+    "targetIsCurrentMain": true,
+    "sampleSelection": "Target eligible call sites whose duplicateGroup was absent from the entire baseline snapshot; duplicateGroup is the SHA-256 of callee plus the whitespace-normalized +/-2-line window.",
+    "proofScopeJoinFields": [
+      "repository-relative filePath",
+      "line",
+      "column",
+      "calleeName"
+    ]
+  },
+  "corpus": {
+    "originalTrainCorpusSpec": {
+      "path": "evaluate/semantic-corpus/corpus-spec.v1.json",
+      "sha256": "867b96f393be018c7552036b18d8164d8fcdd9f21fe8d3a2f100d674fd64e69a",
+      "pinnedDocuviaTrainRevision": "204c40fb7080ebded011f65a3dae7d749cce9ed1"
+    },
+    "sourceOnlyCorpusSpec": {
+      "path": "/private/tmp/docuvia-temporal-2/corpus-spec.json",
+      "sha256": "c489bf0badb8d46a26b50418dd8d86f00e5f24ee7af87a4e9c081ca87222abd0",
+      "familySplitDeclaredAs": "test",
+      "reason": "The prelabel collector requires temporal snapshots to belong to a test split; the separate corpus contains only the later evaluation-only target samples and baseline group inventory."
+    },
+    "prelabelManifest": {
+      "path": "/private/tmp/docuvia-temporal-2/prelabel/prelabel-manifest.json",
+      "sampleCount": 1121,
+      "temporalDuplicateGroups": 1032,
+      "split": "temporal",
+      "oracleInvocations": 0,
+      "canonicalJsonSha256": "2ef09caa48cd875fa3224bd434ee08888717f46f783c312e7a47ea22f192ebf8",
+      "fileSha256": "c9354c9c966bce7ff0df71d0d15632543d981e23b1d7187aac395c9797567898",
+      "splitHashes": {
+        "test": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "temporal": "53a6864ffeab9bd3e8c9aae2f005a40b3914b7fb22fac0292aea6bd1f9abe1f0",
+        "calibration": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    },
+    "snapshots": {
+      "baseline": {
+        "revision": "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+        "snapshotSha256": "4215e47a3f8328407b36456d8043a0b33b5408887dabec6b9c3abadf2e446341",
+        "trackedFiles": 714,
+        "uniqueCallSites": 42989,
+        "eligibleCallSites": 3610,
+        "duplicateGroups": 36777
+      },
+      "target": {
+        "revision": "113a2afe97d2407d0b6ba19624f42408875831cf",
+        "snapshotSha256": "853dc03a873bdb7f7e95ef37a68f2192fe03fbbc6068938ae8661a6ce9d8a24d",
+        "trackedFiles": 911,
+        "uniqueCallSites": 67717,
+        "eligibleCallSites": 4660,
+        "duplicateGroups": 59709,
+        "temporalSamplesAfterGroupFiltering": 1121
+      }
+    }
+  },
+  "proofRunners": {
+    "q1": {
+      "sourceFiles": 907,
+      "parsedFiles": 907,
+      "parseFailures": 0,
+      "serviceProofSites": 3347,
+      "persistedProofRows": 3347,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 1936949248
+    },
+    "q2": {
+      "sourceFiles": 907,
+      "parsedFiles": 907,
+      "parseFailures": 0,
+      "serviceProofSites": 47,
+      "persistedProofRows": 47,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 1984462848
+    },
+    "q3": {
+      "sourceFiles": 907,
+      "parsedFiles": 907,
+      "parseFailures": 0,
+      "serviceProofSites": 1190,
+      "persistedProofRows": 1190,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 1973534720
+    }
+  },
+  "sourceConcentrationAggregates": {
+    "temporalSamples": 947,
+    "temporalDuplicateGroups": 878,
+    "resolverImplementationSamples": 0,
+    "resolverImplementationDuplicateGroups": 0,
+    "semanticCoreSamples": 452,
+    "semanticCoreDuplicateGroups": 422,
+    "semanticCorpusToolingSamples": 0
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "inScopePersistedProofSites": 502,
+      "independentDuplicateGroups": 477,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "inScopePersistedProofSites": 12,
+      "independentDuplicateGroups": 12,
+      "requiredGroups": 299,
+      "gate": "underpowered"
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "inScopePersistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "inScopePersistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "inScopePersistedProofSites": 4,
+      "independentDuplicateGroups": 4,
+      "requiredGroups": 299,
+      "gate": "underpowered"
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "inScopePersistedProofSites": 104,
+      "independentDuplicateGroups": 95,
+      "requiredGroups": 299,
+      "gate": "underpowered"
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "inScopePersistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    }
+  ],
+  "threshold": {
+    "confidence": 0.95,
+    "lowerBound": 0.99,
+    "minimumIndependentDuplicateGroupsWithZeroContradictions": 299,
+    "successes": "not measured: labels not opened as of this freeze",
+    "validContradictions": "not measured: labels not opened as of this freeze",
+    "lowerBound95": "not measured: labels not opened as of this freeze"
+  },
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3"
+    },
+    "configurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "nodeVersion": "v24.14.1",
+    "oracleInvocations": 0,
+    "labelsOpened": false,
+    "certificationOutcomesOpened": false
+  },
+  "implementationFileHashes": {
+    "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+    "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+    "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+    "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+    "lib/core/src/semantic/call-resolution-reexport-proof.ts": "fcbb7acf7019ad667dc89587aa67d8137355e9f23de0eec952c1678bbdc889e9",
+    "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+    "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+    "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+    "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+  },
+  "resolverRuleCombinedSha256": {
+    "q1:named-import:v1": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "q2:reexport-trace:v1": "f94fc6e2a74682622f7d464ed745a9142c2c893dc990ec57f454aac2de7b1a88",
+    "q3:super-call:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:this-inherited:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:typed-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:new-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "single-candidate-this-v1": "e9c025800d2d3e679e3415715587e3c1cc4fe5ff75535247ba9a850439d80f13"
+  },
+  "sourceToolingHashes": {
+    "scripts/semantic-corpus/prelabel-manifest.mts": "089c144100b10e270ec2ae7c6f210712284a6f180756be57d41e448993616cc5",
+    "scripts/semantic-corpus/prelabel-collect.mts": "fc6eae889dd65a1f10f7b82dc4de53e897c3bd96ace02b4fa13b9874dda79f2d",
+    "scripts/semantic-corpus/collect.mts": "ffd072e62b2e2bb844b6b9c13fa152dad4717f3a5cd113078e7bd6f5c1f39e65",
+    "scripts/semantic-corpus/checker.mts": "81967e6df548385b4570da6fe298cf73b50be53638f0c64587bacbd4f17b7d8e",
+    "scripts/semantic-corpus/tier-a.mts": "50dd5a452b04c524fab8a6b336ee83af29586adc5afb00e45c74caba244f1554",
+    "scripts/semantic-corpus/snapshot.mts": "a23af91beda4efdcb0a1a145385b3d819d0af707750bc7a22d71c01fe35fc02b",
+    "scripts/semantic-corpus/memory-guard.mts": "4e890ac5c293ba53303b5c3b4e60359ac642b236432aada4979f114f68859dcd",
+    "scripts/semantic-corpus/run-support.mts": "7787ab5b3e5a309bc64c7601e9a969d245cfc99bdccf430cef44239f866262e7",
+    "scripts/semantic-corpus/oracle.mts": "52f61c353193fdf11d55c8888fbf2b244deebe8b498ccefc83c93ccb425ea3e1",
+    "scripts/semantic-corpus/typescript-language-server.mts": "350bd9f0988b1d9afd79100c73f9766b317c4590af9fe3a9a811a53a5d8b6f70",
+    "scripts/semantic-corpus/certification-evaluate.mts": "e912c85b45f9424cd2836e3ac9d63c31497c28723b9b84de8c510f2b44abea4b",
+    "scripts/semantic-corpus/certification-proof-scope.mts": "996f4ca0c974ef9ec43a36d3a429ad7e0c50e0c3a0b95ffb6645a2b82dbfaec6",
+    "scripts/semantic-corpus/phase3-q1-named-import-whole-source-parity.mts": "77ad7fd57937187044953b3f0c60a5bba1e74babf94f0372ae0459bd51611c34",
+    "scripts/semantic-corpus/phase3-q2-reexport-whole-source-parity.mts": "ff8e58b91607ddb710c1523841ea6be40304478961049feccc1aecf15c95aa71",
+    "scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts": "15be1e8a31e9a392c48739d54581220ac012cfb2f456f747395a073eb7e611c2",
+    "scripts/semantic-corpus/parity-utils.mts": "4971f08c99d9604ccfab59f6e6d97225e36f15afe0ce76102175162338d17618",
+    "test/semantic-corpus/prelabel-manifest.unit.test.ts": "0e5fad70b85a3ff4843589d7c2f1fbbc6c2336fe36e75bb05d6782b642a73fd4",
+    "test/semantic-corpus/certification-proof-scope.unit.test.ts": "2d72b9d589b03edf7cd3fb6a445de3dcf8da9e389e1c8370821daa6abb03e448",
+    "test/semantic-corpus/phase3-whole-source-parity.unit.test.ts": "119dc89437e68ba0229c1eaba51c7318dfa53bd8b2516433d65de1e96209c119",
+    "package.json": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911"
+  },
+  "configurationHashes": {
+    "packageJson": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911",
+    "pnpmLock": "a5b7451ed45fd38d0aeb633c9885bd3359f251bb29e7b569dce4567cf0b2c9ea",
+    "trainCorpusSpec": "867b96f393be018c7552036b18d8164d8fcdd9f21fe8d3a2f100d674fd64e69a",
+    "sourceOnlyCorpusSpec": "c489bf0badb8d46a26b50418dd8d86f00e5f24ee7af87a4e9c081ca87222abd0",
+    "oracleConfiguration": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+  },
+  "alternativeScreening": {
+    "exactTrainPinsWithNoLaterLocalCommits": [
+      {
+        "repo": "Graft",
+        "family": "trailhq/Graft",
+        "licenseSha256": "d671f52607b002fad21b4a09cf3a7bd6c507e95abfd90040c775fdd4d83e3d7c",
+        "trainRevision": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+        "localHead": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+        "commitsAfterTrainRevision": 0,
+        "headEqualsTrainRevision": true
+      },
+      {
+        "repo": "Understand-Anything",
+        "family": "Egonex-AI/Understand-Anything",
+        "licenseSha256": "24c4b35344840f1abaf3a3a4a44f5e29ee0e73b6bf25e42ef108e0afebd402bc",
+        "trainRevision": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+        "localHead": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+        "commitsAfterTrainRevision": 0,
+        "headEqualsTrainRevision": true
+      },
+      {
+        "repo": "repomind",
+        "family": "403errors/repomind",
+        "licenseSha256": "593d041448383ade25588c08c34f15e3230cda6f5196e966821e6a4dc0bf8c30",
+        "trainRevision": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+        "localHead": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+        "commitsAfterTrainRevision": 0,
+        "headEqualsTrainRevision": true
+      },
+      {
+        "repo": "typescript-language-server",
+        "family": "typescript-language-server/typescript-language-server",
+        "licenseSha256": "899d21038f87dd6243dd33b7ee82a078e639d4325a427c01e64d8116315b9680",
+        "trainRevision": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+        "localHead": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+        "commitsAfterTrainRevision": 0,
+        "headEqualsTrainRevision": true
+      },
+      {
+        "repo": "code-review-graph",
+        "family": "tirth8205/code-review-graph",
+        "licenseSha256": "4608284d776c4ca9b88d05c7210f71ab03400520bf7334d72404eba53f56dd4e",
+        "trainRevision": "343ab7cea29d47a3e805381e09f8243a43d43d88",
+        "localHead": "343ab7cea29d47a3e805381e09f8243a43d43d88",
+        "commitsAfterTrainRevision": 0,
+        "headEqualsTrainRevision": true
+      }
+    ],
+    "nonTrainingCandidate": {
+      "repo": "git-ai",
+      "license": "Apache-2.0",
+      "licenseFileSha256": "8b630f843b98bfd63133e8b196c85cee003af873c2f70219c662c09afcbbfa84",
+      "inExistingTrainCorpus": false,
+      "baselineRevision": "75d5c39053e81fee809082ef88299bfb5a48ab29",
+      "targetRevision": "0670e7ef27590af0e8ff5409267f3f4b09b8fcb4",
+      "temporalSamples": 74,
+      "temporalDuplicateGroups": 74,
+      "maximumPossibleGroupsForAnySignature": 74,
+      "oracleInvocations": 0,
+      "decision": "underpowered-before-proof-scope",
+      "prelabelManifestCanonicalSha256": "fe239c9983309906400de0e526e70dd3defb5000580fb30c24a657f9dfa993f5"
+    },
+    "note": "No candidate was oracle-labeled. The git-ai temporal sample contains fewer than 299 total groups before any proof-scope filter."
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/corpus-spec.json",
+      "sha256": "c489bf0badb8d46a26b50418dd8d86f00e5f24ee7af87a4e9c081ca87222abd0",
+      "sizeBytes": 1016,
+      "kind": "source-only-corpus-spec"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/prelabel/prelabel-manifest.json",
+      "sha256": "c9354c9c966bce7ff0df71d0d15632543d981e23b1d7187aac395c9797567898",
+      "sizeBytes": 804996,
+      "kind": "per-sample-prelabel-manifest"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/prelabel/prelabel-report.json",
+      "sha256": "f48c56fa44bba2c77b316f56f56e9f44cc0c78e8707d228d9680da58402ebb4d",
+      "sizeBytes": 608272,
+      "kind": "prelabel-aggregate-report"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q1-summary.jsonl",
+      "sha256": "123400ab546c364feb89c60268bb508d155143c47a831bd0966caa12e6a22fe5",
+      "sizeBytes": 214272,
+      "kind": "source-proof-aggregate-and-diff-report"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q1-proofs.json",
+      "sha256": "b1a66c9d54f96d5642c6c70748af599bad62c2365328a210a89dd94af56dd8b0",
+      "sizeBytes": 1555584,
+      "kind": "per-sample-persisted-proof-inventory"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q2-summary.jsonl",
+      "sha256": "8fef51bdcc57e316eacef1c41c29a8f2a872e3ab44be143cb5a871fb15f0cc75",
+      "sizeBytes": 5316,
+      "kind": "source-proof-aggregate-and-diff-report"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q2-proofs.json",
+      "sha256": "aa0ef3244d71e9eeb9dbfbf2e9658380e41179140915c74b3357de502f831d95",
+      "sizeBytes": 21193,
+      "kind": "per-sample-persisted-proof-inventory"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q3-summary.jsonl",
+      "sha256": "acbd4b56052d8dc3f91521ab03f76abd2db5b0469fb031cedf7f8de330a6b7da",
+      "sizeBytes": 742831,
+      "kind": "source-proof-aggregate-and-diff-report"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q3-proofs.json",
+      "sha256": "418a0623ed53d45b8cf19a516d59abaf7d88ac21f3a7021e67398130736b0500",
+      "sizeBytes": 420667,
+      "kind": "per-sample-persisted-proof-inventory"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/git-ai/corpus-spec.json",
+      "sha256": "4c5c842213f28457ed8be579ebe7f9e6ecab1cd3d25d036c49a0c3e7a1c31331",
+      "sizeBytes": 964,
+      "kind": "alternative-source-only-corpus-spec"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/git-ai/prelabel/prelabel-manifest.json",
+      "sha256": "478ae676e280eeb83843f234ce55ab7b36d5b18d349009062f495f1f117b7b73",
+      "sizeBytes": 49027,
+      "kind": "alternative-per-sample-prelabel-manifest"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/git-ai/prelabel/prelabel-report.json",
+      "sha256": "fe5da0d4c38f821d5da6449ce0d6a8082c0c252d8f6dead12757c1d8fed0e9f7",
+      "sizeBytes": 2806,
+      "kind": "alternative-prelabel-aggregate-report"
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/prelabel/prelabel-manifest.json",
+      "sha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841",
+      "sizeBytes": 678010
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/aggregate.json",
+      "sha256": "dcd444851a8962dc2132befce6c0f74b3d04e1450b903f0d21c053de757defe7",
+      "sizeBytes": 3646
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q1-proofs.json",
+      "sha256": "b1a66c9d54f96d5642c6c70748af599bad62c2365328a210a89dd94af56dd8b0",
+      "sizeBytes": 1555584
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q2-proofs.json",
+      "sha256": "aa0ef3244d71e9eeb9dbfbf2e9658380e41179140915c74b3357de502f831d95",
+      "sizeBytes": 21193
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/q3-proofs.json",
+      "sha256": "418a0623ed53d45b8cf19a516d59abaf7d88ac21f3a7021e67398130736b0500",
+      "sizeBytes": 420667
+    }
+  ],
+  "constraints": {
+    "gitNexusUsed": false,
+    "nestDatasetUsed": false,
+    "onyxEnterprisePathsInspected": false,
+    "networkUsed": false,
+    "projectFileContentHashSemanticsChanged": false,
+    "productionCertificationRecordWritten": false,
+    "tierBSkipEnabled": false,
+    "docuviaCheckoutGitMetadataWritten": false,
+    "temporarySnapshotGitMetadataCreated": true
+  },
+  "supersedes": {
+    "path": "freeze-manifest-original.json",
+    "sha256": "0dde7fbdc9b7e571944b453db133163acd7a81f588c8a6c03dcfedd3721550cb",
+    "reason": "Pre-registration amendment 1: exclude resolver implementation and semantic-corpus tooling callers before any oracle label was opened."
+  },
+  "preRegistrationAmendment1": {
+    "record": "pre-registration amendment 1, made before any oracle label was opened, reason: independence",
+    "rules": [
+      {
+        "pattern": "lib/core/src/semantic/call-resolution-*",
+        "effect": "exclude all matching caller files"
+      },
+      {
+        "pattern": "scripts/semantic-corpus/**",
+        "effect": "exclude all matching caller files"
+      },
+      {
+        "pattern": "test/semantic-corpus/**",
+        "effect": "exclude all matching caller files"
+      }
+    ],
+    "removedSamples": 174,
+    "removedIndependentDuplicateGroups": 154,
+    "removedByPattern": {
+      "lib/core/src/semantic/call-resolution-*": {
+        "samples": 174,
+        "groups": 154
+      },
+      "scripts/semantic-corpus/**": {
+        "samples": 0,
+        "groups": 0
+      },
+      "test/semantic-corpus/**": {
+        "samples": 0,
+        "groups": 0
+      }
+    },
+    "retainedSamples": 947,
+    "retainedIndependentDuplicateGroups": 878,
+    "filteredManifest": {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/prelabel/prelabel-manifest.json",
+      "sha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841",
+      "sizeBytes": 678010,
+      "canonicalJsonSha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841"
+    },
+    "sampleCount": 947,
+    "temporalDuplicateGroups": 878,
+    "signatureCounts": {
+      "q1:named-import:v1": {
+        "sites": 502,
+        "groups": 477
+      },
+      "q2:reexport-trace:v1": {
+        "sites": 12,
+        "groups": 12
+      },
+      "q3:super-call:v1": {
+        "sites": 0,
+        "groups": 0
+      },
+      "q3:this-inherited:v1": {
+        "sites": 0,
+        "groups": 0
+      },
+      "q3:typed-receiver:v1": {
+        "sites": 4,
+        "groups": 4
+      },
+      "q3:new-receiver:v1": {
+        "sites": 104,
+        "groups": 95
+      },
+      "single-candidate-this-v1": {
+        "sites": 0,
+        "groups": 0
+      }
+    },
+    "labelsOpenedBeforeAmendment": false
+  }
+}

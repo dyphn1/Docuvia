@@ -55,6 +55,7 @@ export const SchemaColumns = {
   PROJECT_ID: "project_id",
   FILE_PATH: "file_path",
   CONTENT_HASH: "content_hash",
+  SOURCE_INDEX_JSON: "source_index_json",
   PATH_PATTERNS: "path_patterns",
   NODE_KEY: "node_key",
   SOURCE_NODE_ID: "source_node_id",

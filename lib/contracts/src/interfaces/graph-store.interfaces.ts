@@ -1,3 +1,9 @@
+import type { CallResolutionHypothesisSourceFile } from "./call-resolution-hypothesis.interfaces.js";
+import type {
+  CallResolutionFunctionNodeReference,
+  CallResolutionSourceIndexRead,
+} from "./call-resolution-source-index.interfaces.js";
+
 /**
  * Row shapes for the local SQLite schema (see `lib/schema`'s migrations). Defined here, not in
  * `lib/schema`, per the Virtual Contracts "Mandatory Mapping" rule — `lib/schema` must map its
@@ -42,6 +48,8 @@ export interface ProjectFileRow {
   /** HEAD sha at the time this file was last Tier B-processed — null when
    *  `last_tier_b_processed_at` is also null, or when the batch ran on an unborn/headless HEAD. */
   last_tier_b_commit_sha: string | null;
+  /** Versioned AST facts used to rebuild the strict call-resolution source index. */
+  source_index_json: string | null;
 }
 
 export interface ProjectFileSnapshotMetadata {
@@ -250,7 +258,16 @@ export interface IProjectFilesRepo {
     projectId: number;
     filePath: string;
     contentHash: string | null;
+    sourceIndexFile?: CallResolutionHypothesisSourceFile;
+    sourceIndexFunctionNodeReferences?: readonly CallResolutionFunctionNodeReference[];
+    sourceIndexResolverLocalSymbols?: readonly string[];
   }): void;
+  /** Clears the durable proof facts before an authoritative full replacement pass. */
+  clearCallResolutionSourceFiles?(projectId: number): void;
+  /** Reads every project file's proof facts; missing or malformed rows make the index incomplete. */
+  getCallResolutionSourceFiles?(
+    projectId: number,
+  ): CallResolutionSourceIndexRead;
   /**
    * Issue #508 Phase 3 (D6/D11): removes the `project_files` row of a path that left the tree
    * (deleted, or the old side of a rename), keyed on (project_id, file_path). A missing row is a

@@ -34,6 +34,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "created_at",
     "last_tier_b_processed_at",
     "last_tier_b_commit_sha",
+    "source_index_json",
   ],
   l1_tags: [
     "id",
@@ -363,6 +364,7 @@ describe("applyMigrations", () => {
       "0016_call_site_projection_callers.sql",
       "0017_verified_call_site_targets.sql",
       "0018_call_site_rule_quarantine_recertification.sql",
+      "0019_call_resolution_source_index.sql",
     ]);
   });
 
@@ -425,7 +427,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(18);
+    expect(migrationRows).toHaveLength(19);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

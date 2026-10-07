@@ -172,6 +172,11 @@ export const GitConstants = {
    * value → no-op) and as the delta baseline (`this value -> HEAD`).
    */
   META_KEY_LAST_INGESTED_SOURCE_SHA: "lastIngestedSourceSha",
+  /** Source commit represented by a complete persisted Q1/Q2/Q3 syntax-fact index. */
+  META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA: "callResolutionSourceIndexSha",
+  /** JSON array of source paths whose strict proofs were deferred by an incomplete delta. */
+  META_KEY_CALL_RESOLUTION_REPROOF_PENDING_PATHS:
+    "callResolutionReproofPendingPaths",
   /** `docuvia_meta` key storing the `node_key` format version (GRPH-006) the graph was last fully
    *  ingested with -- `"2"` once qualified/structural keys are in use, absent/older on a
    *  pre-qualified-key graph. Written only on a full ingestion (`stampFullIngestionForTierB`,

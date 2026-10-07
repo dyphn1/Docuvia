@@ -618,7 +618,26 @@ export async function runAnalyze(
   const before = (await readText(logPath)).length;
   const run = await sandbox.runDistCli(["analyze"], { reject: false });
   const appended = (await readText(logPath)).slice(before);
-  return { label, exitCode: run.exitCode ?? 1, events: eventNames(appended) };
+  const deltaSummary = appended
+    .split(/\r?\n/u)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
+    .filter(({ event }) => event === "analyze.delta.summary")
+    .at(-1);
+  return {
+    label,
+    exitCode: run.exitCode ?? 1,
+    events: eventNames(appended),
+    ...(typeof deltaSummary?.strictProofReproofStatus === "string"
+      ? { strictProofReproofStatus: deltaSummary.strictProofReproofStatus }
+      : {}),
+    ...(typeof deltaSummary?.strictProofReproofFallbackReason === "string"
+      ? {
+          strictProofReproofFallbackReason:
+            deltaSummary.strictProofReproofFallbackReason,
+        }
+      : {}),
+  };
 }
 
 /** Concurrent-writer artifact (a filesystem lock file, not a DB edit). */

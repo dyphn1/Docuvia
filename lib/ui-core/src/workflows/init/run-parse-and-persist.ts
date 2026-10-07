@@ -59,6 +59,9 @@ export interface RunParseAndPersistResult {
   /** Issue #221: per-file Tier A call-site resolution counters from this run's persist, absent
    *  when no parsed file had extractable call sites. */
   callResolutionByFile?: Record<string, CallResolutionStats>;
+  /** The persisted proof index is complete for this source revision. */
+  sourceIndexComplete: boolean;
+  strictCallProofIndexFallbackReason?: string;
 }
 
 /** Event names for the two per-file JSONL lines this phase emits, supplied by the caller so the
@@ -67,6 +70,48 @@ export interface RunParseAndPersistResult {
 export interface RunParseAndPersistLogEvents {
   parseFailure: string;
   fileSkippedOversized: string;
+}
+
+function canProvideCompleteSourceIndex(input: {
+  parsedResults: ParsedAstFileResult[];
+  failures: AstParseFailure[];
+  skippedOversized: { file: string; sizeBytes: number }[];
+  filesToParse: DiscoveredFile[];
+  candidateFileCount?: number;
+  sourceIndexUpdateMode?: "replace" | "merge";
+  sourceIndexBaseComplete?: boolean;
+}): boolean {
+  const parsedEveryInput =
+    input.failures.length === 0 &&
+    input.skippedOversized.length === 0 &&
+    input.parsedResults.length === input.filesToParse.length;
+  if (input.sourceIndexUpdateMode === "merge")
+    return input.sourceIndexBaseComplete === true && parsedEveryInput;
+  return (
+    input.candidateFileCount !== undefined &&
+    parsedEveryInput &&
+    input.parsedResults.length === input.candidateFileCount
+  );
+}
+
+function sourceIndexResultFields(
+  persistResult: Awaited<ReturnType<IGraphPersister["persist"]>>,
+  requestedComplete: boolean,
+): Pick<
+  RunParseAndPersistResult,
+  "sourceIndexComplete" | "strictCallProofIndexFallbackReason"
+> {
+  const sourceIndexComplete =
+    persistResult.strictCallProofIndex?.complete ?? requestedComplete;
+  return {
+    sourceIndexComplete,
+    ...(persistResult.strictCallProofIndex?.fallbackReason
+      ? {
+          strictCallProofIndexFallbackReason:
+            persistResult.strictCallProofIndex.fallbackReason,
+        }
+      : {}),
+  };
 }
 
 /** Phase 4: AST parse, per-file language-tag merge, then hands off to `IGraphPersister` (the Domain Core service resolved from the factory) for graph persistence. */
@@ -79,6 +124,9 @@ export async function runParseAndPersist(deps: {
   filesToParse: DiscoveredFile[];
   /** Full-discovery candidate count; omitted by delta ingestion, which can never claim a complete index. */
   candidateFileCount?: number;
+  /** Full ingestion replaces all facts; a delta merges into a validated complete baseline. */
+  sourceIndexUpdateMode?: "replace" | "merge";
+  sourceIndexBaseComplete?: boolean;
   skippedOversized: { file: string; sizeBytes: number }[];
   /** Config + hotspot tags from `runDiscoveryPipeline`; a fresh `Set` is returned with per-file language tags folded in — the input is never mutated. */
   tags: Set<string>;
@@ -98,6 +146,8 @@ export async function runParseAndPersist(deps: {
     projectId,
     filesToParse,
     candidateFileCount,
+    sourceIndexUpdateMode,
+    sourceIndexBaseComplete,
     skippedOversized,
     appendLogLine,
     logEvents,
@@ -126,25 +176,35 @@ export async function runParseAndPersist(deps: {
     });
   }
 
+  const sourceIndexComplete = canProvideCompleteSourceIndex({
+    parsedResults,
+    failures,
+    skippedOversized,
+    filesToParse,
+    candidateFileCount,
+    sourceIndexUpdateMode,
+    sourceIndexBaseComplete,
+  });
+
   const persistResult = await graphPersister.persist({
     store,
     workspaceRoot,
     projectId,
     parsedResults,
     tags: Array.from(tags),
-    ...(candidateFileCount !== undefined &&
-    failures.length === 0 &&
-    skippedOversized.length === 0 &&
-    parsedResults.length === filesToParse.length &&
-    parsedResults.length === candidateFileCount
-      ? { sourceIndexComplete: true }
-      : {}),
+    sourceIndexComplete,
+    ...(sourceIndexUpdateMode ? { sourceIndexUpdateMode } : {}),
   });
+  const sourceIndexFields = sourceIndexResultFields(
+    persistResult,
+    sourceIndexComplete,
+  );
 
   return {
     parsedResults,
     failures,
     tags,
     callResolutionByFile: persistResult.callResolutionByFile,
+    ...sourceIndexFields,
   };
 }

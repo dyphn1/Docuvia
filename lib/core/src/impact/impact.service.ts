@@ -28,6 +28,24 @@ const ImpactMessages = {
   LSP_FALLBACK_APPLIED: "Applied ast_call_sites fallback for blast radius",
 } as const;
 
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function compareBlastRadiusEntries(
+  left: BlastRadiusEntry,
+  right: BlastRadiusEntry,
+): number {
+  return (
+    compareText(left.name, right.name) ||
+    compareText(left.type, right.type) ||
+    compareText(left.edgeSource ?? "", right.edgeSource ?? "") ||
+    compareText(JSON.stringify(left), JSON.stringify(right))
+  );
+}
+
 /**
  * Absolute-count FLOORS `computeRiskLevel()`'s scaled thresholds can never fall below -- the
  * exact original flat thresholds (ported from old Docuvia's
@@ -213,7 +231,7 @@ export class ImpactService implements IImpactService {
       target,
       count: blastRadius.length,
     });
-    return blastRadius;
+    return blastRadius.sort(compareBlastRadiusEntries);
   }
 
   private buildDirectIncomingEntry(

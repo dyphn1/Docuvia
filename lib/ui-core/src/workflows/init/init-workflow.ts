@@ -158,23 +158,28 @@ export class InitWorkflow {
 
       // 4. Parse + persist (adds per-file language tags to the same shared tag set).
       logger.info(INIT_MESSAGES.PARSING_AST);
-      const { parsedResults, failures, callResolutionByFile } =
-        await runParseAndPersist({
-          astProcessor,
-          graphPersister,
-          store,
-          workspaceRoot,
-          projectId: project.id,
-          filesToParse: discoveryResult.filesToParse,
-          candidateFileCount: discoveryResult.candidateFileCount,
-          skippedOversized: discoveryResult.skippedOversized,
-          tags: discoveryResult.tags,
-          appendLogLine: appendInitLogLine,
-          logEvents: {
-            parseFailure: INIT_EVENTS.PARSE_FAILURE,
-            fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
-          },
-        });
+      const {
+        parsedResults,
+        failures,
+        callResolutionByFile,
+        sourceIndexComplete,
+      } = await runParseAndPersist({
+        astProcessor,
+        graphPersister,
+        store,
+        workspaceRoot,
+        projectId: project.id,
+        filesToParse: discoveryResult.filesToParse,
+        candidateFileCount: discoveryResult.candidateFileCount,
+        sourceIndexUpdateMode: "replace",
+        skippedOversized: discoveryResult.skippedOversized,
+        tags: discoveryResult.tags,
+        appendLogLine: appendInitLogLine,
+        logEvents: {
+          parseFailure: INIT_EVENTS.PARSE_FAILURE,
+          fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
+        },
+      });
       markCallSitesAvailableAfterCompleteIngestion({
         store,
         projectId: project.id,
@@ -202,6 +207,7 @@ export class InitWorkflow {
         git,
         workspaceRoot,
         parsedResults,
+        sourceIndexComplete,
       });
 
       // 4c. Pack this graph onto the knowledge branch now, rather than leaving its

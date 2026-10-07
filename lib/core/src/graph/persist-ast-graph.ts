@@ -5,6 +5,7 @@ import {
   type IGraphPersister,
   type IGraphStore,
   type ParsedAstFileResult,
+  type CallResolutionHypothesisSourceFile,
   type CallResolutionStats,
   aggregateCallResolution,
   L2NodeTypes,
@@ -26,7 +27,7 @@ import {
   isSha256,
   portableCallSiteKeyForCall,
   sourceContentHashForProof,
-  sourceManifestFingerprint,
+  sourceFileManifestFingerprint,
   type CallSiteProof,
   type FunctionNodeReference,
   type StrictCallProofExclusion,
@@ -75,6 +76,147 @@ function closeCallResolutionCounters(
   };
 }
 
+function hypothesisSourceFileForResult(
+  result: ParsedAstFileResult,
+): CallResolutionHypothesisSourceFile {
+  return {
+    filePath: result.file,
+    sourceContentHash: sourceContentHashForProof(result),
+    imports: result.data.imports ?? [],
+    exports: result.data.exports ?? [],
+    reexports: result.data.reexports,
+    callSiteShapeFacts: result.data.callSiteShapeFacts ?? null,
+    declaredTypeFacts: result.data.declaredTypeFacts ?? null,
+  };
+}
+
+function resolverLocalSymbolsForResult(result: ParsedAstFileResult): string[] {
+  return [
+    ...(result.data.functions ?? []).map(({ name }) => name),
+    ...(result.data.classes ?? []).map(({ name }) => name),
+    ...(result.data.variables ?? []).map(({ name }) => name),
+  ];
+}
+
+function mergeResolverSourceFiles(input: {
+  sourceFiles: readonly CallResolutionHypothesisSourceFile[];
+  resolverLocalSymbolsByFile: readonly {
+    readonly filePath: string;
+    readonly localSymbols: readonly string[];
+  }[];
+  parsedResults: readonly ParsedAstFileResult[];
+}): {
+  readonly filePath: string;
+  readonly sourceFile: CallResolutionHypothesisSourceFile;
+  readonly localSymbols: readonly string[];
+}[] {
+  const sourceFilesByPath = new Map(
+    input.sourceFiles.map((sourceFile) => [sourceFile.filePath, sourceFile]),
+  );
+  const localSymbolsByPath = new Map(
+    input.resolverLocalSymbolsByFile.map(({ filePath, localSymbols }) => [
+      filePath,
+      [...localSymbols],
+    ]),
+  );
+  for (const result of input.parsedResults) {
+    sourceFilesByPath.set(result.file, hypothesisSourceFileForResult(result));
+    localSymbolsByPath.set(result.file, resolverLocalSymbolsForResult(result));
+  }
+  return [...sourceFilesByPath].map(([filePath, sourceFile]) => ({
+    filePath,
+    sourceFile,
+    localSymbols: localSymbolsByPath.get(filePath) ?? [],
+  }));
+}
+
+type StrictProofSourceIndexRead =
+  | {
+      readonly complete: true;
+      readonly sourceFiles: readonly CallResolutionHypothesisSourceFile[];
+      readonly functionNodeReferencesByFile: readonly {
+        readonly filePath: string;
+        readonly functionNodeReferences: readonly FunctionNodeReference[];
+      }[];
+    }
+  | { readonly complete: false; readonly fallbackReason: string };
+
+function readStrictProofSourceFiles(input: {
+  store: IGraphStore;
+  projectId: number;
+  parsedResults: readonly ParsedAstFileResult[];
+  parsedFunctionNodeReferencesByFile: ReadonlyMap<
+    string,
+    readonly FunctionNodeReference[]
+  >;
+  updateMode: "replace" | "merge" | undefined;
+}): StrictProofSourceIndexRead {
+  let sourceFiles: readonly CallResolutionHypothesisSourceFile[];
+  let functionNodeReferencesByFile: readonly {
+    readonly filePath: string;
+    readonly functionNodeReferences: readonly FunctionNodeReference[];
+  }[];
+  if (input.updateMode === undefined) {
+    sourceFiles = input.parsedResults.map(hypothesisSourceFileForResult);
+    functionNodeReferencesByFile = [
+      ...input.parsedFunctionNodeReferencesByFile,
+    ].map(([filePath, functionNodeReferences]) => ({
+      filePath,
+      functionNodeReferences,
+    }));
+  } else {
+    const persisted = input.store.files.getCallResolutionSourceFiles?.(
+      input.projectId,
+    );
+    if (!persisted)
+      return {
+        complete: false,
+        fallbackReason: "persisted-source-facts-provider-unavailable",
+      };
+    if (!persisted.complete)
+      return {
+        complete: false,
+        fallbackReason: `persisted-source-facts-incomplete:${persisted.incompleteFilePaths.length}`,
+      };
+    sourceFiles = persisted.sourceFiles;
+    functionNodeReferencesByFile = persisted.functionNodeReferencesByFile;
+  }
+
+  if (!hasValidSourceFactHashes(sourceFiles))
+    return {
+      complete: false,
+      fallbackReason: "persisted-source-fact-hash-invalid",
+    };
+  return { complete: true, sourceFiles, functionNodeReferencesByFile };
+}
+
+function hasValidSourceFactHashes(
+  sourceFiles: readonly CallResolutionHypothesisSourceFile[],
+): boolean {
+  return sourceFiles.every(
+    ({ sourceContentHash }) =>
+      sourceContentHash !== undefined && isSha256(sourceContentHash),
+  );
+}
+
+function mergeFunctionNodeReferences(
+  persisted: readonly {
+    readonly filePath: string;
+    readonly functionNodeReferences: readonly FunctionNodeReference[];
+  }[],
+  parsed: ReadonlyMap<string, FunctionNodeReference[]>,
+): Map<string, FunctionNodeReference[]> {
+  const merged = new Map(
+    persisted.map(({ filePath, functionNodeReferences }) => [
+      filePath,
+      [...functionNodeReferences],
+    ]),
+  );
+  for (const [filePath, functionNodeReferences] of parsed)
+    merged.set(filePath, [...functionNodeReferences]);
+  return merged;
+}
+
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
  * named repo primitives.
@@ -100,11 +242,13 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[];
     tags: string[];
     sourceIndexComplete?: boolean;
+    sourceIndexUpdateMode?: "replace" | "merge";
   }): Promise<{
     updatedCount: number;
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
     strictCallProofExclusions?: readonly StrictCallProofExclusion[];
+    strictCallProofIndex?: { complete: boolean; fallbackReason?: string };
   }> {
     const {
       store,
@@ -113,6 +257,7 @@ export class GraphPersisterService implements IGraphPersister {
       parsedResults,
       tags,
       sourceIndexComplete,
+      sourceIndexUpdateMode,
     } = input;
 
     return store.withWriteLock(() =>
@@ -123,6 +268,7 @@ export class GraphPersisterService implements IGraphPersister {
         parsedResults,
         tags,
         sourceIndexComplete === true,
+        sourceIndexUpdateMode,
       ),
     );
   }
@@ -142,15 +288,23 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
     tags: string[],
     sourceIndexComplete: boolean,
+    sourceIndexUpdateMode: "replace" | "merge" | undefined,
   ): {
     updatedCount: number;
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
     strictCallProofExclusions?: readonly StrictCallProofExclusion[];
+    strictCallProofIndex?: { complete: boolean; fallbackReason?: string };
   } {
     return store.withTransaction(() => {
-      const resolver = new ScopeResolver(workspaceRoot);
-      this.registerResolverFiles(resolver, parsedResults);
+      const resolver = this.createResolver({
+        workspaceRoot,
+        store,
+        projectId,
+        parsedResults,
+        sourceIndexComplete,
+        sourceIndexUpdateMode,
+      });
 
       // #508 Phase 3 D9: incoming edges from files outside this batch point at node ids the
       // per-file replace below is about to delete. Capture them by node_key first and re-attach
@@ -164,6 +318,9 @@ export class GraphPersisterService implements IGraphPersister {
       // actual function/class node instead of collapsing to a file-to-file edge.
       const symbolIdMap = new Map<string, Map<string, number>>();
       const functionNodeRefsByFile = new Map<string, FunctionNodeReference[]>();
+
+      if (sourceIndexUpdateMode === "replace")
+        store.files.clearCallResolutionSourceFiles?.(projectId);
 
       // Issue #221: per-file Tier A call-site resolution counters, aggregated for the caller
       // (the orchestration layer stamps them into docuvia_meta / the analyze log).
@@ -197,8 +354,9 @@ export class GraphPersisterService implements IGraphPersister {
         functionNodeRefsByFile,
         this.callsProjectionCallerPolicy,
         callResolutionByFile,
+        sourceIndexUpdateMode,
       );
-      const strictCallProofExclusions = this.persistStrictCallSiteProofs(
+      const strictCallProofIndex = this.persistStrictCallSiteProofs(
         store,
         projectId,
         parsedResults,
@@ -208,6 +366,7 @@ export class GraphPersisterService implements IGraphPersister {
         functionNodeRefsByFile,
         resolver,
         this.callsProjectionCallerPolicy,
+        sourceIndexUpdateMode,
       );
       this.reattachExternalIncomingLinks(store, externalIncoming);
       if (sourceIndexComplete) {
@@ -227,7 +386,13 @@ export class GraphPersisterService implements IGraphPersister {
         updatedCount,
         callResolution,
         callResolutionByFile,
-        strictCallProofExclusions,
+        strictCallProofExclusions: strictCallProofIndex.exclusions,
+        strictCallProofIndex: {
+          complete: strictCallProofIndex.complete,
+          ...(strictCallProofIndex.fallbackReason
+            ? { fallbackReason: strictCallProofIndex.fallbackReason }
+            : {}),
+        },
       };
     });
   }
@@ -261,16 +426,7 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
   ): void {
     for (const result of parsedResults) {
-      const locals: string[] = [];
-      if (result.data.functions)
-        locals.push(...result.data.functions.map((f) => f.name));
-      if (result.data.classes)
-        locals.push(...result.data.classes.map((c) => c.name));
-      // Issue #192 gap 1: exported consts count as local symbols too -- without them a barrel
-      // re-exporting a const can't be chained to the defining file, and resolveCall's own-file
-      // check misses them.
-      if (result.data.variables)
-        locals.push(...result.data.variables.map((v) => v.name));
+      const locals = resolverLocalSymbolsForResult(result);
       resolver.registerFile(
         result.file,
         (result.data.imports || []).filter(
@@ -280,6 +436,39 @@ export class GraphPersisterService implements IGraphPersister {
         locals,
       );
     }
+  }
+
+  private createResolver(input: {
+    readonly workspaceRoot: string;
+    readonly store: IGraphStore;
+    readonly projectId: number;
+    readonly parsedResults: ParsedAstFileResult[];
+    readonly sourceIndexComplete: boolean;
+    readonly sourceIndexUpdateMode: "replace" | "merge" | undefined;
+  }): ScopeResolver {
+    const resolver = new ScopeResolver(input.workspaceRoot);
+    const persisted =
+      input.sourceIndexComplete && input.sourceIndexUpdateMode === "merge"
+        ? input.store.files.getCallResolutionSourceFiles?.(input.projectId)
+        : undefined;
+    if (persisted?.complete) {
+      const completeSources = mergeResolverSourceFiles({
+        sourceFiles: persisted.sourceFiles,
+        resolverLocalSymbolsByFile: persisted.resolverLocalSymbolsByFile,
+        parsedResults: input.parsedResults,
+      });
+      for (const source of completeSources) {
+        resolver.registerFile(
+          source.filePath,
+          [...(source.sourceFile.imports ?? [])],
+          [],
+          [...source.localSymbols],
+        );
+      }
+      return resolver;
+    }
+    this.registerResolverFiles(resolver, input.parsedResults);
+    return resolver;
   }
 
   private upsertTags(store: IGraphStore, tags: string[]): void {
@@ -575,6 +764,7 @@ export class GraphPersisterService implements IGraphPersister {
     functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
     callerPolicy: CallsProjectionCallerPolicy,
     callResolutionByFile: Record<string, CallResolutionStats>,
+    sourceIndexUpdateMode: "replace" | "merge" | undefined,
   ): number {
     let updatedCount = 0;
 
@@ -602,6 +792,18 @@ export class GraphPersisterService implements IGraphPersister {
         projectId,
         filePath: result.file,
         contentHash: result.hash,
+        ...(sourceIndexUpdateMode
+          ? {
+              sourceIndexFile: hypothesisSourceFileForResult(result),
+              // graphNodeId is a transient row id of this graph; persisting it would let a later
+              // delta pass resolve a stale id.
+              sourceIndexFunctionNodeReferences: (
+                functionNodeRefsByFile.get(result.file) ?? []
+              ).map(({ graphNodeId: _transient, ...reference }) => reference),
+              sourceIndexResolverLocalSymbols:
+                resolverLocalSymbolsForResult(result),
+            }
+          : {}),
       });
       updatedCount++;
     }
@@ -622,37 +824,64 @@ export class GraphPersisterService implements IGraphPersister {
     functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
     resolver: ScopeResolver,
     callerPolicy: CallsProjectionCallerPolicy,
-  ): StrictCallProofExclusion[] {
+    sourceIndexUpdateMode: "replace" | "merge" | undefined,
+  ): {
+    exclusions: StrictCallProofExclusion[];
+    complete: boolean;
+    fallbackReason?: string;
+  } {
     const repo = store.callSiteResolutions;
     const service = this.hypothesisService;
+    if (!repo || !service)
+      return {
+        exclusions: [],
+        complete: false,
+        fallbackReason: "proof-index-provider-unavailable",
+      };
+    if (!sourceIndexComplete)
+      return {
+        exclusions: [],
+        complete: false,
+        fallbackReason: "source-index-completeness-not-established",
+      };
+
+    const sourceIndexRead = readStrictProofSourceFiles({
+      store,
+      projectId,
+      parsedResults,
+      parsedFunctionNodeReferencesByFile: functionNodeRefsByFile,
+      updateMode: sourceIndexUpdateMode,
+    });
+    if (!sourceIndexRead.complete)
+      return {
+        exclusions: [],
+        complete: false,
+        fallbackReason: sourceIndexRead.fallbackReason,
+      };
+    if (parsedResults.length === 0) return { exclusions: [], complete: true };
     if (
-      !repo ||
-      !service ||
-      !sourceIndexComplete ||
-      parsedResults.length === 0 ||
       parsedResults.some(
         (result) => !isSha256(sourceContentHashForProof(result)),
       )
-    ) {
-      return [];
-    }
+    )
+      return {
+        exclusions: [],
+        complete: false,
+        fallbackReason: "parsed-source-hash-invalid",
+      };
 
     const workspaceIndex = service.indexWorkspace({
-      sourceFingerprint: sourceManifestFingerprint(
-        parsedResults,
+      sourceFingerprint: sourceFileManifestFingerprint(
+        sourceIndexRead.sourceFiles,
         sourceIndexComplete,
       ),
       sourceIndexComplete,
-      sourceFiles: parsedResults.map((result) => ({
-        filePath: result.file,
-        sourceContentHash: sourceContentHashForProof(result),
-        imports: result.data.imports ?? [],
-        exports: result.data.exports ?? [],
-        reexports: result.data.reexports,
-        callSiteShapeFacts: result.data.callSiteShapeFacts ?? null,
-        declaredTypeFacts: result.data.declaredTypeFacts ?? null,
-      })),
+      sourceFiles: sourceIndexRead.sourceFiles,
     });
+    const allFunctionNodeRefsByFile = mergeFunctionNodeReferences(
+      sourceIndexRead.functionNodeReferencesByFile,
+      functionNodeRefsByFile,
+    );
     const nodeKeyById = new Map<number, string>(
       store.graph
         .getAllNodes()
@@ -673,7 +902,7 @@ export class GraphPersisterService implements IGraphPersister {
           projectId,
           result,
           workspaceIndex,
-          functionNodeRefsByFile,
+          allFunctionNodeRefsByFile,
           fileIdMap,
           symbolIdMap,
           nodeKeyById,
@@ -682,7 +911,7 @@ export class GraphPersisterService implements IGraphPersister {
         ),
       );
     }
-    return exclusions;
+    return { exclusions, complete: true };
   }
 
   private persistStrictCallSiteProofsForFile(

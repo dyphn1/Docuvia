@@ -204,6 +204,36 @@ describe("ImpactService", () => {
       expect(result).toEqual([{ name: "caller", type: "module" }]);
     });
 
+    it("orders blast-radius entries stably instead of by SQLite row id", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "stableTarget",
+        pathPatterns: ["src/target.ts"],
+      });
+      const laterCallerId = store.graph.insertNode({
+        projectId,
+        name: "zCaller",
+        pathPatterns: ["src/z.ts"],
+      });
+      const earlierCallerId = store.graph.insertNode({
+        projectId,
+        name: "aCaller",
+        pathPatterns: ["src/a.ts"],
+      });
+      for (const sourceNodeId of [laterCallerId, earlierCallerId])
+        store.graph.insertLink({
+          sourceNodeId,
+          targetNodeId: targetId,
+          linkType: LinkTypes.CALLS,
+        });
+
+      expect(
+        impactService
+          .getBlastRadius(store, "stableTarget")
+          ?.map(({ name }) => name),
+      ).toEqual(["aCaller", "zCaller"]);
+    });
+
     it("[happy][state-diff] expands exact callback callers to their enclosing function, callers, and files", () => {
       const insertNode = (name: string, nodeKey: string): number =>
         store.graph.insertNode({

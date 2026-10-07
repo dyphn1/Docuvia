@@ -62,11 +62,17 @@ export interface IGraphPersister {
     /** True only for a full discovery pass that parsed every candidate source file. Absent on
      *  delta/default calls; strict source-index proofs must fail closed without this assertion. */
     sourceIndexComplete?: boolean;
+    /** `replace` is an authoritative full pass; `merge` updates a previously complete index. */
+    sourceIndexUpdateMode?: "replace" | "merge";
   }): Promise<{
     updatedCount: number;
     /** Issue #221: per-run aggregate + per-file call-site resolution counters. Optional so
      *  existing mock persisters keep satisfying the interface unchanged. */
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
+    strictCallProofIndex?: {
+      readonly complete: boolean;
+      readonly fallbackReason?: string;
+    };
   }>;
 }

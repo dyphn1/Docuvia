@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import {
   type ICallResolutionHypothesisService,
+  type CallResolutionFunctionNodeReference,
+  type CallResolutionHypothesisSourceFile,
   type CallResolutionHypothesisWorkspaceIndex,
   type CallResolutionStrictProof,
   type CallSiteResolutionRecord,
@@ -18,16 +20,10 @@ import {
 } from "@workspace/contracts";
 import { candidateTargetKeyForDeclaration } from "../semantic/call-resolution-hypothesis-index.js";
 
-export type FunctionNodeReference = {
-  readonly nodeKey: string;
-  /** Transient local id; omitted from portable proof records and offline parity fixtures. */
+/** `graphNodeId` is a transient local id; it is never persisted in the source index or in
+ *  portable proof records. */
+export type FunctionNodeReference = CallResolutionFunctionNodeReference & {
   readonly graphNodeId?: number;
-  readonly name: string;
-  readonly containerName?: string;
-  readonly startLine: number;
-  readonly endLine: number;
-  readonly declarationSpan?: { readonly start: number; readonly end: number };
-  readonly declarationTargetKeys: readonly string[];
 };
 
 export type StrictCallProofExclusion = {
@@ -84,10 +80,26 @@ export function sourceManifestFingerprint(
   parsedResults: readonly ParsedAstFileResult[],
   sourceIndexComplete: boolean,
 ): string {
-  const manifest = parsedResults
-    .map((result) => ({
-      file: result.file,
-      hash: sourceContentHashForProof(result),
+  return sourceFileManifestFingerprint(
+    parsedResults.map((result) => ({
+      filePath: result.file,
+      sourceContentHash: sourceContentHashForProof(result),
+    })),
+    sourceIndexComplete,
+  );
+}
+
+export function sourceFileManifestFingerprint(
+  sourceFiles: readonly Pick<
+    CallResolutionHypothesisSourceFile,
+    "filePath" | "sourceContentHash"
+  >[],
+  sourceIndexComplete: boolean,
+): string {
+  const manifest = sourceFiles
+    .map(({ filePath, sourceContentHash }) => ({
+      file: filePath,
+      hash: sourceContentHash ?? "",
     }))
     .sort(
       (left, right) =>

@@ -130,6 +130,91 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     );
   });
 
+  it("files repo: stores versioned proof facts and fails closed on a missing file record", () => {
+    const project = store.projects.insert({
+      name: "proof-index",
+      repoUrl: "file:///proof-index",
+    });
+    const sourceFile = {
+      filePath: "src/a.ts",
+      sourceContentHash: "a".repeat(64),
+      imports: [],
+      exports: [],
+      reexports: [],
+      callSiteShapeFacts: null,
+      declaredTypeFacts: null,
+    } as const;
+
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: sourceFile.filePath,
+      contentHash: "blob-a",
+      sourceIndexFile: sourceFile,
+      sourceIndexFunctionNodeReferences: [],
+      sourceIndexResolverLocalSymbols: ["Service", "run", "service"],
+    });
+    expect(store.files.getCallResolutionSourceFiles(project.id)).toEqual({
+      sourceFiles: [sourceFile],
+      functionNodeReferencesByFile: [
+        { filePath: sourceFile.filePath, functionNodeReferences: [] },
+      ],
+      resolverLocalSymbolsByFile: [
+        {
+          filePath: sourceFile.filePath,
+          localSymbols: ["Service", "run", "service"],
+        },
+      ],
+      complete: true,
+      incompleteFilePaths: [],
+    });
+
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/missing.ts",
+      contentHash: "blob-missing",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/missing-function-node-references.ts",
+      contentHash: "blob-missing-refs",
+      sourceIndexFile: {
+        ...sourceFile,
+        filePath: "src/missing-function-node-references.ts",
+      },
+      sourceIndexResolverLocalSymbols: [],
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/missing-resolver-local-symbols.ts",
+      contentHash: "blob-missing-locals",
+      sourceIndexFile: {
+        ...sourceFile,
+        filePath: "src/missing-resolver-local-symbols.ts",
+      },
+      sourceIndexFunctionNodeReferences: [],
+    });
+    expect(store.files.getCallResolutionSourceFiles(project.id)).toMatchObject({
+      complete: false,
+      incompleteFilePaths: [
+        "src/missing-function-node-references.ts",
+        "src/missing-resolver-local-symbols.ts",
+        "src/missing.ts",
+      ],
+    });
+
+    store.files.clearCallResolutionSourceFiles(project.id);
+    expect(store.files.getCallResolutionSourceFiles(project.id)).toMatchObject({
+      sourceFiles: [],
+      complete: false,
+      incompleteFilePaths: [
+        "src/a.ts",
+        "src/missing-function-node-references.ts",
+        "src/missing-resolver-local-symbols.ts",
+        "src/missing.ts",
+      ],
+    });
+  });
+
   it("files repo: deleteFile() removes exactly one project's path row and is a no-op when absent (#508 D6/D11)", () => {
     const project = store.projects.insert({
       name: "demo",

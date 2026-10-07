@@ -1127,14 +1127,34 @@ function isSimpleTopLevelValueNode(node: Node): boolean {
   return !value || !FREE_CALLABLE_NODE_TYPES.has(value.type);
 }
 
+function isVariableDeclarationNode(node: Node | null): node is Node {
+  return (
+    node?.type === "lexical_declaration" ||
+    node?.type === "variable_declaration"
+  );
+}
+
+function isRootExportOfDeclaration(
+  exportStatement: Node | null,
+  declaration: Node,
+): boolean {
+  if (
+    exportStatement?.type !== "export_statement" ||
+    exportStatement.parent?.type !== "program"
+  )
+    return false;
+  const exportedDeclaration = exportStatement.childForFieldName("declaration");
+  return (
+    exportedDeclaration?.type === declaration.type &&
+    exportedDeclaration.startIndex === declaration.startIndex &&
+    exportedDeclaration.endIndex === declaration.endIndex
+  );
+}
+
 function hasDirectExportAncestor(node: Node): boolean {
-  let current: Node | null = node.parent;
-  while (current && current.type !== "program") {
-    if (current.type === "export_statement") return true;
-    if (OWNER_NODE_KINDS.has(current.type)) return false;
-    current = current.parent;
-  }
-  return false;
+  const declaration = node.parent;
+  if (!isVariableDeclarationNode(declaration)) return false;
+  return isRootExportOfDeclaration(declaration.parent, declaration);
 }
 
 function directlyExportedTopLevelValue(

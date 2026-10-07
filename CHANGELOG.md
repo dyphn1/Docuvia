@@ -2,6 +2,22 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.20.1](https://github.com/dyphn1/Docuvia/compare/v1.20.0...v1.20.1) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** keep candidate-only exports out of strict proof inventory ([#578](https://github.com/dyphn1/Docuvia/issues/578)) ([fc1ed2f](https://github.com/dyphn1/Docuvia/commit/fc1ed2f8ed45e38d3e7e860c9acbd2a76994f442)), closes [#570](https://github.com/dyphn1/Docuvia/issues/570) [pre-#570](https://github.com/pre-/issues/570)
+
+# [1.20.0](https://github.com/dyphn1/Docuvia/compare/v1.19.2...v1.20.0) (2026-10-07)
+
+### Bug Fixes
+
+- **cli:** read quarantine evidence through one file handle ([086a3de](https://github.com/dyphn1/Docuvia/commit/086a3de0c4d397f82fb7639991d051bc5def1fc9))
+
+### Features
+
+- **call-resolution:** fail-closed quarantine clear and recertification path ([#559](https://github.com/dyphn1/Docuvia/issues/559)) ([6612fe1](https://github.com/dyphn1/Docuvia/commit/6612fe1927938f105cc89fefef8e9ff6277724f9))
+
 ## [1.19.2](https://github.com/dyphn1/Docuvia/compare/v1.19.1...v1.19.2) (2026-10-07)
 
 ### Bug Fixes

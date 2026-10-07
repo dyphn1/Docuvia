@@ -10,6 +10,8 @@ import {
   expect,
   it,
 } from "vitest";
+import { mkdir, writeFile } from "fs/promises";
+import { join } from "path";
 import { TestSandbox, buildDistCli } from "../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 
@@ -116,6 +118,45 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
         artifactSha256:
           "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
       });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[happy] persists a strict Q1 named-import proof beside an exported value through the compiled CLI",
+    async () => {
+      const sourceDir = join(sandbox.dir, "src");
+      await mkdir(sourceDir, { recursive: true });
+      await writeFile(
+        join(sourceDir, "target.ts"),
+        "export function namedTarget(): void {}\n",
+        "utf-8",
+      );
+      await writeFile(
+        join(sourceDir, "constants.ts"),
+        'export const SpecFormat = { JSON: "json" } as const;\n',
+        "utf-8",
+      );
+      await writeFile(
+        join(sourceDir, "caller.ts"),
+        'import { namedTarget as runTarget } from "./target";\nrunTarget();\n',
+        "utf-8",
+      );
+
+      const initResult = await sandbox.runDistCli(["init"]);
+      expect(initResult.exitCode).toBe(0);
+
+      const db = sandbox.getDb();
+      try {
+        const q1Rows = db
+          .prepare(
+            "SELECT COUNT(*) as count FROM call_site_resolutions WHERE resolution_class = 'proven' AND rule_signature = ?",
+          )
+          .get("q1:named-import:v1") as { count: number };
+        expect(q1Rows.count).toBe(1);
+      } finally {
+        db.close();
+      }
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

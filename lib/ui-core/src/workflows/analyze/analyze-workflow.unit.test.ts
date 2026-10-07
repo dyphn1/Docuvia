@@ -429,10 +429,10 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     expect(runDeltaIngestion).not.toHaveBeenCalled();
   });
 
-  it("[state-diff] rebuilds a default-policy graph when the configured active policy is exact-enclosing-v2", async () => {
+  it("[state-diff] rebuilds a legacy ScopeResolver graph under the exact-v2 default policy", async () => {
     await analyzeWithStoredAndActivePolicy(
       CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1,
-      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
     );
 
     expect(runFullIngestion).toHaveBeenCalledTimes(1);

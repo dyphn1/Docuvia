@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
+  BlastRadiusEdgeSources,
   RiskLevels,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
@@ -363,6 +364,67 @@ describe("ImpactService", () => {
       );
       expect(names).not.toContain("instantiateOwner");
       expect(names).not.toContain("src/consumer.ts");
+    });
+
+    it("[regression][exact-v2] includes caller candidates as context without expanding their callers", () => {
+      const insertNode = (name: string, nodeKey: string): number =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          type: "module",
+          pathPatterns: [nodeKey.split("#")[0]!],
+          nodeKey,
+        });
+      const targetFile = insertNode("src/target.ts", "src/target.ts");
+      const callerFile = insertNode("src/caller.ts", "src/caller.ts");
+      const consumerFile = insertNode("src/consumer.ts", "src/consumer.ts");
+      const target = insertNode("target", "src/target.ts#target");
+      const candidate = insertNode(
+        "legacyCaller",
+        "src/caller.ts#legacyCaller",
+      );
+      const consumer = insertNode("consume", "src/consumer.ts#consume");
+
+      for (const [fileId, symbolId] of [
+        [targetFile, target],
+        [callerFile, candidate],
+        [consumerFile, consumer],
+      ]) {
+        store.graph.insertLink({
+          sourceNodeId: fileId!,
+          targetNodeId: symbolId!,
+          linkType: LinkTypes.CONTAINS,
+        });
+      }
+      store.graph.insertLink({
+        sourceNodeId: callerFile,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: candidate,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      });
+      store.graph.insertLink({
+        sourceNodeId: consumer,
+        targetNodeId: candidate,
+        linkType: LinkTypes.CALLS,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const entries = impactService.getBlastRadius(store, "target") ?? [];
+
+      expect(entries).toContainEqual({
+        name: "legacyCaller",
+        type: "module",
+        edgeSource: BlastRadiusEdgeSources.CALLER_CANDIDATE,
+      });
+      expect(entries.map(({ name }) => name)).not.toContain("consume");
+      expect(entries.map(({ name }) => name)).not.toContain("src/consumer.ts");
     });
 
     it("returns multiple callers for a widely-used symbol", () => {

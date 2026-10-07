@@ -8,6 +8,12 @@ import {
 import { ErrorCodes } from "../errors/error-codes.js";
 
 describe("resolveActiveCallsProjectionCallerPolicy", () => {
+  it("[regression][default-policy] defaults to exact-enclosing-v2 after full-callee parity", () => {
+    expect(DEFAULT_CALLS_PROJECTION_CALLER_POLICY).toBe(
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+    );
+  });
+
   it("[happy] returns the default when the switch is unset or blank", () => {
     expect(resolveActiveCallsProjectionCallerPolicy({})).toBe(
       DEFAULT_CALLS_PROJECTION_CALLER_POLICY,

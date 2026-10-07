@@ -125,6 +125,16 @@ describe("QueryService", () => {
         targetNodeId: nestedId,
         linkType: LinkTypes.LEXICAL_PARENT,
       });
+      store.graph.insertLink({
+        sourceNodeId: ownerId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      });
+      store.graph.insertLink({
+        sourceNodeId: targetId,
+        targetNodeId: ownerId,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      });
 
       expect(queryService.getContext(store, "target")).toMatchObject({
         incoming: [],

@@ -114,12 +114,14 @@ export type DynamicEvidenceAvailability =
  * Issue #217/#393: which source produced a blast-radius entry. Static entries (`node_links`
  * incoming edges) OMIT the field entirely (omit-when-confident convention). `lsp-fallback`
  * identifies an unresolved call-site recovery; `dynamic-candidate` identifies a source file that
- * is only a statically-bounded candidate for a runtime dependency and therefore must retain
- * lower-bound epistemic semantics.
+ * is only a statically-bounded candidate for a runtime dependency; `caller-candidate` identifies
+ * a legacy caller attribution retained as lower-confidence context when exact lexical ancestry is
+ * unavailable. Candidate entries do not assert dependency or containment edges.
  */
 export const BlastRadiusEdgeSources = {
   LSP_FALLBACK: "lsp-fallback",
   DYNAMIC_CANDIDATE: "dynamic-candidate",
+  CALLER_CANDIDATE: "caller-candidate",
 } as const;
 
 export type BlastRadiusEdgeSource =

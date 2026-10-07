@@ -11,6 +11,7 @@ import type {
   ParsedAstFileResult,
 } from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
+import { CallResolutionHypothesisService } from "../semantic/call-resolution-hypothesis.service.js";
 import { buildParseResponse } from "../ast/ast-worker.js";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import { resolveWasmPath } from "../ast/resolve-wasm-path.js";
@@ -74,6 +75,128 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("persists ScopeResolver caller context when exact spans tie without changing calls or ownership", async () => {
+    const file = "src/ambiguous-caller.ts";
+    const parsedResult = {
+      file,
+      hash: "ambiguous-caller-hash",
+      data: {
+        imports: [],
+        exports: [],
+        functions: [
+          { name: "outer", startLine: 1, endLine: 9 },
+          { name: "first", startLine: 3, endLine: 7 },
+          { name: "second", startLine: 3, endLine: 7 },
+          { name: "target", startLine: 11, endLine: 12 },
+        ],
+        classes: [],
+        calls: [
+          {
+            sourceFunction: "outer",
+            targetFunction: "target",
+            startLine: 5,
+            startColumn: 4,
+            calleeName: "target",
+            calleeKind: "bare" as const,
+          },
+        ],
+      },
+    } as ParsedAstFileResult;
+    const exactPersister = new GraphPersisterService(
+      undefined,
+      "exact-enclosing-v2",
+    );
+
+    await exactPersister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsedResult],
+      tags: [],
+      sourceIndexComplete: false,
+    });
+
+    const fileId = store.graph.findNodeIdByName(file, file);
+    const outerId = store.graph.findNodeIdByName(file, "outer");
+    const targetId = store.graph.findNodeIdByName(file, "target");
+    expect(fileId).toBeTypeOf("number");
+    expect(outerId).toBeTypeOf("number");
+    expect(targetId).toBeTypeOf("number");
+
+    const calls = store.graph
+      .getIncomingRelations(targetId!)
+      .filter(({ linkType }) => linkType === "calls");
+    expect(calls.map(({ id }) => id)).toContain(fileId);
+    expect(calls.map(({ id }) => id)).not.toContain(outerId);
+
+    const candidate = store.graph
+      .getIncomingRelations(targetId!)
+      .filter(({ linkType }) => linkType === "caller_candidate");
+    expect(candidate.map(({ id }) => id)).toEqual([outerId]);
+
+    for (const name of ["outer", "first", "second", "target"]) {
+      const nodeId = store.graph.findNodeIdByName(file, name);
+      expect(
+        store.graph
+          .getIncomingRelations(nodeId!)
+          .filter(({ linkType }) => linkType === "contains")
+          .map(({ id }) => id),
+      ).toEqual([fileId]);
+    }
+  });
+
+  it("persists caller context when a complete index has no strict proofs", async () => {
+    const file = "src/ambiguous-caller-complete.ts";
+    const parsedResult = {
+      file,
+      hash: "a".repeat(64),
+      data: {
+        imports: [],
+        exports: [],
+        functions: [
+          { name: "outer", startLine: 1, endLine: 9 },
+          { name: "first", startLine: 3, endLine: 7 },
+          { name: "second", startLine: 3, endLine: 7 },
+          { name: "target", startLine: 11, endLine: 12 },
+        ],
+        classes: [],
+        calls: [
+          {
+            sourceFunction: "outer",
+            targetFunction: "target",
+            startLine: 5,
+            startColumn: 4,
+            calleeName: "target",
+            calleeKind: "bare" as const,
+          },
+        ],
+      },
+    } as ParsedAstFileResult;
+    const exactPersister = new GraphPersisterService(
+      new CallResolutionHypothesisService(),
+      "exact-enclosing-v2",
+    );
+
+    await exactPersister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: [parsedResult],
+      tags: [],
+      sourceIndexComplete: true,
+    });
+
+    const outerId = store.graph.findNodeIdByName(file, "outer");
+    const targetId = store.graph.findNodeIdByName(file, "target");
+    expect(store.callSiteResolutions?.getForFile(projectId, file)).toEqual([]);
+    expect(
+      store.graph
+        .getIncomingRelations(targetId!)
+        .filter(({ linkType }) => linkType === "caller_candidate")
+        .map(({ id }) => id),
+    ).toEqual([outerId]);
   });
 
   it("links an imported bare call to a const factory, not its returned anonymous arrow", async () => {

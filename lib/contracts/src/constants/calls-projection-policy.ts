@@ -22,9 +22,9 @@ export function isCallsProjectionCallerPolicy(
   );
 }
 
-/** Keep the historical projection as default until exact callers preserve the full impact set. */
+/** Exact v2 is the default after the full-callee parity audit found no named-function omissions. */
 export const DEFAULT_CALLS_PROJECTION_CALLER_POLICY: CallsProjectionCallerPolicy =
-  CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+  CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2;
 
 /**
  * Opt-in evaluation switch for the active caller policy. Unset or empty means the default.
@@ -48,7 +48,7 @@ export function resolveActiveCallsProjectionCallerPolicy(
   );
 }
 
-/** Project-scoped marker written after a complete graph persistence pass. */
+/** Project-scoped marker for the caller policy used by the stored calls projection. */
 export const CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX =
   "graph.calls-projection.caller-policy.v1:";
 

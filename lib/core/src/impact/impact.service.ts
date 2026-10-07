@@ -144,7 +144,10 @@ export class ImpactService implements IImpactService {
       return undefined;
     }
 
-    const directIncoming = store.graph.getIncomingEdges(node.id);
+    const usesExactEnclosingV2 = this.usesExactEnclosingV2(store);
+    const directIncoming = usesExactEnclosingV2
+      ? this.getIncomingEdgesWithoutCallerCandidates(store, node.id)
+      : store.graph.getIncomingEdges(node.id);
     const targetNodeKey = store.graph.getNodeKeyById?.(node.id);
     const callResolutionsByCallerId = getCallResolutionsByCallerId(
       store,
@@ -199,7 +202,7 @@ export class ImpactService implements IImpactService {
       blastRadius.push(...fallbackEntries);
     }
 
-    if (this.usesExactEnclosingV2(store)) {
+    if (usesExactEnclosingV2) {
       blastRadius.push(
         ...this.resolveExactCallerContext(
           store,
@@ -214,6 +217,21 @@ export class ImpactService implements IImpactService {
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  private getIncomingEdgesWithoutCallerCandidates(
+    store: IGraphStore,
+    targetNodeId: number,
+  ): ReturnType<IGraphStore["graph"]["getIncomingEdges"]> {
+    const ordinaryIncomingIds = new Set(
+      store.graph
+        .getIncomingRelations(targetNodeId)
+        .filter(({ linkType }) => linkType !== LinkTypes.CALLER_CANDIDATE)
+        .map(({ id }) => id),
+    );
+    return store.graph
+      .getIncomingEdges(targetNodeId)
+      .filter(({ id }) => ordinaryIncomingIds.has(id));
   }
 
   private buildDirectIncomingEntry(
@@ -303,19 +321,26 @@ export class ImpactService implements IImpactService {
     targetNodeId: number,
     alreadyResolvedIds: ReadonlySet<number>,
   ): BlastRadiusEntry[] {
-    const callers = store.graph
-      .getIncomingRelations(targetNodeId)
+    const incomingRelations = store.graph.getIncomingRelations(targetNodeId);
+    const callers = incomingRelations
       .filter(({ linkType }) => linkType === LinkTypes.CALLS)
       .map(({ id }) => id);
+    const callerCandidates = incomingRelations.filter(
+      ({ linkType }) => linkType === LinkTypes.CALLER_CANDIDATE,
+    );
     const queue: number[] = [];
     const visitedParentIds = new Set<number>();
     const resolvedIds = new Set(alreadyResolvedIds);
     const entries: BlastRadiusEntry[] = [];
 
-    const append = (node: { id: number; name: string; type: string }): void => {
+    const append = (
+      node: { id: number; name: string; type: string },
+      edgeSource?: BlastRadiusEntry["edgeSource"],
+    ): void => {
       if (resolvedIds.has(node.id)) return;
       resolvedIds.add(node.id);
-      entries.push(this.buildEntry(store, node.id, node.name, node.type));
+      const entry = this.buildEntry(store, node.id, node.name, node.type);
+      entries.push(edgeSource ? { ...entry, edgeSource } : entry);
     };
 
     for (const callerId of callers) {
@@ -324,6 +349,9 @@ export class ImpactService implements IImpactService {
         append(parent);
         if (parent.linkType === LinkTypes.LEXICAL_PARENT) queue.push(parent.id);
       }
+    }
+    for (const candidate of callerCandidates) {
+      append(candidate, BlastRadiusEdgeSources.CALLER_CANDIDATE);
     }
 
     for (let index = 0; index < queue.length; index++) {

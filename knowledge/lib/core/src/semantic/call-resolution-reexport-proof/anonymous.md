@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-reexport-proof.ts#anonymous@L585
+id: lib/core/src/semantic/call-resolution-reexport-proof.ts#anonymous@L738
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-reexport-proof.ts

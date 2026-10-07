@@ -8,4 +8,3 @@ filePath: artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts
 
 File: `artifacts/cli/test/unit/mcp-tools/apply-decision-tool.unit.test.ts`
 ts`
-

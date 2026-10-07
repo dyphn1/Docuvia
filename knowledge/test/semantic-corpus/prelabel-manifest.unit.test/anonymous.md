@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/prelabel-manifest.unit.test.ts#anonymous@L40
+id: test/semantic-corpus/prelabel-manifest.unit.test.ts#anonymous@L5
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/prelabel-manifest.unit.test.ts
@@ -7,4 +7,5 @@ filePath: test/semantic-corpus/prelabel-manifest.unit.test.ts
 # Symbol: anonymous
 
 File: `test/semantic-corpus/prelabel-manifest.unit.test.ts`
+
 

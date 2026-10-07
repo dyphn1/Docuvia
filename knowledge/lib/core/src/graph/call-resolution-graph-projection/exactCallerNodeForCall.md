@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/graph/call-resolution-graph-projection.ts#callerFunctionForCall
+id: lib/core/src/graph/call-resolution-graph-projection.ts#exactCallerNodeForCall
 type: symbol
-name: callerFunctionForCall
+name: exactCallerNodeForCall
 filePath: lib/core/src/graph/call-resolution-graph-projection.ts
 ---
-# Symbol: callerFunctionForCall
+# Symbol: exactCallerNodeForCall
 
 File: `lib/core/src/graph/call-resolution-graph-projection.ts`

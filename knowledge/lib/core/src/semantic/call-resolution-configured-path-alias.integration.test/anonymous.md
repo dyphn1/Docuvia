@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-configured-path-alias.integration.test.ts#anonymous@L112
+id: lib/core/src/semantic/call-resolution-configured-path-alias.integration.test.ts#anonymous@L115
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-configured-path-alias.integration.test.ts

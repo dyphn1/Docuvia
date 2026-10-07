@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts#anonymous@L53
+id: test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts#anonymous@L354
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts
@@ -7,4 +7,3 @@ filePath: test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-
 # Symbol: anonymous
 
 File: `test/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.unit.test.ts`
-

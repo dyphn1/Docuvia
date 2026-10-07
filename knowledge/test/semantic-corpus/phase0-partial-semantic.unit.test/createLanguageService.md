@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#createLanguageService@L555
+id: test/semantic-corpus/phase0-partial-semantic.unit.test.ts#createLanguageService@L421
 type: symbol
 name: createLanguageService
 filePath: test/semantic-corpus/phase0-partial-semantic.unit.test.ts

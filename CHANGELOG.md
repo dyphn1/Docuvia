@@ -2,6 +2,17 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+# [1.21.0](https://github.com/dyphn1/Docuvia/compare/v1.20.1...v1.21.0) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** report why the packaged Q1 certification could not be read ([71a5983](https://github.com/dyphn1/Docuvia/commit/71a5983eb7d552dd50fb0c7594f67d0020c9f1c1))
+
+### Features
+
+- **call-resolution:** activate Q1 certification on the current implementation ([#559](https://github.com/dyphn1/Docuvia/issues/559)) ([17cba0c](https://github.com/dyphn1/Docuvia/commit/17cba0c1fce7d43c8b823234c682a37230b26e02)), closes [#578](https://github.com/dyphn1/Docuvia/issues/578)
+- **call-resolution:** wire pinned Q1 certification into Tier B scheduling ([#559](https://github.com/dyphn1/Docuvia/issues/559)) ([d69108b](https://github.com/dyphn1/Docuvia/commit/d69108bc87310ecd456cd227fce93f1f97b8abfa))
+
 ## [1.20.1](https://github.com/dyphn1/Docuvia/compare/v1.20.0...v1.20.1) (2026-10-07)
 
 ### Bug Fixes

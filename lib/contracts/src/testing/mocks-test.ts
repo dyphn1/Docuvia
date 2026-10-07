@@ -88,6 +88,8 @@ export function makeMockStore(
       }),
       getQuarantinedRuleSignatures: vi.fn().mockReturnValue([]),
       getRuleQuarantines: vi.fn().mockReturnValue([]),
+      getRuleQuarantineClearAudits: vi.fn().mockReturnValue([]),
+      clearRuleQuarantine: vi.fn(),
       invalidateChangedDependencies: vi.fn().mockReturnValue({
         invalidatedCount: 0,
         affectedFilePaths: [],

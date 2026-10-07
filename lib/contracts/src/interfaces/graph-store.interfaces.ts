@@ -698,7 +698,67 @@ export interface CallSiteRuleQuarantine {
   sourceContentHash: string;
   expectedTargetNodeKey: string;
   observedTargetNodeKey: string;
+  /** Null only for rows created before migration 0018 or by legacy callers without a hash. */
+  ruleConfigurationSha256: string | null;
   createdAt: string;
+}
+
+export type CallSiteRuleQuarantineClearEvidence =
+  | {
+      kind: "certification";
+      evidenceSha256: string;
+      resultsRecordedAt: string;
+    }
+  | {
+      kind: "operator";
+      operator: string;
+      reason: string;
+    };
+
+export interface CallSiteRuleQuarantineClearRequest {
+  newRuleConfigurationSha256: string;
+  evidence: CallSiteRuleQuarantineClearEvidence;
+}
+
+export interface CallSiteRuleQuarantineClearAudit {
+  id: number;
+  ruleSignature: string;
+  quarantinePolicyVersion: string;
+  quarantineReason: CallSiteRuleQuarantine["reason"];
+  quarantineCallSiteKey: string;
+  quarantineSourceContentHash: string;
+  expectedTargetNodeKey: string;
+  observedTargetNodeKey: string;
+  quarantineCreatedAt: string;
+  clearedAt: string;
+  method: CallSiteRuleQuarantineClearEvidence["kind"];
+  evidenceSha256: string | null;
+  operator: string | null;
+  reason: string | null;
+  previousRuleConfigurationSha256: string;
+  newRuleConfigurationSha256: string;
+}
+
+export type CallSiteRuleQuarantineClearResult =
+  | { status: "cleared"; audit: CallSiteRuleQuarantineClearAudit }
+  | { status: "already-cleared"; audit: CallSiteRuleQuarantineClearAudit };
+
+export type CallResolutionQuarantineClearEvidenceInput =
+  | {
+      kind: "operator";
+      operator: string;
+      reason: string;
+    }
+  | {
+      kind: "certification";
+      artifact: string;
+      trustedInputsJson: string;
+    };
+
+export interface CallResolutionQuarantineListResult {
+  currentRuleConfigurationSha256: string;
+  active: CallSiteRuleQuarantine[];
+  clearAudits: CallSiteRuleQuarantineClearAudit[];
 }
 
 export interface CallSiteVerificationApplyResult {
@@ -824,11 +884,22 @@ export interface ICallSiteResolutionsRepo {
   applyTierBVerificationResults(
     projectId: number,
     results: CallSiteLspResolutionResult[],
+    ruleConfigurationSha256?: string,
   ): CallSiteVerificationApplyResult;
   /** Locally quarantined signatures survive batches and force future replacement rows to Tier B. */
   getQuarantinedRuleSignatures(projectId: number): string[];
   /** Local-only quarantine evidence; excluded from portable snapshots. */
   getRuleQuarantines(projectId: number): CallSiteRuleQuarantine[];
+  /** Immutable local history for explicit quarantine clears. */
+  getRuleQuarantineClearAudits(
+    projectId: number,
+  ): CallSiteRuleQuarantineClearAudit[];
+  /** Clears an active quarantine only after a newer, changed configuration is evidenced. */
+  clearRuleQuarantine(
+    projectId: number,
+    ruleSignature: string,
+    request: CallSiteRuleQuarantineClearRequest,
+  ): CallSiteRuleQuarantineClearResult;
   /** Marks current resolutions stale when a dependency's observed hash differs from current content. */
   invalidateChangedDependencies(
     projectId: number,

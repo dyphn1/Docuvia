@@ -495,4 +495,35 @@ export const UI_MESSAGES = {
     `Unknown hook '${hookName ?? ""}' -- valid names: ${validNames.join(", ")}`,
   HOOKS_UNKNOWN_SUBCOMMAND: (subcommand: string | undefined) =>
     `Unknown 'docuvia hooks' subcommand '${subcommand ?? ""}' -- expected list, enable, disable, or check`,
+  CALL_RESOLUTION_QUARANTINE_HEADER: "Call-resolution Rule Quarantines",
+  CALL_RESOLUTION_QUARANTINE_AUDIT_HEADER: "Quarantine Clear Audit",
+  CALL_RESOLUTION_QUARANTINE_CLEAR_PREVIEW: "Quarantine Clear Preview",
+  CALL_RESOLUTION_QUARANTINE_NONE: "No active call-resolution quarantines.",
+  CALL_RESOLUTION_QUARANTINE_ALREADY_CLEARED:
+    "No active quarantine exists; the latest clear audit is unchanged.",
+  CALL_RESOLUTION_QUARANTINE_CLEAR_SUCCESS: (signature: string) =>
+    `Cleared call-resolution quarantine for ${signature}.`,
+  CALL_RESOLUTION_QUARANTINE_LIST_FAIL:
+    "Failed to list call-resolution quarantines: ",
+  CALL_RESOLUTION_QUARANTINE_CLEAR_FAIL:
+    "Failed to clear call-resolution quarantine: ",
+  CALL_RESOLUTION_QUARANTINE_INVALID_SUBCOMMAND: (
+    subcommand: string | undefined,
+  ) =>
+    `Unknown 'docuvia call-resolution quarantine' subcommand '${subcommand ?? ""}' -- expected list or clear`,
+  CALL_RESOLUTION_QUARANTINE_USAGE:
+    "Usage: docuvia call-resolution quarantine list | clear <ruleSignature> (--artifact <path> --trusted-inputs <path> | --operator <identity> --reason <text>)",
+  CALL_RESOLUTION_QUARANTINE_EVIDENCE_REQUIRED:
+    "Clear requires either --artifact with --trusted-inputs, or both --operator and --reason.",
+  CALL_RESOLUTION_QUARANTINE_EVIDENCE_EXCLUSIVE:
+    "Choose certification evidence or operator reason and identity, not both.",
+  CALL_RESOLUTION_QUARANTINE_COL_SIGNATURE: "Rule signature",
+  CALL_RESOLUTION_QUARANTINE_COL_CREATED: "Quarantined at",
+  CALL_RESOLUTION_QUARANTINE_COL_REASON: "Reason",
+  CALL_RESOLUTION_QUARANTINE_COL_PREVIOUS_HASH: "Previous config SHA-256",
+  CALL_RESOLUTION_QUARANTINE_COL_NEW_HASH: "New config SHA-256",
+  CALL_RESOLUTION_QUARANTINE_COL_METHOD: "Clear method",
+  CALL_RESOLUTION_QUARANTINE_COL_EVIDENCE: "Evidence SHA-256",
+  CALL_RESOLUTION_QUARANTINE_COL_OPERATOR: "Operator",
+  CALL_RESOLUTION_QUARANTINE_COL_CLEARED: "Cleared at",
 };

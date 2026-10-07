@@ -19,6 +19,7 @@ import { syncKnowledgeCommand } from "./commands/sync-knowledge.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { hooksCommand } from "./commands/hooks.js";
+import { callResolutionQuarantineCommand } from "./commands/call-resolution-quarantine.js";
 import { runMcpServer } from "./mcp/server.js";
 import type { TopologyCollapseMode } from "@workspace/contracts";
 
@@ -259,6 +260,27 @@ async function handleHooks(ctx: CommandContext): Promise<void> {
   await hooksCommand(subcommand, hookName, ctx.workspaceRoot);
 }
 
+async function handleCallResolution(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.CALL_RESOLUTION]);
+  if (ctx.parser.getPositional(3) !== undefined) {
+    ui.error(UI_MESSAGES.CALL_RESOLUTION_QUARANTINE_USAGE);
+    process.exitCode = 1;
+    return;
+  }
+  await callResolutionQuarantineCommand(
+    ctx.parser.getPositional(0),
+    ctx.parser.getPositional(1),
+    ctx.parser.getPositional(2),
+    {
+      operator: ctx.parser.getFlagValue(CLI_FLAGS.OPERATOR),
+      reason: ctx.parser.getFlagValue(CLI_FLAGS.REASON),
+      artifactPath: ctx.parser.getFlagValue(CLI_FLAGS.ARTIFACT),
+      trustedInputsPath: ctx.parser.getFlagValue(CLI_FLAGS.TRUSTED_INPUTS),
+    },
+    ctx.workspaceRoot,
+  );
+}
+
 /**
  * `init`/`mcp`/`clean`/`status`/`publish`/`analyze`/`review`/`impact`/`query`/`export-topology`/
  * `snapshot`/`hydrate`/`sync-knowledge` are wired so far. Structured so each later command is
@@ -285,6 +307,7 @@ const COMMAND_HANDLERS: Record<
   [CLI_COMMANDS.UNINSTALL]: handleUninstall,
   [CLI_COMMANDS.DOCTOR]: handleDoctor,
   [CLI_COMMANDS.HOOKS]: handleHooks,
+  [CLI_COMMANDS.CALL_RESOLUTION]: handleCallResolution,
 };
 
 /**

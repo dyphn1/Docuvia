@@ -32,6 +32,26 @@ export const CALL_RESOLUTION_Q3_TYPED_RECEIVER_RULE_SIGNATURE =
 export const CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE =
   "q3:new-receiver:v1" as const;
 
+/** Version and sorted signature set hashed into the current certification configuration digest. */
+export const CALL_RESOLUTION_RULE_CONFIGURATION_VERSION =
+  "docuvia-strict-proof-rules/v1" as const;
+export const CALL_RESOLUTION_RULE_SIGNATURES = [
+  "q1:named-import:v1",
+  "q2:reexport-trace:v1",
+  "q3:new-receiver:v1",
+  "q3:super-call:v1",
+  "q3:this-inherited:v1",
+  "q3:typed-receiver:v1",
+  "single-candidate-this-v1",
+] as const;
+
+/** SHA-256(JSON.stringify({schemaVersion:1, ruleConfigurationVersion,
+ *  ruleSignatures: CALL_RESOLUTION_RULE_SIGNATURES})). Bump the manifest revision and digest
+ *  whenever strict-proof implementation or configuration changes, so recertification proves
+ *  that a quarantined configuration is no longer active. */
+export const CALL_RESOLUTION_RULE_CONFIGURATION_SHA256 =
+  "17f29ba13f08a288186c7bdbed2651248664643f98613df8d3087aade7b4f768" as const;
+
 /** Source-bound configuration facts; unsupported mappings do not enrich candidates. */
 export interface CallResolutionConfiguredPathAliases {
   readonly configurationFilePath: string;

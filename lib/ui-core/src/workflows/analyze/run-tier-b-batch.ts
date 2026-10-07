@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
   LinkTypes,
   NODE_KEY_SYMBOL_SEPARATOR,
   type IGitProvider,
@@ -615,6 +616,7 @@ function applyTierBBatchWrites(
     store.callSiteResolutions?.applyTierBVerificationResults(
       project.id,
       outcome.callSiteResults,
+      CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
     );
   }
   const edgesPruned = store.graph.pruneOrphanedLinks();

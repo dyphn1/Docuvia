@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "track": "docuvia-temporal-2-amendment-1",
+  "prelabelSamples": 947,
+  "oracleLabelSamples": 947,
+  "sourceProofSites": 4584,
+  "proofSitesInFrozenCorpus": 622,
+  "proofSitesOutsideFrozenCorpus": 3962,
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3",
+      "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+    },
+    "requests": 947,
+    "readinessProbeRequests": 14,
+    "processStarts": 7,
+    "allLabelsResolved": true,
+    "statuses": {
+      "resolved": 947
+    },
+    "durationMs": 5671
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "sites": 502,
+      "n": 477,
+      "successes": 477,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9937393190864231,
+      "statusCounts": {
+        "success": 502
+      }
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "sites": 12,
+      "n": 12,
+      "successes": 12,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.7790778080544442,
+      "statusCounts": {
+        "success": 12
+      }
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "sites": 0,
+      "n": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {}
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "sites": 0,
+      "n": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {}
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "sites": 4,
+      "n": 4,
+      "successes": 4,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.4728708045015879,
+      "statusCounts": {
+        "success": 4
+      }
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "sites": 104,
+      "n": 95,
+      "successes": 95,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9689579881320451,
+      "statusCounts": {
+        "success": 104
+      }
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "sites": 0,
+      "n": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {}
+    }
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/labels/oracle-labels.json",
+      "sha256": "397626b438267e43320d01ef5a646ccda29060d222b74136d156da033412a2a3",
+      "sizeBytes": 254017,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/certification-results.json",
+      "sha256": "695e7b11f286bde3579b4965a461297ffcb9a2a2f5aaa54e6e12cafdeb441b81",
+      "sizeBytes": 830884,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/amendment-1/proofs-all.json",
+      "sha256": "137a3f3117802107139c5402d27cefdb8f8f482447312cdaab2577a7a28d34ea",
+      "sizeBytes": 1997439,
+      "containsPerSampleRows": true
+    }
+  ]
+}

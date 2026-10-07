@@ -159,7 +159,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   });
 
   it(
-    "re-derives Q1/Q2/Q3 proofs after target, caller, rename/delete, and barrel changes",
+    "[happy] [state-diff] re-derives Q1/Q2/Q3 proofs after target, caller, rename/delete, and barrel changes",
     async () => {
       const deltaSandbox = instantiate(TestSandbox, []);
       const fullSandbox = instantiate(TestSandbox, []);
@@ -270,7 +270,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   );
 
   it(
-    "recovers after a dirty-worktree fallback on the next clean commit",
+    "[error-handling] [state-diff] recovers after a dirty-worktree fallback on the next clean commit",
     async () => {
       const deltaSandbox = instantiate(TestSandbox, []);
       const fullSandbox = instantiate(TestSandbox, []);
@@ -341,7 +341,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   );
 
   it(
-    "reparses a source-index row produced from discarded dirty content",
+    "[invalid-input] reparses a source-index row produced from discarded dirty content",
     async () => {
       const deltaSandbox = instantiate(TestSandbox, []);
       const fullSandbox = instantiate(TestSandbox, []);
@@ -406,7 +406,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   );
 
   it(
-    "matches full init when a new caller follows a prior target rename",
+    "[state-diff] matches full init when a new caller follows a prior target rename",
     async () => {
       const deltaSandbox = instantiate(TestSandbox, []);
       const fullSandbox = instantiate(TestSandbox, []);
@@ -488,6 +488,70 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
       expect(readGraphSnapshot(deltaSandbox.dir)).toEqual(
         readGraphSnapshot(fullSandbox.dir),
       );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[stress] keeps parity across many consecutive delta commits without accumulating proof rows",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const target = 'export function stressTarget() { return "target"; }\n';
+      const callerSource = (index: number) =>
+        `import { stressTarget } from "../core/target.js";\nexport function stressCaller${index}() { return stressTarget(); }\n`;
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/core/target.ts": target,
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "baseline");
+      const deltaScope = `delta-stress-reproof-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      await fs.mkdir(path.join(deltaSandbox.dir, "src/users"), {
+        recursive: true,
+      });
+      const commits = 6;
+      const callerFiles: Record<string, string> = {};
+      for (let index = 0; index < commits; index += 1) {
+        const file = `src/users/caller-${index}.ts`;
+        callerFiles[file] = callerSource(index);
+        await fs.writeFile(
+          path.join(deltaSandbox.dir, file),
+          callerFiles[file],
+          "utf8",
+        );
+        await commitAll(deltaSandbox, `add caller ${index}`);
+        expect(
+          (await docuviaApi.analyze(deltaScope, createNoopLogger())).kind,
+        ).toBe(AnalyzeResultKind.AUTO_DELTA);
+        expect(
+          (await latestDeltaSummary(deltaSandbox.dir)).strictProofReproofStatus,
+        ).toBe("complete");
+      }
+
+      await fullSandbox.setup({
+        initGit: true,
+        files: { ...baselineFiles, ...callerFiles },
+      });
+      await commitAll(fullSandbox, "full-init reference");
+      const fullScope = `full-stress-reproof-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+      const delta = readGraphSnapshot(deltaSandbox.dir);
+      expect(delta.provenRows.map((row) => row.caller_node_key).sort()).toEqual(
+        Array.from(
+          { length: commits },
+          (_, index) => `src/users/caller-${index}.ts#stressCaller${index}`,
+        ),
+      );
+      expect(delta).toEqual(readGraphSnapshot(fullSandbox.dir));
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

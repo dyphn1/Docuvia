@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-reexport-proof.integration.test.ts#anonymous@L798
+id: lib/core/src/semantic/call-resolution-reexport-proof.integration.test.ts#anonymous@L80
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-reexport-proof.integration.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/semantic/call-resolution-reexport-proof.integration.test.
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-reexport-proof.integration.test.ts`
+

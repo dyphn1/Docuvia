@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic-replay.mts#anonymous@L262
+id: scripts/semantic-corpus/phase0-partial-semantic-replay.mts#anonymous@L238
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase0-partial-semantic-replay.mts

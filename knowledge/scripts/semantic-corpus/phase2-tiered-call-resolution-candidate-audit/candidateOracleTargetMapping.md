@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts#candidateOracleTargetMapping
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts#CandidateOracleTargetMapping
 type: symbol
-name: candidateOracleTargetMapping
+name: CandidateOracleTargetMapping
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts
 ---
-# Symbol: candidateOracleTargetMapping
+# Symbol: CandidateOracleTargetMapping
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts`

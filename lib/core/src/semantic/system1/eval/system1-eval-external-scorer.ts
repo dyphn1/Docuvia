@@ -102,6 +102,7 @@ export async function runSystem1ExternalScorerBatch(
   return new Promise((resolve) => {
     const child = spawn(invocation.executable, [...invocation.args], {
       cwd: invocation.workingDirectory,
+      env: invocation.env,
       detached: process.platform !== "win32",
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],

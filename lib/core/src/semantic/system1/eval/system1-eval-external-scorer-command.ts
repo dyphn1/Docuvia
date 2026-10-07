@@ -13,6 +13,7 @@ export interface System1ExternalScorerCommand {
   readonly executable: string;
   readonly args: readonly string[];
   readonly workingDirectory: string;
+  readonly env: NodeJS.ProcessEnv;
 }
 
 const WINDOWS_EXECUTABLE_EXTENSIONS = [".exe", ".cmd", ".bat", ".com"];
@@ -35,7 +36,9 @@ function isInside(root: string, candidate: string): boolean {
   const relative = path.relative(root, candidate);
   return (
     relative === "" ||
-    (!relative.startsWith("..") && !path.isAbsolute(relative))
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
   );
 }
 
@@ -80,25 +83,67 @@ function resolveOnPath(name: string): string | null {
   return null;
 }
 
-function resolveExecutable(command: string, root: string): string | null {
+type ResolvedExecutable = {
+  readonly path: string;
+  readonly interpreter: boolean;
+};
+
+function resolveExecutable(
+  command: string,
+  root: string,
+): ResolvedExecutable | null {
   if (command.length === 0 || hasNul(command)) return null;
   if (!path.isAbsolute(command)) {
     // Relative paths would resolve against a caller-chosen cwd; only bare interpreter names
     // from the allowlist may use PATH lookup.
     if (command !== path.basename(command)) return null;
-    return isAllowlistedInterpreter(command) ? resolveOnPath(command) : null;
+    if (!isAllowlistedInterpreter(command)) return null;
+    const resolved = resolveOnPath(command);
+    return resolved ? { path: resolved, interpreter: true } : null;
   }
   const resolved = executableFile(command);
   if (!resolved) return null;
-  return isAllowlistedInterpreter(resolved) || isInside(root, resolved)
-    ? resolved
+  if (isAllowlistedInterpreter(resolved))
+    return { path: resolved, interpreter: true };
+  return isInside(root, resolved)
+    ? { path: resolved, interpreter: false }
     : null;
 }
 
 /**
+ * An interpreter is only a launcher: its first argument must be the scorer entry point, a
+ * regular file whose canonical path stays inside the containment root. Interpreter options
+ * (`-e`, `-c`, `--require`, ...) are rejected because they can run code that is not that file;
+ * every later argument belongs to the scorer and is never read by the interpreter.
+ */
+function interpreterArgs(
+  args: readonly string[],
+  root: string,
+  workingDirectory: string,
+): string[] | null {
+  const [entryPoint, ...scorerArgs] = args;
+  if (entryPoint === undefined || entryPoint.startsWith("-")) return null;
+  try {
+    const resolved = realpathSync(path.resolve(workingDirectory, entryPoint));
+    if (!statSync(resolved).isFile() || !isInside(root, resolved)) return null;
+    return [resolved, ...scorerArgs];
+  } catch {
+    return null;
+  }
+}
+
+/** NODE_OPTIONS can inject `--require`/`--import` code ahead of the entry point. */
+function scorerEnvironment(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env.NODE_OPTIONS;
+  return env;
+}
+
+/**
  * Validates an external scorer invocation before anything is spawned (#563). The working
- * directory must be an existing directory inside the containment root, the executable must be an
- * allowlisted interpreter or an absolute executable inside that root, and no value may carry NUL.
+ * directory must be an existing directory inside the containment root. The executable is either
+ * an absolute executable inside that root, or an allowlisted interpreter whose first argument is
+ * an entry-point file inside that root (no inline-code options). No value may carry NUL.
  * Returns null when the invocation is rejected.
  */
 export function resolveSystem1ExternalScorerCommand(
@@ -112,5 +157,14 @@ export function resolveSystem1ExternalScorerCommand(
     return null;
   const executable = resolveExecutable(input.command, root);
   if (!executable) return null;
-  return { executable, args: [...input.args], workingDirectory };
+  const args = executable.interpreter
+    ? interpreterArgs(input.args, root, workingDirectory)
+    : [...input.args];
+  if (!args) return null;
+  return {
+    executable: executable.path,
+    args,
+    workingDirectory,
+    env: scorerEnvironment(),
+  };
 }

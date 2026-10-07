@@ -1312,7 +1312,8 @@ function normalizeChangedDependencies(
     .map(([filePath, contentHash]) => ({ filePath, contentHash }));
 }
 
-/** Rebuilds the collapsed `calls` edge projection from current per-site selections. */
+/** Rebuilds the collapsed `calls` edge projection from current per-site selections.
+ * Self-call resolution rows remain persisted, but their graph edges are intentionally omitted. */
 function rebuildCallsProjection(
   db: Database.Database,
   projectId: number,
@@ -1346,6 +1347,7 @@ function rebuildCallsProjection(
        AND target.${SchemaColumns.NODE_KEY} = r.selected_target_node_key
      WHERE r.project_id = ? AND r.file_path = ?
        AND r.is_stale = 0 AND r.selected_target_node_key IS NOT NULL
+       AND caller.id <> target.id
        AND (
          NOT EXISTS (
            SELECT 1 FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES} q

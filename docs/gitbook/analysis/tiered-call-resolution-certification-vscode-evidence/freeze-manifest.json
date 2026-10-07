@@ -1,0 +1,385 @@
+{
+  "schemaVersion": 1,
+  "protocol": "tiered-call-resolution/new-family-pre-registration/1",
+  "frozenAtUtc": "2026-10-07T02:04:13.000Z",
+  "status": "preregistered-no-oracle-labels-after-amendment-1",
+  "implementationHead": "d325bf3ff32b8326769d116009543ba96143a2c6",
+  "branch": "feat/559-vscode-labeling",
+  "sourceFamily": {
+    "repoId": "github.com/microsoft/vscode",
+    "family": "microsoft/vscode",
+    "license": "MIT",
+    "licensePath": "LICENSE.txt",
+    "licenseFileSha256": "cce33203a80863c22499035b1cfb6aba5df5f02e4ea2669cf5bc5730c1864236",
+    "declaredBy": "local checkout LICENSE.txt",
+    "usage": "new-family evaluation-only; absent from pinned training corpus"
+  },
+  "pinnedSource": {
+    "localCheckout": "/Users/daniel.chang/Desktop/GitHub/vscode",
+    "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+    "branch": "main",
+    "cleanAtPin": true,
+    "committedAt": "2026-09-25T10:14:22+02:00",
+    "sourceSnapshotSha256": "10ee8a0703dc08f2dd2f32148e5dfe0f7261cf5f18edbea81b0da7f7efb68162",
+    "trackedSnapshotFiles": 3255
+  },
+  "populationPlan": {
+    "path": "/private/tmp/docuvia-temporal-2/vscode/population-plan.json",
+    "sha256": "ef22251f171c239b80d43a502e2c25b5d87750d666251021380df0306881416c",
+    "selectedDirectories": [
+      "src/vs/base/**",
+      "src/vs/platform/**",
+      "src/vs/editor/**"
+    ],
+    "supportInputs": [
+      "src/tsconfig*.json",
+      "src/typings/**",
+      "src/vscode-dts/**",
+      "src/vs/amdX.ts",
+      "src/vs/nls.ts",
+      "src/vs/monaco.d.ts"
+    ],
+    "include": "Tracked .ts/.tsx/.mts/.cts caller files under selected directories only",
+    "exclude": [
+      "node_modules path segments",
+      "test/tests/__tests__ path segments",
+      "fixture/fixtures/__fixtures__ path segments",
+      "test/spec filename suffixes",
+      "all src paths outside selected directories"
+    ],
+    "method": "git archive at pinned HEAD; remove excluded test/fixture paths before Tier A and checker; construct source-only manifest with existing checker and prelabel-manifest builder; one family assigned test split"
+  },
+  "resourceSelection": {
+    "fullRepositoryHeapFailure": true,
+    "srcSubtreeHeapFailure": true,
+    "workbenchOnlyConfigPrograms": 0,
+    "fourDirectoryProofRunHeapFailure": true,
+    "finalDeterministicSubset": "base + platform + editor",
+    "nodeMaxOldSpaceMb": 4096,
+    "plannedTsserverMaxMemoryMb": 4096,
+    "observedQ1PeakRssBytes": 4448223232,
+    "observedQ2PeakRssBytes": 4323246080,
+    "observedQ3PeakRssBytes": 4701880320
+  },
+  "corpus": {
+    "corpusId": "vscode-issue-559-prereg-2-core-directories",
+    "corpusVersion": "1",
+    "splitSeed": "vscode-issue-559-prereg-2-core-directories-deterministic",
+    "familySplit": "test",
+    "sampleSites": 46468,
+    "independentSampleGroups": 45091,
+    "prelabelManifest": {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sampleCount": 46468,
+      "groupCount": 45091,
+      "canonicalJsonSha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "fileSha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "oracleInvocations": 0
+    }
+  },
+  "sourceSnapshot": {
+    "hash": "10ee8a0703dc08f2dd2f32148e5dfe0f7261cf5f18edbea81b0da7f7efb68162",
+    "files": 3255,
+    "typescriptFiles": 3245,
+    "samplePopulationFiles": 3048,
+    "tierA": {
+      "nodes": 63526,
+      "edges": 80625,
+      "callSites": 133269,
+      "durationMs": 30764.134125
+    },
+    "checker": {
+      "typescriptVersion": "5.9.3",
+      "programs": 1,
+      "uniqueCallSites": 133269,
+      "exclusions": {
+        "non-typescript-file": 1303,
+        "external-target": 32877,
+        "checker-unresolved": 3195,
+        "same-file-target": 33892,
+        "unmappable-target": 15528
+      },
+      "eligibleSampleSites": 46468
+    }
+  },
+  "proofRunners": {
+    "q1": {
+      "proofRowsPersisted": 10532,
+      "proofRowsInPopulation": 10532,
+      "proofRowsOutsidePopulation": 0,
+      "serviceProofSites": 10532,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 4477009920,
+      "persistedProofGap": 0
+    },
+    "q2": {
+      "proofRowsPersisted": 1130,
+      "proofRowsInPopulation": 1130,
+      "proofRowsOutsidePopulation": 0,
+      "serviceProofSites": 1130,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 4506140672,
+      "persistedProofGap": 0
+    },
+    "q3": {
+      "proofRowsPersisted": 5429,
+      "proofRowsInPopulation": 4299,
+      "proofRowsOutsidePopulation": 1130,
+      "serviceProofSites": 5429,
+      "allServiceProofsPersisted": true,
+      "peakRssBytes": 4533338112,
+      "persistedProofGap": 0,
+      "commandExitCode": 1,
+      "nonPersistenceInvariantFailures": [
+        "callLinksChangedOnlyForQ3Sites=false",
+        "zeroCallerOnlyChanges=false"
+      ]
+    }
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "persistedProofSites": 10532,
+      "independentDuplicateGroups": 10312,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "persistedProofSites": 1130,
+      "independentDuplicateGroups": 1117,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "persistedProofSites": 35,
+      "independentDuplicateGroups": 35,
+      "requiredGroups": 299,
+      "gate": "underpowered"
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "persistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "persistedProofSites": 3094,
+      "independentDuplicateGroups": 3034,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "persistedProofSites": 1170,
+      "independentDuplicateGroups": 1122,
+      "requiredGroups": 299,
+      "gate": "meets-preregistration-count"
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "persistedProofSites": 0,
+      "independentDuplicateGroups": 0,
+      "requiredGroups": 299,
+      "gate": "no-in-scope-proofs"
+    }
+  ],
+  "proofRunAggregate": {
+    "path": "proof-run-amendment-1-aggregate.json",
+    "sha256": "8de6a5c77c463bd5d47327557e7bd0cfdd707061c90986e463ddf7c72a46ddf9"
+  },
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3",
+      "configurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+    },
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "oracleInvocations": 0,
+    "labelsOpened": false,
+    "certificationEvaluationRun": false,
+    "amendmentFrozenBeforeLabels": true
+  },
+  "referenceTiming": {
+    "track": "Docuvia temporal-2 amendment 1, same oracle config",
+    "requests": 947,
+    "durationMs": 5671,
+    "approxSecondsPer1000Requests": 5.99,
+    "usedAsEstimateOnly": true,
+    "vsCodeTimingProbeRun": false
+  },
+  "implementationFileHashes": {
+    "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+    "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+    "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+    "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+    "lib/core/src/semantic/call-resolution-reexport-proof.ts": "fcbb7acf7019ad667dc89587aa67d8137355e9f23de0eec952c1678bbdc889e9",
+    "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+    "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+    "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+    "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c",
+    "lib/core/src/graph/call-resolution-graph-projection.ts": "509abac6c8e080d4c17b1993ee3b37df529bd33479f17623c09d1aa298a40e17"
+  },
+  "resolverRuleCombinedSha256": {
+    "q1:named-import:v1": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "q2:reexport-trace:v1": "f94fc6e2a74682622f7d464ed745a9142c2c893dc990ec57f454aac2de7b1a88",
+    "q3:super-call:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:this-inherited:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:typed-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:new-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "single-candidate-this-v1": "e9c025800d2d3e679e3415715587e3c1cc4fe5ff75535247ba9a850439d80f13"
+  },
+  "sourceToolingHashes": {
+    "scripts/semantic-corpus/prelabel-manifest.mts": "089c144100b10e270ec2ae7c6f210712284a6f180756be57d41e448993616cc5",
+    "scripts/semantic-corpus/prelabel-collect.mts": "fc6eae889dd65a1f10f7b82dc4de53e897c3bd96ace02b4fa13b9874dda79f2d",
+    "scripts/semantic-corpus/collect.mts": "ffd072e62b2e2bb844b6b9c13fa152dad4717f3a5cd113078e7bd6f5c1f39e65",
+    "scripts/semantic-corpus/checker.mts": "81967e6df548385b4570da6fe298cf73b50be53638f0c64587bacbd4f17b7d8e",
+    "scripts/semantic-corpus/tier-a.mts": "50dd5a452b04c524fab8a6b336ee83af29586adc5afb00e45c74caba244f1554",
+    "scripts/semantic-corpus/snapshot.mts": "a23af91beda4efdcb0a1a145385b3d819d0af707750bc7a22d71c01fe35fc02b",
+    "scripts/semantic-corpus/memory-guard.mts": "4e890ac5c293ba53303b5c3b4e60359ac642b236432aada4979f114f68859dcd",
+    "scripts/semantic-corpus/run-support.mts": "7787ab5b3e5a309bc64c7601e9a969d245cfc99bdccf430cef44239f866262e7",
+    "scripts/semantic-corpus/oracle.mts": "52f61c353193fdf11d55c8888fbf2b244deebe8b498ccefc83c93ccb425ea3e1",
+    "scripts/semantic-corpus/typescript-language-server.mts": "350bd9f0988b1d9afd79100c73f9766b317c4590af9fe3a9a811a53a5d8b6f70",
+    "scripts/semantic-corpus/certification-evaluate.mts": "e912c85b45f9424cd2836e3ac9d63c31497c28723b9b84de8c510f2b44abea4b",
+    "scripts/semantic-corpus/certification-proof-scope.mts": "996f4ca0c974ef9ec43a36d3a429ad7e0c50e0c3a0b95ffb6645a2b82dbfaec6",
+    "scripts/semantic-corpus/phase3-q1-named-import-whole-source-parity.mts": "77ad7fd57937187044953b3f0c60a5bba1e74babf94f0372ae0459bd51611c34",
+    "scripts/semantic-corpus/phase3-q2-reexport-whole-source-parity.mts": "ff8e58b91607ddb710c1523841ea6be40304478961049feccc1aecf15c95aa71",
+    "scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts": "15be1e8a31e9a392c48739d54581220ac012cfb2f456f747395a073eb7e611c2",
+    "scripts/semantic-corpus/parity-utils.mts": "4971f08c99d9604ccfab59f6e6d97225e36f15afe0ce76102175162338d17618",
+    "test/semantic-corpus/prelabel-manifest.unit.test.ts": "0e5fad70b85a3ff4843589d7c2f1fbbc6c2336fe36e75bb05d6782b642a73fd4",
+    "test/semantic-corpus/certification-proof-scope.unit.test.ts": "2d72b9d589b03edf7cd3fb6a445de3dcf8da9e389e1c8370821daa6abb03e448",
+    "test/semantic-corpus/phase3-whole-source-parity.unit.test.ts": "119dc89437e68ba0229c1eaba51c7318dfa53bd8b2516433d65de1e96209c119",
+    "package.json": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911"
+  },
+  "configurationHashes": {
+    "packageJson": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911",
+    "pnpmLock": "a5b7451ed45fd38d0aeb633c9885bd3359f251bb29e7b569dce4567cf0b2c9ea",
+    "trainCorpusSpec": "867b96f393be018c7552036b18d8164d8fcdd9f21fe8d3a2f100d674fd64e69a",
+    "sourceOnlyCorpusSpec": "c489bf0badb8d46a26b50418dd8d86f00e5f24ee7af87a4e9c081ca87222abd0",
+    "oracleConfiguration": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/population-plan.json",
+      "sha256": "ef22251f171c239b80d43a502e2c25b5d87750d666251021380df0306881416c",
+      "sizeBytes": 1688,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/population-plan-four-directories.json",
+      "sha256": "f090ede247acf629ebae60e4235286b2235b7b7d37022e51578967da959ad5e5",
+      "sizeBytes": 1496,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/source-attempts.json",
+      "sha256": "dfe662a17e7134701fc85afcd49f845972b142f543ad5b3ff4b53db1cf78bfe4",
+      "sizeBytes": 1707,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-aggregate.json",
+      "sha256": "5cd46bff6e3fc1c578a2de30c9dd39ca498ff9cc3667da09253f981ef59e7109",
+      "sizeBytes": 2010,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/proof-scope-core3-aggregate.json",
+      "sha256": "a2aa056a3bf7d95313bfadd782ed16dca63970f5634ac487c6df3bd031145fe2",
+      "sizeBytes": 1799,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel/prelabel-report.json",
+      "sha256": "341940371b6a07e0bd59414acc1ab3ec4195c10bd61300f63f6968fc92292e4c",
+      "sizeBytes": 1730,
+      "perSampleArtifact": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-summary.jsonl",
+      "sha256": "f6db32df286cf6c98f13f61a769c9174fc482ace80687c7f54e7fcbddc5c164b",
+      "sizeBytes": 301485,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-proofs.json",
+      "sha256": "544794d707b339a52226b479a504d623b237832bc0036d420f44297176ec6efe",
+      "sizeBytes": 4721925,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-summary.jsonl",
+      "sha256": "9ca0da7e3a63f2105a4c5f02932041de9d31982350e636441df04abaf89f43ea",
+      "sizeBytes": 1910099,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-proofs.json",
+      "sha256": "394bceb3be36d9c9a2f249a247bab55bafc921870b6af058b081701339c456f5",
+      "sizeBytes": 552114,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-summary.jsonl",
+      "sha256": "e30c3c3f1dc5ab1cc226448ff55168da0cfe4e81ef8a246f1cf7ad540e4bad56",
+      "sizeBytes": 5516239,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-proofs.json",
+      "sha256": "c3041d14ac5e2d0b3ec4cac98e244991c8c74cda7553a5e72a95de4c8821e9f9",
+      "sizeBytes": 1959628,
+      "perSampleArtifact": true
+    }
+  ],
+  "constraints": {
+    "gitNexusUsed": false,
+    "nestDatasetUsed": false,
+    "onyxEnterprisePathsInspected": false,
+    "networkUsed": false,
+    "docuviaCheckoutGitMetadataWritten": false,
+    "vscodeCheckoutGitMetadataWritten": false,
+    "temporarySnapshotGitMetadataCreated": true,
+    "productionCertificationRecordWritten": false,
+    "tierBSkipEnabled": false,
+    "projectFileContentHashSemanticsChanged": false,
+    "vsCodeOracleLabelsOpened": false
+  },
+  "supersedesFreezeManifestSha256": "fb7244f94549ed90b5053c81e0c1475fad1eaa3a2d23aa10facf21da0638f0ab",
+  "amendments": [
+    {
+      "number": 1,
+      "recordedAtUtc": "2026-10-07T02:04:13.000Z",
+      "reason": "implementation updated after the #571 projection fix; amendment made before any VS Code oracle label was opened",
+      "implementationCommit": "d325bf3ff32b8326769d116009543ba96143a2c6",
+      "persistedProofGapsQ1Q2Q3": [0, 0, 0],
+      "callSiteSampleUnchanged": true,
+      "previousFreezeManifestSha256": "fb7244f94549ed90b5053c81e0c1475fad1eaa3a2d23aa10facf21da0638f0ab",
+      "proofRunAggregate": {
+        "path": "proof-run-amendment-1-aggregate.json",
+        "sha256": "8de6a5c77c463bd5d47327557e7bd0cfdd707061c90986e463ddf7c72a46ddf9"
+      }
+    }
+  ]
+}

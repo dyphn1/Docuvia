@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "track": "vscode-new-family",
+  "status": "labeled-and-evaluated-no-promotion",
+  "resultsRecordedAt": "2026-10-07T02:06:48Z",
+  "amendment": {
+    "number": 1,
+    "implementationCommit": "d325bf3ff32b8326769d116009543ba96143a2c6",
+    "persistedProofGapsQ1Q2Q3": [0, 0, 0],
+    "callSiteSampleUnchanged": true,
+    "previousFreezeManifestSha256": "fb7244f94549ed90b5053c81e0c1475fad1eaa3a2d23aa10facf21da0638f0ab",
+    "freezeManifestSha256": "8292332e7b01110e73cd44e6d670a7c5c6c0d2c135c79a40e91fd4a4d73928a2",
+    "proofRunAggregateSha256": "8de6a5c77c463bd5d47327557e7bd0cfdd707061c90986e463ddf7c72a46ddf9"
+  },
+  "source": {
+    "familyId": "microsoft/vscode",
+    "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+    "sourceSnapshotSha256": "10ee8a0703dc08f2dd2f32148e5dfe0f7261cf5f18edbea81b0da7f7efb68162",
+    "subset": ["src/vs/base/**", "src/vs/platform/**", "src/vs/editor/**"],
+    "prelabelSamples": 46468,
+    "independentSampleGroups": 45091,
+    "prelabelManifestSha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944"
+  },
+  "proofPersistence": {
+    "sourceFiles": 3247,
+    "parsedFiles": 3247,
+    "parseFailures": 0,
+    "runs": [
+      {
+        "signatureFamily": "q1",
+        "serviceProposals": 10532,
+        "persisted": 10532,
+        "gap": 0,
+        "peakRssBytes": 4477009920,
+        "exitCode": 0
+      },
+      {
+        "signatureFamily": "q2",
+        "serviceProposals": 1130,
+        "persisted": 1130,
+        "gap": 0,
+        "peakRssBytes": 4506140672,
+        "exitCode": 0
+      },
+      {
+        "signatureFamily": "q3",
+        "serviceProposals": 5429,
+        "persisted": 5429,
+        "gap": 0,
+        "peakRssBytes": 4533338112,
+        "exitCode": 1,
+        "nonPersistenceInvariantFailures": [
+          "callLinksChangedOnlyForQ3Sites=false",
+          "zeroCallerOnlyChanges=false"
+        ]
+      }
+    ],
+    "q3PersistedProofRowsInSubset": 4299,
+    "q3PersistedProofRowsOutsideSubset": 1130
+  },
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3",
+      "configHash": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e"
+    },
+    "configurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "labelsOpenedAt": "2026-10-07T02:04:59.700Z",
+    "labelsRecordedAt": "2026-10-07T02:05:10.471Z",
+    "samples": 46468,
+    "requests": 46468,
+    "readinessProbeRequests": 6,
+    "projects": 1,
+    "readiness": [
+      {
+        "projectId": "src/tsconfig.json",
+        "ready": true,
+        "readyMs": 2764.49925
+      }
+    ],
+    "statuses": {
+      "resolved": 46465,
+      "unsupported": 3
+    },
+    "internalElapsedMs": 10771,
+    "processWallTimeSeconds": 13.57,
+    "peakMemoryMeasurement": {
+      "status": "unavailable",
+      "configuredTsserverMaxMemoryMb": 4096,
+      "reason": "/usr/bin/time -l exited after sandbox denied sysctl kern.clockrate; oracle runner does not expose tsserver RSS",
+      "rawTimeOutput": "13.57 real 7.24 user 1.84 sys; time: sysctl kern.clockrate: Operation not permitted"
+    }
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "sites": 10532,
+      "independentGroups": 10312,
+      "successes": 10311,
+      "validContradictions": 1,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9995400500917311,
+      "statusCounts": {
+        "success": 10531,
+        "contradiction": 1
+      }
+    },
+    {
+      "ruleSignature": "q2:reexport-trace:v1",
+      "sites": 1130,
+      "independentGroups": 1117,
+      "successes": 1117,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9973216484617371,
+      "statusCounts": {
+        "success": 1130
+      }
+    },
+    {
+      "ruleSignature": "q3:super-call:v1",
+      "sites": 35,
+      "independentGroups": 35,
+      "successes": 35,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9179683641433295,
+      "statusCounts": {
+        "success": 35
+      }
+    },
+    {
+      "ruleSignature": "q3:this-inherited:v1",
+      "sites": 0,
+      "independentGroups": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {}
+    },
+    {
+      "ruleSignature": "q3:typed-receiver:v1",
+      "sites": 3094,
+      "independentGroups": 3034,
+      "successes": 3034,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9990131002680953,
+      "statusCounts": {
+        "success": 3094
+      }
+    },
+    {
+      "ruleSignature": "q3:new-receiver:v1",
+      "sites": 1170,
+      "independentGroups": 1122,
+      "successes": 1122,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9973335681477096,
+      "statusCounts": {
+        "success": 1170
+      }
+    },
+    {
+      "ruleSignature": "single-candidate-this-v1",
+      "sites": 0,
+      "independentGroups": 0,
+      "successes": 0,
+      "validContradictions": 0,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0,
+      "statusCounts": {}
+    }
+  ],
+  "promotion": {
+    "ruleSignature": "q1:named-import:v1",
+    "eligible": false,
+    "reason": "The VS Code track has one valid contradiction, so the zero-contradiction cross-track promotion gate fails despite both tracks meeting the lower-bound threshold.",
+    "temporalTrack": {
+      "sites": 502,
+      "groups": 477,
+      "successes": 477,
+      "validContradictions": 0,
+      "lowerBound95": 0.9937393190864231
+    },
+    "newFamilyTrack": {
+      "ruleSignature": "q1:named-import:v1",
+      "sites": 10532,
+      "independentGroups": 10312,
+      "successes": 10311,
+      "validContradictions": 1,
+      "inconclusiveGroups": 0,
+      "lowerBound95": 0.9995400500917311,
+      "statusCounts": {
+        "success": 10531,
+        "contradiction": 1
+      }
+    },
+    "candidateArtifactProduced": false,
+    "runtimeWired": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-summary.jsonl",
+      "sha256": "f6db32df286cf6c98f13f61a769c9174fc482ace80687c7f54e7fcbddc5c164b",
+      "sizeBytes": 301485,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-amendment1-proofs.json",
+      "sha256": "544794d707b339a52226b479a504d623b237832bc0036d420f44297176ec6efe",
+      "sizeBytes": 4721925,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-summary.jsonl",
+      "sha256": "9ca0da7e3a63f2105a4c5f02932041de9d31982350e636441df04abaf89f43ea",
+      "sizeBytes": 1910099,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-amendment1-proofs.json",
+      "sha256": "394bceb3be36d9c9a2f249a247bab55bafc921870b6af058b081701339c456f5",
+      "sizeBytes": 552114,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-summary.jsonl",
+      "sha256": "e30c3c3f1dc5ab1cc226448ff55168da0cfe4e81ef8a246f1cf7ad540e4bad56",
+      "sizeBytes": 5516239,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-amendment1-proofs.json",
+      "sha256": "c3041d14ac5e2d0b3ec4cac98e244991c8c74cda7553a5e72a95de4c8821e9f9",
+      "sizeBytes": 1959628,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/amendment-1/proofs-all.json",
+      "sha256": "78864f9ff4c844a34b41d9a4d732f6668cc59720e2f0017583056bd5a1b95817",
+      "sizeBytes": 7233662,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/amendment-1/labels/oracle-labels.json",
+      "sha256": "0d19b2fb4983f8e2231daa3d02423ef3186e30c21ce3915c560cc1e252eae4d0",
+      "sizeBytes": 11512716,
+      "containsPerSampleRows": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/amendment-1/labels/oracle-run-aggregate.json",
+      "sha256": "64fe2da61d6d1cbbbc48ffe15be18c1e1bedd884630fd2393b0c4ed0cf7345db",
+      "sizeBytes": 1629,
+      "containsPerSampleRows": false
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/amendment-1/certification-results.json",
+      "sha256": "8b7cc49f42ef4aad7635dc6679b6df3199510ac1d0378989cd3059f6331c3974",
+      "sizeBytes": 20758616,
+      "containsPerSampleRows": true
+    }
+  ],
+  "constraints": {
+    "gitNexusUsedInThisRun": false,
+    "onyxEnterprisePathsInspected": false,
+    "networkUsed": false,
+    "labelsStoredInRepository": false,
+    "perSampleProofAndEvaluationRowsStoredInRepository": false,
+    "productionCertificationArtifactWritten": false,
+    "tierBSkipEnabled": false,
+    "projectFilesContentHashSemanticsChanged": false,
+    "gitMetadataWritten": false
+  }
+}

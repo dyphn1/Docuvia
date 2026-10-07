@@ -628,6 +628,82 @@ describe("GraphPersister call-resolution integration", () => {
     });
   });
 
+  it("[happy][boundary][persistence] persists a proven import when AST target and caller nodes are ambiguous", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-q1-ambiguous-nodes-"),
+    );
+    store = await GraphStore.open({
+      dbPath: path.join(tempDir, ".docuvia", "local.db"),
+    });
+    const projectId = store.projects.insert({
+      name: "q1-ambiguous-nodes",
+      repoUrl: "file:///q1-ambiguous-nodes",
+    }).id;
+    const sources = [
+      {
+        file: "src/implementation.ts",
+        code: [
+          "const callbacks = { finish(): void {} };",
+          "export function finish(): void {}",
+        ].join("\n"),
+      },
+      {
+        file: "src/caller.ts",
+        code: [
+          'import { finish } from "./implementation.js";',
+          "export function call(): void { Promise.resolve().then(() => Promise.resolve().then(() => finish())); }",
+        ].join("\n"),
+      },
+    ];
+    const parsedResults = await Promise.all(
+      sources.map((source) =>
+        parseAndWriteSource(tempDir!, "q1-ambiguous-nodes", source),
+      ),
+    );
+    await new GraphPersisterService(
+      new CallResolutionHypothesisService(),
+    ).persist({
+      store,
+      workspaceRoot: tempDir,
+      projectId,
+      parsedResults,
+      sourceIndexComplete: true,
+      tags: [],
+    });
+
+    const caller = parsedResults.find(({ file }) => file === "src/caller.ts");
+    if (!caller) throw new Error("caller parse result is missing");
+    const callSite = caller.data.callSiteShapeFacts?.callSites.find(
+      ({ calleeName }) => calleeName === "finish",
+    );
+    if (!callSite) throw new Error("AST worker omitted the imported call site");
+    const callSiteKey = createPortableCallSiteKey({
+      filePath: caller.file,
+      sourceContentHash: caller.hash,
+      startLine: callSite.startLine,
+      startColumn: callSite.startColumn,
+      calleeKind: callSite.calleeKind,
+      calleeName: callSite.calleeName,
+    });
+    const resolution = store.callSiteResolutions
+      ?.getForFile(projectId, caller.file)
+      .find(({ callSiteKey: key }) => key === callSiteKey);
+
+    expect(resolution).toMatchObject({
+      callSiteKey,
+      callerNodeKey: "src/caller.ts",
+      selectedTargetNodeKey: "src/implementation.ts#finish@L1",
+      ruleSignature: "q1:named-import:v1",
+    });
+    expect(projectedCallKeys()).toContainEqual({
+      source: "src/caller.ts",
+      target: "src/implementation.ts#finish@L1",
+    });
+  });
+
   it("[invalid-input][error-handling][state-diff] keeps the legacy ScopeResolver edge when the source index is incomplete", async () => {
     const code =
       "class Service { close(): void {} call(): void { this.close(); } }";

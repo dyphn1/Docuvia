@@ -4,7 +4,10 @@ import { SUPPORTED_LANGUAGES } from "@workspace/contracts";
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import type { AstParseResponse } from "../ast/ast-worker.js";
 import { CallResolutionHypothesisService } from "./call-resolution-hypothesis.service.js";
-import { collectStrictCallSiteProofs } from "../graph/call-resolution-graph-projection.js";
+import {
+  collectStrictCallSiteProofs,
+  createFunctionNodeReference,
+} from "../graph/call-resolution-graph-projection.js";
 import type { FunctionNodeReference } from "../graph/call-resolution-graph-projection.js";
 
 // [happy] [invalid-input] [error-handling] [stress] [state-diff]
@@ -599,13 +602,20 @@ describe("Q3 receiver strict proofs", () => {
     >(
       parsedFiles.map(({ filePath, data }) => [
         filePath,
-        data.functions.map((fn) => ({
-          nodeKey: `${filePath}#${fn.containerName ?? ""}.${fn.name}`,
-          name: fn.name,
-          containerName: fn.containerName,
-          startLine: fn.startLine,
-          endLine: fn.endLine,
-        })),
+        data.functions.map((fn) =>
+          createFunctionNodeReference(
+            {
+              file: filePath,
+              hash: sha256(
+                parsedFiles.find((file) => file.filePath === filePath)?.code ??
+                  "",
+              ),
+              data,
+            },
+            fn,
+            `${filePath}#${fn.containerName ?? ""}.${fn.name}`,
+          ),
+        ),
       ]),
     );
     const projected = collectStrictCallSiteProofs({
@@ -619,11 +629,11 @@ describe("Q3 receiver strict proofs", () => {
       functionNodes: functionNodesByFile.get(parsedCaller.filePath) ?? [],
       functionNodesByFile,
     });
-    expect(projected).toHaveLength(1);
-    expect(projected[0]?.resolution.callerNodeKey).toEqual(
+    expect(projected.proofs).toHaveLength(1);
+    expect(projected.proofs[0]?.resolution.callerNodeKey).toEqual(
       "src/caller.ts#.anonymous",
     );
-    expect(projected[0]?.resolution.selectedTargetNodeKey).toEqual(
+    expect(projected.proofs[0]?.resolution.selectedTargetNodeKey).toEqual(
       "src/service.ts#Service.m",
     );
   });

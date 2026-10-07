@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "track": "vscode-new-family-preregistration",
+  "population": {
+    "sites": 46468,
+    "groups": 45091,
+    "prelabelManifestSha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944"
+  },
+  "runners": {
+    "q1": {
+      "proofRowsPersisted": 10462,
+      "proofRowsInPopulation": 10462,
+      "proofRowsOutsidePopulation": 0,
+      "serviceProofSites": 10532,
+      "allServiceProofsPersisted": false,
+      "peakRssBytes": 4448223232
+    },
+    "q2": {
+      "proofRowsPersisted": 1124,
+      "proofRowsInPopulation": 1124,
+      "proofRowsOutsidePopulation": 0,
+      "serviceProofSites": 1130,
+      "allServiceProofsPersisted": false,
+      "peakRssBytes": 4323246080
+    },
+    "q3": {
+      "proofRowsPersisted": 5404,
+      "proofRowsInPopulation": 4279,
+      "proofRowsOutsidePopulation": 1125,
+      "serviceProofSites": 5429,
+      "allServiceProofsPersisted": false,
+      "peakRssBytes": 4701880320
+    }
+  },
+  "signatures": {
+    "q1:named-import:v1": {
+      "persistedProofSites": 10462,
+      "independentGroups": 10244
+    },
+    "q2:reexport-trace:v1": {
+      "persistedProofSites": 1124,
+      "independentGroups": 1111
+    },
+    "q3:super-call:v1": {
+      "persistedProofSites": 35,
+      "independentGroups": 35
+    },
+    "q3:this-inherited:v1": {
+      "persistedProofSites": 0,
+      "independentGroups": 0
+    },
+    "q3:typed-receiver:v1": {
+      "persistedProofSites": 3076,
+      "independentGroups": 3016
+    },
+    "q3:new-receiver:v1": {
+      "persistedProofSites": 1168,
+      "independentGroups": 1120
+    },
+    "single-candidate-this-v1": {
+      "persistedProofSites": 0,
+      "independentGroups": 0
+    }
+  },
+  "sourceFilesParsed": 3247,
+  "parseFailures": 0,
+  "oracleInvocations": 0,
+  "oracleLabelsOpened": false,
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/prelabel-core3/selected-prelabel-manifest.json",
+      "sha256": "808a08f4173f27ae8d2f54be8532b565d671bf170d6e718f4117a3c2bb735944",
+      "sizeBytes": 32824173,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-core3-proofs.json",
+      "sha256": "5faa80bb17e400f70e019a61fb70558f71a1ec682303d608d34315fa31bf88e9",
+      "sizeBytes": 4691445,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-core3-proofs.json",
+      "sha256": "49851fe72b008c7108c37c4101d02bf4f66d44d6f5a3117dbbeadb7e8d1380e1",
+      "sizeBytes": 549435,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-core3-proofs.json",
+      "sha256": "f949d803277d75f8fb03c98b2ca8230abdfdc0e213513198f52b0169416d3bea",
+      "sizeBytes": 1950334,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q1-core3-summary.jsonl",
+      "sha256": "1f40e48281c09c2a7f8ed171e81442ccd1b66805803cabdb79ffe72cfd75c1f5",
+      "sizeBytes": 311686,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q2-core3-summary.jsonl",
+      "sha256": "48e98bb76b0aa05832b39ac6685dafa86a9cdf44e2475ff011f2b2bcaac2874f",
+      "sizeBytes": 1894130,
+      "perSampleArtifact": true
+    },
+    {
+      "path": "/private/tmp/docuvia-temporal-2/vscode/q3-core3-summary.jsonl",
+      "sha256": "fd9d056c58548070d14b99953711b97a903033b7a349773925f7e1d31dde5d83",
+      "sizeBytes": 5503214,
+      "perSampleArtifact": true
+    }
+  ]
+}

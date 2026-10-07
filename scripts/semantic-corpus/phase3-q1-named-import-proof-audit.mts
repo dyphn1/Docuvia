@@ -38,6 +38,7 @@ import {
   type Phase2PinnedSnapshot,
 } from "./phase2-tiered-call-resolution-source.mjs";
 import type { Phase2EvaluationLabel } from "./phase2-tiered-call-resolution-evaluation.mjs";
+import { computeQ1RuleConfiguration } from "./q1-rule-configuration.mjs";
 
 const EXPECTED_SOURCE_ROWS = 31_578;
 const Q1_SIGNATURE = "q1:named-import:v1";
@@ -446,6 +447,7 @@ async function main(): Promise<void> {
     sourceInputHashes: inputHashes,
     implementationFileHashes: codeHashes,
     implementationHash: canonicalHash(codeHashes),
+    q1RuleConfiguration: computeQ1RuleConfiguration(repositoryRoot),
     snapshotResults,
     trainCalibration: {
       sourceRows:

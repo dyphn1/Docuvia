@@ -139,6 +139,10 @@ batch leaves AST-level edges untouched, logs why, and exits `0`. The pre-push ho
 `--fallback-ast` — a push must never be blocked by an unready LSP environment. Run `docuvia doctor`
 to check readiness ahead of time.
 
+**Q1 named-import certification:** amendment 3 re-evaluated the existing VS Code and Docuvia temporal labels after the #578 inventory fix. The packaged artifact is active for `q1:named-import:v1`; only proven sites with a current portable identity and matching source hash can skip Tier B, and only outside the deterministic canary sample (10% by default). Quarantines always override certification. See the [Q1 recertification report](../../analysis/tiered-call-resolution-certification-q1-recert.md) for evidence and pins.
+
+To see whether the packaged certification is active, inspect `.docuvia/logs/analyze.log` after a Tier B batch for the `analyze.tierB.call_resolution_certification` event. `certificationStatus: "trusted"` with `certifiedRuleSignatures` containing `q1:named-import:v1` means the Q1 gate is active. `rejected` or `missing` includes the reason and leaves every call site on Tier B.
+
 **Binary resolution** (never bundled with docuvia): `<project>/node_modules/.bin` first, then
 `npx --no-install typescript-language-server`. Config-overridable via environment variables read
 by the CLI: `DOCUVIA_LSP_BINARY` (absolute path or bare command), `DOCUVIA_LSP_ARGS`

@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 1,
+  "amendment": 3,
+  "status": "certified",
+  "decision": {
+    "ruleSignature": "q1:named-import:v1",
+    "certificationActive": true,
+    "reason": "Corrected #578 implementation parity restored Q1 proofs; both frozen tracks have zero valid contradictions and one-sided 95% lower bounds at or above 0.990.",
+    "contradictions": 0,
+    "minimumLowerBound95": 0.99,
+    "newArtifactCreated": true,
+    "artifactPath": "docs/gitbook/analysis/tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification.json",
+    "artifactSha256": "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+    "supersededArtifactPath": "docs/gitbook/analysis/tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification-superseded-ffbd59732.json",
+    "supersededArtifactSha256": "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05"
+  },
+  "implementation": {
+    "headAtFreeze": "8013b99b1410f1302c576178e557c4484735077a",
+    "frozenAtUtc": "2026-10-07T10:56:10.000Z",
+    "q1RuleConfigurationSha256": "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
+    "q1RuleConfigurationFileHashes": {
+      "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "27370e41f51c8f16be7743484229a1f9e7f06438e00305891c02efc8cdc45718",
+      "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "32c57603cfdb8e4ccaa5a331f26a0663430bda75e383735eb5b0f91a205787b6",
+      "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+      "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+      "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "24bdf0f7b318eee972fc7f6f5a10d94e1ebeda1fbd57c91f8a4383c1577142f6",
+      "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+      "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c"
+    },
+    "supersededArtifactImplementationCommitSha": "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+    "supersededArtifactRuleConfigurationSha256": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "supersededArtifactSha256": "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05"
+  },
+  "labelHandling": {
+    "newLabelsOpened": false,
+    "correctedEvaluationLabelsAccessedAtUtc": "2026-10-07T10:56:23.000Z",
+    "resultsRecordedAtUtc": "2026-10-07T10:57:28.000Z",
+    "vscodeLabelsSha256": "0fa6f2facec99ce22f99280747f726f3e57aabca7e8bd7be7c7d4f49a333c66f",
+    "docuviaLabelsSha256": "397626b438267e43320d01ef5a646ccda29060d222b74136d156da033412a2a3",
+    "provenance": "Per task-provided provenance, #570, #576, and #578 were developed without consulting these labels. #578 was found because the amendment-3 evaluation produced zero proofs (a proof-count observation, not a label-agreement observation)."
+  },
+  "priorAttempt": {
+    "status": "not-certified",
+    "headAtEvaluation": "7df7d9335d289e6a14f71a213d645e38d7c85b8b",
+    "q1RuleConfigurationSha256": "fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab",
+    "aggregatePath": "docs/gitbook/analysis/tiered-call-resolution-certification-q1-recert-evidence/amendment-3-initial-failed-aggregate.json",
+    "aggregateSha256": "7ef639ea5a88334c7ebc80b4e64abc25dcb9737067402dbd82d973f9dfede947",
+    "q1ProofGroups": {
+      "newFamily": 0,
+      "temporal": 0
+    },
+    "q2ProofGroups": {
+      "newFamily": 0,
+      "temporal": 0
+    },
+    "cause": "The pre-#578 implementation marked the import candidate inventory incomplete for all import-bound calls. This was a zero-proof-count finding, not a label-agreement result."
+  },
+  "tracks": {
+    "new-family": {
+      "freezeManifestSha256": "3282da0abb1f045685648898a14b804493ed02181aadb427591af178e8648d02",
+      "prelabelManifestSha256": "e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692",
+      "sourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b",
+      "sourceFiles": 1455,
+      "parsedFiles": 1455,
+      "parseFailures": 0,
+      "certificationEvaluation": {
+        "sourceProofSites": 8195,
+        "proofSitesInFrozenCorpus": 2018,
+        "proofSitesOutsideFrozenCorpus": 6177
+      },
+      "proofRunnerOutputs": {
+        "q1SummarySha256": "b0b3f6dc23dac4a3000200a19b3ffbaba773356260506b4551f83b68a233627e",
+        "q1ProofsSha256": "fb18c3325b40ec53d49e17ab214eab22ea9b8e9f2e4fc993244565bfc10613cb",
+        "q2SummarySha256": "9bed4a7911b874cdeecaf8e08c99ad5bd18b64ae0f76fe034e64381aacec4c44",
+        "q2ProofsSha256": "09d7676b120ec3b361ca18519370fb0071ccc5d534bd249dd36970d522787336",
+        "q3SummarySha256": "86b55e132b1d9d497ab928855b3f6ae29835b3c81cd3b031b6bb468d6c042b6f",
+        "q3ProofsSha256": "bcb27e67cbba11f0524bc9b8303c41bb74113682677d4ebb08dbe40b3cacc015",
+        "combinedProofsSha256": "554d9ec98821d397ad06d5e64c3afe1af1ca9e9e84cfc9e5810af72376f0ad8d",
+        "certificationResultsSha256": "f29a2e6657cbb3601596fca898089bacd81ffce882080f2305d5e0ad5de65533"
+      },
+      "parity": {
+        "q1": {
+          "proposals": 5673,
+          "persisted": 5673,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 8477
+        },
+        "q2": {
+          "proposals": 392,
+          "persisted": 392,
+          "countedExclusions": 0,
+          "silentGap": 0
+        },
+        "q3": {
+          "proposals": 2130,
+          "persisted": 2130,
+          "countedExclusions": 0,
+          "silentGap": 0
+        }
+      },
+      "signatures": [
+        {
+          "ruleSignature": "q1:named-import:v1",
+          "current": {
+            "sites": 1153,
+            "groups": 1131,
+            "successes": 1131,
+            "contradictions": 0,
+            "lowerBound95": 0.997354758349681
+          },
+          "ffbd59732": {
+            "sites": 1153,
+            "groups": 1131,
+            "successes": 1131,
+            "contradictions": 0,
+            "lowerBound95": 0.997354758349681
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q2:reexport-trace:v1",
+          "current": {
+            "sites": 299,
+            "groups": 297,
+            "successes": 297,
+            "contradictions": 0,
+            "lowerBound95": 0.9899640589022075
+          },
+          "ffbd59732": {
+            "sites": 299,
+            "groups": 297,
+            "successes": 297,
+            "contradictions": 0,
+            "lowerBound95": 0.9899640589022075
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:super-call:v1",
+          "current": {
+            "sites": 19,
+            "groups": 19,
+            "successes": 19,
+            "contradictions": 0,
+            "lowerBound95": 0.8541314966877566
+          },
+          "ffbd59732": {
+            "sites": 19,
+            "groups": 19,
+            "successes": 19,
+            "contradictions": 0,
+            "lowerBound95": 0.8541314966877566
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:this-inherited:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:typed-receiver:v1",
+          "current": {
+            "sites": 320,
+            "groups": 304,
+            "successes": 304,
+            "contradictions": 0,
+            "lowerBound95": 0.9901940128490738
+          },
+          "ffbd59732": {
+            "sites": 320,
+            "groups": 304,
+            "successes": 304,
+            "contradictions": 0,
+            "lowerBound95": 0.9901940128490738
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:new-receiver:v1",
+          "current": {
+            "sites": 227,
+            "groups": 220,
+            "successes": 220,
+            "contradictions": 0,
+            "lowerBound95": 0.9864753266015994
+          },
+          "ffbd59732": {
+            "sites": 227,
+            "groups": 220,
+            "successes": 220,
+            "contradictions": 0,
+            "lowerBound95": 0.9864753266015994
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "single-candidate-this-v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        }
+      ],
+      "pinnedSourceSnapshotSha256": "850a548733820aa4159cb93c71aab702b94ef88fee3143777dd3e8cf8780fe5a",
+      "pinnedSourceSnapshotFiles": 1463,
+      "priorFrozenParitySourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b",
+      "sourceManifestMatchesPriorFrozenEvidence": true
+    },
+    "temporal": {
+      "freezeManifestSha256": "526b5e656ed23b00879386cf842e0901530fc3ca3fd450f91aa33a59af5103b5",
+      "prelabelManifestSha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841",
+      "sourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70",
+      "sourceFiles": 907,
+      "parsedFiles": 907,
+      "parseFailures": 0,
+      "certificationEvaluation": {
+        "sourceProofSites": 4584,
+        "proofSitesInFrozenCorpus": 622,
+        "proofSitesOutsideFrozenCorpus": 3962
+      },
+      "proofRunnerOutputs": {
+        "q1SummarySha256": "09c3510956ad9bd5001c660a8d8877ffd719e3f4e858dd78bc6e48c405dbc12e",
+        "q1ProofsSha256": "b1a66c9d54f96d5642c6c70748af599bad62c2365328a210a89dd94af56dd8b0",
+        "q2SummarySha256": "35e31965459c4e4641129fb03d67245761a77aaa195e05ecd5753829fd756afb",
+        "q2ProofsSha256": "aa0ef3244d71e9eeb9dbfbf2e9658380e41179140915c74b3357de502f831d95",
+        "q3SummarySha256": "3e88845d12e92ae7c595ee20a94d335b8985122b27c7081784d113936d4b5bb1",
+        "q3ProofsSha256": "418a0623ed53d45b8cf19a516d59abaf7d88ac21f3a7021e67398130736b0500",
+        "combinedProofsSha256": "f58a544992b690aa628575d54641f2414ed067f0c93b7258323ab942df3547a2",
+        "certificationResultsSha256": "f53d41ab12d92b228538778e3739ca8afad34a53392acff4d6ecc1a3351cc2bc"
+      },
+      "parity": {
+        "q1": {
+          "proposals": 3347,
+          "persisted": 3347,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 16821
+        },
+        "q2": {
+          "proposals": 47,
+          "persisted": 47,
+          "countedExclusions": 0,
+          "silentGap": 0
+        },
+        "q3": {
+          "proposals": 1190,
+          "persisted": 1190,
+          "countedExclusions": 0,
+          "silentGap": 0
+        }
+      },
+      "signatures": [
+        {
+          "ruleSignature": "q1:named-import:v1",
+          "current": {
+            "sites": 502,
+            "groups": 477,
+            "successes": 477,
+            "contradictions": 0,
+            "lowerBound95": 0.9937393190864231
+          },
+          "ffbd59732": {
+            "sites": 502,
+            "groups": 477,
+            "successes": 477,
+            "contradictions": 0,
+            "lowerBound95": 0.9937393190864231
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q2:reexport-trace:v1",
+          "current": {
+            "sites": 12,
+            "groups": 12,
+            "successes": 12,
+            "contradictions": 0,
+            "lowerBound95": 0.7790778080544442
+          },
+          "ffbd59732": {
+            "sites": 12,
+            "groups": 12,
+            "successes": 12,
+            "contradictions": 0,
+            "lowerBound95": 0.7790778080544442
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:super-call:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:this-inherited:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:typed-receiver:v1",
+          "current": {
+            "sites": 4,
+            "groups": 4,
+            "successes": 4,
+            "contradictions": 0,
+            "lowerBound95": 0.4728708045015879
+          },
+          "ffbd59732": {
+            "sites": 4,
+            "groups": 4,
+            "successes": 4,
+            "contradictions": 0,
+            "lowerBound95": 0.4728708045015879
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:new-receiver:v1",
+          "current": {
+            "sites": 104,
+            "groups": 95,
+            "successes": 95,
+            "contradictions": 0,
+            "lowerBound95": 0.9689579881320451
+          },
+          "ffbd59732": {
+            "sites": 104,
+            "groups": 95,
+            "successes": 95,
+            "contradictions": 0,
+            "lowerBound95": 0.9689579881320451
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "single-candidate-this-v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "delta": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        }
+      ],
+      "pinnedSourceSnapshotSha256": "853dc03a873bdb7f7e95ef37a68f2192fe03fbbc6068938ae8661a6ce9d8a24d",
+      "pinnedSourceSnapshotFiles": 911,
+      "priorFrozenParitySourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70",
+      "sourceManifestMatchesPriorFrozenEvidence": true
+    }
+  },
+  "q1Artifact": {
+    "schemaVersion": "docuvia-call-resolution-certification/v1",
+    "policyVersion": "sha256-callsite-rule-v2",
+    "frozenAt": "2026-10-07T10:56:10.000Z",
+    "labelsOpenedAt": "2026-10-07T10:56:23.000Z",
+    "resultsRecordedAt": "2026-10-07T10:57:28.000Z",
+    "inputs": {
+      "implementationCommitSha": "8013b99b1410f1302c576178e557c4484735077a",
+      "ruleConfigurationSha256": "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
+      "oracleIdentity": "typescript-language-server",
+      "oracleVersion": "5.3.0+tsserver@5.9.3",
+      "oracleConfigurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+      "corpusManifestSha256": "597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2",
+      "newFamily": {
+        "familyId": "microsoft/vscode",
+        "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+        "splitSha256": "371fa0e87a6e1f6f1884d5fa67d5b28adb2a638a1bafff7007cb9e7ddb8d1ecb"
+      },
+      "temporal": {
+        "familyId": "dyphn1/Docuvia",
+        "revision": "113a2afe97d2407d0b6ba19624f42408875831cf",
+        "splitSha256": "53a6864ffeab9bd3e8c9aae2f005a40b3914b7fb22fac0292aea6bd1f9abe1f0",
+        "baseRevision": "204c40fb7080ebded011f65a3dae7d749cce9ed1"
+      }
+    },
+    "signatures": [
+      {
+        "ruleSignature": "q1:named-import:v1",
+        "newFamily": {
+          "eligibleDuplicateGroups": 1131,
+          "uniquelyResolvedGroups": 1131,
+          "successfulGroups": 1131,
+          "contradictionGroups": 0,
+          "lowerBound95": 0.997354758349681
+        },
+        "temporal": {
+          "eligibleDuplicateGroups": 477,
+          "uniquelyResolvedGroups": 477,
+          "successfulGroups": 477,
+          "contradictionGroups": 0,
+          "lowerBound95": 0.9937393190864231
+        }
+      }
+    ]
+  }
+}

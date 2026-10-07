@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   afterAll,
   afterEach,
@@ -68,6 +71,56 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
   afterEach(async () => {
     await sandbox.teardown();
   }, SUBPROCESS_TEST_TIMEOUT_MS);
+
+  it("[happy][state-diff] ships the pinned Q1 certification resource in the published dist files", () => {
+    const resourcePath = resolve(
+      distBuild.outputDir,
+      "q1-named-import-candidate-certification.json",
+    );
+    const resource = readFileSync(resourcePath);
+    const hash = createHash("sha256").update(resource).digest("hex");
+    const packageJson = JSON.parse(
+      readFileSync(resolve(__dirname, "../../package.json"), "utf8"),
+    ) as { files?: string[] };
+
+    expect(hash).toBe(
+      "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+    );
+    expect(packageJson.files).toContain("dist");
+  });
+
+  it(
+    "[happy][state-diff] loads the packaged Q1 certification in the bundled CLI and records its trusted status",
+    async () => {
+      const init = await sandbox.runDistCli(["init"]);
+      expect(init.exitCode).toBe(0);
+      const batch = await sandbox.runDistCli([
+        "analyze",
+        "--escalate-to-lsp",
+        "--fallback-ast",
+      ]);
+      expect(batch.exitCode).toBe(0);
+
+      const logPath = resolve(sandbox.dir, ".docuvia/logs/analyze.log");
+      expect(existsSync(logPath)).toBe(true);
+      const lines = readFileSync(logPath, "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      const certificationEvents = lines.filter(
+        (line) => line.event === "analyze.tierB.call_resolution_certification",
+      );
+
+      expect(certificationEvents).toHaveLength(1);
+      expect(certificationEvents[0]).toMatchObject({
+        certificationStatus: "trusted",
+        certifiedRuleSignatures: ["q1:named-import:v1"],
+        artifactSha256:
+          "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it(
     "[happy] persists a strict Q1 named-import proof beside an exported value through the compiled CLI",

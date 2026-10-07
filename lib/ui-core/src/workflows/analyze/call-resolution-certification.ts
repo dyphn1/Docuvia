@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { CALL_SITE_VERIFICATION_POLICY_VERSION } from "@workspace/contracts";
 
 export const CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION =
@@ -7,6 +8,44 @@ export const CALL_RESOLUTION_CERTIFICATION_MINIMUM_GROUPS = 299;
 export const CALL_RESOLUTION_CERTIFICATION_TARGET_PRECISION = 0.99;
 const ONE_SIDED_ALPHA = 0.05;
 const REPORTED_BOUND_TOLERANCE = 1e-6;
+
+/** Q1's per-signature configuration pin from the frozen recertification evidence. The aggregate
+ *  CALL_RESOLUTION_RULE_CONFIGURATION_SHA256 is a different scope and must not replace this pin. */
+const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs =
+  Object.freeze({
+    artifactSha256:
+      "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+    implementationCommitSha: "8013b99b1410f1302c576178e557c4484735077a",
+    ruleConfigurationSha256:
+      "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
+    oracleIdentity: "typescript-language-server",
+    oracleVersion: "5.3.0+tsserver@5.9.3",
+    oracleConfigurationSha256:
+      "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    corpusManifestSha256:
+      "597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2",
+    newFamily: Object.freeze({
+      familyId: "microsoft/vscode",
+      revision: "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+      splitSha256:
+        "371fa0e87a6e1f6f1884d5fa67d5b28adb2a638a1bafff7007cb9e7ddb8d1ecb",
+    }),
+    temporal: Object.freeze({
+      familyId: "dyphn1/Docuvia",
+      revision: "113a2afe97d2407d0b6ba19624f42408875831cf",
+      baseRevision: "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+      splitSha256:
+        "53a6864ffeab9bd3e8c9aae2f005a40b3914b7fb22fac0292aea6bd1f9abe1f0",
+    }),
+  });
+
+/** This source pin is guarded by the Q1 rule-configuration unit test and matches the active
+ *  amendment-3 evidence. Any change to a frozen Q1 input requires a new digest and certification. */
+export const CURRENT_Q1_RULE_CONFIGURATION_SHA256 =
+  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
+
+const Q1_CERTIFICATION_RESOURCE =
+  "./q1-named-import-candidate-certification.json";
 
 interface ArtifactEnvelope extends Record<string, unknown> {
   schemaVersion: typeof CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION;
@@ -155,6 +194,42 @@ export function loadCallResolutionCertificationArtifact(
   if (provenanceErrors.length > 0)
     return createDecision(artifactSha256, "rejected", [], provenanceErrors);
   return decisionFromSignatures(artifactSha256, artifact, artifact.signatures);
+}
+
+/** Validates Q1 evidence against the source-pinned trust anchor. The optional current hash exists
+ *  for callers that derive the live rule configuration; a mismatch flows through the shared
+ *  provenance validator and yields a rejected, empty decision. */
+export function loadQ1NamedImportCertificationArtifact(
+  rawArtifact: string | undefined,
+  currentRuleConfigurationSha256 = CURRENT_Q1_RULE_CONFIGURATION_SHA256,
+): CallResolutionCertificationDecision {
+  return loadCallResolutionCertificationArtifact(rawArtifact, {
+    ...Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS,
+    ruleConfigurationSha256: currentRuleConfigurationSha256,
+  });
+}
+
+/** Loads the packaged resource adjacent to the bundled CLI entrypoint. Source tests resolve the
+ *  identical resource next to this module. Missing/unreadable bytes return a non-authorizing
+ *  missing decision; artifact bytes still pass through the same pinned loader as other callers. */
+export function loadShippedQ1NamedImportCertificationArtifact(): CallResolutionCertificationDecision {
+  try {
+    const rawArtifact = readFileSync(
+      new URL(Q1_CERTIFICATION_RESOURCE, import.meta.url),
+      "utf8",
+    );
+    return loadQ1NamedImportCertificationArtifact(rawArtifact);
+  } catch (error) {
+    // Still non-authorizing, but keep the read failure visible in the batch certification event
+    // so a missing or mislocated packaged resource is diagnosable.
+    const reason = error instanceof Error ? error.message : String(error);
+    return createDecision(
+      null,
+      "missing",
+      [],
+      [`packaged certification artifact could not be read: ${reason}`],
+    );
+  }
 }
 
 export function isCertificationDecisionTrusted(

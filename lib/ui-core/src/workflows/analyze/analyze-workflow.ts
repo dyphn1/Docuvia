@@ -42,6 +42,7 @@ import {
 import { persistDecisions } from "./persist-l3-decisions.js";
 import { runAgentAuthoredWrite } from "./run-agent-authored-write.js";
 import { runFlushStagedL3 } from "./run-flush-staged-l3.js";
+import { loadShippedQ1NamedImportCertificationArtifact } from "./call-resolution-certification.js";
 
 // Re-exported for the existing `stripMarkdownCodeFence()` test suite in
 // `analyze-workflow.unit.test.ts` -- the implementation itself now lives in
@@ -655,6 +656,9 @@ function buildTierBBatchDeps(
     knowledgeGit,
     ...buildTierBOnlyDeps(options),
     ...buildTierCOnlyDeps(options),
+    callResolutionCanary: {
+      certification: loadShippedQ1NamedImportCertificationArtifact(),
+    },
     force: options?.force,
   };
 }

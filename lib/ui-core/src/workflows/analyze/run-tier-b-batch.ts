@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
+  CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE,
   LinkTypes,
   NODE_KEY_SYMBOL_SEPARATOR,
   type IGitProvider,
@@ -25,6 +26,11 @@ import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import { runTierCDrain } from "./run-tier-c-drain.js";
 import type { CallResolutionTierBCanaryPolicy } from "./call-resolution-tier-b-canary.js";
+import {
+  getTrustedCallResolutionCertificationEvidence,
+  isCertificationDecisionTrusted,
+  type CallResolutionCertificationDecision,
+} from "./call-resolution-certification.js";
 import {
   resolveEdgesForLanguageBuckets,
   type MergedEdgeResolutionOutcome,
@@ -95,6 +101,7 @@ export interface TierBBatchDeps {
 export async function runTierBBatch(
   deps: TierBBatchDeps,
 ): Promise<TierBBatchResult> {
+  await logCallResolutionCertificationDecision(deps);
   const tierBResult = await runTierBBatchCore(deps);
   const tierC = await runTierCDrain({
     workspaceRoot: deps.workspaceRoot,
@@ -113,6 +120,50 @@ export async function runTierBBatch(
     drainAll: deps.tierCDrainAll,
   });
   return { ...tierBResult, ...tierC };
+}
+
+/** Records the trusted-artifact gate once at the batch boundary. A missing or rejected decision
+ *  is visible in analyze.log and carries no skip authority, while a trusted decision lists exactly
+ *  which signatures may use the deterministic canary path. */
+async function logCallResolutionCertificationDecision(
+  deps: TierBBatchDeps,
+): Promise<void> {
+  await appendAnalyzeLogLine(
+    deps.workspaceRoot,
+    createCallResolutionCertificationLogEvent(
+      deps.callResolutionCanary?.certification,
+    ),
+  );
+}
+
+function createCallResolutionCertificationLogEvent(
+  decision: CallResolutionCertificationDecision | undefined,
+): Record<string, unknown> {
+  const q1Evidence = decision
+    ? getTrustedCallResolutionCertificationEvidence(
+        decision,
+        CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE,
+      )
+    : undefined;
+  return {
+    event: ANALYZE_EVENTS.TIER_B_CALL_RESOLUTION_CERTIFICATION,
+    certificationStatus: resolveCertificationStatus(decision),
+    artifactSha256: decision?.artifactSha256 ?? null,
+    q1RuleConfigurationSha256: q1Evidence?.ruleConfigurationSha256 ?? null,
+    certifiedRuleSignatures: decision?.certifiedRuleSignatures ?? [],
+    rejectionReasons: decision?.rejectionReasons ?? [
+      "no certification decision was supplied",
+    ],
+  };
+}
+
+function resolveCertificationStatus(
+  decision: CallResolutionCertificationDecision | undefined,
+): "trusted" | "rejected" | "missing" {
+  if (!decision) return "missing";
+  if (decision.status === "missing") return "missing";
+  if (decision.status === "rejected") return "rejected";
+  return isCertificationDecisionTrusted(decision) ? "trusted" : "rejected";
 }
 
 /**

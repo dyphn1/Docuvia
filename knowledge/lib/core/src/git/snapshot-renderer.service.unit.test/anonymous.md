@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/snapshot-renderer.service.unit.test.ts#anonymous@L87
+id: lib/core/src/git/snapshot-renderer.service.unit.test.ts#anonymous@L97
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/snapshot-renderer.service.unit.test.ts

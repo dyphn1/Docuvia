@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/prelabel-manifest.mts#anonymous@L92
+id: scripts/semantic-corpus/prelabel-manifest.mts#anonymous@L98
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/prelabel-manifest.mts

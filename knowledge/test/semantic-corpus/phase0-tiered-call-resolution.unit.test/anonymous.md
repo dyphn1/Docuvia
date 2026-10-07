@@ -7,3 +7,4 @@ filePath: test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts
 # Symbol: anonymous
 
 File: `test/semantic-corpus/phase0-tiered-call-resolution.unit.test.ts`
+

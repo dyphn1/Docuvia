@@ -187,4 +187,48 @@ describe("call resolution graph projection target mapping", () => {
       },
     ]);
   });
+
+  it("[invalid-input] excludes and counts a proof whose declaration has no graph node", async () => {
+    const data = await fixture();
+    const withoutExported = data.targetNodes.filter(
+      (node) =>
+        node.name !== "toSdkModelId" || node.containerName !== undefined,
+    );
+    const collection = collectStrictCallSiteProofs({
+      service: data.service,
+      workspaceIndex: data.workspaceIndex,
+      result: data.caller,
+      functionNodes: data.callerNodes,
+      functionNodesByFile: new Map([
+        [data.caller.file, data.callerNodes],
+        [data.target.file, withoutExported],
+      ]),
+    });
+
+    expect(collection.proofs).toEqual([]);
+    expect(collection.exclusions).toMatchObject([
+      {
+        ruleSignature: "q1:named-import:v1",
+        reason: "target-declaration-node-unmatched",
+        count: 1,
+      },
+    ]);
+  });
+
+  it("[error-handling] fails closed instead of falling back to a same-named node when the target file has no graph nodes", async () => {
+    const data = await fixture();
+    const collection = collectStrictCallSiteProofs({
+      service: data.service,
+      workspaceIndex: data.workspaceIndex,
+      result: data.caller,
+      functionNodes: data.callerNodes,
+      functionNodesByFile: new Map([[data.caller.file, data.callerNodes]]),
+    });
+
+    expect(collection.proofs).toEqual([]);
+    expect(collection.exclusions).toHaveLength(1);
+    expect(collection.exclusions[0]?.reason).toBe(
+      "target-declaration-node-unmatched",
+    );
+  });
 });

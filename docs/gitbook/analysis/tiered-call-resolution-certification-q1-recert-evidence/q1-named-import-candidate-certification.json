@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "docuvia-call-resolution-certification/v1",
+  "policyVersion": "sha256-callsite-rule-v2",
+  "frozenAt": "2026-10-07T04:34:09.000Z",
+  "labelsOpenedAt": "2026-10-07T04:47:59.662Z",
+  "resultsRecordedAt": "2026-10-07T04:59:08.000Z",
+  "inputs": {
+    "implementationCommitSha": "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+    "ruleConfigurationSha256": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "oracleIdentity": "typescript-language-server",
+    "oracleVersion": "5.3.0+tsserver@5.9.3",
+    "oracleConfigurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "corpusManifestSha256": "597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2",
+    "newFamily": {
+      "familyId": "microsoft/vscode",
+      "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+      "splitSha256": "371fa0e87a6e1f6f1884d5fa67d5b28adb2a638a1bafff7007cb9e7ddb8d1ecb"
+    },
+    "temporal": {
+      "familyId": "dyphn1/Docuvia",
+      "revision": "113a2afe97d2407d0b6ba19624f42408875831cf",
+      "splitSha256": "53a6864ffeab9bd3e8c9aae2f005a40b3914b7fb22fac0292aea6bd1f9abe1f0",
+      "baseRevision": "204c40fb7080ebded011f65a3dae7d749cce9ed1"
+    }
+  },
+  "signatures": [
+    {
+      "ruleSignature": "q1:named-import:v1",
+      "newFamily": {
+        "eligibleDuplicateGroups": 1131,
+        "uniquelyResolvedGroups": 1131,
+        "successfulGroups": 1131,
+        "contradictionGroups": 0,
+        "lowerBound95": 0.997354758349681
+      },
+      "temporal": {
+        "eligibleDuplicateGroups": 477,
+        "uniquelyResolvedGroups": 477,
+        "successfulGroups": 477,
+        "contradictionGroups": 0,
+        "lowerBound95": 0.9937393190864231
+      }
+    }
+  ]
+}

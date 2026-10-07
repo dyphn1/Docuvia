@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "frozenAtUtc": "2026-10-07T04:34:09.000Z",
+  "supersedesFreezeManifestSha256": "74a9190d2d6b3667d4962465ab025558a3435d275acb208bd08faba3b5ca00a8",
+  "amendment": {
+    "number": 1,
+    "reason": "Initial frozen support context exceeded the 4096 MB Node heap during Q1 parity. No labels were opened; caller paths and exclusions remain unchanged while deterministic support inputs were narrowed.",
+    "previousFreezeManifestSha256": "74a9190d2d6b3667d4962465ab025558a3435d275acb208bd08faba3b5ca00a8"
+  },
+  "implementationHead": "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+  "branch": "feat/559-q1-recert",
+  "sourceFamily": {
+    "repoId": "github.com/microsoft/vscode",
+    "family": "microsoft/vscode",
+    "license": "MIT",
+    "licensePath": "LICENSE.txt",
+    "licenseFileSha256": "cce33203a80863c22499035b1cfb6aba5df5f02e4ea2669cf5bc5730c1864236",
+    "usage": "fresh new-family Q1 certification track; excludes the burned caller paths"
+  },
+  "pinnedSource": {
+    "localCheckout": "/Users/daniel.chang/Desktop/GitHub/vscode",
+    "revision": "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+    "sourceSnapshotSha256": "850a548733820aa4159cb93c71aab702b94ef88fee3143777dd3e8cf8780fe5a",
+    "sourceSnapshotFiles": 1463
+  },
+  "corpus": {
+    "corpusId": "vscode-issue-559-q1-recert-api-common-amendment-1",
+    "corpusVersion": "1",
+    "splitSeed": "vscode-issue-559-q1-recert-api-common-amendment-1-split-seed",
+    "familySplit": "test",
+    "sampleSites": 6397,
+    "sampleFiles": 265,
+    "independentSampleGroups": 6219,
+    "prelabelManifest": {
+      "path": "/private/tmp/docuvia-q1-recert/vscode/prelabel-amendment-1/selected-prelabel-manifest.json",
+      "sampleCount": 6397,
+      "sha256": "e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692",
+      "splitHashes": {
+        "test": "371fa0e87a6e1f6f1884d5fa67d5b28adb2a638a1bafff7007cb9e7ddb8d1ecb",
+        "temporal": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "calibration": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "train": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "oracle": {
+    "identity": {
+      "server": "typescript-language-server",
+      "version": "5.3.0+tsserver@5.9.3"
+    },
+    "configurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "options": {
+      "requestTimeoutMs": 30000,
+      "readinessCapMs": 60000,
+      "readinessPollMs": 500,
+      "maxTsServerMemoryMb": 4096
+    },
+    "nodeVersion": "v24.14.1",
+    "oracleInvocations": 0,
+    "labelsOpened": false
+  },
+  "configurationHashes": {
+    "packageJson": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911",
+    "pnpmLock": "a5b7451ed45fd38d0aeb633c9885bd3359f251bb29e7b569dce4567cf0b2c9ea",
+    "trainCorpusSpec": "867b96f393be018c7552036b18d8164d8fcdd9f21fe8d3a2f100d674fd64e69a",
+    "oracleConfiguration": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    "populationPlan": "15cd67e3e1de81a58366798eed451fc7be9f88a69a1ddf4baf9b1bbbeca43ae7"
+  },
+  "resolverRuleCombinedSha256": {
+    "q1:named-import:v1": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "q2:reexport-trace:v1": "f94fc6e2a74682622f7d464ed745a9142c2c893dc990ec57f454aac2de7b1a88",
+    "q3:super-call:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:this-inherited:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:typed-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "q3:new-receiver:v1": "0cd9c21f5f03a746221c8922ddf499756cef4db4398abd7bdb8173848e629238",
+    "single-candidate-this-v1": "e9c025800d2d3e679e3415715587e3c1cc4fe5ff75535247ba9a850439d80f13"
+  },
+  "implementationFileHashes": {
+    "lib/contracts/src/interfaces/ast.interfaces.ts": "68cb811d7931d714e3111ee784d8f7c774ddceabca29f5f3480f04cf2711aadb",
+    "lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts": "c6e4c84d6cb55937c9bba82d1f217e5963b7c9476e50b51be42138bdddb6af4e",
+    "lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts": "6f7f5d2edb8cd0dce48a8aef06af13b1ef64a931f8245b671e8773f51eaac646",
+    "lib/contracts/src/interfaces/declared-type-facts.interfaces.ts": "5c6dd25efa5724eed8cf098e81753092f7f7f2ea81794db6d8a0b5739feba65c",
+    "lib/core/src/ast/ast-worker.ts": "662a7bc50c2ead05961925291daab742c7da8a5e692bc6684d2f318c889492f8",
+    "lib/core/src/ast/tier-a-declaration-index.ts": "a1a56dcd886675a0dde08258e7671f520de221b364465b618f13f2660a3f576f",
+    "lib/core/src/semantic/call-resolution-hypothesis.service.ts": "87d2751fc85147928e3e1231b779123b60372b497126aa89d2e9bbef8d67910e",
+    "lib/core/src/semantic/call-resolution-hypothesis-index.ts": "4df928af7d91535679f700c074c7a5e60a70bac5b0cd72c8e64af35f292dd425",
+    "lib/core/src/semantic/call-resolution-hypothesis-internal.ts": "0584f2b6caba7f25fed73ac3f1993a5c5089a606f265c0dcc383a42625874de7",
+    "lib/core/src/semantic/call-resolution-strict-proof.ts": "99b17c2373d53e1770a5d2a9c2b97ee6c5f316e6d4551a8183c3a7cc7d51aae0",
+    "lib/core/src/semantic/call-resolution-reexport-proof.ts": "fcbb7acf7019ad667dc89587aa67d8137355e9f23de0eec952c1678bbdc889e9",
+    "lib/core/src/semantic/call-resolution-q3-receiver-proof.ts": "82962917fb232fec5cbd4f86b191182d77d1a9eca1db843dfb9e227982691cb1",
+    "lib/core/src/graph/call-resolution-graph-projection.ts": "2780771cf63845b01039480224bed95440802c3dd68c74db9cec4dab3228d6c9",
+    "lib/core/src/graph/persist-ast-graph.ts": "eb2d686552f53393e8953ab35421b9d349883a34c1fdb467f7aca5aa6edc08fa",
+    "lib/core/src/graph/phase393-graph-persister.ts": "c82a87f9bbc3baafa010589cabbe1ba00a410cf01ed909a922004caa1b3a6bad",
+    "lib/schema/src/sqlite/repos/call-site-resolutions-repo.ts": "c6efaa1bbcdd0c6de239d0b1806a86bb88397635f7e0da4de5579d77bfc9383e"
+  },
+  "sourceToolingHashes": {
+    "scripts/semantic-corpus/prelabel-manifest.mts": "089c144100b10e270ec2ae7c6f210712284a6f180756be57d41e448993616cc5",
+    "scripts/semantic-corpus/prelabel-collect.mts": "fc6eae889dd65a1f10f7b82dc4de53e897c3bd96ace02b4fa13b9874dda79f2d",
+    "scripts/semantic-corpus/checker.mts": "81967e6df548385b4570da6fe298cf73b50be53638f0c64587bacbd4f17b7d8e",
+    "scripts/semantic-corpus/tier-a.mts": "50dd5a452b04c524fab8a6b336ee83af29586adc5afb00e45c74caba244f1554",
+    "scripts/semantic-corpus/snapshot.mts": "a23af91beda4efdcb0a1a145385b3d819d0af707750bc7a22d71c01fe35fc02b",
+    "scripts/semantic-corpus/memory-guard.mts": "4e890ac5c293ba53303b5c3b4e60359ac642b236432aada4979f114f68859dcd",
+    "scripts/semantic-corpus/run-support.mts": "7787ab5b3e5a309bc64c7601e9a969d245cfc99bdccf430cef44239f866262e7",
+    "scripts/semantic-corpus/oracle.mts": "52f61c353193fdf11d55c8888fbf2b244deebe8b498ccefc83c93ccb425ea3e1",
+    "scripts/semantic-corpus/typescript-language-server.mts": "350bd9f0988b1d9afd79100c73f9766b317c4590af9fe3a9a811a53a5d8b6f70",
+    "scripts/semantic-corpus/certification-evaluate.mts": "e912c85b45f9424cd2836e3ac9d63c31497c28723b9b84de8c510f2b44abea4b",
+    "scripts/semantic-corpus/certification-proof-scope.mts": "996f4ca0c974ef9ec43a36d3a429ad7e0c50e0c3a0b95ffb6645a2b82dbfaec6",
+    "scripts/semantic-corpus/phase3-q1-named-import-whole-source-parity.mts": "1c4a9da5c2b2171d39df148c7e4b9813692ac1b4c81082931e7ae82ef7cb0f16",
+    "scripts/semantic-corpus/phase3-q2-reexport-whole-source-parity.mts": "4904078511c4b5f6184d4d469bc1fcf6d5764d475cfda81e627cc15d9fa82dee",
+    "scripts/semantic-corpus/phase3-q3-receiver-proof-whole-source-parity.mts": "c1666638b20a25c234b8246e883cae8cb8efb5245faa05b880c2817df6f26a16",
+    "scripts/semantic-corpus/parity-utils.mts": "4971f08c99d9604ccfab59f6e6d97225e36f15afe0ce76102175162338d17618",
+    "test/semantic-corpus/prelabel-manifest.unit.test.ts": "0e5fad70b85a3ff4843589d7c2f1fbbc6c2336fe36e75bb05d6782b642a73fd4",
+    "test/semantic-corpus/certification-proof-scope.unit.test.ts": "2d72b9d589b03edf7cd3fb6a445de3dcf8da9e389e1c8370821daa6abb03e448",
+    "test/semantic-corpus/phase3-whole-source-parity.unit.test.ts": "119dc89437e68ba0229c1eaba51c7318dfa53bd8b2516433d65de1e96209c119",
+    "evaluate/semantic-corpus/corpus-spec.v1.json": "867b96f393be018c7552036b18d8164d8fcdd9f21fe8d3a2f100d674fd64e69a",
+    "package.json": "1f6540218cbcab0ed401ea8034191e572d46f648edc810afdcec0041589ce911",
+    "pnpm-lock.yaml": "a5b7451ed45fd38d0aeb633c9885bd3359f251bb29e7b569dce4567cf0b2c9ea"
+  },
+  "populationPlan": {
+    "path": "/private/tmp/docuvia-q1-recert/vscode/population-plan-amendment-1.json",
+    "sha256": "15cd67e3e1de81a58366798eed451fc7be9f88a69a1ddf4baf9b1bbbeca43ae7",
+    "sampleDirectories": [
+      "src/vs/workbench/api/**",
+      "src/vs/workbench/common/**"
+    ],
+    "supportOnlyDirectories": [
+      "src/vs/base/** excluding test/fixture paths and test/spec suffixes",
+      "src/vs/platform/** excluding agentHost/**, test/fixture paths, and test/spec suffixes",
+      "src/tsconfig*.json",
+      "src/typings/**",
+      "src/vscode-dts/**",
+      "src/vs/amdX.ts",
+      "src/vs/nls.ts",
+      "src/vs/monaco.d.ts"
+    ],
+    "supportReductionEvidence": "A pinned-revision import scan of non-test source callers found zero direct imports under vs/editor or vs/platform/agentHost. Those trees were support-only in amendment 0 and are removed from amendment 1; no sample caller directory changes.",
+    "supportExclusions": [
+      "any path segment node_modules",
+      "any path segment test, tests, __tests__, fixture, fixtures, __fixtures__",
+      "test/spec TypeScript suffixes"
+    ]
+  },
+  "status": "frozen-before-proof-counts-and-oracle-labels",
+  "temporaryPreRegistrationToolHashes": {
+    "filter": "600fb104fa11cb16e82714a045616933c756789aaa03f09667567de4d4c30fa4",
+    "collector": "295aec7932db850bd3188558185a20c8765a061eeb0d622b4270da6e0e1b0e62"
+  },
+  "proofCounts": "pending-after-freeze"
+}

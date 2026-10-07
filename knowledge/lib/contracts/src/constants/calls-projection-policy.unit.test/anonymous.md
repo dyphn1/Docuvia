@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/constants/calls-projection-policy.unit.test.ts#anonymous@L30
+id: lib/contracts/src/constants/calls-projection-policy.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/constants/calls-projection-policy.unit.test.ts

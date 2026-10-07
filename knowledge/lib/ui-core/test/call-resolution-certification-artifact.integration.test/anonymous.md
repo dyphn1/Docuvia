@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts#anonymous@L71
+id: lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts#anonymous@L61
 type: symbol
 name: anonymous
 filePath: lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts

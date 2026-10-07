@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/impact/file-impact-aggregation.integration.test.ts#anonymous@L279
+id: lib/core/src/impact/file-impact-aggregation.integration.test.ts#anonymous@L71
 type: symbol
 name: anonymous
 filePath: lib/core/src/impact/file-impact-aggregation.integration.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/impact/file-impact-aggregation.integration.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/impact/file-impact-aggregation.integration.test.ts`
+

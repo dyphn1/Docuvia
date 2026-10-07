@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic.mts#snapshotDirectoryEntries
+id: scripts/semantic-corpus/phase0-partial-semantic.mts#SnapshotDirectoryEntries
 type: symbol
-name: snapshotDirectoryEntries
+name: SnapshotDirectoryEntries
 filePath: scripts/semantic-corpus/phase0-partial-semantic.mts
 ---
-# Symbol: snapshotDirectoryEntries
+# Symbol: SnapshotDirectoryEntries
 
 File: `scripts/semantic-corpus/phase0-partial-semantic.mts`

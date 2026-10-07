@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/certification-proof-scope.unit.test.ts#anonymous
+id: test/semantic-corpus/certification-proof-scope.unit.test.ts#anonymous@L48
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/certification-proof-scope.unit.test.ts

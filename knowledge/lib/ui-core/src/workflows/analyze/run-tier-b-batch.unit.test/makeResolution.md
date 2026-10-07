@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#makeResolution@L760
+id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#makeResolution@L739
 type: symbol
 name: makeResolution
 filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts

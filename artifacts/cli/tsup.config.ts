@@ -57,5 +57,14 @@ export default defineConfig({
     fs.cpSync(migrationsSrc, path.join(distDir, "migrations"), {
       recursive: true,
     });
+
+    const certificationSrc = path.join(
+      import.meta.dirname,
+      "../../lib/ui-core/src/workflows/analyze/q1-named-import-candidate-certification.json",
+    );
+    fs.copyFileSync(
+      certificationSrc,
+      path.join(distDir, "q1-named-import-candidate-certification.json"),
+    );
   },
 });

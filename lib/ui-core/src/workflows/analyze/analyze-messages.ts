@@ -203,6 +203,8 @@ export const ANALYZE_EVENTS = {
    *  silently degrade to reverse-via-fallback with no other visible error. */
   TIER_B_FORWARD_SEEDED: "analyze.tierB.forward_seeded",
   TIER_B_CALL_RESOLUTION_CANARY: "analyze.tierB.call_resolution_canary",
+  TIER_B_CALL_RESOLUTION_CERTIFICATION:
+    "analyze.tierB.call_resolution_certification",
 
   /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
   TIER_C_START: "analyze.tierC.start",

@@ -2,7 +2,7 @@
 
 ## Decision
 
-`q1:named-import:v1` passes the two-track promotion gate under implementation `ffbd59732bf423c292ac5ea91e55df059f2af7b6`: both tracks have zero valid contradictions and a one-sided 95% group Clopper–Pearson lower bound above `.990`. The evidence directory contains a candidate artifact. It is not wired into any runtime path, so this work makes no runtime behavior change and enables no Tier B skip.
+`q1:named-import:v1` passes the two-track promotion gate under implementation `ffbd59732bf423c292ac5ea91e55df059f2af7b6`: both tracks have zero valid contradictions and a one-sided 95% group Clopper–Pearson lower bound above `.990`. The candidate artifact is shipped with the runtime, but it is currently rejected on this branch: the artifact pins Q1 rule hash `046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b`, while this branch's source guard recomputes `fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab`. Therefore no site skips Tier B on this branch. The source hash is recomputed by a unit guard from the seven files in the freeze manifest; the packaged decision becomes active only after evidence is recertified for the changed implementation.
 
 No other signature passes both tracks. In particular, `q3:typed-receiver:v1` passes the new-family numeric threshold but has only four independent groups in the Docuvia temporal track.
 
@@ -16,6 +16,20 @@ No other signature passes both tracks. In particular, `q3:typed-receiver:v1` pas
 - **Freeze:** amendment 1 freeze SHA-256 `3282da0abb1f045685648898a14b804493ed02181aadb427591af178e8648d02`, made before proof counts and oracle labels. It supersedes freeze `74a9190d2d6b3667d4962465ab025558a3435d275acb208bd08faba3b5ca00a8`: the first support slice exceeded the 4,096 MB heap cap during Q1 parity before any labels were opened. The caller population did not change in amendment 1; the resolution-only support was narrowed to fit the cap.
 - **Frozen population:** 6,397 sample sites / 6,219 duplicate groups; source snapshot SHA-256 `850a548733820aa4159cb93c71aab702b94ef88fee3143777dd3e8cf8780fe5a`; prelabel manifest SHA-256 `e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692`.
 - **Implementation:** `ffbd59732bf423c292ac5ea91e55df059f2af7b6`, frozen with Q1 rule configuration SHA-256 `046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b`.
+
+### Q1 rule-configuration hash
+
+The frozen file set is `resolverRuleSignatures["q1:named-import:v1"].implementationConfigurationFiles` in the [certification freeze manifest](tiered-call-resolution-certification-evidence/freeze-manifest.json):
+
+- `lib/core/src/semantic/call-resolution-hypothesis.service.ts`
+- `lib/core/src/semantic/call-resolution-hypothesis-index.ts`
+- `lib/core/src/semantic/call-resolution-hypothesis-internal.ts`
+- `lib/core/src/semantic/call-resolution-strict-proof.ts`
+- `lib/contracts/src/interfaces/call-resolution-hypothesis.interfaces.ts`
+- `lib/contracts/src/interfaces/call-site-shape-facts.interfaces.ts`
+- `lib/contracts/src/interfaces/declared-type-facts.interfaces.ts`
+
+Each file hash is SHA-256 over its raw bytes. The combined value is SHA-256 over the compact UTF-8 `JSON.stringify` serialization of the path-to-file-hash object, preserving the file order shown in the freeze manifest. `scripts/semantic-corpus/q1-rule-configuration.mts` shares this file set and algorithm between the certification audit and the unit guard.
 
 ### Persisted-proof parity and count gate
 
@@ -66,11 +80,11 @@ There were no valid contradictions in either track, so the contradiction list is
 
 ## Candidate artifact and runtime scope
 
-The evidence-only candidate is [q1-named-import-candidate-certification.json](tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification.json), SHA-256 `f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05`. It uses schema `docuvia-call-resolution-certification/v1`, binds the implementation, Q1 rule configuration, both track identities and split hashes, oracle configuration, and a combined corpus manifest digest. The digest is SHA-256 of the compact UTF-8 JSON object `{"newFamily":"e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692","temporal":"0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841"}` (property order as shown), yielding `597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2`. It contains only `q1:named-import:v1`.
+The candidate is [q1-named-import-candidate-certification.json](tiered-call-resolution-certification-q1-recert-evidence/q1-named-import-candidate-certification.json), SHA-256 `f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05`. It uses schema `docuvia-call-resolution-certification/v1`, binds the implementation, Q1 rule configuration, both track identities and split hashes, oracle configuration, and a combined corpus manifest digest. The digest is SHA-256 of the compact UTF-8 JSON object `{"newFamily":"e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692","temporal":"0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841"}` (property order as shown), yielding `597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2`. It contains only `q1:named-import:v1` and is the evidence behind the runtime certification.
 
 The artifact records `frozenAt` `2026-10-07T04:34:09.000Z`, `labelsOpenedAt` `2026-10-07T04:47:59.662Z`, and `resultsRecordedAt` `2026-10-07T04:59:08.000Z`. The artifact-level `labelsOpenedAt` denotes the fresh VS Code label batch. The Docuvia labels were already open under the earlier implementation; amendment 2 re-evaluated those labels with the current implementation without consulting them during the fix. The original Docuvia label-run aggregate does not record its opening timestamp, so the candidate does not claim both label sets were newly opened after one shared freeze.
 
-The file-loading test invokes the existing `loadCallResolutionCertificationArtifact` validator and confirms that only Q1 is certified. The candidate remains under the docs evidence directory and is not loaded by a runtime path. No production record was written, no Tier B policy was changed, and no skip or canary behavior changed.
+The runtime ships a byte-identical copy at `lib/ui-core/src/workflows/analyze/q1-named-import-candidate-certification.json`; the CLI build copies it to `dist/q1-named-import-candidate-certification.json`, included by the package's `files: ["dist"]` rule. Runtime trust uses the existing `loadCallResolutionCertificationArtifact` validator with source-pinned artifact, implementation, Q1 rule-configuration, oracle, corpus, and track inputs. The normal canary policy can skip only proven, source-current Q1 sites outside its deterministic sample. Quarantine remains authoritative. Each Tier B batch records whether certification is `trusted`, `rejected`, or `missing` in `.docuvia/logs/analyze.log`; see the [analyze guide](../user-guide/cli/analyze.md) for how to inspect it.
 
 ## Evidence and verification
 

@@ -353,6 +353,27 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
       expect(fake.tierBProcessed).toEqual([
         { projectId: 1, filePath, commitSha: HEAD_SHA },
       ]);
+      const logLines = fs
+        .readFileSync(
+          path.join(
+            workspaceRoot,
+            DOCUVIA_DIR_NAME,
+            DOCUVIA_LOGS_DIR_NAME,
+            ANALYZE_LOG_FILE_NAME,
+          ),
+          "utf8",
+        )
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      const certificationEvents = logLines.filter(
+        (line) => line.event === "analyze.tierB.call_resolution_certification",
+      );
+      expect(certificationEvents).toHaveLength(1);
+      expect(certificationEvents[0]).toMatchObject({
+        certificationStatus: "missing",
+        rejectionReasons: ["trusted certification input is missing"],
+      });
     } finally {
       fs.rmSync(workspaceRoot, { recursive: true, force: true });
     }

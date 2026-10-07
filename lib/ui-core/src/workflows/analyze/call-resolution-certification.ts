@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { CALL_SITE_VERIFICATION_POLICY_VERSION } from "@workspace/contracts";
 
 export const CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION =
@@ -7,6 +8,45 @@ export const CALL_RESOLUTION_CERTIFICATION_MINIMUM_GROUPS = 299;
 export const CALL_RESOLUTION_CERTIFICATION_TARGET_PRECISION = 0.99;
 const ONE_SIDED_ALPHA = 0.05;
 const REPORTED_BOUND_TOLERANCE = 1e-6;
+
+/** Q1's per-signature configuration pin from the frozen recertification evidence. The aggregate
+ *  CALL_RESOLUTION_RULE_CONFIGURATION_SHA256 is a different scope and must not replace this pin. */
+const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs =
+  Object.freeze({
+    artifactSha256:
+      "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05",
+    implementationCommitSha: "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+    ruleConfigurationSha256:
+      "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    oracleIdentity: "typescript-language-server",
+    oracleVersion: "5.3.0+tsserver@5.9.3",
+    oracleConfigurationSha256:
+      "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",
+    corpusManifestSha256:
+      "597e2415b5d15d4098daadc072f6c128633dd3780e8ba54f552efc26ce64bdd2",
+    newFamily: Object.freeze({
+      familyId: "microsoft/vscode",
+      revision: "4f2dfc552c95b9ff4729fa13f109bfda5f886d69",
+      splitSha256:
+        "371fa0e87a6e1f6f1884d5fa67d5b28adb2a638a1bafff7007cb9e7ddb8d1ecb",
+    }),
+    temporal: Object.freeze({
+      familyId: "dyphn1/Docuvia",
+      revision: "113a2afe97d2407d0b6ba19624f42408875831cf",
+      baseRevision: "204c40fb7080ebded011f65a3dae7d749cce9ed1",
+      splitSha256:
+        "53a6864ffeab9bd3e8c9aae2f005a40b3914b7fb22fac0292aea6bd1f9abe1f0",
+    }),
+  });
+
+/** This source pin is guarded by the Q1 rule-configuration unit test. It records the current
+ *  source digest; the artifact's independent input remains frozen above, so changed code rejects
+ *  the old evidence until new certification evidence is supplied. */
+export const CURRENT_Q1_RULE_CONFIGURATION_SHA256 =
+  "fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab";
+
+const Q1_CERTIFICATION_RESOURCE =
+  "./q1-named-import-candidate-certification.json";
 
 interface ArtifactEnvelope extends Record<string, unknown> {
   schemaVersion: typeof CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION;
@@ -155,6 +195,34 @@ export function loadCallResolutionCertificationArtifact(
   if (provenanceErrors.length > 0)
     return createDecision(artifactSha256, "rejected", [], provenanceErrors);
   return decisionFromSignatures(artifactSha256, artifact, artifact.signatures);
+}
+
+/** Validates Q1 evidence against the source-pinned trust anchor. The optional current hash exists
+ *  for callers that derive the live rule configuration; a mismatch flows through the shared
+ *  provenance validator and yields a rejected, empty decision. */
+export function loadQ1NamedImportCertificationArtifact(
+  rawArtifact: string | undefined,
+  currentRuleConfigurationSha256 = CURRENT_Q1_RULE_CONFIGURATION_SHA256,
+): CallResolutionCertificationDecision {
+  return loadCallResolutionCertificationArtifact(rawArtifact, {
+    ...Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS,
+    ruleConfigurationSha256: currentRuleConfigurationSha256,
+  });
+}
+
+/** Loads the packaged resource adjacent to the bundled CLI entrypoint. Source tests resolve the
+ *  identical resource next to this module. Missing/unreadable bytes return a non-authorizing
+ *  missing decision; artifact bytes still pass through the same pinned loader as other callers. */
+export function loadShippedQ1NamedImportCertificationArtifact(): CallResolutionCertificationDecision {
+  try {
+    const rawArtifact = readFileSync(
+      new URL(Q1_CERTIFICATION_RESOURCE, import.meta.url),
+      "utf8",
+    );
+    return loadQ1NamedImportCertificationArtifact(rawArtifact);
+  } catch {
+    return loadQ1NamedImportCertificationArtifact(undefined);
+  }
 }
 
 export function isCertificationDecisionTrusted(

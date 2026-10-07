@@ -21,6 +21,8 @@ export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;
+export const CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE =
+  "q1:named-import:v1" as const;
 export const CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE =
   "q2:reexport-trace:v1" as const;
 export const CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE =
@@ -36,7 +38,7 @@ export const CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE =
 export const CALL_RESOLUTION_RULE_CONFIGURATION_VERSION =
   "docuvia-strict-proof-rules/v1" as const;
 export const CALL_RESOLUTION_RULE_SIGNATURES = [
-  "q1:named-import:v1",
+  CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE,
   "q2:reexport-trace:v1",
   "q3:new-receiver:v1",
   "q3:super-call:v1",
@@ -177,7 +179,7 @@ export type CallResolutionStrictProof =
   | {
       readonly status: "proven";
       readonly targetKey: string;
-      readonly ruleSignature: "q1:named-import:v1";
+      readonly ruleSignature: typeof CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE;
       readonly reason: "unique-named-import";
       readonly targetFilePath: string;
       readonly targetName: string;

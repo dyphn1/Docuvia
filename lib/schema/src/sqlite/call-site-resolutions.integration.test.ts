@@ -105,6 +105,41 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     expect(store.graph.getNodeKeyById?.(callerId)).toBe(callerNodeKey);
   });
 
+  it("[boundary] omits self calls from the collapsed calls edge projection", () => {
+    const callerNodeKey = "src/caller.ts#caller";
+    store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerNodeKey,
+    });
+    const row = resolution(
+      portableKey("self-call-projection"),
+      [
+        {
+          targetNodeKey: callerNodeKey,
+          ordinal: 0,
+          evidenceJson: '{"kind":"strict-proof"}',
+        },
+      ],
+      {
+        callerNodeKey,
+        selectedTargetNodeKey: callerNodeKey,
+      },
+    );
+
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      [row],
+      [{ callSiteKey: row.callSiteKey, callerNodeKey }],
+    );
+
+    expect(
+      store.graph.getAllLinks().filter((link) => link.link_type === "calls"),
+    ).toEqual([]);
+  });
+
   it("[invalid-input] rejects a likely resolution without confidence", () => {
     expect(() =>
       store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [

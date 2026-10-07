@@ -347,6 +347,7 @@ describe("GraphPersisterService.persist()", () => {
       updatedCount: 1,
       callResolution: undefined,
       callResolutionByFile: {},
+      strictCallProofExclusions: [],
     });
 
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");

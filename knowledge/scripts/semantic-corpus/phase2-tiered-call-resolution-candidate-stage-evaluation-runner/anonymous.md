@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation-runner.mts#anonymous
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation-runner.mts#anonymous@L236
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation-runner.mts
@@ -7,4 +7,3 @@ filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-
 # Symbol: anonymous
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation-runner.mts`
-mts`

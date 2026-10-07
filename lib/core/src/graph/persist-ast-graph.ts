@@ -17,12 +17,14 @@ import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
 import {
   collectStrictCallSiteProofs,
+  createFunctionNodeReference,
   isSha256,
   portableCallSiteKeyForCall,
   sourceContentHashForProof,
   sourceManifestFingerprint,
   type CallSiteProof,
   type FunctionNodeReference,
+  type StrictCallProofExclusion,
 } from "./call-resolution-graph-projection.js";
 
 /** Mutable per-file accumulator `linkSymbolReference` increments while resolving one file's
@@ -96,6 +98,7 @@ export class GraphPersisterService implements IGraphPersister {
     updatedCount: number;
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
+    strictCallProofExclusions?: readonly StrictCallProofExclusion[];
   }> {
     const {
       store,
@@ -137,6 +140,7 @@ export class GraphPersisterService implements IGraphPersister {
     updatedCount: number;
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
+    strictCallProofExclusions?: readonly StrictCallProofExclusion[];
   } {
     return store.withTransaction(() => {
       const resolver = new ScopeResolver(workspaceRoot);
@@ -185,7 +189,7 @@ export class GraphPersisterService implements IGraphPersister {
         symbolIdMap,
         callResolutionByFile,
       );
-      this.persistStrictCallSiteProofs(
+      const strictCallProofExclusions = this.persistStrictCallSiteProofs(
         store,
         projectId,
         parsedResults,
@@ -203,7 +207,12 @@ export class GraphPersisterService implements IGraphPersister {
           ? aggregateCallResolution(callResolutionByFile)
           : undefined;
 
-      return { updatedCount, callResolution, callResolutionByFile };
+      return {
+        updatedCount,
+        callResolution,
+        callResolutionByFile,
+        strictCallProofExclusions,
+      };
     });
   }
 
@@ -392,13 +401,7 @@ export class GraphPersisterService implements IGraphPersister {
         nodeKey,
         contentHash: fn.contentHash,
       });
-      functionNodeRefs.push({
-        nodeKey,
-        name: fn.name,
-        containerName: fn.containerName,
-        startLine: fn.startLine,
-        endLine: fn.endLine,
-      });
+      functionNodeRefs.push(createFunctionNodeReference(result, fn, nodeKey));
       symbolsForFile.set(fn.name, fnId);
       store.graph.insertLink({
         sourceNodeId: fileId,
@@ -531,7 +534,7 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
     functionNodeRefsByFile: Map<string, FunctionNodeReference[]>,
     resolver: ScopeResolver,
-  ): void {
+  ): StrictCallProofExclusion[] {
     const repo = store.callSiteResolutions;
     const service = this.hypothesisService;
     if (
@@ -543,7 +546,7 @@ export class GraphPersisterService implements IGraphPersister {
         (result) => !isSha256(sourceContentHashForProof(result)),
       )
     ) {
-      return;
+      return [];
     }
 
     const workspaceIndex = service.indexWorkspace({
@@ -572,21 +575,25 @@ export class GraphPersisterService implements IGraphPersister {
         ),
     );
 
+    const exclusions: StrictCallProofExclusion[] = [];
     for (const result of parsedResults) {
-      this.persistStrictCallSiteProofsForFile(
-        store,
-        repo,
-        service,
-        projectId,
-        result,
-        workspaceIndex,
-        functionNodeRefsByFile,
-        fileIdMap,
-        symbolIdMap,
-        nodeKeyById,
-        resolver,
+      exclusions.push(
+        ...this.persistStrictCallSiteProofsForFile(
+          store,
+          repo,
+          service,
+          projectId,
+          result,
+          workspaceIndex,
+          functionNodeRefsByFile,
+          fileIdMap,
+          symbolIdMap,
+          nodeKeyById,
+          resolver,
+        ),
       );
     }
+    return exclusions;
   }
 
   private persistStrictCallSiteProofsForFile(
@@ -603,15 +610,16 @@ export class GraphPersisterService implements IGraphPersister {
     symbolIdMap: Map<string, Map<string, number>>,
     nodeKeyById: ReadonlyMap<number, string>,
     resolver: ScopeResolver,
-  ): void {
-    const proofs = collectStrictCallSiteProofs({
+  ): StrictCallProofExclusion[] {
+    const collection = collectStrictCallSiteProofs({
       service,
       workspaceIndex,
       result,
       functionNodes: functionNodeRefsByFile.get(result.file) ?? [],
       functionNodesByFile: functionNodeRefsByFile,
     });
-    if (proofs.length === 0) return;
+    if (collection.proofs.length === 0) return [...collection.exclusions];
+    const proofs = collection.proofs;
 
     const sourceFileId = fileIdMap.get(result.file)!;
     const projectionCallers = this.projectionCallersForProofs(
@@ -642,6 +650,7 @@ export class GraphPersisterService implements IGraphPersister {
       symbolIdMap,
       provenKeys,
     );
+    return [...collection.exclusions];
   }
 
   private restoreScopeResolverCallsForUnprovenSites(

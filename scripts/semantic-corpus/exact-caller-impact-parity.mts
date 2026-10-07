@@ -26,7 +26,10 @@ import { GraphPersisterService } from "../../lib/core/src/graph/persist-ast-grap
 import { ImpactService } from "../../lib/core/src/impact/impact.service.js";
 import { CallResolutionHypothesisService } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import { GraphStore } from "../../lib/schema/src/index.js";
-import { buildQualifiedBaseKey, buildUniqueNodeKey } from "../../lib/core/src/graph/node-key.js";
+import {
+  buildQualifiedBaseKey,
+  buildUniqueNodeKey,
+} from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
 
 type Options = {
@@ -51,9 +54,15 @@ type Projection = {
   readonly store: GraphStore;
   readonly projectId: number;
   readonly nodeKeysById: ReadonlyMap<number, string>;
-  readonly nodesByKey: ReadonlyMap<string, ReturnType<GraphStore["graph"]["getAllNodes"]>[number]>;
+  readonly nodesByKey: ReadonlyMap<
+    string,
+    ReturnType<GraphStore["graph"]["getAllNodes"]>[number]
+  >;
   readonly callerKeysByTarget: ReadonlyMap<string, ReadonlySet<string>>;
-  readonly callerCandidateKeysByTarget: ReadonlyMap<string, ReadonlySet<string>>;
+  readonly callerCandidateKeysByTarget: ReadonlyMap<
+    string,
+    ReadonlySet<string>
+  >;
 };
 
 function parseOptions(argv: readonly string[]): Options {
@@ -102,7 +111,11 @@ function discoverSourceFiles(root: string) {
     if (!existsSync(absolutePath)) continue;
     if (statSync(absolutePath).size > MAX_FILE_SIZE_BYTES) continue;
     const bytes = readFileSync(absolutePath);
-    files.push({ file, hash: createSha256(bytes), code: bytes.toString("utf8") });
+    files.push({
+      file,
+      hash: createSha256(bytes),
+      code: bytes.toString("utf8"),
+    });
   }
   return files.sort((left, right) => left.file.localeCompare(right.file));
 }
@@ -169,12 +182,18 @@ async function persistProjection(
 }
 
 function projectionFromStore(store: GraphStore, projectId: number): Projection {
-  const nodes = store.graph.getAllNodes().filter((node) => node.project_id === projectId);
+  const nodes = store.graph
+    .getAllNodes()
+    .filter((node) => node.project_id === projectId);
   const nodeKeysById = new Map(
-    nodes.flatMap((node) => node.node_key ? [[node.id, node.node_key] as const] : []),
+    nodes.flatMap((node) =>
+      node.node_key ? [[node.id, node.node_key] as const] : [],
+    ),
   );
   const nodesByKey = new Map(
-    nodes.flatMap((node) => node.node_key ? [[node.node_key, node] as const] : []),
+    nodes.flatMap((node) =>
+      node.node_key ? [[node.node_key, node] as const] : [],
+    ),
   );
   const callerKeysByTarget = new Map<string, Set<string>>();
   const callerCandidateKeysByTarget = new Map<string, Set<string>>();
@@ -183,7 +202,8 @@ function projectionFromStore(store: GraphStore, projectId: number): Projection {
     const targetKey = nodeKeysById.get(link.target_node_id);
     if (!sourceKey || !targetKey) continue;
     if (link.link_type === LinkTypes.CALLER_CANDIDATE) {
-      const candidates = callerCandidateKeysByTarget.get(targetKey) ?? new Set<string>();
+      const candidates =
+        callerCandidateKeysByTarget.get(targetKey) ?? new Set<string>();
       candidates.add(sourceKey);
       callerCandidateKeysByTarget.set(targetKey, candidates);
       continue;
@@ -203,7 +223,12 @@ function projectionFromStore(store: GraphStore, projectId: number): Projection {
   };
 }
 
-function exactTargetStore(store: GraphStore, targetNode: Projection["nodesByKey"] extends ReadonlyMap<string, infer T> ? T : never): IGraphStore {
+function exactTargetStore(
+  store: GraphStore,
+  targetNode: Projection["nodesByKey"] extends ReadonlyMap<string, infer T>
+    ? T
+    : never,
+): IGraphStore {
   const targetFilePath = targetNode.path_patterns[0];
   const target = {
     id: targetNode.id,
@@ -234,9 +259,7 @@ function exactTargetStore(store: GraphStore, targetNode: Projection["nodesByKey"
           // no rows avoids re-reading the full project resolution table for every callee.
           if (property === "getAllForProject") return () => [];
           const value: unknown = Reflect.get(repository, property, repository);
-          return typeof value === "function"
-            ? value.bind(repository)
-            : value;
+          return typeof value === "function" ? value.bind(repository) : value;
         },
       })
     : undefined;
@@ -328,7 +351,9 @@ function explainMissingCaller(
 }
 
 function sortedUnique<T>(values: Iterable<T>): T[] {
-  return [...new Set(values)].sort((left, right) => String(left).localeCompare(String(right)));
+  return [...new Set(values)].sort((left, right) =>
+    String(left).localeCompare(String(right)),
+  );
 }
 
 function markdownSummary(totals: Record<string, number>): string {
@@ -338,7 +363,9 @@ function markdownSummary(totals: Record<string, number>): string {
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
   const sourceFiles = discoverSourceFiles(options.repositoryRoot);
-  process.stdout.write(`Parsing ${sourceFiles.length} discoverable source files...\n`);
+  process.stdout.write(
+    `Parsing ${sourceFiles.length} discoverable source files...\n`,
+  );
   const pool = new AstWorkerPool();
   const processor = new AstProcessingService({
     initialize: async () => pool.initialize(2),
@@ -346,13 +373,22 @@ async function main(): Promise<void> {
     terminate: () => pool.terminate(),
     serializeBatch: (run) => run(),
   });
-  const parsed = await processor.processFiles(options.repositoryRoot, sourceFiles);
+  const parsed = await processor.processFiles(
+    options.repositoryRoot,
+    sourceFiles,
+  );
   if (parsed.failures.length > 0) {
-    throw new Error(`Source parsing failed for ${parsed.failures.length} files`);
+    throw new Error(
+      `Source parsing failed for ${parsed.failures.length} files`,
+    );
   }
-  process.stdout.write(`Parsed ${parsed.parsed.length} files; building policy graphs...\n`);
+  process.stdout.write(
+    `Parsed ${parsed.parsed.length} files; building policy graphs...\n`,
+  );
   const locations = functionLocations(parsed.parsed);
-  const databaseRoot = mkdtempSync(path.join(os.tmpdir(), "docuvia-exact-caller-impact-"));
+  const databaseRoot = mkdtempSync(
+    path.join(os.tmpdir(), "docuvia-exact-caller-impact-"),
+  );
   let v1: Projection | undefined;
   let v2: Projection | undefined;
   try {
@@ -392,7 +428,8 @@ function buildReport(
     ...[...v2.callerKeysByTarget.keys()],
   ]);
   const missingTargets = targetKeys.filter(
-    (targetKey) => !v1.nodesByKey.has(targetKey) || !v2.nodesByKey.has(targetKey),
+    (targetKey) =>
+      !v1.nodesByKey.has(targetKey) || !v2.nodesByKey.has(targetKey),
   );
   if (missingTargets.length > 0) {
     throw new Error(
@@ -402,14 +439,27 @@ function buildReport(
   process.stdout.write(
     `Comparing impacts for ${targetKeys.length} callee nodes...\n`,
   );
-  const missingByNode = new Map<string, {
-    readonly location: FunctionLocation;
-    readonly callees: Array<{ readonly nodeKey: string; readonly name: string; readonly why: string }>;
-  }>();
-  const addedByNode = new Map<string, {
-    readonly location: FunctionLocation;
-    readonly callees: Array<{ readonly nodeKey: string; readonly name: string }>;
-  }>();
+  const missingByNode = new Map<
+    string,
+    {
+      readonly location: FunctionLocation;
+      readonly callees: Array<{
+        readonly nodeKey: string;
+        readonly name: string;
+        readonly why: string;
+      }>;
+    }
+  >();
+  const addedByNode = new Map<
+    string,
+    {
+      readonly location: FunctionLocation;
+      readonly callees: Array<{
+        readonly nodeKey: string;
+        readonly name: string;
+      }>;
+    }
+  >();
   let v1NamedFunctionImpactPairs = 0;
   let v2NamedFunctionImpactPairs = 0;
   let missingNamedFunctionImpactPairs = 0;
@@ -466,13 +516,17 @@ function buildReport(
   const missingNamedFunctionNodes = [...missingByNode.values()]
     .map(({ location, callees }) => ({
       ...location,
-      missingFromCallees: callees.sort((left, right) => left.nodeKey.localeCompare(right.nodeKey)),
+      missingFromCallees: callees.sort((left, right) =>
+        left.nodeKey.localeCompare(right.nodeKey),
+      ),
     }))
     .sort((left, right) => left.nodeKey.localeCompare(right.nodeKey));
   const addedNamedFunctionNodes = [...addedByNode.values()]
     .map(({ location, callees }) => ({
       ...location,
-      addedForCallees: callees.sort((left, right) => left.nodeKey.localeCompare(right.nodeKey)),
+      addedForCallees: callees.sort((left, right) =>
+        left.nodeKey.localeCompare(right.nodeKey),
+      ),
     }))
     .sort((left, right) => left.nodeKey.localeCompare(right.nodeKey));
   const totals = {
@@ -498,6 +552,8 @@ function buildReport(
 }
 
 main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+  );
   process.exitCode = 1;
 });

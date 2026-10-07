@@ -25,6 +25,7 @@ import {
   type CallResolutionStrictProof,
   type ICallResolutionHypothesisService,
   type ParsedAstFileResult,
+  type StrictCallProofExclusion,
 } from "../../lib/contracts/src/index.js";
 import { AstProcessingService } from "../../lib/core/src/ast/ast-processing.service.js";
 import { AstWorkerPool } from "../../lib/core/src/ast/ast-worker-pool.js";
@@ -326,6 +327,7 @@ type Projection = {
   importCallCount: number;
   missingQ3PersistenceCounts: Record<string, number>;
   missingQ3PersistenceExamples: Array<Record<string, unknown>>;
+  strictCallProofExclusions: readonly StrictCallProofExclusion[];
 };
 
 async function persistProjection(
@@ -342,7 +344,7 @@ async function persistProjection(
       name: `q3-parity-${projectionName}`,
       repoUrl: `file:///${projectionName}`,
     }).id;
-    await new GraphPersisterService(service).persist({
+    const persistenceResult = await new GraphPersisterService(service).persist({
       store,
       workspaceRoot: snapshotRoot,
       projectId,
@@ -396,8 +398,14 @@ async function persistProjection(
         })),
     );
     const persistedKeys = new Set(persistedQ3.map((row) => row.callSiteKey));
+    const strictCallProofExclusions = (persistenceResult.strictCallProofExclusions ?? []).filter(
+      (exclusion) => Q3_RULES.has(exclusion.ruleSignature),
+    );
+    const excludedKeys = new Set(
+      strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+    );
     const missingQ3Persistence = [...service.q3Sites.entries()]
-      .filter(([key]) => !persistedKeys.has(key))
+      .filter(([key]) => !persistedKeys.has(key) && !excludedKeys.has(key))
       .map(([, site]) => {
         const caller = parsedResults.find(
           (result) => result.file === site.callerFilePath,
@@ -460,6 +468,7 @@ async function persistProjection(
     return {
       missingQ3PersistenceCounts,
       missingQ3PersistenceExamples: missingQ3Persistence.slice(0, 30),
+      strictCallProofExclusions,
       nodes: canonicalRows(
         nodes.map((node) => {
           const {
@@ -586,6 +595,27 @@ async function main() {
   const persistedQ3Keys = working.persistedQ3
     .map((row) => row.callSiteKey)
     .sort();
+  const proposedQ3KeySet = new Set(workingQ3Keys);
+  const persistedQ3KeySet = new Set(persistedQ3Keys);
+  const excludedQ3Keys = new Set(
+    working.strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+  );
+  const q3SilentGap = workingQ3Keys.filter(
+    (key) => !persistedQ3KeySet.has(key) && !excludedQ3Keys.has(key),
+  ).length;
+  const q3UnexpectedExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => !proposedQ3KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q3OverlappingExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => persistedQ3KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q3ExclusionReasonCounts = Object.fromEntries(
+    working.strictCallProofExclusions.reduce((counts, exclusion) => {
+      const key = `${exclusion.ruleSignature}:${exclusion.reason}`;
+      counts.set(key, (counts.get(key) ?? 0) + exclusion.count);
+      return counts;
+    }, new Map<string, number>()),
+  );
   const parsedByFile = new Map(
     parsed.parsed.map((result) => [result.file, result]),
   );
@@ -792,12 +822,21 @@ async function main() {
     q3AbstentionExamples: working.q3AbstentionExamples,
     sourceInventoryDiagnostics,
     q3PersistedResolutionRows: persistedQ3Keys.length,
+    q3CountedExclusions: working.strictCallProofExclusions.reduce(
+      (count, exclusion) => count + exclusion.count,
+      0,
+    ),
+    q3CountedExclusionReasonCounts: q3ExclusionReasonCounts,
+    q3SilentGap,
+    q3ProposalsPersistedOrCountedExcluded:
+      q3SilentGap === 0 &&
+      q3UnexpectedExclusions === 0 &&
+      q3OverlappingExclusions === 0 &&
+      persistedQ3Keys.every((key) => proposedQ3KeySet.has(key)),
     missingQ3PersistenceCounts: working.missingQ3PersistenceCounts,
     missingQ3PersistenceExamples: working.missingQ3PersistenceExamples,
     suppressedAndEnabledQ3SetMatches:
       JSON.stringify(baselineQ3Keys) === JSON.stringify(workingQ3Keys),
-    allQ3ServiceProofsPersisted:
-      JSON.stringify(workingQ3Keys) === JSON.stringify(persistedQ3Keys),
     q3ProofCountsByRule,
     q3SitesWithHeuristicSelection: [...working.q3Sites.values()].filter(
       (site) => site.selected !== null,
@@ -879,7 +918,7 @@ async function main() {
     !summary.nonQ3HypothesisOutputsUnchanged ||
     !summary.q3HeuristicOutputsUnchanged ||
     !summary.suppressedAndEnabledQ3SetMatches ||
-    !summary.allQ3ServiceProofsPersisted
+    !summary.q3ProposalsPersistedOrCountedExcluded
   ) {
     throw new Error("Q3 whole-source parity invariant failed");
   }

@@ -13,6 +13,7 @@ export interface TierAFunctionSummary {
   readonly name: string;
   readonly startLine: number;
   readonly endLine: number;
+  readonly declarationSpan?: { readonly start: number; readonly end: number };
   readonly contentHash?: string;
   readonly containerName?: string;
 }
@@ -293,6 +294,7 @@ export function collectFunctionNodes(
       name: callableName(node).name,
       startLine: node.startPosition.row,
       endLine: node.endPosition.row,
+      declarationSpan: { start: node.startIndex, end: node.endIndex },
       contentHash: symbolContentHash(node),
       containerName,
     });

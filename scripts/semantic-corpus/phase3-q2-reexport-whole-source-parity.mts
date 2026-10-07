@@ -21,6 +21,7 @@ import {
   type CallResolutionHypothesisResult,
   type ICallResolutionHypothesisService,
   type ParsedAstFileResult,
+  type StrictCallProofExclusion,
 } from "../../lib/contracts/src/index.js";
 import { AstProcessingService } from "../../lib/core/src/ast/ast-processing.service.js";
 import { AstWorkerPool } from "../../lib/core/src/ast/ast-worker-pool.js";
@@ -293,6 +294,7 @@ type Projection = {
   importCallCount: number;
   missingQ2PersistenceCounts: Record<string, number>;
   missingQ2PersistenceExamples: Array<Record<string, unknown>>;
+  strictCallProofExclusions: readonly StrictCallProofExclusion[];
 };
 
 async function persistProjection(
@@ -309,7 +311,7 @@ async function persistProjection(
       name: `q2-parity-${projectionName}`,
       repoUrl: `file:///${projectionName}`,
     }).id;
-    await new GraphPersisterService(service).persist({
+    const persistenceResult = await new GraphPersisterService(service).persist({
       store,
       workspaceRoot: snapshotRoot,
       projectId,
@@ -350,8 +352,14 @@ async function persistProjection(
         })),
     );
     const persistedKeys = new Set(persistedQ2.map((row) => row.callSiteKey));
+    const strictCallProofExclusions = (persistenceResult.strictCallProofExclusions ?? []).filter(
+      (exclusion) => exclusion.ruleSignature === Q2,
+    );
+    const excludedKeys = new Set(
+      strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+    );
     const missingQ2Persistence = [...service.q2Sites.entries()]
-      .filter(([key]) => !persistedKeys.has(key))
+      .filter(([key]) => !persistedKeys.has(key) && !excludedKeys.has(key))
       .map(([, site]) => {
         const caller = parsedResults.find(
           (result) => result.file === site.callerFilePath,
@@ -412,6 +420,7 @@ async function persistProjection(
     return {
       missingQ2PersistenceCounts,
       missingQ2PersistenceExamples: missingQ2Persistence.slice(0, 30),
+      strictCallProofExclusions,
       nodes: canonicalRows(
         nodes.map((node) => {
           const {
@@ -536,6 +545,27 @@ async function main() {
   const persistedQ2Keys = working.persistedQ2
     .map((row) => row.callSiteKey)
     .sort();
+  const proposedQ2KeySet = new Set(workingQ2Keys);
+  const persistedQ2KeySet = new Set(persistedQ2Keys);
+  const excludedQ2Keys = new Set(
+    working.strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+  );
+  const q2SilentGap = workingQ2Keys.filter(
+    (key) => !persistedQ2KeySet.has(key) && !excludedQ2Keys.has(key),
+  ).length;
+  const q2UnexpectedExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => !proposedQ2KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q2OverlappingExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => persistedQ2KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q2ExclusionReasonCounts = Object.fromEntries(
+    working.strictCallProofExclusions.reduce((counts, exclusion) => {
+      const key = `${exclusion.ruleSignature}:${exclusion.reason}`;
+      counts.set(key, (counts.get(key) ?? 0) + exclusion.count);
+      return counts;
+    }, new Map<string, number>()),
+  );
   const parsedByFile = new Map(
     parsed.parsed.map((result) => [result.file, result]),
   );
@@ -736,12 +766,21 @@ async function main() {
     q2AbstentionExamples: working.q2AbstentionExamples,
     sourceInventoryDiagnostics,
     q2PersistedResolutionRows: persistedQ2Keys.length,
+    q2CountedExclusions: working.strictCallProofExclusions.reduce(
+      (count, exclusion) => count + exclusion.count,
+      0,
+    ),
+    q2CountedExclusionReasonCounts: q2ExclusionReasonCounts,
+    q2SilentGap,
+    q2ProposalsPersistedOrCountedExcluded:
+      q2SilentGap === 0 &&
+      q2UnexpectedExclusions === 0 &&
+      q2OverlappingExclusions === 0 &&
+      persistedQ2Keys.every((key) => proposedQ2KeySet.has(key)),
     missingQ2PersistenceCounts: working.missingQ2PersistenceCounts,
     missingQ2PersistenceExamples: working.missingQ2PersistenceExamples,
     suppressedAndEnabledQ2SetMatches:
       JSON.stringify(baselineQ2Keys) === JSON.stringify(workingQ2Keys),
-    allQ2ServiceProofsPersisted:
-      JSON.stringify(workingQ2Keys) === JSON.stringify(persistedQ2Keys),
     q2SitesWithHeuristicSelection: [...working.q2Sites.values()].filter(
       (site) => site.selected !== null,
     ).length,
@@ -819,7 +858,7 @@ async function main() {
     !summary.zeroCallerOnlyChanges ||
     !summary.nonQ2HypothesisOutputsUnchanged ||
     !summary.suppressedAndEnabledQ2SetMatches ||
-    !summary.allQ2ServiceProofsPersisted ||
+    !summary.q2ProposalsPersistedOrCountedExcluded ||
     !summary.q2NoCalibrationSelections
   ) {
     throw new Error("Q2 whole-source parity invariant failed");

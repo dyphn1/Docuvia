@@ -19,6 +19,7 @@ import {
   type CallResolutionHypothesisResult,
   type ICallResolutionHypothesisService,
   type ParsedAstFileResult,
+  type StrictCallProofExclusion,
 } from "../../lib/contracts/src/index.js";
 import { AstProcessingService } from "../../lib/core/src/ast/ast-processing.service.js";
 import { AstWorkerPool } from "../../lib/core/src/ast/ast-worker-pool.js";
@@ -292,6 +293,7 @@ type Projection = {
   importCallCount: number;
   missingQ1PersistenceCounts: Record<string, number>;
   missingQ1PersistenceExamples: Array<Record<string, unknown>>;
+  strictCallProofExclusions: readonly StrictCallProofExclusion[];
 };
 
 async function persistProjection(
@@ -308,7 +310,7 @@ async function persistProjection(
       name: `q1-parity-${projectionName}`,
       repoUrl: `file:///${projectionName}`,
     }).id;
-    await new GraphPersisterService(service).persist({
+    const persistenceResult = await new GraphPersisterService(service).persist({
       store,
       workspaceRoot: snapshotRoot,
       projectId,
@@ -349,8 +351,14 @@ async function persistProjection(
         })),
     );
     const persistedKeys = new Set(persistedQ1.map((row) => row.callSiteKey));
+    const strictCallProofExclusions = (persistenceResult.strictCallProofExclusions ?? []).filter(
+      (exclusion) => exclusion.ruleSignature === Q1,
+    );
+    const excludedKeys = new Set(
+      strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+    );
     const missingQ1Persistence = [...service.q1Sites.entries()]
-      .filter(([key]) => !persistedKeys.has(key))
+      .filter(([key]) => !persistedKeys.has(key) && !excludedKeys.has(key))
       .map(([, site]) => {
         const caller = parsedResults.find(
           (result) => result.file === site.callerFilePath,
@@ -411,6 +419,7 @@ async function persistProjection(
     return {
       missingQ1PersistenceCounts,
       missingQ1PersistenceExamples: missingQ1Persistence.slice(0, 30),
+      strictCallProofExclusions,
       nodes: canonicalRows(
         nodes.map((node) => {
           const {
@@ -533,6 +542,27 @@ async function main() {
   const persistedQ1Keys = working.persistedQ1
     .map((row) => row.callSiteKey)
     .sort();
+  const proposedQ1KeySet = new Set(workingQ1Keys);
+  const persistedQ1KeySet = new Set(persistedQ1Keys);
+  const excludedQ1Keys = new Set(
+    working.strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
+  );
+  const q1SilentGap = workingQ1Keys.filter(
+    (key) => !persistedQ1KeySet.has(key) && !excludedQ1Keys.has(key),
+  ).length;
+  const q1UnexpectedExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => !proposedQ1KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q1OverlappingExclusions = working.strictCallProofExclusions.filter(
+    (exclusion) => persistedQ1KeySet.has(exclusion.callSiteKey),
+  ).length;
+  const q1ExclusionReasonCounts = Object.fromEntries(
+    working.strictCallProofExclusions.reduce((counts, exclusion) => {
+      const key = `${exclusion.ruleSignature}:${exclusion.reason}`;
+      counts.set(key, (counts.get(key) ?? 0) + exclusion.count);
+      return counts;
+    }, new Map<string, number>()),
+  );
   const parsedByFile = new Map(
     parsed.parsed.map((result) => [result.file, result]),
   );
@@ -716,12 +746,21 @@ async function main() {
     q1AbstentionExamples: working.q1AbstentionExamples,
     sourceInventoryDiagnostics,
     q1PersistedResolutionRows: persistedQ1Keys.length,
+    q1CountedExclusions: working.strictCallProofExclusions.reduce(
+      (count, exclusion) => count + exclusion.count,
+      0,
+    ),
+    q1CountedExclusionReasonCounts: q1ExclusionReasonCounts,
+    q1SilentGap,
+    q1ProposalsPersistedOrCountedExcluded:
+      q1SilentGap === 0 &&
+      q1UnexpectedExclusions === 0 &&
+      q1OverlappingExclusions === 0 &&
+      persistedQ1Keys.every((key) => proposedQ1KeySet.has(key)),
     missingQ1PersistenceCounts: working.missingQ1PersistenceCounts,
     missingQ1PersistenceExamples: working.missingQ1PersistenceExamples,
     suppressedAndEnabledQ1SetMatches:
       JSON.stringify(baselineQ1Keys) === JSON.stringify(workingQ1Keys),
-    allQ1ServiceProofsPersisted:
-      JSON.stringify(workingQ1Keys) === JSON.stringify(persistedQ1Keys),
     q1SitesWithHeuristicSelection: [...working.q1Sites.values()].filter(
       (site) => site.selected !== null,
     ).length,
@@ -793,7 +832,7 @@ async function main() {
     !everyCallDiffHasQ1Explanation ||
     !summary.nonQ1HypothesisOutputsUnchanged ||
     !summary.suppressedAndEnabledQ1SetMatches ||
-    !summary.allQ1ServiceProofsPersisted ||
+    !summary.q1ProposalsPersistedOrCountedExcluded ||
     !summary.q1NoCalibrationSelections
   ) {
     throw new Error("Q1 whole-source parity invariant failed");

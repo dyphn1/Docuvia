@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/call-resolution-hypothesis-index.ts
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-hypothesis-index.ts`
-

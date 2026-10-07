@@ -7,3 +7,4 @@ filePath: scripts/semantic-corpus/checker.mts
 # Symbol: constructor
 
 File: `scripts/semantic-corpus/checker.mts`
+s`

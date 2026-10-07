@@ -7,5 +7,4 @@ filePath: lib/core/src/graph/call-resolution-graph-persister.integration.test.ts
 # Symbol: persist
 
 File: `lib/core/src/graph/call-resolution-graph-persister.integration.test.ts`
-.ts`
-
+t.ts`

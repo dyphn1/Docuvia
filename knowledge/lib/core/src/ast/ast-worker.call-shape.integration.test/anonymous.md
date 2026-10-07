@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker.call-shape.integration.test.ts#anonymous@L74
+id: lib/core/src/ast/ast-worker.call-shape.integration.test.ts#anonymous@L39
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-worker.call-shape.integration.test.ts

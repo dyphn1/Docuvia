@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts#anonymous@L990
+id: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts#anonymous@L966
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/call-site-resolutions.integration.test.ts

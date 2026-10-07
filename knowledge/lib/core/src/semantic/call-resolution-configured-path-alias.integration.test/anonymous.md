@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/call-resolution-configured-path-alias.integratio
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-configured-path-alias.integration.test.ts`
-

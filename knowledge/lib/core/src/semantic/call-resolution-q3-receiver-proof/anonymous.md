@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts#anonymous@L781
+id: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts#anonymous@L782
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts

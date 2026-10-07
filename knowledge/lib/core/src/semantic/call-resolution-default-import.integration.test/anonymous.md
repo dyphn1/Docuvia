@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-default-import.integration.test.ts#anonymous@L99
+id: lib/core/src/semantic/call-resolution-default-import.integration.test.ts#anonymous@L17
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-default-import.integration.test.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/call-resolution-default-import.integration.test.
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-default-import.integration.test.ts`
-

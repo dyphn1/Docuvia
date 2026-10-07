@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-decision-request.ts#anonymous@L47
+id: lib/core/src/semantic/semantic-decision-request.ts#anonymous@L55
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-decision-request.ts

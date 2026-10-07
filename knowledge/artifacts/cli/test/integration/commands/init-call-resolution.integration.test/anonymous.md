@@ -7,3 +7,4 @@ filePath: artifacts/cli/test/integration/commands/init-call-resolution.integrati
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/init-call-resolution.integration.test.ts`
+

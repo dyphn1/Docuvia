@@ -5567,7 +5567,7 @@
       "lastTierBCommitSha": "fc1ed2f8ed45e38d3e7e860c9acbd2a76994f442"
     }
   ],
-  "lastIngestedSourceSha": "74f0fb778f14ae55e3464921ec40f58bdff6b78e",
+  "lastIngestedSourceSha": "5e57d3213e83d1deb7cee59cc9877cd49d9ccde6",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {
@@ -5579,6 +5579,10 @@
     },
     "callResolutions": {
       "version": 1
+    },
+    "callsProjectionCallerPolicy": {
+      "version": 1,
+      "policy": "scope-resolver-v1"
     }
   }
 }

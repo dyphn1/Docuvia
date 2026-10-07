@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/init/stamp-full-ingestion-for-tier-b.ts#anonymous@L62
+id: lib/ui-core/src/workflows/init/stamp-full-ingestion-for-tier-b.ts#anonymous@L58
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/init/stamp-full-ingestion-for-tier-b.ts

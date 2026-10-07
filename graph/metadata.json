@@ -1218,9 +1218,15 @@
     },
     {
       "filePath": "lib/contracts/src/constants/calls-projection-policy.ts",
-      "contentHash": "1803ef92a9a1d95c92856f1bf5a99e3220110154",
-      "lastTierBProcessedAt": "2026-10-07 15:09:10",
-      "lastTierBCommitSha": "e4d3f8a2f9c26554856f59ab8b6f2e242a67fe16"
+      "contentHash": "755b87027c33c0a46db2b9676d1333d8dd3fb08b",
+      "lastTierBProcessedAt": "2026-10-07 15:38:18",
+      "lastTierBCommitSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9"
+    },
+    {
+      "filePath": "lib/contracts/src/constants/calls-projection-policy.unit.test.ts",
+      "contentHash": "2c3ab9ddfa4e424a1b6161cf1b3878a250f1f608",
+      "lastTierBProcessedAt": "2026-10-07 15:38:18",
+      "lastTierBCommitSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9"
     },
     {
       "filePath": "lib/contracts/src/constants/discovery-tags.ts",
@@ -1338,9 +1344,9 @@
     },
     {
       "filePath": "lib/contracts/src/index.ts",
-      "contentHash": "30a9954de9e23011e891505e4e553997689dba10",
-      "lastTierBProcessedAt": "2026-10-07 15:09:10",
-      "lastTierBCommitSha": "e4d3f8a2f9c26554856f59ab8b6f2e242a67fe16"
+      "contentHash": "bc253af98123581af4a8271693216f5d09dc2c53",
+      "lastTierBProcessedAt": "2026-10-07 15:38:18",
+      "lastTierBCommitSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9"
     },
     {
       "filePath": "lib/contracts/src/interfaces/analyze.interfaces.ts",
@@ -2658,9 +2664,9 @@
     },
     {
       "filePath": "lib/core/src/register.ts",
-      "contentHash": "333a95e78f5b4508a6cb24428053e39c7db48991",
-      "lastTierBProcessedAt": "2026-10-07 10:14:01",
-      "lastTierBCommitSha": "fc1ed2f8ed45e38d3e7e860c9acbd2a76994f442"
+      "contentHash": "f549d582437101ac21a7e2612dba0279a9b163c3",
+      "lastTierBProcessedAt": "2026-10-07 15:38:18",
+      "lastTierBCommitSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9"
     },
     {
       "filePath": "lib/core/src/register.unit.test.ts",
@@ -3816,15 +3822,15 @@
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-workflow.ts",
-      "contentHash": "864e24906e1a750a20da321a56f2d90dfcd9fc44",
+      "contentHash": "e4a61025376f07357c90daa588af1ae6822b350a",
       "lastTierBProcessedAt": "2026-10-07 14:02:54",
       "lastTierBCommitSha": "995a2b52afca7d0212f3746e57b3c10475dc00a2"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts",
-      "contentHash": "ccae90881275a4b456e9b10bb26f9c98efed0931",
-      "lastTierBProcessedAt": "2026-10-07 14:02:54",
-      "lastTierBCommitSha": "995a2b52afca7d0212f3746e57b3c10475dc00a2"
+      "contentHash": "c254c1d8ff8c46ae015a7eccd942307764930cc5",
+      "lastTierBProcessedAt": "2026-10-07 15:38:18",
+      "lastTierBCommitSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9"
     },
     {
       "filePath": "lib/ui-core/src/workflows/analyze/anchor-resolution.ts",
@@ -5543,7 +5549,7 @@
       "lastTierBCommitSha": "fc1ed2f8ed45e38d3e7e860c9acbd2a76994f442"
     }
   ],
-  "lastIngestedSourceSha": "e4d3f8a2f9c26554856f59ab8b6f2e242a67fe16",
+  "lastIngestedSourceSha": "f4486667417aaa9539ed86ac0cd2fccdb1c570d9",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

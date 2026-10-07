@@ -58,6 +58,8 @@ export default defineConfig({
       recursive: true,
     });
 
+    // lib/ui-core's analyze workflow reads the pinned Q1 certification artifact next to its
+    // bundled code; bundling breaks that relative path just like the wasm and migrations above.
     const certificationSrc = path.join(
       import.meta.dirname,
       "../../lib/ui-core/src/workflows/analyze/q1-named-import-candidate-certification.json",

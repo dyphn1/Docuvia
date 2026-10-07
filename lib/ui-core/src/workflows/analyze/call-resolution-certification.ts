@@ -219,8 +219,16 @@ export function loadShippedQ1NamedImportCertificationArtifact(): CallResolutionC
       "utf8",
     );
     return loadQ1NamedImportCertificationArtifact(rawArtifact);
-  } catch {
-    return loadQ1NamedImportCertificationArtifact(undefined);
+  } catch (error) {
+    // Still non-authorizing, but keep the read failure visible in the batch certification event
+    // so a missing or mislocated packaged resource is diagnosable.
+    const reason = error instanceof Error ? error.message : String(error);
+    return createDecision(
+      null,
+      "missing",
+      [],
+      [`packaged certification artifact could not be read: ${reason}`],
+    );
   }
 }
 

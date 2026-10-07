@@ -1,4 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { EventEmitter } from "node:events";
+import {
+  existsSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { PassThrough } from "node:stream";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { afterAll, describe, expect, it } from "vitest";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
 import {
   SYSTEM1_EVAL_ACTIONS,
@@ -6,7 +19,11 @@ import {
   SYSTEM1_EVAL_SCORER_STATUSES,
 } from "./system1-eval-constants.js";
 import { decideSystem1Request } from "./system1-eval-policy.js";
-import { runSystem1ExternalScorerBatch } from "./system1-eval-external-scorer.js";
+import {
+  runSystem1ExternalScorerBatch,
+  teardownProcess,
+} from "./system1-eval-external-scorer.js";
+import { resolveSystem1ExternalScorerCommand } from "./system1-eval-external-scorer-command.js";
 import type { System1DatasetRecord } from "../system1-types.js";
 import type { System1EvaluationPolicy } from "./system1-eval-types.js";
 
@@ -95,7 +112,26 @@ function expectVerifyForNonOk(
 }
 
 const command = process.execPath;
-const workingDirectory = process.cwd();
+// Scorer entry points must be files inside the containment root, so each test script is written
+// into a private sandbox that serves as both root and working directory.
+const workingDirectory = realpathSync(
+  mkdtempSync(path.join(tmpdir(), "system1-scorer-root-")),
+);
+const outsideDirectory = realpathSync(
+  mkdtempSync(path.join(tmpdir(), "system1-scorer-outside-")),
+);
+let scriptCounter = 0;
+
+afterAll(() => {
+  rmSync(workingDirectory, { recursive: true, force: true });
+  rmSync(outsideDirectory, { recursive: true, force: true });
+});
+
+function writeScript(script: string, directory = workingDirectory): string {
+  const file = path.join(directory, `scorer-${scriptCounter++}.js`);
+  writeFileSync(file, script);
+  return file;
+}
 
 function run(
   states: readonly System1DatasetRecord[],
@@ -104,10 +140,30 @@ function run(
 ) {
   return runSystem1ExternalScorerBatch(states, {
     command,
-    args: ["-e", script],
+    args: [writeScript(script)],
     batchTimeoutMs,
     workingDirectory,
+    containmentRoot: workingDirectory,
   });
+}
+
+async function expectNotSpawned(options: {
+  command: string;
+  args: (marker: string) => string[];
+}): Promise<void> {
+  const marker = path.join(outsideDirectory, `spawned-${scriptCounter++}`);
+  const responses = await runSystem1ExternalScorerBatch(
+    [stateRecord("external-rejected")],
+    {
+      command: options.command,
+      args: options.args(marker),
+      batchTimeoutMs: SUBPROCESS_TEST_TIMEOUT_MS,
+      workingDirectory,
+      containmentRoot: workingDirectory,
+    },
+  );
+  expect(responses[0]?.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
+  expect(existsSync(marker)).toBe(false);
 }
 
 describe("System-1 external JSONL scorer", () => {
@@ -213,5 +269,176 @@ describe("System-1 external JSONL scorer", () => {
 
     expect(responses[0]?.status).toBe(SYSTEM1_EVAL_SCORER_STATUSES.ERROR);
     expectVerifyForNonOk(states, responses);
+  });
+
+  it("[security] rejects a non-allowlisted executable outside the root without spawning it", async () => {
+    await expectNotSpawned({
+      command: "/bin/sh",
+      args: (marker) => ["-c", `touch '${marker}'`],
+    });
+  });
+
+  it("[security] rejects inline node code (-e/--eval/-p) without spawning it", async () => {
+    for (const flag of ["-e", "--eval", "-p"]) {
+      await expectNotSpawned({
+        command,
+        args: (marker) => [
+          flag,
+          `require('node:fs').writeFileSync(${JSON.stringify(marker)}, "")`,
+        ],
+      });
+    }
+  });
+
+  it("[security] rejects a node --require preload ahead of the entry point", async () => {
+    await expectNotSpawned({
+      command,
+      args: (marker) => [
+        "--require",
+        writeScript(
+          `require('node:fs').writeFileSync(${JSON.stringify(marker)}, "")`,
+          outsideDirectory,
+        ),
+        writeScript("process.exit(0)"),
+      ],
+    });
+  });
+
+  it("[security] rejects an interpreter script outside the containment root", async () => {
+    await expectNotSpawned({
+      command,
+      args: (marker) => [
+        writeScript(
+          `require('node:fs').writeFileSync(${JSON.stringify(marker)}, "")`,
+          outsideDirectory,
+        ),
+      ],
+    });
+  });
+
+  // Creating symlinks needs elevated rights on Windows runners.
+  it.skipIf(process.platform === "win32")(
+    "[security] rejects a symlinked entry point that escapes the containment root",
+    async () => {
+      await expectNotSpawned({
+        command,
+        args: (marker) => {
+          const target = writeScript(
+            `require('node:fs').writeFileSync(${JSON.stringify(marker)}, "")`,
+            outsideDirectory,
+          );
+          const link = path.join(
+            workingDirectory,
+            `link-${scriptCounter++}.js`,
+          );
+          symlinkSync(target, link);
+          return [link];
+        },
+      });
+    },
+  );
+});
+
+describe("System-1 external scorer command validation", () => {
+  const entryPoint = writeScript("process.exit(0)");
+  const base = {
+    command,
+    args: [path.basename(entryPoint), "--scorer-flag"],
+    workingDirectory,
+    containmentRoot: workingDirectory,
+  };
+
+  it("[happy] canonicalizes a relative entry point inside the root and keeps scorer arguments", () => {
+    expect(resolveSystem1ExternalScorerCommand(base)?.args).toEqual([
+      entryPoint,
+      "--scorer-flag",
+    ]);
+  });
+
+  it("[happy] resolves a bare allowlisted interpreter through PATH", () => {
+    expect(
+      resolveSystem1ExternalScorerCommand({ ...base, command: "node" })
+        ?.executable,
+    ).toMatch(/node(\.exe)?$/i);
+  });
+
+  it("[security] strips NODE_OPTIONS from the scorer environment", () => {
+    const previous = process.env.NODE_OPTIONS;
+    process.env.NODE_OPTIONS = "--require /tmp/evil.js";
+    try {
+      expect(
+        resolveSystem1ExternalScorerCommand(base)?.env.NODE_OPTIONS,
+      ).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.NODE_OPTIONS;
+      else process.env.NODE_OPTIONS = previous;
+    }
+  });
+
+  it("[security] rejects relative commands, unknown names, inline code, missing entry points and NUL bytes", () => {
+    for (const input of [
+      { ...base, command: "./node" },
+      { ...base, command: "../bin/node" },
+      { ...base, command: "sh" },
+      { ...base, command: "" },
+      { ...base, args: [] },
+      { ...base, args: ["-e", "1"] },
+      { ...base, command: "python3", args: ["-c", "print(1)"] },
+      { ...base, args: ["missing.js"] },
+      { ...base, args: [path.basename(entryPoint), "ok\0bad"] },
+    ]) {
+      expect(resolveSystem1ExternalScorerCommand(input)).toBeNull();
+    }
+  });
+
+  it("[security] rejects a working directory outside the containment root", () => {
+    expect(
+      resolveSystem1ExternalScorerCommand({
+        ...base,
+        workingDirectory: outsideDirectory,
+      }),
+    ).toBeNull();
+    expect(
+      resolveSystem1ExternalScorerCommand({
+        ...base,
+        workingDirectory: path.join(workingDirectory, "does-not-exist"),
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("System-1 external scorer teardown", () => {
+  it("[resource] removes listeners, destroys stdio and unrefs the child", () => {
+    const child = new EventEmitter() as EventEmitter & {
+      stdin: PassThrough;
+      stdout: PassThrough;
+      stderr: PassThrough;
+      pid: undefined;
+      exitCode: number;
+      signalCode: null;
+      unrefCalls: number;
+      unref: () => void;
+    };
+    child.stdin = new PassThrough();
+    child.stdout = new PassThrough();
+    child.stderr = new PassThrough();
+    child.pid = undefined;
+    child.exitCode = 0;
+    child.signalCode = null;
+    child.unrefCalls = 0;
+    child.unref = () => {
+      child.unrefCalls++;
+    };
+    child.on("close", () => undefined);
+    child.stdout.on("data", () => undefined);
+
+    teardownProcess(child as unknown as ChildProcessWithoutNullStreams);
+
+    expect(child.listenerCount("close")).toBe(0);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+    for (const stream of [child.stdin, child.stdout, child.stderr]) {
+      expect(stream.destroyed).toBe(true);
+    }
+    expect(child.unrefCalls).toBe(1);
   });
 });

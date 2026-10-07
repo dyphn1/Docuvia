@@ -41,6 +41,8 @@ export const SchemaTables = {
   CALL_SITE_RESOLUTION_DEPENDENCIES: "call_site_resolution_dependencies",
   CALL_SITE_RESOLUTION_OBSERVATIONS: "call_site_resolution_observations",
   CALL_SITE_RULE_QUARANTINES: "call_site_rule_quarantines",
+  CALL_SITE_RULE_QUARANTINE_CLEAR_AUDITS:
+    "call_site_rule_quarantine_clear_audits",
 } as const;
 
 /**

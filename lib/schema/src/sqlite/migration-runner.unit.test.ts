@@ -126,6 +126,26 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "expected_target_node_key",
     "observed_target_node_key",
     "created_at",
+    "rule_configuration_sha256",
+  ],
+  call_site_rule_quarantine_clear_audits: [
+    "id",
+    "project_id",
+    "rule_signature",
+    "quarantine_policy_version",
+    "quarantine_reason",
+    "quarantine_call_site_key",
+    "quarantine_source_content_hash",
+    "expected_target_node_key",
+    "observed_target_node_key",
+    "quarantine_created_at",
+    "cleared_at",
+    "clear_method",
+    "evidence_sha256",
+    "operator",
+    "reason",
+    "previous_rule_configuration_sha256",
+    "new_rule_configuration_sha256",
   ],
 };
 
@@ -189,6 +209,37 @@ const EXPECTED_COLUMN_TYPES: Record<string, Record<string, string>> = {
     call_site_key: "TEXT",
     dependency_path: "TEXT",
     content_hash: "TEXT",
+  },
+  call_site_rule_quarantines: {
+    project_id: "INTEGER",
+    rule_signature: "TEXT",
+    policy_version: "TEXT",
+    reason: "TEXT",
+    call_site_key: "TEXT",
+    source_content_hash: "TEXT",
+    expected_target_node_key: "TEXT",
+    observed_target_node_key: "TEXT",
+    created_at: "TEXT",
+    rule_configuration_sha256: "TEXT",
+  },
+  call_site_rule_quarantine_clear_audits: {
+    id: "INTEGER",
+    project_id: "INTEGER",
+    rule_signature: "TEXT",
+    quarantine_policy_version: "TEXT",
+    quarantine_reason: "TEXT",
+    quarantine_call_site_key: "TEXT",
+    quarantine_source_content_hash: "TEXT",
+    expected_target_node_key: "TEXT",
+    observed_target_node_key: "TEXT",
+    quarantine_created_at: "TEXT",
+    cleared_at: "TEXT",
+    clear_method: "TEXT",
+    evidence_sha256: "TEXT",
+    operator: "TEXT",
+    reason: "TEXT",
+    previous_rule_configuration_sha256: "TEXT",
+    new_rule_configuration_sha256: "TEXT",
   },
 };
 
@@ -311,6 +362,7 @@ describe("applyMigrations", () => {
       "0015_call_site_rule_quarantines.sql",
       "0016_call_site_projection_callers.sql",
       "0017_verified_call_site_targets.sql",
+      "0018_call_site_rule_quarantine_recertification.sql",
     ]);
   });
 
@@ -373,7 +425,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(17);
+    expect(migrationRows).toHaveLength(18);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);
@@ -536,7 +588,8 @@ describe("applyMigrations", () => {
     expect(
       db
         .prepare(
-          `SELECT rule_signature, reason, observed_target_node_key
+          `SELECT rule_signature, reason, observed_target_node_key,
+                  rule_configuration_sha256
            FROM call_site_rule_quarantines WHERE project_id = ?`,
         )
         .all(projectId),
@@ -545,6 +598,7 @@ describe("applyMigrations", () => {
         rule_signature: "other-rule-v1",
         reason: "tier-b-target-mismatch",
         observed_target_node_key: "src/observed.ts#run",
+        rule_configuration_sha256: null,
       },
     ]);
     expect(db.pragma("foreign_key_check")).toEqual([]);

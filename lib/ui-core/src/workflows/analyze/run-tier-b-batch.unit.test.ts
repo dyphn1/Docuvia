@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   CALL_SITE_VERIFICATION_POLICY_VERSION,
+  CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
   docuviaFactory,
   TOKENS,
   resetFactoryForTests,
@@ -491,19 +492,23 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
         selectedCallSiteKeysByRuleSignature: {},
         ruleOverriddenCallSiteKeysByRuleSignature: {},
       });
-      expect(applyTierBVerificationResults).toHaveBeenCalledWith(1, [
-        {
-          callSiteKey,
-          sourceContentHash,
-          ruleSignature: "unresolved-rule-v1",
-          verificationPolicyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
-          expectedTargetNodeKey: null,
-          resolutionClass: "unresolved",
-          verificationMode: "tier-b",
-          outcome: "unique-local",
-          targetNodeKey: "targets.ts#run",
-        },
-      ]);
+      expect(applyTierBVerificationResults).toHaveBeenCalledWith(
+        1,
+        [
+          {
+            callSiteKey,
+            sourceContentHash,
+            ruleSignature: "unresolved-rule-v1",
+            verificationPolicyVersion: CALL_SITE_VERIFICATION_POLICY_VERSION,
+            expectedTargetNodeKey: null,
+            resolutionClass: "unresolved",
+            verificationMode: "tier-b",
+            outcome: "unique-local",
+            targetNodeKey: "targets.ts#run",
+          },
+        ],
+        CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
+      );
     } finally {
       fs.rmSync(workspaceRoot, { recursive: true, force: true });
     }
@@ -1256,6 +1261,7 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
       expect(applyTierBVerificationResults).toHaveBeenCalledWith(
         1,
         expectedResults,
+        CALL_RESOLUTION_RULE_CONFIGURATION_SHA256,
       );
     } finally {
       fs.rmSync(workspaceRoot, { recursive: true, force: true });

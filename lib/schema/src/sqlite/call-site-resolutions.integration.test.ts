@@ -484,6 +484,236 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toEqual([1, 1, 1, 1]);
   });
 
+  it("[happy][state-diff] clears a quarantine with newer certification evidence and keeps an idempotent audit", () => {
+    const ruleSignature = "recertified-rule-v1";
+    const callSiteKey = portableKey("certification-clear");
+    const previousConfigSha256 = "a".repeat(64);
+    const newConfigSha256 = "b".repeat(64);
+    const result = mismatchResult(callSiteKey, ruleSignature);
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], { ruleSignature }),
+    ]);
+    store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      [result],
+      previousConfigSha256,
+    );
+
+    const quarantine =
+      store.callSiteResolutions.getRuleQuarantines(projectId)[0];
+    expect(quarantine?.ruleConfigurationSha256).toBe(previousConfigSha256);
+    const request = {
+      newRuleConfigurationSha256: newConfigSha256,
+      evidence: {
+        kind: "certification" as const,
+        evidenceSha256: "c".repeat(64),
+        resultsRecordedAt: new Date(
+          Date.parse(`${quarantine!.createdAt.replace(" ", "T")}Z`) + 1_000,
+        ).toISOString(),
+      },
+    };
+
+    const cleared = store.callSiteResolutions.clearRuleQuarantine(
+      projectId,
+      ruleSignature,
+      request,
+    );
+    const repeated = store.callSiteResolutions.clearRuleQuarantine(
+      projectId,
+      ruleSignature,
+      request,
+    );
+
+    expect(cleared.status).toBe("cleared");
+    expect(repeated.status).toBe("already-cleared");
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantineClearAudits(projectId),
+    ).toMatchObject([
+      {
+        ruleSignature,
+        method: "certification",
+        evidenceSha256: "c".repeat(64),
+        previousRuleConfigurationSha256: previousConfigSha256,
+        newRuleConfigurationSha256: newConfigSha256,
+      },
+    ]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantineClearAudits(projectId),
+    ).toHaveLength(1);
+  });
+
+  it("[invalid-input][error-handling] rejects stale or same-hash clear evidence without changing quarantine state", () => {
+    const ruleSignature = "stale-recertification-rule-v1";
+    const callSiteKey = portableKey("stale-certification-clear");
+    const previousConfigSha256 = "d".repeat(64);
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], { ruleSignature }),
+    ]);
+    store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      [mismatchResult(callSiteKey, ruleSignature)],
+      previousConfigSha256,
+    );
+
+    const quarantine =
+      store.callSiteResolutions.getRuleQuarantines(projectId)[0];
+    expect(() =>
+      store.callSiteResolutions.clearRuleQuarantine(projectId, ruleSignature, {
+        newRuleConfigurationSha256: "e".repeat(64),
+        evidence: {
+          kind: "certification",
+          evidenceSha256: "f".repeat(64),
+          resultsRecordedAt: new Date(
+            Date.parse(quarantine!.createdAt) - 1_000,
+          ).toISOString(),
+        },
+      }),
+    ).toThrow(/newer than the quarantine/);
+    expect(() =>
+      store.callSiteResolutions.clearRuleQuarantine(projectId, ruleSignature, {
+        newRuleConfigurationSha256: previousConfigSha256,
+        evidence: {
+          kind: "operator",
+          operator: "operator-1",
+          reason: "same configuration",
+        },
+      }),
+    ).toThrow(/configuration hash must change/);
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([ruleSignature]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantineClearAudits(projectId),
+    ).toEqual([]);
+  });
+
+  it("[happy][state-diff] allows a later contradiction to re-quarantine a cleared signature", () => {
+    const ruleSignature = "repeat-contradiction-rule-v1";
+    const callSiteKey = portableKey("repeat-contradiction");
+    const previousConfigSha256 = "1".repeat(64);
+    const newConfigSha256 = "2".repeat(64);
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], { ruleSignature }),
+    ]);
+    store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      [mismatchResult(callSiteKey, ruleSignature)],
+      previousConfigSha256,
+    );
+    const quarantine =
+      store.callSiteResolutions.getRuleQuarantines(projectId)[0];
+    store.callSiteResolutions.clearRuleQuarantine(projectId, ruleSignature, {
+      newRuleConfigurationSha256: newConfigSha256,
+      evidence: {
+        kind: "operator",
+        operator: "maintainer@example.test",
+        reason: "fixed and locally recertified",
+      },
+    });
+
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], { ruleSignature }),
+    ]);
+    store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      [mismatchResult(callSiteKey, ruleSignature)],
+      newConfigSha256,
+    );
+
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([ruleSignature]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantines(projectId)[0],
+    ).toMatchObject({
+      ruleSignature,
+      ruleConfigurationSha256: newConfigSha256,
+    });
+    expect(
+      store.callSiteResolutions.getRuleQuarantineClearAudits(projectId),
+    ).toMatchObject([
+      {
+        ruleSignature,
+        previousRuleConfigurationSha256: previousConfigSha256,
+        newRuleConfigurationSha256: newConfigSha256,
+      },
+    ]);
+    expect(quarantine?.ruleConfigurationSha256).toBe(previousConfigSha256);
+  });
+
+  it("[stress] clears 256 independent signatures without dropping audit history", () => {
+    const previousConfigSha256 = "3".repeat(64);
+    const newConfigSha256 = "4".repeat(64);
+    const count = 256;
+    const resolutions = Array.from({ length: count }, (_, index) =>
+      resolution(portableKey(`stress-clear-${index}`), [], {
+        ruleSignature: `stress-rule-${index}`,
+      }),
+    );
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      resolutions,
+    );
+    store.callSiteResolutions.applyTierBVerificationResults(
+      projectId,
+      resolutions.map((row) =>
+        mismatchResult(row.callSiteKey, row.ruleSignature),
+      ),
+      previousConfigSha256,
+    );
+
+    for (const row of resolutions) {
+      store.callSiteResolutions.clearRuleQuarantine(
+        projectId,
+        row.ruleSignature,
+        {
+          newRuleConfigurationSha256: newConfigSha256,
+          evidence: {
+            kind: "operator",
+            operator: "stress-test",
+            reason: "stress clear",
+          },
+        },
+      );
+    }
+
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([]);
+    expect(
+      store.callSiteResolutions.getRuleQuarantineClearAudits(projectId),
+    ).toHaveLength(count);
+  });
+
+  it("[invalid-input] keeps legacy quarantines with unknown configuration hashes fail-closed", () => {
+    const ruleSignature = "legacy-quarantine-rule-v1";
+    const callSiteKey = portableKey("legacy-quarantine");
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(callSiteKey, [], { ruleSignature }),
+    ]);
+    store.callSiteResolutions.applyTierBVerificationResults(projectId, [
+      mismatchResult(callSiteKey, ruleSignature),
+    ]);
+
+    expect(() =>
+      store.callSiteResolutions.clearRuleQuarantine(projectId, ruleSignature, {
+        newRuleConfigurationSha256: "5".repeat(64),
+        evidence: {
+          kind: "operator",
+          operator: "maintainer",
+          reason: "legacy row",
+        },
+      }),
+    ).toThrow(/historical configuration hash is unavailable/);
+    expect(
+      store.callSiteResolutions.getQuarantinedRuleSignatures(projectId),
+    ).toEqual([ruleSignature]);
+  });
+
   it("[error-handling] rolls back signature quarantine, observations and projection together", () => {
     const callerId = store.graph.insertNode({
       projectId,
@@ -1781,4 +2011,21 @@ function siteKey(
     calleeKind: "bare",
     calleeName: "run",
   });
+}
+
+function mismatchResult(
+  callSiteKey: string,
+  ruleSignature: string,
+): CallSiteLspResolutionResult {
+  return {
+    callSiteKey,
+    sourceContentHash: "d".repeat(64),
+    ruleSignature,
+    verificationPolicyVersion: "sha256-callsite-rule-v2",
+    expectedTargetNodeKey: "src/target.ts#run",
+    resolutionClass: "proven",
+    verificationMode: "tier-b",
+    outcome: "unique-local",
+    targetNodeKey: "src/observed.ts#run",
+  };
 }

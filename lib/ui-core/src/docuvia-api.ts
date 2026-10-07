@@ -7,6 +7,9 @@ import {
   type MemoryKey,
   type EdgeResolutionProviderConfig,
   type EdgeResolutionAvailability,
+  type CallResolutionQuarantineClearEvidenceInput,
+  type CallResolutionQuarantineListResult,
+  type CallSiteRuleQuarantineClearResult,
 } from "@workspace/contracts";
 import { DOCUVIA_API_MESSAGES } from "./constants/docuvia-api-messages.js";
 import { InitWorkflow } from "./workflows/init/init-workflow.js";
@@ -55,6 +58,7 @@ import type { HookName, HooksConfig } from "@workspace/contracts";
 import { stagePendingDecisions } from "./workflows/analyze/pending-l3-decisions-store.js";
 import { ANALYZE_MESSAGES } from "./workflows/analyze/analyze-messages.js";
 import { resolveExistingPathWithinWorkspace } from "./utils/is-path-within-workspace.js";
+import { CallResolutionQuarantineWorkflow } from "./workflows/analyze/call-resolution-quarantine-workflow.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -131,6 +135,35 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     return new StatusWorkflow(workspaceRoot, logger).execute();
+  },
+
+  async listCallResolutionQuarantines(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<CallResolutionQuarantineListResult> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return new CallResolutionQuarantineWorkflow().list(workspaceRoot, logger);
+  },
+
+  async clearCallResolutionQuarantine(
+    scopeId: string,
+    logger: ILogger,
+    ruleSignature: string,
+    evidence: CallResolutionQuarantineClearEvidenceInput,
+  ): Promise<CallSiteRuleQuarantineClearResult> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return new CallResolutionQuarantineWorkflow().clear(
+      workspaceRoot,
+      logger,
+      ruleSignature,
+      evidence,
+    );
   },
 
   /**

@@ -83,6 +83,22 @@ export interface ExpectedCertificationInputs {
   temporal: TemporalCertificationTrackIdentity;
 }
 
+export function parseExpectedCertificationInputsJson(
+  rawJson: string,
+): ExpectedCertificationInputs | undefined {
+  let value: unknown;
+  try {
+    value = JSON.parse(rawJson) as unknown;
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(value) || !isSha256(value.artifactSha256)) return undefined;
+  const inputs = parseInputs(value);
+  return inputs
+    ? { artifactSha256: value.artifactSha256, ...inputs }
+    : undefined;
+}
+
 export interface UnpromotedCertificationSignature {
   ruleSignature: string;
   newFamilyReasons: readonly string[];
@@ -97,7 +113,18 @@ export interface CallResolutionCertificationDecision {
   unpromotedSignatures: readonly UnpromotedCertificationSignature[];
 }
 
+export interface TrustedCallResolutionCertificationEvidence {
+  artifactSha256: string;
+  implementationCommitSha: string;
+  ruleConfigurationSha256: string;
+  resultsRecordedAt: string;
+}
+
 const certificationMembership = new WeakMap<object, ReadonlySet<string>>();
+const certificationEvidence = new WeakMap<
+  object,
+  TrustedCallResolutionCertificationEvidence
+>();
 
 export function loadCallResolutionCertificationArtifact(
   rawArtifact: string | undefined,
@@ -127,7 +154,7 @@ export function loadCallResolutionCertificationArtifact(
   const provenanceErrors = validateArtifactProvenance(artifact, expected);
   if (provenanceErrors.length > 0)
     return createDecision(artifactSha256, "rejected", [], provenanceErrors);
-  return decisionFromSignatures(artifactSha256, artifact.signatures);
+  return decisionFromSignatures(artifactSha256, artifact, artifact.signatures);
 }
 
 export function isCertificationDecisionTrusted(
@@ -150,6 +177,16 @@ export function isRuleSignatureCertified(
   );
 }
 
+/** Returns the loader-validated evidence only for a signature that cleared both certification
+ *  tracks. Cloned or caller-constructed decision objects are rejected by the private WeakMap. */
+export function getTrustedCallResolutionCertificationEvidence(
+  decision: unknown,
+  ruleSignature: string,
+): TrustedCallResolutionCertificationEvidence | undefined {
+  if (!isRuleSignatureCertified(decision, ruleSignature)) return undefined;
+  return certificationEvidence.get(decision as object);
+}
+
 function createDecision(
   artifactSha256: string | null,
   status: CallResolutionCertificationDecision["status"],
@@ -157,6 +194,7 @@ function createDecision(
   rejectionReasons: readonly string[],
   membership = new Set<string>(),
   unpromotedSignatures: readonly UnpromotedCertificationSignature[] = [],
+  trustedEvidence?: TrustedCallResolutionCertificationEvidence,
 ): CallResolutionCertificationDecision {
   const decision = Object.freeze({
     artifactSha256,
@@ -166,6 +204,9 @@ function createDecision(
     unpromotedSignatures: Object.freeze([...unpromotedSignatures]),
   });
   certificationMembership.set(decision, membership);
+  if (trustedEvidence) {
+    certificationEvidence.set(decision, Object.freeze({ ...trustedEvidence }));
+  }
   return decision;
 }
 
@@ -209,6 +250,7 @@ function parseArtifactJson(
 
 function decisionFromSignatures(
   artifactSha256: string,
+  artifact: CallResolutionCertificationArtifact,
   signatures: CallResolutionCertificationArtifact["signatures"],
 ): CallResolutionCertificationDecision {
   const seen = new Set<string>();
@@ -241,6 +283,12 @@ function decisionFromSignatures(
     [],
     certified,
     unpromoted,
+    {
+      artifactSha256,
+      implementationCommitSha: artifact.inputs.implementationCommitSha,
+      ruleConfigurationSha256: artifact.inputs.ruleConfigurationSha256,
+      resultsRecordedAt: artifact.resultsRecordedAt,
+    },
   );
 }
 

@@ -39,6 +39,7 @@
   - [uninstall](user-guide/cli/uninstall.md)
   - [doctor](user-guide/cli/doctor.md)
   - [hooks](user-guide/cli/hooks.md)
+  - [call-resolution](user-guide/cli/call-resolution.md)
 - [Comment-Triggered Analysis](user-guide/comment-trigger.md)
 
 ## 📋 Architecture Decision Records
@@ -52,6 +53,7 @@
   - [Semantic decision Phase 1 collection](analysis/semantic-decision-phase1-collection.md)
   - [Semantic decision Phase 2 System-1 encoding](analysis/semantic-decision-phase2-system1-encoding.md)
   - [Semantic decision Phase 2 System-1 offline evaluation](analysis/semantic-decision-phase2-system1-eval.md)
+  - [Tiered Call Resolution Quarantine Recertification](analysis/tiered-call-resolution-quarantine-recertification.md)
   - [Semantic decision Phase 3 CUA-S1 option scoring](analysis/semantic-decision-phase2-system1-cua-s1.md)
   - [Semantic decision Phase 4 Laya capability baseline and resource envelope](analysis/semantic-decision-phase2-system1-laya.md)
   - [Semantic decision System-1 deterministic query routing](analysis/semantic-decision-phase2-system1-query-routing.md)

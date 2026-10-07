@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CALL_RESOLUTION_CERTIFICATION_ARTIFACT_SCHEMA_VERSION,
   isRuleSignatureCertified,
+  getTrustedCallResolutionCertificationEvidence,
   loadCallResolutionCertificationArtifact,
   type CallResolutionCertificationArtifact,
   type ExpectedCertificationInputs,
@@ -88,6 +89,48 @@ describe("one-shot call-resolution certification artifact", () => {
 
     expect(decision).toMatchObject({ status: "loaded", rejectionReasons: [] });
     expect(decision.certifiedRuleSignatures).toEqual(["strict-proof-v1"]);
+  });
+
+  it("[happy][state-diff] exposes hash and timestamp only for a trusted certified signature", () => {
+    const raw = artifactBytes();
+    const decision = loadCallResolutionCertificationArtifact(
+      raw,
+      expectedFor(raw),
+    );
+
+    expect(
+      getTrustedCallResolutionCertificationEvidence(
+        decision,
+        "strict-proof-v1",
+      ),
+    ).toEqual({
+      artifactSha256: createHash("sha256").update(raw).digest("hex"),
+      implementationCommitSha: frozenInputs.implementationCommitSha,
+      ruleConfigurationSha256: frozenInputs.ruleConfigurationSha256,
+      resultsRecordedAt: "2026-01-03T00:00:00.000Z",
+    });
+  });
+
+  it("[invalid-input][error-handling] rejects a copied or untrusted certification decision", () => {
+    const raw = artifactBytes();
+    const decision = loadCallResolutionCertificationArtifact(
+      raw,
+      expectedFor(raw),
+    );
+    const copiedDecision = { ...decision };
+
+    expect(
+      getTrustedCallResolutionCertificationEvidence(
+        copiedDecision,
+        "strict-proof-v1",
+      ),
+    ).toBeUndefined();
+    expect(
+      getTrustedCallResolutionCertificationEvidence(
+        { ...decision, artifactSha256: "0".repeat(64) },
+        "strict-proof-v1",
+      ),
+    ).toBeUndefined();
   });
 
   it("[invalid-input][error-handling] returns an empty decision without an external artifact pin", () => {

@@ -23,6 +23,7 @@ export const CLI_COMMANDS = {
   UNINSTALL: "uninstall",
   DOCTOR: "doctor",
   HOOKS: "hooks",
+  CALL_RESOLUTION: "call-resolution",
 } as const;
 
 export type CliCommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];
@@ -53,6 +54,8 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.DOCTOR]: "Run diagnostic checks on Docuvia2 setup",
   [CLI_COMMANDS.HOOKS]:
     "List/enable/disable Docuvia's automation hooks (context-injection, commit-l3-write, tier-b-c-prepush)",
+  [CLI_COMMANDS.CALL_RESOLUTION]:
+    "Inspect and clear local call-resolution rule quarantines",
 };
 
 /**
@@ -127,6 +130,12 @@ export const CLI_COMMAND_FLAGS: Record<CliCommand, string[]> = {
   // `list`/`enable`/`disable`/`check` and the hook name are positionals (mirrors how
   // `impact`/`publish`/`review` already treat position(0) as their one argument) -- no flags.
   [CLI_COMMANDS.HOOKS]: [],
+  [CLI_COMMANDS.CALL_RESOLUTION]: [
+    CLI_FLAGS.OPERATOR,
+    CLI_FLAGS.REASON,
+    CLI_FLAGS.ARTIFACT,
+    CLI_FLAGS.TRUSTED_INPUTS,
+  ],
 };
 
 export function getUsageText(): string {

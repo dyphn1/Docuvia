@@ -21,6 +21,9 @@ import type {
   CallSiteResolutionProjectionCallerInput,
   CallSiteLspResolutionResult,
   CallSiteRuleQuarantine,
+  CallSiteRuleQuarantineClearAudit,
+  CallSiteRuleQuarantineClearRequest,
+  CallSiteRuleQuarantineClearResult,
   CallSiteVerificationApplyResult,
   CallSiteResolutionObservationSource,
   CallSiteVerificationStatus,
@@ -47,11 +50,22 @@ const CALL_SITE_RESOLUTIONS_ERRORS = {
     `Failed to apply Tier B verification results for project ${projectId}`,
   READ_RULE_QUARANTINES_FAILED: (projectId: number) =>
     `Failed to read call-site rule quarantines for project ${projectId}`,
+  READ_RULE_QUARANTINE_AUDITS_FAILED: (projectId: number) =>
+    `Failed to read call-site rule quarantine clear audits for project ${projectId}`,
+  CLEAR_RULE_QUARANTINE_FAILED: (projectId: number, ruleSignature: string) =>
+    `Failed to clear call-site rule quarantine ${ruleSignature} in project ${projectId}`,
   READ_PROJECT_FAILED: (projectId: number) =>
     `Failed to read portable call-site resolutions for project ${projectId}`,
   REPLACE_PROJECT_FAILED: (projectId: number) =>
     `Failed to replace portable call-site resolutions for project ${projectId}`,
 } as const;
+
+const QUARANTINE_CLEAR_AUDIT_COLUMNS = `id, rule_signature,
+  quarantine_policy_version, quarantine_reason, quarantine_call_site_key,
+  quarantine_source_content_hash, expected_target_node_key,
+  observed_target_node_key, quarantine_created_at, cleared_at, clear_method,
+  evidence_sha256, operator, reason, previous_rule_configuration_sha256,
+  new_rule_configuration_sha256`;
 
 interface ResolutionDbRow {
   call_site_key: string;
@@ -89,6 +103,38 @@ interface ObservationDbRow {
   rule_signature: string | null;
   evidence_json: string;
   created_at: string;
+}
+
+interface QuarantineDbRow {
+  project_id: number;
+  rule_signature: string;
+  policy_version: string;
+  reason: CallSiteRuleQuarantine["reason"];
+  call_site_key: string;
+  source_content_hash: string;
+  expected_target_node_key: string;
+  observed_target_node_key: string;
+  rule_configuration_sha256: string | null;
+  created_at: string;
+}
+
+interface QuarantineClearAuditDbRow {
+  id: number;
+  rule_signature: string;
+  quarantine_policy_version: string;
+  quarantine_reason: CallSiteRuleQuarantine["reason"];
+  quarantine_call_site_key: string;
+  quarantine_source_content_hash: string;
+  expected_target_node_key: string;
+  observed_target_node_key: string;
+  quarantine_created_at: string;
+  cleared_at: string;
+  clear_method: CallSiteRuleQuarantineClearAudit["method"];
+  evidence_sha256: string | null;
+  operator: string | null;
+  reason: string | null;
+  previous_rule_configuration_sha256: string;
+  new_rule_configuration_sha256: string;
 }
 
 interface DependencyDbRow {
@@ -583,15 +629,19 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
   applyTierBVerificationResults(
     projectId: number,
     results: CallSiteLspResolutionResult[],
+    ruleConfigurationSha256?: string,
   ): CallSiteVerificationApplyResult {
     assertProjectId(projectId);
     validateTierBResults(results);
+    if (ruleConfigurationSha256 !== undefined)
+      assertHash(ruleConfigurationSha256, "rule configuration hash");
     try {
       return applyTierBVerificationResultsTransaction(
         this.db,
         this,
         projectId,
         results,
+        ruleConfigurationSha256 ?? null,
       );
     } catch (err) {
       throw DocuviaError.wrap(
@@ -616,7 +666,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
         .prepare(
           `SELECT rule_signature, policy_version, reason, call_site_key,
                   source_content_hash, expected_target_node_key,
-                  observed_target_node_key, created_at
+                  observed_target_node_key, rule_configuration_sha256, created_at
            FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES}
            WHERE project_id = ? ORDER BY rule_signature COLLATE BINARY`,
         )
@@ -628,6 +678,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
         source_content_hash: string;
         expected_target_node_key: string;
         observed_target_node_key: string;
+        rule_configuration_sha256: string | null;
         created_at: string;
       }>;
       return rows.map((row) => ({
@@ -638,12 +689,75 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
         sourceContentHash: row.source_content_hash,
         expectedTargetNodeKey: row.expected_target_node_key,
         observedTargetNodeKey: row.observed_target_node_key,
+        ruleConfigurationSha256: row.rule_configuration_sha256,
         createdAt: row.created_at,
       }));
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.READ_RULE_QUARANTINES_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  getRuleQuarantineClearAudits(
+    projectId: number,
+  ): CallSiteRuleQuarantineClearAudit[] {
+    assertProjectId(projectId);
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT id, rule_signature, quarantine_policy_version,
+                  quarantine_reason, quarantine_call_site_key,
+                  quarantine_source_content_hash, expected_target_node_key,
+                  observed_target_node_key, quarantine_created_at, cleared_at,
+                  clear_method, evidence_sha256, operator, reason,
+                  previous_rule_configuration_sha256,
+                  new_rule_configuration_sha256
+           FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINE_CLEAR_AUDITS}
+           WHERE project_id = ?
+           ORDER BY id DESC`,
+        )
+        .all(projectId) as QuarantineClearAuditDbRow[];
+      return rows.map(mapQuarantineClearAudit);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.READ_RULE_QUARANTINE_AUDITS_FAILED(
+          projectId,
+        ),
+        err,
+      );
+    }
+  }
+
+  clearRuleQuarantine(
+    projectId: number,
+    ruleSignature: string,
+    request: CallSiteRuleQuarantineClearRequest,
+  ): CallSiteRuleQuarantineClearResult {
+    assertProjectId(projectId);
+    validateQuarantineClearRequest(ruleSignature, request);
+    try {
+      return this.db
+        .transaction(() =>
+          clearRuleQuarantineInTransaction(
+            this.db,
+            projectId,
+            ruleSignature,
+            request,
+          ),
+        )
+        .immediate();
+    } catch (err) {
+      if (err instanceof DocuviaError) throw err;
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.CLEAR_RULE_QUARANTINE_FAILED(
+          projectId,
+          ruleSignature,
+        ),
         err,
       );
     }
@@ -864,6 +978,7 @@ function applyTierBVerificationResultsTransaction(
   repo: CallSiteResolutionsRepo,
   projectId: number,
   results: CallSiteLspResolutionResult[],
+  ruleConfigurationSha256: string | null,
 ): CallSiteVerificationApplyResult {
   const findResolution = db.prepare<[number, string], VerificationDbRow>(
     `SELECT call_site_key, file_path, source_content_hash, resolution_class,
@@ -886,6 +1001,7 @@ function applyTierBVerificationResultsTransaction(
           projectId,
           result,
           state,
+          ruleConfigurationSha256,
         );
       }
       for (const filePath of state.affectedFilePaths) {
@@ -907,6 +1023,7 @@ function applyOneTierBVerificationResult(
   projectId: number,
   result: CallSiteLspResolutionResult,
   state: TierBApplyState,
+  ruleConfigurationSha256: string | null,
 ): void {
   const current = findEligibleResolution(findResolution, projectId, result);
   if (!current) return;
@@ -928,6 +1045,7 @@ function applyOneTierBVerificationResult(
       result,
       evidenceJson,
       state,
+      ruleConfigurationSha256,
     );
     return;
   }
@@ -974,6 +1092,7 @@ function quarantineTierBSignature(
   result: Extract<CallSiteLspResolutionResult, { outcome: "unique-local" }>,
   evidenceJson: string,
   state: TierBApplyState,
+  ruleConfigurationSha256: string | null,
 ): void {
   const signatureFiles = db
     .prepare(
@@ -989,8 +1108,9 @@ function quarantineTierBSignature(
     .prepare(
       `INSERT OR IGNORE INTO ${SchemaTables.CALL_SITE_RULE_QUARANTINES} (
         project_id, rule_signature, policy_version, reason, call_site_key,
-        source_content_hash, expected_target_node_key, observed_target_node_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        source_content_hash, expected_target_node_key, observed_target_node_key,
+        rule_configuration_sha256
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       projectId,
@@ -1001,6 +1121,7 @@ function quarantineTierBSignature(
       current.source_content_hash,
       result.expectedTargetNodeKey,
       result.targetNodeKey,
+      ruleConfigurationSha256,
     ).changes;
   db.prepare(
     `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS}
@@ -1449,6 +1570,280 @@ function assertHash(value: string, name: string): void {
   if (typeof value !== "string" || !/^[a-f0-9]{64}$/.test(value)) {
     throw invalidInput(`${name} must be a lowercase SHA-256 hex digest`);
   }
+}
+
+function validateQuarantineClearRequest(
+  ruleSignature: string,
+  request: CallSiteRuleQuarantineClearRequest,
+): void {
+  assertNonEmpty(ruleSignature, "rule signature");
+  if (!request || typeof request !== "object") {
+    throw invalidInput("Quarantine clear request is required");
+  }
+  assertHash(request.newRuleConfigurationSha256, "new rule configuration hash");
+  if (!request.evidence || typeof request.evidence !== "object") {
+    throw invalidInput("Quarantine clear evidence is required");
+  }
+  if (request.evidence.kind === "certification") {
+    assertHash(request.evidence.evidenceSha256, "certification evidence hash");
+    assertCanonicalTimestamp(request.evidence.resultsRecordedAt);
+    return;
+  }
+  if (request.evidence.kind === "operator") {
+    assertNonEmpty(request.evidence.operator, "operator identity");
+    assertNonEmpty(request.evidence.reason, "operator reason");
+    if (request.evidence.operator.trim().length > 200) {
+      throw invalidInput("Operator identity must be at most 200 characters");
+    }
+    if (request.evidence.reason.trim().length > 2_000) {
+      throw invalidInput("Operator reason must be at most 2000 characters");
+    }
+    return;
+  }
+  throw invalidInput("Unsupported quarantine clear evidence kind");
+}
+
+function assertCanonicalTimestamp(value: string): void {
+  if (
+    typeof value !== "string" ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(Date.parse(value)).toISOString() !== value
+  ) {
+    throw invalidInput(
+      "Certification results timestamp must be canonical ISO-8601",
+    );
+  }
+}
+
+function clearRuleQuarantineInTransaction(
+  db: Database.Database,
+  projectId: number,
+  ruleSignature: string,
+  request: CallSiteRuleQuarantineClearRequest,
+): CallSiteRuleQuarantineClearResult {
+  const active = readActiveQuarantine(db, projectId, ruleSignature);
+  if (!active) {
+    const priorClear = readPriorQuarantineClear(db, projectId, ruleSignature);
+    if (priorClear) return priorClear;
+    throw invalidQuarantineClear(
+      `No active quarantine exists for rule signature ${ruleSignature}`,
+    );
+  }
+
+  const clearedAt = new Date().toISOString();
+  const previousConfigurationSha256 = validateQuarantineClearCanProceed(
+    active,
+    request,
+    clearedAt,
+  );
+  const auditId = insertQuarantineClearAudit(
+    db,
+    projectId,
+    active,
+    request,
+    clearedAt,
+    previousConfigurationSha256,
+  );
+  removeActiveQuarantine(db, projectId, ruleSignature);
+  const audit = readQuarantineClearAudit(db, auditId);
+  if (!audit) {
+    throw new Error("Inserted quarantine clear audit row could not be read");
+  }
+  return { status: "cleared", audit: mapQuarantineClearAudit(audit) };
+}
+
+function readActiveQuarantine(
+  db: Database.Database,
+  projectId: number,
+  ruleSignature: string,
+): QuarantineDbRow | undefined {
+  return db
+    .prepare(
+      `SELECT project_id, rule_signature, policy_version, reason,
+              call_site_key, source_content_hash, expected_target_node_key,
+              observed_target_node_key, rule_configuration_sha256, created_at
+       FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES}
+       WHERE project_id = ? AND rule_signature = ?`,
+    )
+    .get(projectId, ruleSignature) as QuarantineDbRow | undefined;
+}
+
+function readPriorQuarantineClear(
+  db: Database.Database,
+  projectId: number,
+  ruleSignature: string,
+): CallSiteRuleQuarantineClearResult | undefined {
+  const row = db
+    .prepare(
+      `SELECT ${QUARANTINE_CLEAR_AUDIT_COLUMNS}
+       FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINE_CLEAR_AUDITS}
+       WHERE project_id = ? AND rule_signature = ?
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(projectId, ruleSignature) as QuarantineClearAuditDbRow | undefined;
+  return row
+    ? { status: "already-cleared", audit: mapQuarantineClearAudit(row) }
+    : undefined;
+}
+
+function validateQuarantineClearCanProceed(
+  active: QuarantineDbRow,
+  request: CallSiteRuleQuarantineClearRequest,
+  clearedAt: string,
+): string {
+  const previousConfigurationSha256 = active.rule_configuration_sha256;
+  if (!previousConfigurationSha256) {
+    throw invalidQuarantineClear(
+      "The quarantine's historical configuration hash is unavailable; it cannot be cleared safely",
+    );
+  }
+  if (request.newRuleConfigurationSha256 === previousConfigurationSha256) {
+    throw invalidQuarantineClear(
+      "The rule configuration hash must change before clearing quarantine",
+    );
+  }
+
+  const evidenceTime =
+    request.evidence.kind === "certification"
+      ? request.evidence.resultsRecordedAt
+      : clearedAt;
+  const quarantineCreatedAtMs = sqliteTimestampMs(active.created_at);
+  if (
+    !Number.isFinite(quarantineCreatedAtMs) ||
+    Date.parse(evidenceTime) <= quarantineCreatedAtMs
+  ) {
+    throw invalidQuarantineClear(
+      "Clear evidence must be strictly newer than the quarantine",
+    );
+  }
+  return previousConfigurationSha256;
+}
+
+function insertQuarantineClearAudit(
+  db: Database.Database,
+  projectId: number,
+  active: QuarantineDbRow,
+  request: CallSiteRuleQuarantineClearRequest,
+  clearedAt: string,
+  previousConfigurationSha256: string,
+): number {
+  const evidence = getQuarantineClearEvidenceColumns(request);
+  const result = db
+    .prepare(
+      `INSERT INTO ${SchemaTables.CALL_SITE_RULE_QUARANTINE_CLEAR_AUDITS} (
+        project_id, rule_signature, quarantine_policy_version,
+        quarantine_reason, quarantine_call_site_key,
+        quarantine_source_content_hash, expected_target_node_key,
+        observed_target_node_key, quarantine_created_at, cleared_at,
+        clear_method, evidence_sha256, operator, reason,
+        previous_rule_configuration_sha256, new_rule_configuration_sha256
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      projectId,
+      active.rule_signature,
+      active.policy_version,
+      active.reason,
+      active.call_site_key,
+      active.source_content_hash,
+      active.expected_target_node_key,
+      active.observed_target_node_key,
+      active.created_at,
+      clearedAt,
+      request.evidence.kind,
+      evidence.evidenceSha256,
+      evidence.operator,
+      evidence.reason,
+      previousConfigurationSha256,
+      request.newRuleConfigurationSha256,
+    );
+  return Number(result.lastInsertRowid);
+}
+
+function getQuarantineClearEvidenceColumns(
+  request: CallSiteRuleQuarantineClearRequest,
+): {
+  evidenceSha256: string | null;
+  operator: string | null;
+  reason: string | null;
+} {
+  if (request.evidence.kind === "certification") {
+    return {
+      evidenceSha256: request.evidence.evidenceSha256,
+      operator: null,
+      reason: null,
+    };
+  }
+  return {
+    evidenceSha256: null,
+    operator: request.evidence.operator,
+    reason: request.evidence.reason,
+  };
+}
+
+function removeActiveQuarantine(
+  db: Database.Database,
+  projectId: number,
+  ruleSignature: string,
+): void {
+  const deleted = db
+    .prepare(
+      `DELETE FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINES}
+       WHERE project_id = ? AND rule_signature = ?`,
+    )
+    .run(projectId, ruleSignature).changes;
+  if (deleted !== 1) {
+    throw invalidQuarantineClear(
+      "The active quarantine changed while it was being cleared",
+    );
+  }
+}
+
+function readQuarantineClearAudit(
+  db: Database.Database,
+  id: number,
+): QuarantineClearAuditDbRow | undefined {
+  return db
+    .prepare(
+      `SELECT ${QUARANTINE_CLEAR_AUDIT_COLUMNS}
+       FROM ${SchemaTables.CALL_SITE_RULE_QUARANTINE_CLEAR_AUDITS}
+       WHERE id = ?`,
+    )
+    .get(id) as QuarantineClearAuditDbRow | undefined;
+}
+
+function mapQuarantineClearAudit(
+  row: QuarantineClearAuditDbRow,
+): CallSiteRuleQuarantineClearAudit {
+  return {
+    id: row.id,
+    ruleSignature: row.rule_signature,
+    quarantinePolicyVersion: row.quarantine_policy_version,
+    quarantineReason: row.quarantine_reason,
+    quarantineCallSiteKey: row.quarantine_call_site_key,
+    quarantineSourceContentHash: row.quarantine_source_content_hash,
+    expectedTargetNodeKey: row.expected_target_node_key,
+    observedTargetNodeKey: row.observed_target_node_key,
+    quarantineCreatedAt: row.quarantine_created_at,
+    clearedAt: row.cleared_at,
+    method: row.clear_method,
+    evidenceSha256: row.evidence_sha256,
+    operator: row.operator,
+    reason: row.reason,
+    previousRuleConfigurationSha256: row.previous_rule_configuration_sha256,
+    newRuleConfigurationSha256: row.new_rule_configuration_sha256,
+  };
+}
+
+function invalidQuarantineClear(message: string): DocuviaError {
+  return new DocuviaError(ErrorCodes.INVALID_INPUT, message);
+}
+
+function sqliteTimestampMs(value: string): number {
+  const normalized = value.includes("T")
+    ? value
+    : `${value.replace(" ", "T")}Z`;
+  return Date.parse(normalized);
 }
 
 function assertNullableHash(value: string | null, name: string): void {

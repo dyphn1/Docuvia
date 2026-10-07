@@ -1,0 +1,9 @@
+---
+id: lib/contracts/src/constants/calls-projection-policy.ts#anonymous
+type: symbol
+name: anonymous
+filePath: lib/contracts/src/constants/calls-projection-policy.ts
+---
+# Symbol: anonymous
+
+File: `lib/contracts/src/constants/calls-projection-policy.ts`

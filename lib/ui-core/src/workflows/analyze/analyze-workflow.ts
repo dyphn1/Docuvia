@@ -14,7 +14,7 @@ import {
   type EdgeResolutionProviderConfig,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
-  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  resolveActiveCallsProjectionCallerPolicy,
 } from "@workspace/contracts";
 import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import {
@@ -424,7 +424,10 @@ export class AnalyzeWorkflow {
     );
     const interpretedPolicy =
       storedPolicy ?? CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
-    return interpretedPolicy !== DEFAULT_CALLS_PROJECTION_CALLER_POLICY;
+    return (
+      interpretedPolicy !==
+      resolveActiveCallsProjectionCallerPolicy(process.env)
+    );
   }
 
   private async rebuildForCallsProjectionPolicy(
@@ -443,7 +446,7 @@ export class AnalyzeWorkflow {
     const { workspaceRoot, logger } = this;
     logger.info("Rebuilding graph for calls caller policy", {
       projectId: project.id,
-      policy: DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+      policy: resolveActiveCallsProjectionCallerPolicy(process.env),
     });
     return await runFullIngestion({ workspaceRoot, logger, store, git });
   }

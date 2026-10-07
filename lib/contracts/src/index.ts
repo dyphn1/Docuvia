@@ -466,6 +466,8 @@ export {
   CallsProjectionCallerPolicies,
   isCallsProjectionCallerPolicy,
   DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  CALLS_PROJECTION_CALLER_POLICY_ENV,
+  resolveActiveCallsProjectionCallerPolicy,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
 } from "./constants/calls-projection-policy.js";

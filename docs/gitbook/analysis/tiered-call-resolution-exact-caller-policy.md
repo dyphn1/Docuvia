@@ -28,6 +28,10 @@ Only `exact-enclosing-v2` writes `lexical_parent` and `lexical_owner`; `scope-re
 
 The default remains `scope-resolver-v1`: on a deterministic 200-callee Docuvia sample, v2 still omitted four named function nodes from the historical impact set. Those nodes were ScopeResolver attributions without a unique lexical-parent path, so inventing parent links would misstate containment. Exact v1 and v2 remain selectable for evaluation.
 
+## Selecting the active policy
+
+The product composition path (`registerCoreProviders`) constructs the graph persister with the active policy resolved from `DOCUVIA_CALLS_CALLER_POLICY` (`scope-resolver-v1`, `exact-enclosing-v1` or `exact-enclosing-v2`). Unset or blank means the default; an unknown value fails with `INVALID_INPUT` rather than silently falling back. `docuvia init` and `analyze` persist under the active policy, and `analyze` compares the stored policy with the active one, not with the compile-time default: a graph built or hydrated under the active exact policy is kept, while a mismatch triggers one full rebuild under the active policy. This switch is for opt-in evaluation on real repositories until the default changes.
+
 A complete persistence pass records its policy under the project-scoped `docuvia_meta` key `graph.calls-projection.caller-policy.v1:<projectId>`. Snapshot metadata carries a separately versioned `callsProjectionCallerPolicy` capability so hydration can restore the policy. Snapshots without a valid capability are treated as historical ScopeResolver graphs. `analyze` detects a policy mismatch before the SHA no-op path and performs a full graph rebuild. The generic metadata table and additive snapshot capability make a schema migration unnecessary.
 
 V1 and v2 use the same uniform exact caller attribution for every `calls` edge. V2 adds lexical containment links and impact traversal. Strict proof scope, target selection, candidate generation, observations, and source content hash semantics remain unchanged.

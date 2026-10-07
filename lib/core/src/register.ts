@@ -3,6 +3,7 @@ import {
   docuviaFactory,
   TOKENS,
   type DocuviaFactory,
+  resolveActiveCallsProjectionCallerPolicy,
 } from "@workspace/contracts";
 import { KnowledgeGitService } from "./git/knowledge-git.service.js";
 import { SnapshotRendererService } from "./git/snapshot-renderer.service.js";
@@ -104,6 +105,7 @@ export function registerCoreProviders(
     (f) =>
       new GraphPersisterService(
         f.resolve(TOKENS.CallResolutionHypothesisService),
+        resolveActiveCallsProjectionCallerPolicy(process.env),
       ),
   );
 

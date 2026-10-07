@@ -7,3 +7,4 @@ filePath: lib/core/src/semantic/call-resolution-default-import.integration.test.
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-default-import.integration.test.ts`
+

@@ -1,0 +1,9 @@
+---
+id: test/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.unit.test.ts#anonymous@L86
+type: symbol
+name: anonymous
+filePath: test/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.unit.test.ts
+---
+# Symbol: anonymous
+
+File: `test/semantic-corpus/phase2-tiered-call-resolution-proposal-filter-stage-evidence.unit.test.ts`

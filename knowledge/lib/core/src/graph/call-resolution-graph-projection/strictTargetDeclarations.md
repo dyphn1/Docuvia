@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/graph/call-resolution-graph-projection.ts#strictTargetDeclaration
+id: lib/core/src/graph/call-resolution-graph-projection.ts#strictTargetDeclarations
 type: symbol
-name: strictTargetDeclaration
+name: strictTargetDeclarations
 filePath: lib/core/src/graph/call-resolution-graph-projection.ts
 ---
-# Symbol: strictTargetDeclaration
+# Symbol: strictTargetDeclarations
 
 File: `lib/core/src/graph/call-resolution-graph-projection.ts`

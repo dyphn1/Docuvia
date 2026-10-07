@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase0-partial-semantic.mts#anonymous@L635
+id: scripts/semantic-corpus/phase0-partial-semantic.mts#anonymous@L660
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase0-partial-semantic.mts

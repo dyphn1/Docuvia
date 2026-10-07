@@ -89,6 +89,7 @@
 - [GRPH-008 P2-A — Direct Import Alias Candidates](analysis/tiered-call-resolution-phase2-p2a-direct-import-alias.md)
 - [GRPH-008 P2-A — TRAIN Candidate and Proposal-Filter Stage Audit](analysis/tiered-call-resolution-phase2-p2a-candidate-stage-train-audit.md)
 - [GRPH-008 P2-B v4 — System One Train/Calibration Evidence](analysis/tiered-call-resolution-phase2-p2b-v4.md)
+- [GRPH-008 P2-B v5 — Tier A Candidate-List Recall Funnel](analysis/tiered-call-resolution-phase2-p2b-v5.md)
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
 - [Roadmap & Open Items](analysis/roadmap-and-open-items.md)
 - [Impact benchmark honesty — Phase 0 metric contract](analysis/impact-benchmark-honesty-phase0.md)

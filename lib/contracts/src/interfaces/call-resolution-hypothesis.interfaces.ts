@@ -17,7 +17,7 @@ import type {
 import type { CallSiteResolutionDependency } from "./graph-store.interfaces.js";
 
 export const CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION =
-  "declared-member-hypothesis-v6" as const;
+  "declared-member-hypothesis-v7" as const;
 export const CALL_RESOLUTION_RANKING_POLICY_VERSION =
   "ordered-evidence-v1" as const;
 export const CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION = 1 as const;

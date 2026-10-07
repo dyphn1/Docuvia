@@ -1,0 +1,446 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-p2b-candidate-list-before-summary/1",
+  "purpose": "Aggregate-only comparison from the licensed pre-change source replay. No sample IDs, source rows, or hashes are included.",
+  "candidateListDefinition": "bounded proposal candidateTargetIds, before v5 candidate-generator changes; raw generated list is also summarized.",
+  "splits": {
+    "train": {
+      "boundedCandidateList": {
+        "candidateCoveredSiteCount": 12951,
+        "candidateRecall": 0.9604004449388209,
+        "familyMeanRecall": 0.9856710142569813,
+        "worstFamilyRecall": 0.933783952935286,
+        "families": [
+          {
+            "name": "dyphn1/Docuvia",
+            "resolvedSiteCount": 3610,
+            "candidateCoveredSiteCount": 3610,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 2257,
+            "correctSingleCandidateCount": 2257,
+            "noLspResolvableRate": 0.625207756232687,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 422,
+            "truncatedSiteRate": 0.11689750692520776
+          },
+          {
+            "name": "nestjs/nest",
+            "resolvedSiteCount": 7989,
+            "candidateCoveredSiteCount": 7460,
+            "candidateRecall": 0.933783952935286,
+            "singleCandidateSiteCount": 6188,
+            "correctSingleCandidateCount": 6186,
+            "noLspResolvableRate": 0.774314682688697,
+            "singleCandidateAcceptedPrecision": 0.9996767937944409,
+            "truncatedSiteCount": 200,
+            "truncatedSiteRate": 0.025034422330704718
+          },
+          {
+            "name": "tirth8205/code-review-graph",
+            "resolvedSiteCount": 77,
+            "candidateCoveredSiteCount": 77,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 72,
+            "correctSingleCandidateCount": 72,
+            "noLspResolvableRate": 0.935064935064935,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          },
+          {
+            "name": "trailhq/Graft",
+            "resolvedSiteCount": 888,
+            "candidateCoveredSiteCount": 888,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 856,
+            "correctSingleCandidateCount": 856,
+            "noLspResolvableRate": 0.963963963963964,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          },
+          {
+            "name": "typescript-language-server/typescript-language-server",
+            "resolvedSiteCount": 921,
+            "candidateCoveredSiteCount": 916,
+            "candidateRecall": 0.99457111834962,
+            "singleCandidateSiteCount": 746,
+            "correctSingleCandidateCount": 746,
+            "noLspResolvableRate": 0.8099891422366993,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 116,
+            "truncatedSiteRate": 0.1259500542888165
+          }
+        ],
+        "callShapes": [
+          {
+            "name": "arg-chain",
+            "resolvedSiteCount": 517,
+            "candidateCoveredSiteCount": 517,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 310,
+            "correctSingleCandidateCount": 310,
+            "noLspResolvableRate": 0.5996131528046421,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 1,
+            "truncatedSiteRate": 0.0019342359767891683
+          },
+          {
+            "name": "bare",
+            "resolvedSiteCount": 5684,
+            "candidateCoveredSiteCount": 5222,
+            "candidateRecall": 0.9187192118226601,
+            "singleCandidateSiteCount": 4543,
+            "correctSingleCandidateCount": 4542,
+            "noLspResolvableRate": 0.7990851513019,
+            "singleCandidateAcceptedPrecision": 0.9997798811358133,
+            "truncatedSiteCount": 227,
+            "truncatedSiteRate": 0.039936664320900775
+          },
+          {
+            "name": "member",
+            "resolvedSiteCount": 7076,
+            "candidateCoveredSiteCount": 7011,
+            "candidateRecall": 0.9908140192198982,
+            "singleCandidateSiteCount": 5210,
+            "correctSingleCandidateCount": 5209,
+            "noLspResolvableRate": 0.7361503674392312,
+            "singleCandidateAcceptedPrecision": 0.9998080614203455,
+            "truncatedSiteCount": 506,
+            "truncatedSiteRate": 0.07150932730356134
+          },
+          {
+            "name": "this",
+            "resolvedSiteCount": 201,
+            "candidateCoveredSiteCount": 201,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 56,
+            "correctSingleCandidateCount": 56,
+            "noLspResolvableRate": 0.27860696517412936,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 4,
+            "truncatedSiteRate": 0.01990049751243781
+          },
+          {
+            "name": "unmapped",
+            "resolvedSiteCount": 7,
+            "candidateCoveredSiteCount": 0,
+            "candidateRecall": 0,
+            "singleCandidateSiteCount": 0,
+            "correctSingleCandidateCount": 0,
+            "noLspResolvableRate": 0,
+            "singleCandidateAcceptedPrecision": null,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "candidateListSize": {
+          "p50": 1,
+          "p75": 1,
+          "p90": 9,
+          "p99": 25,
+          "max": 25
+        },
+        "singleCandidateSiteCount": 10119,
+        "singleCandidateSiteRate": 0.7503893214682981,
+        "correctSingleCandidateCount": 10117,
+        "noLspResolvableRate": 0.750241008527994,
+        "singleCandidateAcceptedPrecision": 0.9998023520110683,
+        "truncatedSiteCount": 738,
+        "truncatedSiteRate": 0.054727474972191326
+      },
+      "rawGeneratedCandidateList": {
+        "resolvedSiteCount": 13485,
+        "candidateCoveredSiteCount": 13016,
+        "candidateRecall": 0.9652206154987023,
+        "familyMeanRecall": 0.987298251708477,
+        "worstFamilyRecall": 0.941920140192765,
+        "families": [
+          {
+            "name": "dyphn1/Docuvia",
+            "resolvedSiteCount": 3610,
+            "candidateCoveredSiteCount": 3610,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 1590,
+            "correctSingleCandidateCount": 1590,
+            "noLspResolvableRate": 0.4404432132963989,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 422,
+            "truncatedSiteRate": 0.11689750692520776
+          },
+          {
+            "name": "nestjs/nest",
+            "resolvedSiteCount": 7989,
+            "candidateCoveredSiteCount": 7525,
+            "candidateRecall": 0.941920140192765,
+            "singleCandidateSiteCount": 4167,
+            "correctSingleCandidateCount": 4166,
+            "noLspResolvableRate": 0.5214670171485793,
+            "singleCandidateAcceptedPrecision": 0.9997600191984641,
+            "truncatedSiteCount": 200,
+            "truncatedSiteRate": 0.025034422330704718
+          },
+          {
+            "name": "tirth8205/code-review-graph",
+            "resolvedSiteCount": 77,
+            "candidateCoveredSiteCount": 77,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 69,
+            "correctSingleCandidateCount": 69,
+            "noLspResolvableRate": 0.8961038961038961,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          },
+          {
+            "name": "trailhq/Graft",
+            "resolvedSiteCount": 888,
+            "candidateCoveredSiteCount": 888,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 830,
+            "correctSingleCandidateCount": 830,
+            "noLspResolvableRate": 0.9346846846846847,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          },
+          {
+            "name": "typescript-language-server/typescript-language-server",
+            "resolvedSiteCount": 921,
+            "candidateCoveredSiteCount": 916,
+            "candidateRecall": 0.99457111834962,
+            "singleCandidateSiteCount": 560,
+            "correctSingleCandidateCount": 560,
+            "noLspResolvableRate": 0.6080347448425625,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 116,
+            "truncatedSiteRate": 0.1259500542888165
+          }
+        ],
+        "callShapes": [
+          {
+            "name": "arg-chain",
+            "resolvedSiteCount": 517,
+            "candidateCoveredSiteCount": 517,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 77,
+            "correctSingleCandidateCount": 77,
+            "noLspResolvableRate": 0.14893617021276595,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 1,
+            "truncatedSiteRate": 0.0019342359767891683
+          },
+          {
+            "name": "bare",
+            "resolvedSiteCount": 5684,
+            "candidateCoveredSiteCount": 5222,
+            "candidateRecall": 0.9187192118226601,
+            "singleCandidateSiteCount": 4465,
+            "correctSingleCandidateCount": 4464,
+            "noLspResolvableRate": 0.7853624208304011,
+            "singleCandidateAcceptedPrecision": 0.9997760358342666,
+            "truncatedSiteCount": 227,
+            "truncatedSiteRate": 0.039936664320900775
+          },
+          {
+            "name": "member",
+            "resolvedSiteCount": 7076,
+            "candidateCoveredSiteCount": 7076,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 2635,
+            "correctSingleCandidateCount": 2635,
+            "noLspResolvableRate": 0.3723855285472018,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 506,
+            "truncatedSiteRate": 0.07150932730356134
+          },
+          {
+            "name": "this",
+            "resolvedSiteCount": 201,
+            "candidateCoveredSiteCount": 201,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 39,
+            "correctSingleCandidateCount": 39,
+            "noLspResolvableRate": 0.19402985074626866,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 4,
+            "truncatedSiteRate": 0.01990049751243781
+          },
+          {
+            "name": "unmapped",
+            "resolvedSiteCount": 7,
+            "candidateCoveredSiteCount": 0,
+            "candidateRecall": 0,
+            "singleCandidateSiteCount": 0,
+            "correctSingleCandidateCount": 0,
+            "noLspResolvableRate": 0,
+            "singleCandidateAcceptedPrecision": null,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "candidateListSize": {
+          "p50": 1,
+          "p75": 6,
+          "p90": 34,
+          "p99": 98,
+          "max": 118
+        },
+        "singleCandidateSiteCount": 7216,
+        "singleCandidateSiteRate": 0.5351130886169818,
+        "correctSingleCandidateCount": 7215,
+        "noLspResolvableRate": 0.5350389321468298,
+        "singleCandidateAcceptedPrecision": 0.9998614190687362,
+        "truncatedSiteCount": 738,
+        "truncatedSiteRate": 0.054727474972191326
+      }
+    },
+    "calibration": {
+      "boundedCandidateList": {
+        "candidateCoveredSiteCount": 2763,
+        "candidateRecall": 0.9315576534052596,
+        "familyMeanRecall": 0.9387868191660076,
+        "worstFamilyRecall": 0.8999431495167709,
+        "families": [
+          {
+            "name": "403errors/repomind",
+            "resolvedSiteCount": 1207,
+            "candidateCoveredSiteCount": 1180,
+            "candidateRecall": 0.9776304888152444,
+            "singleCandidateSiteCount": 749,
+            "correctSingleCandidateCount": 743,
+            "noLspResolvableRate": 0.6155758077879039,
+            "singleCandidateAcceptedPrecision": 0.9919893190921228,
+            "truncatedSiteCount": 2,
+            "truncatedSiteRate": 0.0016570008285004142
+          },
+          {
+            "name": "Egonex-AI/Understand-Anything",
+            "resolvedSiteCount": 1759,
+            "candidateCoveredSiteCount": 1583,
+            "candidateRecall": 0.8999431495167709,
+            "singleCandidateSiteCount": 1492,
+            "correctSingleCandidateCount": 1492,
+            "noLspResolvableRate": 0.8482092097782831,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "callShapes": [
+          {
+            "name": "bare",
+            "resolvedSiteCount": 2222,
+            "candidateCoveredSiteCount": 2019,
+            "candidateRecall": 0.9086408640864087,
+            "singleCandidateSiteCount": 1569,
+            "correctSingleCandidateCount": 1563,
+            "noLspResolvableRate": 0.7034203420342034,
+            "singleCandidateAcceptedPrecision": 0.9961759082217974,
+            "truncatedSiteCount": 2,
+            "truncatedSiteRate": 0.0009000900090009
+          },
+          {
+            "name": "member",
+            "resolvedSiteCount": 744,
+            "candidateCoveredSiteCount": 744,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 672,
+            "correctSingleCandidateCount": 672,
+            "noLspResolvableRate": 0.9032258064516129,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "candidateListSize": {
+          "p50": 1,
+          "p75": 1,
+          "p90": 2,
+          "p99": 8,
+          "max": 25
+        },
+        "singleCandidateSiteCount": 2241,
+        "singleCandidateSiteRate": 0.7555630478759272,
+        "correctSingleCandidateCount": 2235,
+        "noLspResolvableRate": 0.75354012137559,
+        "singleCandidateAcceptedPrecision": 0.9973226238286479,
+        "truncatedSiteCount": 2,
+        "truncatedSiteRate": 0.0006743088334457181
+      },
+      "rawGeneratedCandidateList": {
+        "resolvedSiteCount": 2966,
+        "candidateCoveredSiteCount": 2763,
+        "candidateRecall": 0.9315576534052596,
+        "familyMeanRecall": 0.9387868191660076,
+        "worstFamilyRecall": 0.8999431495167709,
+        "families": [
+          {
+            "name": "403errors/repomind",
+            "resolvedSiteCount": 1207,
+            "candidateCoveredSiteCount": 1180,
+            "candidateRecall": 0.9776304888152444,
+            "singleCandidateSiteCount": 749,
+            "correctSingleCandidateCount": 743,
+            "noLspResolvableRate": 0.6155758077879039,
+            "singleCandidateAcceptedPrecision": 0.9919893190921228,
+            "truncatedSiteCount": 2,
+            "truncatedSiteRate": 0.0016570008285004142
+          },
+          {
+            "name": "Egonex-AI/Understand-Anything",
+            "resolvedSiteCount": 1759,
+            "candidateCoveredSiteCount": 1583,
+            "candidateRecall": 0.8999431495167709,
+            "singleCandidateSiteCount": 961,
+            "correctSingleCandidateCount": 961,
+            "noLspResolvableRate": 0.5463331438317226,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "callShapes": [
+          {
+            "name": "bare",
+            "resolvedSiteCount": 2222,
+            "candidateCoveredSiteCount": 2019,
+            "candidateRecall": 0.9086408640864087,
+            "singleCandidateSiteCount": 1569,
+            "correctSingleCandidateCount": 1563,
+            "noLspResolvableRate": 0.7034203420342034,
+            "singleCandidateAcceptedPrecision": 0.9961759082217974,
+            "truncatedSiteCount": 2,
+            "truncatedSiteRate": 0.0009000900090009
+          },
+          {
+            "name": "member",
+            "resolvedSiteCount": 744,
+            "candidateCoveredSiteCount": 744,
+            "candidateRecall": 1,
+            "singleCandidateSiteCount": 141,
+            "correctSingleCandidateCount": 141,
+            "noLspResolvableRate": 0.18951612903225806,
+            "singleCandidateAcceptedPrecision": 1,
+            "truncatedSiteCount": 0,
+            "truncatedSiteRate": 0
+          }
+        ],
+        "candidateListSize": {
+          "p50": 1,
+          "p75": 3,
+          "p90": 14,
+          "p99": 35,
+          "max": 35
+        },
+        "singleCandidateSiteCount": 1710,
+        "singleCandidateSiteRate": 0.576534052596089,
+        "correctSingleCandidateCount": 1704,
+        "noLspResolvableRate": 0.5745111260957518,
+        "singleCandidateAcceptedPrecision": 0.9964912280701754,
+        "truncatedSiteCount": 2,
+        "truncatedSiteRate": 0.0006743088334457181
+      }
+    }
+  }
+}

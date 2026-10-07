@@ -46,6 +46,21 @@ function extract(source: string, language: AstDeclaredTypeLanguage) {
 }
 
 describe("declared type facts from real tree-sitter WASM grammars", () => {
+  it("records exported non-callable values as name-only declarations", () => {
+    const source =
+      "export const Get = createMappingDecorator(RequestMethod.GET);";
+    const facts = extract(source, "typescript");
+
+    expect(facts.declarations).toContainEqual(
+      expect.objectContaining({
+        kind: "unknown",
+        name: "Get",
+        owner: expect.objectContaining({ kind: "program" }),
+        arity: null,
+      }),
+    );
+  });
+
   it.each([
     {
       language: "typescript" as const,

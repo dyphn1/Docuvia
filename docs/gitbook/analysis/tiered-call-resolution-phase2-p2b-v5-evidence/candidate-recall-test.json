@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-candidate-list-recall/1",
+  "evaluatedAt": "2026-10-06T20:05:56.853Z",
+  "split": "test",
+  "licenseExcludedEnterprisePathSampleCount": 3,
+  "provenance": {
+    "licensePolicyVersion": "phase2-evaluation-license-v1",
+    "predictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+    "labelRowsHash": "68e8037a1db024d1da873bdad319ea32e45d6980da06e3f48a63a75e6436964c",
+    "correctedFactsSha256": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87",
+    "sourceInputHashes": {
+      "callsites.jsonl": "ee757c0d9cddfc4628d9ab89b1c79bf653c0bc3f0f66ae474a87df5685407bce",
+      "declared-type-facts-pass-a.jsonl": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87"
+    },
+    "implementationHash": "27bb8f869ea9b664e78170ff25b84e66ae93b5684b873ebe47cb16301c45b286",
+    "candidateGeneratorVersion": "declared-member-hypothesis-v7",
+    "snapshotScopedOracleMappingHash": "bf6b303fe926abf288b3d34248e4b728f68dc72d582cac3947359755781c5589",
+    "uniqueOracleAliasCount": 59175,
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "candidateOracleMappingScopeCount": 8,
+    "allOracleAliasCount": 73824,
+    "candidateOracleMappingImplementationHash": "3d2b7530abcb054fe549315e771e14b11c6274ce3f3e087ece0324f0eaace03b",
+    "candidateOracleMappingImplementationFiles": {
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts": "6196ea238af4dfb45b9a97b74fbbd9abd9116657abd1e28ff66ac3c921064978",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-evaluation.mts": "fdf2fbf5b8c5f093263ab06cf7d305da9ef7962c86d3364ba9fb6e55e5ae73b6",
+      "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts": "63df45e95908655de6b48e2e7f32f46052e93d7e4ee0259112d71bb9a71fb310"
+    }
+  },
+  "candidateRecallDomain": {
+    "totalConfirmedPositiveSiteCount": 6039,
+    "uniqueMappedPositiveTargetOccurrenceCount": 5264,
+    "ambiguousPositiveTargetOccurrenceCount": 489,
+    "unmappedPositiveTargetOccurrenceCount": 286,
+    "uniqueMappedPositiveSiteCount": 5264,
+    "sitesWithoutUniquePositiveTargetCount": 775
+  },
+  "metrics": {
+    "split": "test",
+    "eligibleSiteCount": 5264,
+    "candidateGoldTargetCount": 5264,
+    "coveredGoldTargetCount": 4876,
+    "candidateRecall": 0.9262917933130699,
+    "zeroCandidateSiteCount": 34,
+    "zeroCandidateRate": 0.006458966565349544,
+    "missSiteCount": 388,
+    "zeroCandidateMissSiteCount": 34,
+    "candidateButMissSiteCount": 354,
+    "candidateWithoutOracleIdSiteCount": 404,
+    "unmappedCandidateCount": 0,
+    "ambiguousCandidateMappingCount": 562,
+    "candidateSetSizeP50": 1,
+    "candidateSetSizeP95": 5,
+    "candidateSetSizeMax": 448,
+    "families": [
+      {
+        "name": "onyx-dot-app/onyx",
+        "eligibleSiteCount": 5264,
+        "candidateGoldTargetCount": 5264,
+        "coveredGoldTargetCount": 4876,
+        "candidateRecall": 0.9262917933130699,
+        "zeroCandidateSiteCount": 34,
+        "candidateWithoutOracleIdSiteCount": 404
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "arg-chain",
+        "eligibleSiteCount": 5,
+        "candidateGoldTargetCount": 5,
+        "coveredGoldTargetCount": 5,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 0
+      },
+      {
+        "name": "bare",
+        "eligibleSiteCount": 4470,
+        "candidateGoldTargetCount": 4470,
+        "coveredGoldTargetCount": 4082,
+        "candidateRecall": 0.9131991051454139,
+        "zeroCandidateSiteCount": 34,
+        "candidateWithoutOracleIdSiteCount": 366
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 789,
+        "candidateGoldTargetCount": 789,
+        "coveredGoldTargetCount": 789,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "candidateWithoutOracleIdSiteCount": 38
+      }
+    ],
+    "missingEvidenceReasons": {
+      "no-supported-candidates": 34,
+      "uncalibrated-signature": 354
+    }
+  },
+  "tierACandidateListRecall": {
+    "split": "test",
+    "observedSiteCount": 6039,
+    "ambiguousTargetSiteCount": 0,
+    "resolvedSiteCount": 6039,
+    "candidateCoveredSiteCount": 5894,
+    "candidateRecall": 0.9759894022189104,
+    "familyMeanRecall": 0.9759894022189104,
+    "worstFamilyRecall": 0.9759894022189104,
+    "families": [
+      {
+        "name": "onyx-dot-app/onyx",
+        "resolvedSiteCount": 6039,
+        "candidateCoveredSiteCount": 5894,
+        "candidateRecall": 0.9759894022189104,
+        "zeroCandidateSiteCount": 141,
+        "singleCandidateSiteCount": 4199,
+        "multiCandidateSiteCount": 1699,
+        "correctSingleCandidateCount": 4195,
+        "noLspResolvableRate": 0.6946514323563504,
+        "singleCandidateAcceptedPrecision": 0.9990473922362467,
+        "truncatedSiteCount": 0,
+        "truncatedSiteRate": 0
+      }
+    ],
+    "callShapes": [
+      {
+        "name": "arg-chain",
+        "resolvedSiteCount": 5,
+        "candidateCoveredSiteCount": 5,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "singleCandidateSiteCount": 1,
+        "multiCandidateSiteCount": 4,
+        "correctSingleCandidateCount": 1,
+        "noLspResolvableRate": 0.2,
+        "singleCandidateAcceptedPrecision": 1,
+        "truncatedSiteCount": 0,
+        "truncatedSiteRate": 0
+      },
+      {
+        "name": "bare",
+        "resolvedSiteCount": 4752,
+        "candidateCoveredSiteCount": 4607,
+        "candidateRecall": 0.969486531986532,
+        "zeroCandidateSiteCount": 141,
+        "singleCandidateSiteCount": 3698,
+        "multiCandidateSiteCount": 913,
+        "correctSingleCandidateCount": 3694,
+        "noLspResolvableRate": 0.7773569023569024,
+        "singleCandidateAcceptedPrecision": 0.9989183342347214,
+        "truncatedSiteCount": 0,
+        "truncatedSiteRate": 0
+      },
+      {
+        "name": "member",
+        "resolvedSiteCount": 1282,
+        "candidateCoveredSiteCount": 1282,
+        "candidateRecall": 1,
+        "zeroCandidateSiteCount": 0,
+        "singleCandidateSiteCount": 500,
+        "multiCandidateSiteCount": 782,
+        "correctSingleCandidateCount": 500,
+        "noLspResolvableRate": 0.39001560062402496,
+        "singleCandidateAcceptedPrecision": 1,
+        "truncatedSiteCount": 0,
+        "truncatedSiteRate": 0
+      }
+    ],
+    "zeroCandidateSiteCount": 141,
+    "candidateListSize": {
+      "p50": 1,
+      "p75": 2,
+      "p90": 9,
+      "p99": 282,
+      "max": 448
+    },
+    "multiCandidateSiteCount": 1699,
+    "multiCandidateSiteRate": 0.28133796986256004,
+    "singleCandidateSiteCount": 4199,
+    "singleCandidateSiteRate": 0.6953137936744495,
+    "correctSingleCandidateCount": 4195,
+    "noLspResolvableRate": 0.6946514323563504,
+    "singleCandidateAcceptedPrecision": 0.9990473922362467,
+    "truncatedSiteCount": 0,
+    "truncatedSiteRate": 0,
+    "boundedProposalList": {
+      "resolvedSiteCount": 6039,
+      "candidateCoveredSiteCount": 5894,
+      "candidateRecall": 0.9759894022189104,
+      "familyMeanRecall": 0.9759894022189104,
+      "worstFamilyRecall": 0.9759894022189104,
+      "families": [
+        {
+          "name": "onyx-dot-app/onyx",
+          "resolvedSiteCount": 6039,
+          "candidateCoveredSiteCount": 5894,
+          "candidateRecall": 0.9759894022189104,
+          "zeroCandidateSiteCount": 141,
+          "singleCandidateSiteCount": 4549,
+          "multiCandidateSiteCount": 1349,
+          "correctSingleCandidateCount": 4545,
+          "noLspResolvableRate": 0.7526080476900149,
+          "singleCandidateAcceptedPrecision": 0.9991206858650252,
+          "truncatedSiteCount": 492,
+          "truncatedSiteRate": 0.08147044212617983
+        }
+      ],
+      "callShapes": [
+        {
+          "name": "arg-chain",
+          "resolvedSiteCount": 5,
+          "candidateCoveredSiteCount": 5,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "singleCandidateSiteCount": 1,
+          "multiCandidateSiteCount": 4,
+          "correctSingleCandidateCount": 1,
+          "noLspResolvableRate": 0.2,
+          "singleCandidateAcceptedPrecision": 1,
+          "truncatedSiteCount": 0,
+          "truncatedSiteRate": 0
+        },
+        {
+          "name": "bare",
+          "resolvedSiteCount": 4752,
+          "candidateCoveredSiteCount": 4607,
+          "candidateRecall": 0.969486531986532,
+          "zeroCandidateSiteCount": 141,
+          "singleCandidateSiteCount": 3874,
+          "multiCandidateSiteCount": 737,
+          "correctSingleCandidateCount": 3870,
+          "noLspResolvableRate": 0.8143939393939394,
+          "singleCandidateAcceptedPrecision": 0.9989674754775426,
+          "truncatedSiteCount": 11,
+          "truncatedSiteRate": 0.0023148148148148147
+        },
+        {
+          "name": "member",
+          "resolvedSiteCount": 1282,
+          "candidateCoveredSiteCount": 1282,
+          "candidateRecall": 1,
+          "zeroCandidateSiteCount": 0,
+          "singleCandidateSiteCount": 674,
+          "multiCandidateSiteCount": 608,
+          "correctSingleCandidateCount": 674,
+          "noLspResolvableRate": 0.5257410296411856,
+          "singleCandidateAcceptedPrecision": 1,
+          "truncatedSiteCount": 481,
+          "truncatedSiteRate": 0.375195007800312
+        }
+      ],
+      "zeroCandidateSiteCount": 141,
+      "candidateListSize": {
+        "p50": 1,
+        "p75": 1,
+        "p90": 9,
+        "p99": 25,
+        "max": 25
+      },
+      "multiCandidateSiteCount": 1349,
+      "multiCandidateSiteRate": 0.22338135452889551,
+      "singleCandidateSiteCount": 4549,
+      "singleCandidateSiteRate": 0.7532704090081139,
+      "correctSingleCandidateCount": 4545,
+      "noLspResolvableRate": 0.7526080476900149,
+      "singleCandidateAcceptedPrecision": 0.9991206858650252,
+      "truncatedSiteCount": 492,
+      "truncatedSiteRate": 0.08147044212617983
+    }
+  },
+  "candidateSetDistribution": {
+    "overall": {
+      "name": "all eligible sites",
+      "eligibleSiteCount": 6039,
+      "zeroCandidateSiteCount": 141,
+      "zeroCandidateRate": 0.02334823646299056,
+      "candidateSetSizeP50": 1,
+      "candidateSetSizeP95": 282,
+      "candidateSetSizeMax": 448,
+      "candidateWithoutOracleIdSiteCount": 1066,
+      "ambiguousCandidateMappingCount": 62684,
+      "unmappedCandidateCount": 0
+    },
+    "byFamily": [
+      {
+        "name": "onyx-dot-app/onyx",
+        "eligibleSiteCount": 6039,
+        "zeroCandidateSiteCount": 141,
+        "zeroCandidateRate": 0.02334823646299056,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 282,
+        "candidateSetSizeMax": 448,
+        "candidateWithoutOracleIdSiteCount": 1066,
+        "ambiguousCandidateMappingCount": 62684,
+        "unmappedCandidateCount": 0
+      }
+    ],
+    "byCallShape": [
+      {
+        "name": "arg-chain",
+        "eligibleSiteCount": 5,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 21,
+        "candidateSetSizeP95": 21,
+        "candidateSetSizeMax": 21,
+        "candidateWithoutOracleIdSiteCount": 0,
+        "ambiguousCandidateMappingCount": 0,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "bare",
+        "eligibleSiteCount": 4752,
+        "zeroCandidateSiteCount": 141,
+        "zeroCandidateRate": 0.029671717171717172,
+        "candidateSetSizeP50": 1,
+        "candidateSetSizeP95": 6,
+        "candidateSetSizeMax": 448,
+        "candidateWithoutOracleIdSiteCount": 541,
+        "ambiguousCandidateMappingCount": 372,
+        "unmappedCandidateCount": 0
+      },
+      {
+        "name": "member",
+        "eligibleSiteCount": 1282,
+        "zeroCandidateSiteCount": 0,
+        "zeroCandidateRate": 0,
+        "candidateSetSizeP50": 2,
+        "candidateSetSizeP95": 282,
+        "candidateSetSizeMax": 282,
+        "candidateWithoutOracleIdSiteCount": 525,
+        "ambiguousCandidateMappingCount": 62312,
+        "unmappedCandidateCount": 0
+      }
+    ]
+  }
+}

@@ -7,12 +7,17 @@ import {
   type AstDeclaredDeclaration,
   type AstDeclaredTypeFacts,
   type AstImportDescriptor,
+  type ParsedAstFileResult,
   type AstReexportDescriptor,
 } from "../../lib/contracts/src/index.js";
-import { candidateTargetKeyForDeclaration } from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
+import {
+  candidateTargetKeyForDeclaration,
+  candidateTargetKeyForExportedValue,
+} from "../../lib/core/src/semantic/call-resolution-hypothesis-index.js";
 import {
   directImportTargetPaths,
   mapCandidateKeysToUnambiguousAliases,
+  rankingSignalsForTopCandidate,
   reexportTargetPaths,
   reexportTargetsForFrontier,
   validateFactsAgainstSnapshot,
@@ -81,6 +86,43 @@ function makeFactRow(
 }
 
 describe("Phase 2 source candidate identity", () => {
+  it("maps exported values missing from the pinned declaration facts", () => {
+    const filePath = "packages/common/module.decorator.ts";
+    const parsed = new Map<string, ParsedAstFileResult>([
+      [
+        filePath,
+        {
+          file: filePath,
+          data: {
+            exports: [{ name: "Module", type: "variable" }],
+          },
+        } as ParsedAstFileResult,
+      ],
+    ]);
+
+    expect(
+      mapCandidateKeysToUnambiguousAliases(
+        [candidateTargetKeyForExportedValue(filePath, "Module")],
+        [makeFactRow(filePath, "c".repeat(64), [])],
+        parsed,
+      ),
+    ).toEqual({
+      aliases: [`${filePath}#Module`],
+      unmapped: 0,
+      ambiguous: 0,
+    });
+  });
+
+  it("[state-diff] preserves ranking signals from the top ranked proposal", () => {
+    expect(
+      rankingSignalsForTopCandidate([
+        { rankingSignals: ["partial-binding-peer-member-usage"] },
+        { rankingSignals: ["same-directory"] },
+      ]),
+    ).toEqual(["partial-binding-peer-member-usage"]);
+    expect(rankingSignalsForTopCandidate([])).toEqual([]);
+  });
+
   it("[happy] includes unaliased direct named-import targets for opt-in Q1 audits", () => {
     const callFiles = [
       {
@@ -104,6 +146,41 @@ describe("Phase 2 source candidate identity", () => {
         includeUnaliasedNamedImports: true,
       }),
     ).toEqual(["src/implementation.ts"]);
+  });
+
+  it("[happy] resolves a combined default import with a source-bound workspace alias", () => {
+    const callFiles = [
+      {
+        file: "src/app/report/page.test.tsx",
+        data: {
+          imports: [
+            {
+              localName: "ReportPage",
+              originalName: "default",
+              modulePath: "@/app/report/page",
+              isCombinedDefaultImport: true,
+            },
+          ],
+        },
+      },
+    ];
+    const facts = [makeFactRow("src/app/report/page.tsx", "c".repeat(64), [])];
+    const configuredPathAliases = {
+      configurationFilePath: "tsconfig.json",
+      sourceContentHash: "d".repeat(64),
+      paths: { "@/*": ["./src/*"] },
+      baseUrl: null,
+      extends: [],
+    } as const;
+
+    expect(
+      directImportTargetPaths(callFiles, facts, configuredPathAliases),
+    ).toEqual([]);
+    expect(
+      directImportTargetPaths(callFiles, facts, configuredPathAliases, {
+        includeCombinedDefaultImports: true,
+      }),
+    ).toEqual(["src/app/report/page.tsx"]);
   });
 
   it("[happy][state-diff] includes type-only imports only for Q3 receiver audits", () => {

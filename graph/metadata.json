@@ -2136,15 +2136,15 @@
     },
     {
       "filePath": "lib/core/src/impact/impact.service.ts",
-      "contentHash": "595eb790f931b3cfbd45835170043a7eba51a4c3",
-      "lastTierBProcessedAt": "2026-10-07 20:10:17",
-      "lastTierBCommitSha": "bd5f4bbff1527cca545ae57b88417e8a415a31ac"
+      "contentHash": "54f2689146004594c34b71c99c4813adee5d46fa",
+      "lastTierBProcessedAt": "2026-10-07 23:14:21",
+      "lastTierBCommitSha": "aeae294e47a6acc32d491f266129a55fe45ea325"
     },
     {
       "filePath": "lib/core/src/impact/impact.service.unit.test.ts",
-      "contentHash": "d5ed507d43bbb5dc037ad78610f5efc2fbde1088",
-      "lastTierBProcessedAt": "2026-10-07 20:10:17",
-      "lastTierBCommitSha": "bd5f4bbff1527cca545ae57b88417e8a415a31ac"
+      "contentHash": "a49dc34fbf9d0f4c8ee8b87eb2db664d0753fbcd",
+      "lastTierBProcessedAt": "2026-10-07 23:14:21",
+      "lastTierBCommitSha": "aeae294e47a6acc32d491f266129a55fe45ea325"
     },
     {
       "filePath": "lib/core/src/impact/phase393-dynamic-impact.integration.test.ts",
@@ -2166,7 +2166,7 @@
     },
     {
       "filePath": "lib/core/src/impact/phase6-impact.service.ts",
-      "contentHash": "4f31254bde0ccbc11e13b195b133af740ea61239",
+      "contentHash": "ad0a04defe8d9b511be875a68fa71f4f18ecc526042d621867d9e1b84f123de0",
       "lastTierBProcessedAt": "2026-10-07 20:10:17",
       "lastTierBCommitSha": "bd5f4bbff1527cca545ae57b88417e8a415a31ac"
     },
@@ -5573,7 +5573,7 @@
       "lastTierBCommitSha": "bd5f4bbff1527cca545ae57b88417e8a415a31ac"
     }
   ],
-  "lastIngestedSourceSha": "bd5f4bbff1527cca545ae57b88417e8a415a31ac",
+  "lastIngestedSourceSha": "aeae294e47a6acc32d491f266129a55fe45ea325",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

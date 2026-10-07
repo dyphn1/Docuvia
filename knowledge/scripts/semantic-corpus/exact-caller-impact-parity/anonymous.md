@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/exact-caller-impact-parity.mts#anonymous@L553
+id: scripts/semantic-corpus/exact-caller-impact-parity.mts#anonymous@L530
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/exact-caller-impact-parity.mts

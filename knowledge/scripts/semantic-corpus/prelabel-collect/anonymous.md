@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/prelabel-collect.mts#anonymous@L270
+id: scripts/semantic-corpus/prelabel-collect.mts#anonymous@L252
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/prelabel-collect.mts

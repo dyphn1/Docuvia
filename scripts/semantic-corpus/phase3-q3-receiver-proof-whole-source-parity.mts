@@ -398,9 +398,9 @@ async function persistProjection(
         })),
     );
     const persistedKeys = new Set(persistedQ3.map((row) => row.callSiteKey));
-    const strictCallProofExclusions = (persistenceResult.strictCallProofExclusions ?? []).filter(
-      (exclusion) => Q3_RULES.has(exclusion.ruleSignature),
-    );
+    const strictCallProofExclusions = (
+      persistenceResult.strictCallProofExclusions ?? []
+    ).filter((exclusion) => Q3_RULES.has(exclusion.ruleSignature));
     const excludedKeys = new Set(
       strictCallProofExclusions.map((exclusion) => exclusion.callSiteKey),
     );

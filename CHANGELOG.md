@@ -2,6 +2,13 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.22.1](https://github.com/dyphn1/Docuvia/compare/v1.22.0...v1.22.1) (2026-10-07)
+
+### Bug Fixes
+
+- **system1-eval:** require a contained entry point for interpreter scorers ([#563](https://github.com/dyphn1/Docuvia/issues/563)) ([d187399](https://github.com/dyphn1/Docuvia/commit/d1873997d11cd93ec16819825959a05950a16d22))
+- **system1-eval:** validate external scorer command and fully tear down the child ([#563](https://github.com/dyphn1/Docuvia/issues/563), [#564](https://github.com/dyphn1/Docuvia/issues/564)) ([37dcfab](https://github.com/dyphn1/Docuvia/commit/37dcfab74eb11aff8cbd86cb1c512deebac10586))
+
 # [1.22.0](https://github.com/dyphn1/Docuvia/compare/v1.21.0...v1.22.0) (2026-10-07)
 
 ### Bug Fixes

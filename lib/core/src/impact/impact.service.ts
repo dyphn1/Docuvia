@@ -13,6 +13,8 @@ import {
   SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SnapshotCallSiteAvailabilityStates,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
 } from "@workspace/contracts";
 import {
   getCallResolutionSummariesForEdge,
@@ -196,6 +198,16 @@ export class ImpactService implements IImpactService {
       blastRadius.push(...fallbackEntries);
     }
 
+    if (this.usesExactEnclosingV2(store)) {
+      blastRadius.push(
+        ...this.resolveExactCallerContext(
+          store,
+          node.id,
+          new Set(directIncoming.map(({ id }) => id)),
+        ),
+      );
+    }
+
     this.logger.debug(ImpactMessages.RESOLVED_BLAST_RADIUS, {
       target,
       count: blastRadius.length,
@@ -264,6 +276,95 @@ export class ImpactService implements IImpactService {
 
   private isFileNode(node: { name: string; filePath?: string }): boolean {
     return node.filePath !== undefined && node.name === node.filePath;
+  }
+
+  /** Exact callback callers walk back through lexical `contains` parents so impact retains the
+   *  enclosing function and that function's direct callers. This is policy-gated because legacy
+   *  ScopeResolver graphs attribute those calls to the enclosing caller already. */
+  private usesExactEnclosingV2(store: IGraphStore): boolean {
+    const projectId = store.projects.getFirst()?.id;
+    if (projectId === undefined) return false;
+    return (
+      store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      ) === CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2
+    );
+  }
+
+  /**
+   * Resolves an exact caller's lexical parents and includes each enclosing function's direct
+   * incoming dependents. The walk follows only `contains` edges for parent discovery, then reads
+   * one incoming hop from each parent; ordinary caller edges do not recurse, preserving impact's
+   * bounded single-call-hop behavior while recovering the prior outer-function projection.
+   */
+  private resolveExactCallerContext(
+    store: IGraphStore,
+    targetNodeId: number,
+    alreadyResolvedIds: ReadonlySet<number>,
+  ): BlastRadiusEntry[] {
+    const queue = store.graph
+      .getIncomingRelations(targetNodeId)
+      .filter(({ linkType }) => linkType === LinkTypes.CALLS)
+      .map(({ id }) => id);
+    const visitedCallerIds = new Set<number>();
+    const visitedParentIds = new Set<number>();
+    const resolvedIds = new Set(alreadyResolvedIds);
+    const entries: BlastRadiusEntry[] = [];
+
+    const append = (node: { id: number; name: string; type: string }): void => {
+      if (resolvedIds.has(node.id)) return;
+      resolvedIds.add(node.id);
+      entries.push(this.buildEntry(store, node.id, node.name, node.type));
+    };
+
+    const appendContainerChain = (nodeId: number): void => {
+      const containers = [nodeId];
+      const visited = new Set<number>();
+      while (containers.length > 0) {
+        const childId = containers.shift();
+        if (childId === undefined || visited.has(childId)) continue;
+        visited.add(childId);
+        for (const parent of store.graph
+          .getIncomingRelations(childId)
+          .filter(({ linkType }) => linkType === LinkTypes.CONTAINS)) {
+          append(parent);
+          if (store.graph.getNodeKeyById?.(parent.id)?.includes("#")) {
+            containers.push(parent.id);
+          }
+        }
+      }
+    };
+
+    while (queue.length > 0) {
+      const callerId = queue.shift();
+      if (callerId === undefined || visitedCallerIds.has(callerId)) continue;
+      visitedCallerIds.add(callerId);
+
+      const lexicalParents = store.graph
+        .getIncomingRelations(callerId)
+        .filter(({ linkType }) => linkType === LinkTypes.CONTAINS);
+      for (const parent of lexicalParents) {
+        append(parent);
+        if (visitedParentIds.has(parent.id)) continue;
+        visitedParentIds.add(parent.id);
+
+        const parentKey = store.graph.getNodeKeyById?.(parent.id);
+        if (!parentKey?.includes("#")) continue;
+
+        for (const dependent of store.graph.getIncomingRelations(parent.id)) {
+          append(dependent);
+          appendContainerChain(dependent.id);
+          if (
+            dependent.linkType === LinkTypes.CONTAINS &&
+            store.graph.getNodeKeyById?.(dependent.id)?.includes("#")
+          ) {
+            queue.push(dependent.id);
+          }
+        }
+      }
+    }
+
+    return entries;
   }
 
   /**

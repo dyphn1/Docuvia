@@ -12,6 +12,9 @@ import {
   type IKnowledgeGitService,
   type ILogger,
   type EdgeResolutionProviderConfig,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
 } from "@workspace/contracts";
 import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import {
@@ -43,6 +46,13 @@ import { persistDecisions } from "./persist-l3-decisions.js";
 import { runAgentAuthoredWrite } from "./run-agent-authored-write.js";
 import { runFlushStagedL3 } from "./run-flush-staged-l3.js";
 import { loadShippedQ1NamedImportCertificationArtifact } from "./call-resolution-certification.js";
+
+function isAlreadyIngestedHead(
+  headSha: string | undefined,
+  lastIngestedSha: string | undefined,
+): headSha is string {
+  return Boolean(headSha && lastIngestedSha && headSha === lastIngestedSha);
+}
 
 // Re-exported for the existing `stripMarkdownCodeFence()` test suite in
 // `analyze-workflow.unit.test.ts` -- the implementation itself now lives in
@@ -239,6 +249,12 @@ export class AnalyzeWorkflow {
   ): Promise<AnalyzeResult> {
     const { workspaceRoot, logger } = this;
 
+    const callerPolicyRebuild = await this.rebuildForCallsProjectionPolicy(
+      store,
+      git,
+    );
+    if (callerPolicyRebuild) return callerPolicyRebuild;
+
     const headSha = await git.getHeadSha(workspaceRoot);
     const lastIngestedSha = store.meta.get(
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
@@ -253,7 +269,7 @@ export class AnalyzeWorkflow {
     // "Rejected alternatives"). The 2026-07-24 C# benchmark found the resulting silence was a UX
     // gap for a human running `analyze` interactively -- `hasUncommittedChanges` below only picks
     // the message/log line, it never changes the noop outcome itself.
-    if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
+    if (isAlreadyIngestedHead(headSha, lastIngestedSha)) {
       const dirtyWorktree = await git.hasUncommittedChanges(workspaceRoot);
       logger.info(
         dirtyWorktree
@@ -383,6 +399,10 @@ export class AnalyzeWorkflow {
 
     const project = await seedProjectRow(store.projects, git, workspaceRoot);
 
+    if (this.callsProjectionPolicyNeedsRebuild(store, project.id)) {
+      return await runFullIngestion({ workspaceRoot, logger, store, git });
+    }
+
     return await runDeltaIngestion({
       workspaceRoot,
       logger,
@@ -393,6 +413,39 @@ export class AnalyzeWorkflow {
       fromSha,
       headSha,
     });
+  }
+
+  private callsProjectionPolicyNeedsRebuild(
+    store: IGraphStore,
+    projectId: number,
+  ): boolean {
+    const storedPolicy = store.meta.get(
+      `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+    );
+    const interpretedPolicy =
+      storedPolicy ?? CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+    return interpretedPolicy !== DEFAULT_CALLS_PROJECTION_CALLER_POLICY;
+  }
+
+  private async rebuildForCallsProjectionPolicy(
+    store: IGraphStore,
+    git: IGitProvider,
+  ): Promise<AnalyzeResult | undefined> {
+    const project = store.projects.getFirst();
+    if (
+      !project ||
+      store.graph.count().l2Nodes === 0 ||
+      !this.callsProjectionPolicyNeedsRebuild(store, project.id)
+    ) {
+      return undefined;
+    }
+
+    const { workspaceRoot, logger } = this;
+    logger.info("Rebuilding graph for calls caller policy", {
+      projectId: project.id,
+      policy: DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+    });
+    return await runFullIngestion({ workspaceRoot, logger, store, git });
   }
 
   /**

@@ -1,0 +1,26 @@
+# Exact caller policy for calls edges
+
+## Meaning of exact caller
+
+The `exact-enclosing-v2` policy assigns each `calls` edge to the unique innermost function node whose AST line span contains the call. It does not trust `ParsedCall.sourceFunction`, which can describe an outer function or callback parameter instead of the function body that encloses the call.
+
+- **Callbacks and arrow functions:** calls in a parsed callback or arrow body use that function's node when its span is uniquely innermost.
+- **Nested functions:** the smallest enclosing function span wins, including when the parser's legacy caller hint names an outer function.
+- **Class field initializers:** a call evaluated by the initializer itself uses the file node. A call inside a parsed arrow/function body assigned to a field uses that function node.
+- **Top-level code:** calls outside every function span use the file node.
+- **Tied spans:** when multiple innermost function nodes have the same span, use the file node. This preserves the conservative file-node fallback established by #573.
+- **Missing or invalid spans:** use the file node.
+
+Function node keys are the same persisted keys used by the graph: `buildQualifiedBaseKey(file, name, containerName)` followed by `buildUniqueNodeKey`. That yields `<file>#<qualified-name>` normally, `@L<startLine>` on a collision, and a numeric suffix if that key is already occupied. The file-node key is the workspace-relative file path. A call whose parsed function has no graph node falls back to that file key.
+
+## Uniformity and persisted policy
+
+The caller policy applies to every `calls` edge in a graph, whether or not a call has a proven Q1/Q2/Q3 target. Proof projection may replace the target; it uses the same caller policy as unresolved and unproven calls. The exact caller remains separately recorded in `call_site_resolutions.caller_node_key`.
+
+The historical policy is identified as `scope-resolver-v1`; `exact-enclosing-v1` is the earlier exact projection and `exact-enclosing-v2` is the exact projection with lexical parent links. V2 adds `contains` links from each uniquely enclosing function (or class field owner) to nested function nodes. Impact follows these lexical parent links from an exact callback caller, then includes the enclosing function's direct dependents and containing files. It does not recurse over ordinary caller edges, preserving the bounded call-hop behavior. Equal or crossing AST spans remain unlinked because exact caller attribution falls back to the file node for ties.
+
+The default remains `scope-resolver-v1`: on a deterministic 200-callee Docuvia sample, v2 still omitted four named function nodes from the historical impact set. Those nodes were ScopeResolver attributions without a unique lexical-parent path, so inventing parent links would misstate containment. Exact v1 and v2 remain selectable for evaluation.
+
+A complete persistence pass records its policy under the project-scoped `docuvia_meta` key `graph.calls-projection.caller-policy.v1:<projectId>`. Snapshot metadata carries a separately versioned `callsProjectionCallerPolicy` capability so hydration can restore the policy. Snapshots without a valid capability are treated as historical ScopeResolver graphs. `analyze` detects a policy mismatch before the SHA no-op path and performs a full graph rebuild. The generic metadata table and additive snapshot capability make a schema migration unnecessary.
+
+V1 and v2 use the same uniform exact caller attribution for every `calls` edge. V2 adds lexical containment links and impact traversal. Strict proof scope, target selection, candidate generation, observations, and source content hash semantics remain unchanged.

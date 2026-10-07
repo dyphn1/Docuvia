@@ -15,6 +15,9 @@ import {
   type IHydrationService,
   type IKnowledgeGitService,
   type ILlmClient,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import { AnalyzeWorkflow, stripMarkdownCodeFence } from "./analyze-workflow.js";
@@ -326,6 +329,51 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     );
   });
 
+  it("rebuilds a non-empty graph with a legacy caller policy before the SHA no-op path", async () => {
+    const projectId = 41;
+    const policyKey = `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`;
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: projectId } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+      meta: {
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)
+            return "same-sha";
+          if (key === policyKey)
+            return DEFAULT_CALLS_PROJECTION_CALLER_POLICY ===
+              CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1
+              ? CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1
+              : CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+          return undefined;
+        }),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("same-sha"),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+  });
+
   it("fast-path noop with a dirty working tree: reports dirtyWorktree=true and logs the UX-gap message/line, without changing the noop outcome (2026-07-24 C# benchmark follow-up)", async () => {
     const store = makeMockStore({
       meta: {
@@ -501,6 +549,16 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         ...makeMockStore().graph,
         count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
       },
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}1`
+              ? DEFAULT_CALLS_PROJECTION_CALLER_POLICY
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
     });
     registerDefaultPersistenceMocks(store);
     docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
@@ -525,6 +583,16 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
       graph: {
         ...makeMockStore().graph,
         count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}1`
+              ? DEFAULT_CALLS_PROJECTION_CALLER_POLICY
+              : undefined,
+          ),
+        set: vi.fn(),
       },
     });
     registerDefaultPersistenceMocks(store);
@@ -666,13 +734,13 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
       },
       meta: {
-        get: vi
-          .fn()
-          .mockImplementation((key: string) =>
-            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
-              ? "old-sha"
-              : undefined,
-          ),
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)
+            return "old-sha";
+          if (key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}1`)
+            return DEFAULT_CALLS_PROJECTION_CALLER_POLICY;
+          return undefined;
+        }),
         set: vi.fn(),
       },
     });
@@ -705,7 +773,16 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         ...makeMockStore().graph,
         count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
       },
-      meta: { get: vi.fn().mockReturnValue(undefined), set: vi.fn() },
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}1`
+              ? DEFAULT_CALLS_PROJECTION_CALLER_POLICY
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
     });
     registerDefaultPersistenceMocks(store);
     docuviaFactory.register(TOKENS.GitProvider, () =>
@@ -796,13 +873,13 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
       },
       meta: {
-        get: vi
-          .fn()
-          .mockImplementation((key: string) =>
-            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
-              ? "old-sha"
-              : undefined,
-          ),
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)
+            return "old-sha";
+          if (key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}1`)
+            return DEFAULT_CALLS_PROJECTION_CALLER_POLICY;
+          return undefined;
+        }),
         set: vi.fn(),
       },
     });

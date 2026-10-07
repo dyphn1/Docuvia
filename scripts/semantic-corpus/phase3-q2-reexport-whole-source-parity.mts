@@ -10,6 +10,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import {
+  CallsProjectionCallerPolicies,
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   createPortableCallSiteKey,
@@ -34,7 +35,7 @@ import {
   buildUniqueNodeKey,
 } from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
-import { equalStringMaps } from "./parity-utils.mts";
+import { equalStringMaps, exactCallerNodeKeyForCall } from "./parity-utils.mts";
 
 const Q2 = CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE;
 
@@ -311,7 +312,10 @@ async function persistProjection(
       name: `q2-parity-${projectionName}`,
       repoUrl: `file:///${projectionName}`,
     }).id;
-    const persistenceResult = await new GraphPersisterService(service).persist({
+    const persistenceResult = await new GraphPersisterService(
+      service,
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+    ).persist({
       store,
       workspaceRoot: snapshotRoot,
       projectId,
@@ -604,12 +608,16 @@ async function main() {
         (row) => row.callSiteKey === callSiteKey,
       );
       if (!callerResult || !call || !persisted) return [];
-      const oldSource =
+      const legacyScopeResolverSourceNodeKey =
         call.sourceFunction && call.sourceFunction !== ANONYMOUS_SYMBOL_NAME
           ? (symbolMapsByFile
               .get(site.callerFilePath)
               ?.get(call.sourceFunction) ?? site.callerFilePath)
           : site.callerFilePath;
+      const baselineSourceNodeKey = exactCallerNodeKeyForCall(
+        callerResult,
+        call,
+      );
       const scopeTarget = resolver.resolveCall(
         site.callerFilePath,
         call.targetFunction,
@@ -622,10 +630,10 @@ async function main() {
             ? scopeTarget.targetFile
             : null))
         : null;
-      // The Q2 record keeps its exact enclosing caller identity, but calls edges use the
-      // ScopeResolver source attribution already computed for this site. Q2 supplies only the
-      // target side of the projected edge.
-      const newSource = oldSource;
+      // This runner isolates Q2 target projection. Both proof-disabled baseline and proof-enabled
+      // graph use the exact-enclosing caller policy; retain the historical ScopeResolver caller
+      // separately for diagnosis of the policy-wide graph change.
+      const newSource = baselineSourceNodeKey;
       const newTarget = persisted.targetNodeKey;
       return [
         {
@@ -634,12 +642,14 @@ async function main() {
           startLine: site.startLine,
           startColumn: site.startColumn,
           calleeName: site.calleeName,
-          scopeResolverSourceNodeKey: oldSource,
+          legacyScopeResolverSourceNodeKey,
+          baselineSourceNodeKey,
           scopeResolverTargetNodeKey: oldTarget,
           provenSourceNodeKey: newSource,
           provenTargetNodeKey: newTarget,
-          fullEdgeChanged: oldSource !== newSource || oldTarget !== newTarget,
-          callerNodeChanged: oldSource !== newSource,
+          fullEdgeChanged:
+            baselineSourceNodeKey !== newSource || oldTarget !== newTarget,
+          callerNodeChanged: baselineSourceNodeKey !== newSource,
           targetNodeChanged: oldTarget !== newTarget,
         },
       ];
@@ -660,7 +670,7 @@ async function main() {
           ? site.provenSourceNodeKey === edge.source_node_key &&
             site.provenTargetNodeKey === edge.target_node_key &&
             site.fullEdgeChanged
-          : site.scopeResolverSourceNodeKey === edge.source_node_key &&
+          : site.baselineSourceNodeKey === edge.source_node_key &&
             site.scopeResolverTargetNodeKey === edge.target_node_key &&
             site.fullEdgeChanged,
       )
@@ -669,23 +679,24 @@ async function main() {
         startLine: site.startLine,
         startColumn: site.startColumn,
         calleeName: site.calleeName,
-        scopeResolverEdge:
-          site.scopeResolverSourceNodeKey && site.scopeResolverTargetNodeKey
-            ? `${site.scopeResolverSourceNodeKey} -> ${site.scopeResolverTargetNodeKey}`
+        baselineEdge:
+          site.baselineSourceNodeKey && site.scopeResolverTargetNodeKey
+            ? `${site.baselineSourceNodeKey} -> ${site.scopeResolverTargetNodeKey}`
             : null,
+        legacyScopeResolverCallerNodeKey: site.legacyScopeResolverSourceNodeKey,
         provenEdge: `${site.provenSourceNodeKey} -> ${site.provenTargetNodeKey}`,
         callerNodeChanged: site.callerNodeChanged,
         targetNodeChanged: site.targetNodeChanged,
       }));
     const reasons = new Set(
       proofSites.map((site) =>
-        site.scopeResolverEdge === null
+        site.baselineEdge === null
           ? "The call had no local ScopeResolver target edge; Q2 adds the proven caller-to-target edge."
           : site.callerNodeChanged && site.targetNodeChanged
-            ? "Q2 changes both the exact enclosing caller node and the target from the ScopeResolver projection."
+            ? "Q2 changes the exact-policy caller and strict re-export target from the proof-disabled baseline."
             : site.callerNodeChanged
-              ? "Q2 attaches the same target to the exact enclosing caller node instead of the ScopeResolver source node."
-              : "Q2 replaces the ScopeResolver target with the strict re-export target.",
+              ? "Q2 changes the caller relative to the exact-policy baseline."
+              : "Q2 replaces the baseline target with the strict re-export target; caller policy is uniform.",
       ),
     );
     return {
@@ -702,8 +713,8 @@ async function main() {
         proofSites.length > 0 &&
         proofSites.every(
           (site) =>
-            site.scopeResolverEdge !== null &&
-            site.scopeResolverEdge !== site.provenEdge &&
+            site.baselineEdge !== null &&
+            site.baselineEdge !== site.provenEdge &&
             site.callerNodeChanged === false &&
             site.targetNodeChanged === true,
         ),
@@ -753,7 +764,7 @@ async function main() {
     comparison:
       "same committed HEAD source snapshot parsed once; Q2 proven proofs suppressed in baseline, enabled in working projection",
     callsProjectionCallerPolicy:
-      "ScopeResolver caller attribution is retained for every call site; Q2 proven rows replace only the target and retain the exact enclosing caller separately in the resolution record",
+      "Proof-disabled and proof-enabled graphs use exact-enclosing-v2 for every calls edge and persist lexical contains parents; Q2 changes only proven targets, while the former ScopeResolver caller is retained as a diagnostic field",
     callsProjectionComparison:
       "unique (source_node_key, target_node_key, link_type) tuples, matching the collapsed calls projection contract",
     sourceFiles: discoveredFiles.length,
@@ -789,11 +800,13 @@ async function main() {
     nonCallLinksUnchanged:
       nonCallDiff.added.length === 0 && nonCallDiff.removed.length === 0,
     callLinksChangedOnlyForQ2Sites: everyCallDiffHasQ2Explanation,
+    callsProjectionCallerPolicy:
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
     zeroCallerOnlyChanges:
       everyCallDiffHasQ2Explanation &&
       q2SiteProjectionEdges.every((site) => !site.callerNodeChanged),
     everyRemovedCallLinkReplacesWrongTarget,
-    q2SitesWithScopeResolverEdge: q2SiteProjectionEdges.filter(
+    q2SitesWithScopeResolverTarget: q2SiteProjectionEdges.filter(
       (site) => site.scopeResolverTargetNodeKey !== null,
     ).length,
     q2SitesWithCallerNodeChange: q2SiteProjectionEdges.filter(

@@ -19,6 +19,8 @@ export interface SnapshotCapabilities {
   callSites?: { version: number };
   /** Per-site resolution class, verification, dependency and candidate state. */
   callResolutions?: { version: number };
+  /** Caller policy applied uniformly to every persisted `calls` edge. */
+  callsProjectionCallerPolicy?: { version: number; policy: string };
 }
 
 export interface SnapshotMetadata {

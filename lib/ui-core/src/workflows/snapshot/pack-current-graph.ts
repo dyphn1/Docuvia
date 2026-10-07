@@ -5,11 +5,15 @@ import {
   docuviaFactory,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   TOKENS,
   SnapshotCallSiteAvailabilityStates,
   SnapshotCallResolutionAvailabilityStates,
   type IGraphStore,
   type IKnowledgeGitService,
+  type CallsProjectionCallerPolicy,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
 import {
@@ -65,6 +69,62 @@ function getCallResolutionsForSnapshot(
   return store.callSiteResolutions.getAllForProject(project.id);
 }
 
+function getCallsProjectionCallerPolicy(
+  store: IGraphStore,
+  project: ReturnType<IGraphStore["projects"]["getFirst"]>,
+): CallsProjectionCallerPolicy {
+  const storedPolicy = project
+    ? store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${project.id}`,
+      )
+    : undefined;
+  return Object.values(CallsProjectionCallerPolicies).includes(
+    storedPolicy as CallsProjectionCallerPolicy,
+  )
+    ? (storedPolicy as CallsProjectionCallerPolicy)
+    : CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
+}
+
+function createSnapshotCapabilities(input: {
+  project: ReturnType<IGraphStore["projects"]["getFirst"]>;
+  dynamicEvidence: string | undefined;
+  callSitesAvailable: boolean;
+  callResolutionsAvailable: boolean;
+  callerPolicy: CallsProjectionCallerPolicy;
+}) {
+  const {
+    project,
+    dynamicEvidence,
+    callSitesAvailable,
+    callResolutionsAvailable,
+    callerPolicy,
+  } = input;
+  return {
+    ...(dynamicEvidence !== undefined
+      ? {
+          dynamicDependencyEvidence: {
+            version: SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
+            payload: dynamicEvidence,
+          },
+        }
+      : {}),
+    ...(callSitesAvailable
+      ? { callSites: { version: SNAPSHOT_CALL_SITES_VERSION } }
+      : {}),
+    ...(callResolutionsAvailable
+      ? { callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION } }
+      : {}),
+    ...(project
+      ? {
+          callsProjectionCallerPolicy: {
+            version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+            policy: callerPolicy,
+          },
+        }
+      : {}),
+  };
+}
+
 /**
  * The shared "render the current graph -> temp dir -> pack onto the knowledge branch" core, used
  * both by the standalone `snapshot` command (`SnapshotWorkflow`, which additionally does
@@ -102,22 +162,13 @@ export async function packCurrentGraphOntoKnowledgeBranch(
         `${DYNAMIC_DEPENDENCY_EVIDENCE_META_KEY_PREFIX}${project.id}`,
       )
     : undefined;
-  const capabilities = {
-    ...(dynamicEvidence !== undefined
-      ? {
-          dynamicDependencyEvidence: {
-            version: SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
-            payload: dynamicEvidence,
-          },
-        }
-      : {}),
-    ...(callSites !== undefined
-      ? { callSites: { version: SNAPSHOT_CALL_SITES_VERSION } }
-      : {}),
-    ...(callResolutions !== undefined
-      ? { callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION } }
-      : {}),
-  };
+  const capabilities = createSnapshotCapabilities({
+    project,
+    dynamicEvidence,
+    callSitesAvailable: callSites !== undefined,
+    callResolutionsAvailable: callResolutions !== undefined,
+    callerPolicy: getCallsProjectionCallerPolicy(store, project),
+  });
 
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),

@@ -83,6 +83,7 @@
 - [Tiered Call Resolution Certification Summary](analysis/tiered-call-resolution-certification.md)
 - [Tiered Call Resolution Q1 Recertification](analysis/tiered-call-resolution-certification-q1-recert.md)
 - [GRPH-008 Phase 5 — Snapshot and user-facing outputs](analysis/tiered-call-resolution-phase5-snapshot-output.md)
+- [Exact caller policy for calls edges](analysis/tiered-call-resolution-exact-caller-policy.md)
 - [GRPH-008 Phase 3 — Q1 named-import proof audit](analysis/tiered-call-resolution-phase3-q1-named-import-proof.md)
 - [GRPH-008 Phase 3 — Dependency invalidation](analysis/tiered-call-resolution-phase3-invalidation.md)
 - [GRPH-008 Phase 0 — Measurement Gate](analysis/tiered-call-resolution-phase0-results.md)

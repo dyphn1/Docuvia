@@ -462,6 +462,13 @@ export {
   SnapshotCallResolutionAvailabilityStates,
 } from "./constants/knowledge-snapshot.js";
 export {
+  CallsProjectionCallerPolicies,
+  DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+} from "./constants/calls-projection-policy.js";
+export type { CallsProjectionCallerPolicy } from "./constants/calls-projection-policy.js";
+export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,
   ERRNO_ENOENT,

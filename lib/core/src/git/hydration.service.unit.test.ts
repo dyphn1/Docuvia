@@ -6,6 +6,9 @@ import {
   DynamicEvidenceUnavailableReasons,
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   SNAPSHOT_CALL_RESOLUTIONS_VERSION,
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
+  SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   type IGitProvider,
   type IGraphStore,
 } from "@workspace/contracts";
@@ -547,6 +550,10 @@ describe("HydrationService.hydrate()", () => {
       capabilities: {
         callSites: { version: 1 },
         callResolutions: { version: SNAPSHOT_CALL_RESOLUTIONS_VERSION },
+        callsProjectionCallerPolicy: {
+          version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+          policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1,
+        },
       },
     });
     const git = makeMockGitProvider({
@@ -597,6 +604,9 @@ describe("HydrationService.hydrate()", () => {
         `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
       ),
     ).toBe("available");
+    expect(
+      meta.values.get(`${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}42`),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1);
   });
 
   it("[negative] never derives proven certainty from legacy aggregate calls edges", async () => {
@@ -662,6 +672,9 @@ describe("HydrationService.hydrate()", () => {
         `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}42`,
       ),
     ).toBe("unavailable");
+    expect(
+      meta.values.get(`${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}42`),
+    ).toBe(CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1);
   });
 
   it.each([

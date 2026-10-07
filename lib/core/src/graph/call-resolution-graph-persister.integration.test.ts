@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  CallsProjectionCallerPolicies,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   createPortableCallSiteKey,
   type ParsedAstFileResult,
@@ -67,6 +69,7 @@ describe("GraphPersister call-resolution integration", () => {
 
     await new GraphPersisterService(
       new CallResolutionHypothesisService(),
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
     ).persist({
       store,
       workspaceRoot: tempDir,
@@ -443,7 +446,7 @@ describe("GraphPersister call-resolution integration", () => {
     });
   });
 
-  it("[positive][projection] keeps ScopeResolver callback attribution while storing the exact Q2 caller", async () => {
+  it("[positive][projection] uses the exact callback caller for Q2 edges and records", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -487,6 +490,7 @@ describe("GraphPersister call-resolution integration", () => {
 
     await new GraphPersisterService(
       new CallResolutionHypothesisService(),
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
     ).persist({
       store,
       workspaceRoot: tempDir,
@@ -523,13 +527,13 @@ describe("GraphPersister call-resolution integration", () => {
     });
     expect(projectedCallKeys()).toEqual([
       {
-        source: "src/caller.ts",
+        source: "src/caller.ts#anonymous",
         target: "src/impl.ts#finish",
       },
     ]);
   });
 
-  it("[positive][projection] keeps ScopeResolver callback attribution while storing the exact Q1 caller", async () => {
+  it("[positive][projection] uses the exact callback caller for Q1 edges and records", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -569,6 +573,7 @@ describe("GraphPersister call-resolution integration", () => {
 
     await new GraphPersisterService(
       new CallResolutionHypothesisService(),
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
     ).persist({
       store,
       workspaceRoot: tempDir,
@@ -623,7 +628,7 @@ describe("GraphPersister call-resolution integration", () => {
       ruleSignature: "q1:named-import:v1",
     });
     expect(projectedCallKeys()).toContainEqual({
-      source: "src/caller.ts",
+      source: "src/caller.ts#anonymous",
       target: "src/implementation.ts#finish",
     });
   });
@@ -704,7 +709,7 @@ describe("GraphPersister call-resolution integration", () => {
     });
   });
 
-  it("[invalid-input][error-handling][state-diff] keeps the legacy ScopeResolver edge when the source index is incomplete", async () => {
+  it("[invalid-input][error-handling][state-diff] applies exact caller policy when the source index is incomplete", async () => {
     const code =
       "class Service { close(): void {} call(): void { this.close(); } }";
     const { filePath, projectId } = await persistSource(code, false);
@@ -713,7 +718,7 @@ describe("GraphPersister call-resolution integration", () => {
       [],
     );
     expect(projectedCallKeys()).toContainEqual({
-      source: `${filePath}#Service.call`,
+      source: filePath,
       target: `${filePath}#Service.close`,
     });
   });
@@ -771,12 +776,12 @@ describe("GraphPersister call-resolution integration", () => {
         resolutionClass: "proven",
         ruleSignature: "q3:typed-receiver:v1",
         selectedTargetNodeKey: `${filePath}#Service.close`,
-        callerNodeKey: `${filePath}#Service.call`,
+        callerNodeKey: filePath,
         dependencies: [{ filePath, contentHash: sourceContentHash }],
       },
     ]);
     expect(projectedCallKeys()).toContainEqual({
-      source: `${filePath}#Service.call`,
+      source: filePath,
       target: `${filePath}#Service.close`,
     });
   });
@@ -792,7 +797,7 @@ describe("GraphPersister call-resolution integration", () => {
       [],
     );
     expect(projectedCallKeys()).toContainEqual({
-      source: `${filePath}#Client.call`,
+      source: filePath,
       target: `${filePath}#Client.close`,
     });
   });
@@ -820,6 +825,7 @@ describe("GraphPersister call-resolution integration", () => {
 
       await new GraphPersisterService(
         new CallResolutionHypothesisService(),
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
       ).persist({
         store,
         workspaceRoot: tempDir,
@@ -836,5 +842,124 @@ describe("GraphPersister call-resolution integration", () => {
     expect(
       store.callSiteResolutions?.getForFile(projectId, filePath),
     ).toHaveLength(1);
+  });
+
+  it("[happy][stress][state-diff] uses one exact callback caller for proven and unproven calls", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-exact-caller-policy-"),
+    );
+    store = await GraphStore.open({
+      dbPath: path.join(tempDir, ".docuvia", "local.db"),
+    });
+    const projectId = store.projects.insert({
+      name: "exact-caller-policy",
+      repoUrl: "file:///exact-caller-policy",
+    }).id;
+    const sources = [
+      {
+        file: "src/target.ts",
+        code: "export function importedTarget(): void {}\n",
+      },
+      {
+        file: "src/caller.ts",
+        code: [
+          'import { importedTarget } from "./target.js";',
+          "function localTarget(): void {}",
+          "export function outer(): void {",
+          "  [1].map((value) => {",
+          "    localTarget();",
+          "    importedTarget();",
+          "    return value;",
+          "  });",
+          "}",
+        ].join("\n"),
+      },
+    ];
+    const parsedResults = await Promise.all(
+      sources.map((source) =>
+        parseAndWriteSource(tempDir!, "exact-caller-policy", source),
+      ),
+    );
+    const persist = () =>
+      new GraphPersisterService(
+        new CallResolutionHypothesisService(),
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      ).persist({
+        store: store!,
+        workspaceRoot: tempDir!,
+        projectId,
+        parsedResults,
+        sourceIndexComplete: true,
+        tags: [],
+      });
+
+    await persist();
+    const callerResult = parsedResults.find(
+      (result) => result.file === "src/caller.ts",
+    );
+    if (!callerResult) throw new Error("Caller source was not parsed");
+    const callbackNode = store.graph
+      .getAllNodes()
+      .find(
+        (node) => node.node_key?.startsWith("src/caller.ts#anonymous") === true,
+      );
+    expect(callbackNode).toBeDefined();
+    expect(store.graph.getIncomingRelations(callbackNode!.id)).toContainEqual(
+      expect.objectContaining({ name: "outer", linkType: "contains" }),
+    );
+    const nodeKeyById = new Map(
+      store.graph
+        .getAllNodes()
+        .map((node) => [node.id, node.node_key] as const),
+    );
+    const calls = store.graph
+      .getAllLinks()
+      .filter((link) => link.link_type === "calls")
+      .map((link) => ({
+        source: nodeKeyById.get(link.source_node_id),
+        target: nodeKeyById.get(link.target_node_id),
+      }));
+    expect(calls).toContainEqual({
+      source: callbackNode?.node_key,
+      target: "src/caller.ts#localTarget",
+    });
+    expect(calls).toContainEqual({
+      source: callbackNode?.node_key,
+      target: "src/target.ts#importedTarget",
+    });
+    const resolutions = store.callSiteResolutions?.getForFile(
+      projectId,
+      callerResult.file,
+    );
+    expect(
+      resolutions?.find((row) => row.calleeName === "importedTarget"),
+    ).toMatchObject({
+      resolutionClass: "proven",
+      callerNodeKey: callbackNode?.node_key,
+    });
+    expect(
+      store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      ),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2);
+
+    const stableCalls = calls;
+    await persist();
+    const repeatedNodeKeyById = new Map(
+      store.graph
+        .getAllNodes()
+        .map((node) => [node.id, node.node_key] as const),
+    );
+    const repeatedCalls = store.graph
+      .getAllLinks()
+      .filter((link) => link.link_type === "calls")
+      .map((link) => ({
+        source: repeatedNodeKeyById.get(link.source_node_id),
+        target: repeatedNodeKeyById.get(link.target_node_id),
+      }));
+    expect(repeatedCalls).toEqual(stableCalls);
   });
 });

@@ -1,6 +1,6 @@
 # Tiered Call Resolution Phase 4: Scheduling and Canary
 
-This note records Phase 4 scheduling, verification, quarantine, and exit-gate evidence for GRPH-008. The Q1 evidence certifies `q1:named-import:v1` under implementation `ffbd59732bf423c292ac5ea91e55df059f2af7b6`; the current branch has a different Q1 rule-configuration hash, so the runtime rejects that artifact and sends every site through Tier B until matching evidence is supplied. Every other signature also follows the normal Tier B path. See the [Q1 recertification report](tiered-call-resolution-certification-q1-recert.md) for the two-track evidence and current status.
+This note records Phase 4 scheduling, verification, quarantine, and exit-gate evidence for GRPH-008. The earlier Q1 evidence covers `q1:named-import:v1` under implementation `ffbd59732bf423c292ac5ea91e55df059f2af7b6`, but it does not certify the current source. Amendment 3 reran both frozen tracks on implementation `7df7d9335d289e6a14f71a213d645e38d7c85b8b`; both produced zero Q1 proof groups because import-bound calls abstained on incomplete inventory. The current rule hash is `fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab`, not the artifact's `046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b`. The runtime remains rejected and sends every site through Tier B. See the [Q1 recertification report](tiered-call-resolution-certification-q1-recert.md) for both track tables and evidence hashes.
 
 ## Gap audit
 

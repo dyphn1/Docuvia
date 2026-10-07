@@ -1,0 +1,352 @@
+{
+  "schemaVersion": 1,
+  "amendment": 3,
+  "status": "not-certified",
+  "decision": {
+    "ruleSignature": "q1:named-import:v1",
+    "certificationActive": false,
+    "reason": "The current implementation produced zero Q1 proof groups in both frozen tracks; the certification gate requires a lower bound of at least 0.990 in each track.",
+    "contradictions": 0,
+    "newArtifactCreated": false
+  },
+  "implementation": {
+    "headAtEvaluation": "7df7d9335d289e6a14f71a213d645e38d7c85b8b",
+    "q1RuleConfigurationSha256": "fa63092fc95326ebfe3cf796caf2452efb43fa84d6f77fc17241ab4555a514ab",
+    "certifiedArtifactImplementationCommitSha": "ffbd59732bf423c292ac5ea91e55df059f2af7b6",
+    "certifiedArtifactRuleConfigurationSha256": "046ee416f509b9ea3c039da70a91fcfb4390232d54760ae56761fbf2e5720f3b",
+    "currentArtifactSha256": "f7d37887e989a9db6b91db9f28dc3b85164c2a75b67f30a56fd0e3515a143a05"
+  },
+  "labelHandling": {
+    "newLabelsOpened": false,
+    "vscodeLabelsSha256": "0fa6f2facec99ce22f99280747f726f3e57aabca7e8bd7be7c7d4f49a333c66f",
+    "docuviaLabelsSha256": "397626b438267e43320d01ef5a646ccda29060d222b74136d156da033412a2a3",
+    "vscodeLabelsOpenedAtUtc": "2026-10-07T04:47:59.662Z",
+    "provenance": "Per task-provided provenance, the #570 and #576 implementation work was developed without access to these labels and was unrelated to the frozen certification samples. The merge timestamps are later than the VS Code label-open timestamp, so repository timestamps alone do not independently establish individual access history. Amendment 3 reused the existing label bytes and opened no new labels."
+  },
+  "tracks": {
+    "new-family": {
+      "freezeManifestSha256": "3282da0abb1f045685648898a14b804493ed02181aadb427591af178e8648d02",
+      "prelabelManifestSha256": "e192c82979bf26cb6033a0034bd9d740bb58f07489a2e1165ac969f1c4222692",
+      "sourceManifestSha256": "81064f330009cd47f20c9d2b14d5b04fd2c9f324510186255457aa277a67ab9b",
+      "sourceFiles": 1455,
+      "parsedFiles": 1455,
+      "parseFailures": 0,
+      "proofRunnerOutputs": {
+        "q1SummarySha256": "a3996c00b4adee54d405304b39dd1eeafedf0f6c63856adca7e613c0828d314b",
+        "q2SummarySha256": "9e79cb0f4b52a953f7fc8be4b3e19dd85ab7672057c651aa377b7a8b38966bea",
+        "q3SummarySha256": "d9f610f28efd97a520c71bc34072b99e64b30a30935e7c9e152ee5041193144b",
+        "combinedProofsSha256": "61a72fb3694c5a6b8b1f4b0138091098aedc5a108ad15426b4bf38020bd976bd",
+        "certificationResultsSha256": "64bf3aa9af6d80f024eaeb690476352ca891ac37dcd36a25b83f5f715ab8a3ef"
+      },
+      "parity": {
+        "q1": {
+          "proposals": 0,
+          "persisted": 0,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 8477,
+          "incompleteInventoryAbstentions": 8477
+        },
+        "q2": {
+          "proposals": 0,
+          "persisted": 0,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 8477,
+          "incompleteInventoryAbstentions": 8477
+        },
+        "q3": {
+          "proposals": 2130,
+          "persisted": 2130,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 8477,
+          "incompleteInventoryAbstentions": 8477
+        }
+      },
+      "signatures": [
+        {
+          "ruleSignature": "q1:named-import:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 1153,
+            "groups": 1131,
+            "successes": 1131,
+            "contradictions": 0,
+            "lowerBound95": 0.997354758349681
+          }
+        },
+        {
+          "ruleSignature": "q2:reexport-trace:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 299,
+            "groups": 297,
+            "successes": 297,
+            "contradictions": 0,
+            "lowerBound95": 0.9899640589022075
+          }
+        },
+        {
+          "ruleSignature": "q3:super-call:v1",
+          "current": {
+            "sites": 19,
+            "groups": 19,
+            "successes": 19,
+            "contradictions": 0,
+            "lowerBound95": 0.8541314966877566
+          },
+          "ffbd59732": {
+            "sites": 19,
+            "groups": 19,
+            "successes": 19,
+            "contradictions": 0,
+            "lowerBound95": 0.8541314966877566
+          }
+        },
+        {
+          "ruleSignature": "q3:this-inherited:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:typed-receiver:v1",
+          "current": {
+            "sites": 320,
+            "groups": 304,
+            "successes": 304,
+            "contradictions": 0,
+            "lowerBound95": 0.9901940128490738
+          },
+          "ffbd59732": {
+            "sites": 320,
+            "groups": 304,
+            "successes": 304,
+            "contradictions": 0,
+            "lowerBound95": 0.9901940128490738
+          }
+        },
+        {
+          "ruleSignature": "q3:new-receiver:v1",
+          "current": {
+            "sites": 227,
+            "groups": 220,
+            "successes": 220,
+            "contradictions": 0,
+            "lowerBound95": 0.9864753266015994
+          },
+          "ffbd59732": {
+            "sites": 227,
+            "groups": 220,
+            "successes": 220,
+            "contradictions": 0,
+            "lowerBound95": 0.9864753266015994
+          }
+        },
+        {
+          "ruleSignature": "single-candidate-this-v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        }
+      ]
+    },
+    "temporal": {
+      "freezeManifestSha256": "526b5e656ed23b00879386cf842e0901530fc3ca3fd450f91aa33a59af5103b5",
+      "prelabelManifestSha256": "0c161537e3d9680b6e2d66c613fba540002cfb1ca88fc50d36fe48006cd64841",
+      "sourceManifestSha256": "ea844871fb9c8e272fd16a811457bf73ee63f8f5ddc629aa16d878c55f623d70",
+      "sourceFiles": 907,
+      "parsedFiles": 907,
+      "parseFailures": 0,
+      "proofRunnerOutputs": {
+        "q1SummarySha256": "172ecffee83307b1b401cfdef8d260fdb269833f2c70a25e2441dda9cc4f719d",
+        "q2SummarySha256": "d8b7696b0d15e8b4abc516521f1b39fce8137749c28cbd080400fe842a7d7fa8",
+        "q3SummarySha256": "d90498ad0985cc494eb0ae3bcb2d538afca9c19ee2ec1f005ad3b2234c9f5eda",
+        "combinedProofsSha256": "68ac3b6098b531047b8a4f2fc23830fc916aa7e03f95c9554fb71576a6bff874",
+        "certificationResultsSha256": "2af5fff401076f7d294d28288bf41567d4348e9fe8930ce8f6ca34cd5a416d1d"
+      },
+      "parity": {
+        "q1": {
+          "proposals": 0,
+          "persisted": 0,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 16821,
+          "incompleteInventoryAbstentions": 16821
+        },
+        "q2": {
+          "proposals": 0,
+          "persisted": 0,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 16821,
+          "incompleteInventoryAbstentions": 16821
+        },
+        "q3": {
+          "proposals": 1190,
+          "persisted": 1190,
+          "countedExclusions": 0,
+          "silentGap": 0,
+          "importBoundCallSites": 16821,
+          "incompleteInventoryAbstentions": 16821
+        }
+      },
+      "signatures": [
+        {
+          "ruleSignature": "q1:named-import:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 502,
+            "groups": 477,
+            "successes": 477,
+            "contradictions": 0,
+            "lowerBound95": 0.9937393190864231
+          }
+        },
+        {
+          "ruleSignature": "q2:reexport-trace:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 12,
+            "groups": 12,
+            "successes": 12,
+            "contradictions": 0,
+            "lowerBound95": 0.7790778080544442
+          }
+        },
+        {
+          "ruleSignature": "q3:super-call:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:this-inherited:v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        },
+        {
+          "ruleSignature": "q3:typed-receiver:v1",
+          "current": {
+            "sites": 4,
+            "groups": 4,
+            "successes": 4,
+            "contradictions": 0,
+            "lowerBound95": 0.4728708045015879
+          },
+          "ffbd59732": {
+            "sites": 4,
+            "groups": 4,
+            "successes": 4,
+            "contradictions": 0,
+            "lowerBound95": 0.4728708045015879
+          }
+        },
+        {
+          "ruleSignature": "q3:new-receiver:v1",
+          "current": {
+            "sites": 104,
+            "groups": 95,
+            "successes": 95,
+            "contradictions": 0,
+            "lowerBound95": 0.9689579881320451
+          },
+          "ffbd59732": {
+            "sites": 104,
+            "groups": 95,
+            "successes": 95,
+            "contradictions": 0,
+            "lowerBound95": 0.9689579881320451
+          }
+        },
+        {
+          "ruleSignature": "single-candidate-this-v1",
+          "current": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          },
+          "ffbd59732": {
+            "sites": 0,
+            "groups": 0,
+            "successes": 0,
+            "contradictions": 0,
+            "lowerBound95": 0
+          }
+        }
+      ]
+    }
+  }
+}

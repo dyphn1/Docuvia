@@ -10,6 +10,7 @@ import type {
 import {
   createNoopLogger,
   LinkTypes,
+  StructuralLinkTypes,
   QueryResultLayers,
 } from "@workspace/contracts";
 import { resolveTierBCoverageHint } from "../graph/tier-b-coverage.js";
@@ -156,7 +157,7 @@ export class QueryService implements IQueryService {
 
     const incoming = store.graph
       .getIncomingRelations(node.id)
-      .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+      .filter((edge) => !StructuralLinkTypes.includes(edge.linkType))
       .map(({ id, name, linkType }) => ({
         name,
         linkType,
@@ -174,7 +175,7 @@ export class QueryService implements IQueryService {
       }));
     const outgoing = store.graph
       .getOutgoingRelations(node.id)
-      .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+      .filter((edge) => !StructuralLinkTypes.includes(edge.linkType))
       .map(({ id, name, linkType }) => ({
         name,
         linkType,

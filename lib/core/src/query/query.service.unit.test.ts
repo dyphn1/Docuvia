@@ -6,6 +6,7 @@ import { GraphStore } from "@workspace/schema";
 import {
   createMockLogger,
   createPortableCallSiteKey,
+  LinkTypes,
   type CallSiteResolutionRecord,
 } from "@workspace/contracts";
 import { QueryService } from "./query.service.js";
@@ -92,6 +93,42 @@ describe("QueryService", () => {
       expect(queryService.getContext(store, "authService")).toEqual({
         incoming: [{ name: "caller", linkType: "implements" }],
         outgoing: [{ name: "callee", linkType: "extends" }],
+      });
+    });
+
+    it("[regression][exact-v2] omits lexical parent and owner links from dependency context", () => {
+      const ownerId = store.graph.insertNode({
+        projectId,
+        name: "Owner",
+        pathPatterns: ["src/owner.ts"],
+        nodeKey: "src/owner.ts#Owner",
+      });
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "target",
+        pathPatterns: ["src/owner.ts"],
+        nodeKey: "src/owner.ts#target",
+      });
+      const nestedId = store.graph.insertNode({
+        projectId,
+        name: "nested",
+        pathPatterns: ["src/owner.ts"],
+        nodeKey: "src/owner.ts#nested",
+      });
+      store.graph.insertLink({
+        sourceNodeId: ownerId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.LEXICAL_OWNER,
+      });
+      store.graph.insertLink({
+        sourceNodeId: targetId,
+        targetNodeId: nestedId,
+        linkType: LinkTypes.LEXICAL_PARENT,
+      });
+
+      expect(queryService.getContext(store, "target")).toMatchObject({
+        incoming: [],
+        outgoing: [],
       });
     });
 

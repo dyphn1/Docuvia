@@ -390,10 +390,11 @@ export class GraphPersisterService implements IGraphPersister {
   }
 
   /**
-   * Persists uniquely enclosing function/class relationships for exact-caller v2. The file still
-   * contains every symbol; these additional edges record the lexical nesting needed by impact to
-   * walk from an exact callback caller back to its named enclosing function. Equal or crossing
-   * spans stay unlinked because the call projection itself falls back to the file for ties.
+   * Persists exact-caller-v2 lexical context separately from file ownership. Nested functions use
+   * `lexical_parent`; a function without an enclosing function span uses `lexical_owner` when the
+   * parser identifies a class/struct owner. The owner edge is terminal for impact. Every symbol
+   * keeps its file `contains` edge, and equal or crossing spans stay unlinked because caller
+   * projection falls back to the file for ties.
    */
   private linkLexicalFunctionContainment(
     store: IGraphStore,
@@ -426,21 +427,21 @@ export class GraphPersisterService implements IGraphPersister {
           store.graph.insertLink({
             sourceNodeId: parent.graphNodeId,
             targetNodeId: child.graphNodeId,
-            linkType: LinkTypes.CONTAINS,
+            linkType: LinkTypes.LEXICAL_PARENT,
           });
         }
         continue;
       }
 
-      // A class field initializer has no enclosing function span. Attach it to its class when
-      // the parser supplied the class owner; ordinary top-level functions remain file children.
+      // A class/struct member function or field initializer has no enclosing function span.
+      // Attach it to its owner when known; ordinary top-level functions remain file children.
       if (child.containerName === undefined) continue;
       const classId = symbolsForFile.get(child.containerName);
       if (classId === undefined) continue;
       store.graph.insertLink({
         sourceNodeId: classId,
         targetNodeId: child.graphNodeId,
-        linkType: LinkTypes.CONTAINS,
+        linkType: LinkTypes.LEXICAL_OWNER,
       });
     }
   }

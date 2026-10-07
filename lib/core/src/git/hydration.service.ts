@@ -23,6 +23,7 @@ import {
   SNAPSHOT_CALL_RESOLUTIONS_VERSION,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
+  isCallsProjectionCallerPolicy,
   SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   SNAPSHOT_DYNAMIC_EVIDENCE_VERSION,
   SnapshotCallSiteAvailabilityStates,
@@ -898,10 +899,7 @@ function snapshotCallerPolicy(
   if (
     !isRecord(capability) ||
     capability.version !== SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION ||
-    typeof capability.policy !== "string" ||
-    !Object.values(CallsProjectionCallerPolicies).includes(
-      capability.policy as (typeof CallsProjectionCallerPolicies)[keyof typeof CallsProjectionCallerPolicies],
-    )
+    !isCallsProjectionCallerPolicy(capability.policy)
   ) {
     return CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
   }

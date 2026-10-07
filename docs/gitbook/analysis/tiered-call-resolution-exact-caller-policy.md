@@ -17,7 +17,14 @@ Function node keys are the same persisted keys used by the graph: `buildQualifie
 
 The caller policy applies to every `calls` edge in a graph, whether or not a call has a proven Q1/Q2/Q3 target. Proof projection may replace the target; it uses the same caller policy as unresolved and unproven calls. The exact caller remains separately recorded in `call_site_resolutions.caller_node_key`.
 
-The historical policy is identified as `scope-resolver-v1`; `exact-enclosing-v1` is the earlier exact projection and `exact-enclosing-v2` is the exact projection with lexical parent links. V2 adds `contains` links from each uniquely enclosing function (or class field owner) to nested function nodes. Impact follows these lexical parent links from an exact callback caller, then includes the enclosing function's direct dependents and containing files. It does not recurse over ordinary caller edges, preserving the bounded call-hop behavior. Equal or crossing AST spans remain unlinked because exact caller attribution falls back to the file node for ties.
+The historical policy is identified as `scope-resolver-v1`; `exact-enclosing-v1` is the earlier exact projection and `exact-enclosing-v2` is the exact projection with lexical context links. `contains` continues to mean file ownership only: each file owns its symbols through `contains` edges under every policy. V2 adds two separate relationships:
+
+- `lexical_parent` links an enclosing function to a nested function when their AST spans identify a unique parent.
+- `lexical_owner` links a class or struct to a member function or field-initializer function when no enclosing function span applies.
+
+Impact follows `lexical_parent` links from an exact callback caller, then includes enclosing functions' direct dependents and their containing-file context. `lexical_owner` is terminal: impact may include the class/struct as context, but does not continue through the owner or expand its incoming dependents. File `contains` links provide ownership context and are never followed as lexical parents. Impact does not recurse over ordinary caller edges, preserving the bounded call-hop behavior. Equal or crossing AST spans remain unlinked because exact caller attribution falls back to the file node for ties.
+
+Only `exact-enclosing-v2` writes `lexical_parent` and `lexical_owner`; `scope-resolver-v1` and `exact-enclosing-v1` do not persist either link type. The default remains `scope-resolver-v1`.
 
 The default remains `scope-resolver-v1`: on a deterministic 200-callee Docuvia sample, v2 still omitted four named function nodes from the historical impact set. Those nodes were ScopeResolver attributions without a unique lexical-parent path, so inventing parent links would misstate containment. Exact v1 and v2 remain selectable for evaluation.
 

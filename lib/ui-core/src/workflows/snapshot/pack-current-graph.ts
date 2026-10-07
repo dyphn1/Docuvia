@@ -7,6 +7,7 @@ import {
   SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
+  isCallsProjectionCallerPolicy,
   SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
   TOKENS,
   SnapshotCallSiteAvailabilityStates,
@@ -78,10 +79,8 @@ function getCallsProjectionCallerPolicy(
         `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${project.id}`,
       )
     : undefined;
-  return Object.values(CallsProjectionCallerPolicies).includes(
-    storedPolicy as CallsProjectionCallerPolicy,
-  )
-    ? (storedPolicy as CallsProjectionCallerPolicy)
+  return isCallsProjectionCallerPolicy(storedPolicy)
+    ? storedPolicy
     : CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
 }
 

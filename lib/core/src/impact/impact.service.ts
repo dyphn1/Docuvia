@@ -9,6 +9,7 @@ import {
   BlastRadiusEdgeSources,
   createNoopLogger,
   LinkTypes,
+  StructuralLinkTypes,
   RiskLevels,
   SNAPSHOT_CALL_SITE_UNAVAILABLE_REASON,
   SNAPSHOT_CALL_SITES_AVAILABILITY_META_KEY_PREFIX,
@@ -278,7 +279,7 @@ export class ImpactService implements IImpactService {
     return node.filePath !== undefined && node.name === node.filePath;
   }
 
-  /** Exact callback callers walk back through lexical `contains` parents so impact retains the
+  /** Exact callback callers walk back through lexical-parent links so impact retains the
    *  enclosing function and that function's direct callers. This is policy-gated because legacy
    *  ScopeResolver graphs attribute those calls to the enclosing caller already. */
   private usesExactEnclosingV2(store: IGraphStore): boolean {
@@ -293,20 +294,20 @@ export class ImpactService implements IImpactService {
 
   /**
    * Resolves an exact caller's lexical parents and includes each enclosing function's direct
-   * incoming dependents. The walk follows only `contains` edges for parent discovery, then reads
-   * one incoming hop from each parent; ordinary caller edges do not recurse, preserving impact's
-   * bounded single-call-hop behavior while recovering the prior outer-function projection.
+   * incoming dependents. Only lexical-parent links continue the walk; file ownership and class
+   * ownership are context edges. Ordinary caller edges do not recurse, preserving the bounded
+   * single-call-hop behavior while recovering the prior outer-function projection.
    */
   private resolveExactCallerContext(
     store: IGraphStore,
     targetNodeId: number,
     alreadyResolvedIds: ReadonlySet<number>,
   ): BlastRadiusEntry[] {
-    const queue = store.graph
+    const callers = store.graph
       .getIncomingRelations(targetNodeId)
       .filter(({ linkType }) => linkType === LinkTypes.CALLS)
       .map(({ id }) => id);
-    const visitedCallerIds = new Set<number>();
+    const queue: number[] = [];
     const visitedParentIds = new Set<number>();
     const resolvedIds = new Set(alreadyResolvedIds);
     const entries: BlastRadiusEntry[] = [];
@@ -317,18 +318,19 @@ export class ImpactService implements IImpactService {
       entries.push(this.buildEntry(store, node.id, node.name, node.type));
     };
 
-    while (queue.length > 0) {
-      const callerId = queue.shift();
-      if (callerId === undefined || visitedCallerIds.has(callerId)) continue;
-      visitedCallerIds.add(callerId);
-
+    for (const callerId of callers) {
+      this.appendContainerChain(store, callerId, append);
       for (const parent of this.lexicalParents(store, callerId)) {
         append(parent);
-        if (visitedParentIds.has(parent.id)) continue;
-        visitedParentIds.add(parent.id);
-        if (!this.isFunctionNode(store, parent.id)) continue;
-        queue.push(...this.appendParentDependents(store, parent.id, append));
+        if (parent.linkType === LinkTypes.LEXICAL_PARENT) queue.push(parent.id);
       }
+    }
+
+    for (let index = 0; index < queue.length; index++) {
+      const parentId = queue[index];
+      if (parentId === undefined || visitedParentIds.has(parentId)) continue;
+      visitedParentIds.add(parentId);
+      queue.push(...this.appendParentDependents(store, parentId, append));
     }
 
     return entries;
@@ -340,12 +342,11 @@ export class ImpactService implements IImpactService {
   ): ReturnType<IGraphStore["graph"]["getIncomingRelations"]> {
     return store.graph
       .getIncomingRelations(childId)
-      .filter(({ linkType }) => linkType === LinkTypes.CONTAINS);
-  }
-
-  /** Function node keys carry `#`; file and class owner keys do not continue the lexical walk. */
-  private isFunctionNode(store: IGraphStore, nodeId: number): boolean {
-    return store.graph.getNodeKeyById?.(nodeId)?.includes("#") ?? false;
+      .filter(
+        ({ linkType }) =>
+          linkType === LinkTypes.LEXICAL_PARENT ||
+          linkType === LinkTypes.LEXICAL_OWNER,
+      );
   }
 
   /** Appends one incoming hop from an enclosing function and returns nested callers to revisit. */
@@ -354,18 +355,18 @@ export class ImpactService implements IImpactService {
     parentId: number,
     append: (node: { id: number; name: string; type: string }) => void,
   ): number[] {
-    const nestedCallers: number[] = [];
+    const lexicalParents: number[] = [];
     for (const dependent of store.graph.getIncomingRelations(parentId)) {
       append(dependent);
-      this.appendContainerChain(store, dependent.id, append);
-      if (
-        dependent.linkType === LinkTypes.CONTAINS &&
-        this.isFunctionNode(store, dependent.id)
-      ) {
-        nestedCallers.push(dependent.id);
+      if (StructuralLinkTypes.includes(dependent.linkType)) {
+        if (dependent.linkType === LinkTypes.LEXICAL_PARENT) {
+          lexicalParents.push(dependent.id);
+        }
+        continue;
       }
+      this.appendContainerChain(store, dependent.id, append);
     }
-    return nestedCallers;
+    return lexicalParents;
   }
 
   private appendContainerChain(
@@ -379,9 +380,14 @@ export class ImpactService implements IImpactService {
       const childId = containers.shift();
       if (childId === undefined || visited.has(childId)) continue;
       visited.add(childId);
+      const fileOwner = store.graph
+        .getIncomingRelations(childId)
+        .find(({ linkType }) => linkType === LinkTypes.CONTAINS);
+      if (fileOwner) append(fileOwner);
       for (const parent of this.lexicalParents(store, childId)) {
         append(parent);
-        if (this.isFunctionNode(store, parent.id)) containers.push(parent.id);
+        if (parent.linkType === LinkTypes.LEXICAL_PARENT)
+          containers.push(parent.id);
       }
     }
   }
@@ -404,7 +410,7 @@ export class ImpactService implements IImpactService {
 
     for (const symbol of containedSymbols) {
       for (const incoming of store.graph.getIncomingRelations(symbol.id)) {
-        if (incoming.linkType === LinkTypes.CONTAINS) continue;
+        if (StructuralLinkTypes.includes(incoming.linkType)) continue;
         const dependent = this.resolveContainingFile(store, incoming);
         if (dependent.id === fileNodeId || seen.has(dependent.id)) continue;
         seen.add(dependent.id);
@@ -428,13 +434,11 @@ export class ImpactService implements IImpactService {
     return container ?? node;
   }
 
-  /** `true` when at least one incoming edge is a real caller relationship -- anything but the
-   *  containing file's own `contains` link (IMPT-001 keeps that link in the reported radius,
-   *  but it is not evidence a caller exists). */
+  /** `true` when an incoming edge is a dependency, excluding file and lexical context links. */
   private hasStaticCallerEdge(store: IGraphStore, nodeId: number): boolean {
     return store.graph
       .getIncomingRelations(nodeId)
-      .some((relation) => relation.linkType !== LinkTypes.CONTAINS);
+      .some((relation) => !StructuralLinkTypes.includes(relation.linkType));
   }
 
   /** Issue #217: reverse-reads `ast_call_sites` for call sites naming the target symbol and

@@ -2,11 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type {
-  L2NodeRow,
-  L3NodeRow,
-  NodeLinkRow,
-  SnapshotCallResolutionRow,
+import {
+  LinkTypes,
+  type L2NodeRow,
+  type L3NodeRow,
+  type NodeLinkRow,
+  type SnapshotCallResolutionRow,
 } from "@workspace/contracts";
 import { SnapshotRendererService } from "./snapshot-renderer.service.js";
 
@@ -138,6 +139,92 @@ describe("SnapshotRendererService.render()", () => {
       { source: "l2:1", target: "l2:2", type: "contains" },
       { source: "l2:2", target: "l2:2", type: "calls" },
     ]);
+  });
+
+  it("[regression][exact-v2] preserves lexical link types while resolving snapshot ownership from contains", async () => {
+    const l2Rows = [
+      makeL2({
+        id: 1,
+        name: "src/owner.ts",
+        path_patterns: '["src/owner.ts"]',
+      }),
+      makeL2({ id: 2, name: "Owner", path_patterns: '["src/owner.ts"]' }),
+      makeL2({
+        id: 3,
+        name: "fieldCallback",
+        path_patterns: '["src/owner.ts"]',
+      }),
+      makeL2({ id: 4, name: "method", path_patterns: '["src/owner.ts"]' }),
+      makeL2({
+        id: 5,
+        name: "methodCallback",
+        path_patterns: '["src/owner.ts"]',
+      }),
+    ];
+    const linkRows = [
+      makeLink({
+        id: 1,
+        source_node_id: 1,
+        target_node_id: 2,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 2,
+        source_node_id: 1,
+        target_node_id: 3,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 3,
+        source_node_id: 1,
+        target_node_id: 4,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 4,
+        source_node_id: 1,
+        target_node_id: 5,
+        link_type: LinkTypes.CONTAINS,
+      }),
+      makeLink({
+        id: 5,
+        source_node_id: 2,
+        target_node_id: 3,
+        link_type: LinkTypes.LEXICAL_OWNER,
+      }),
+      makeLink({
+        id: 6,
+        source_node_id: 2,
+        target_node_id: 4,
+        link_type: LinkTypes.LEXICAL_OWNER,
+      }),
+      makeLink({
+        id: 7,
+        source_node_id: 4,
+        target_node_id: 5,
+        link_type: LinkTypes.LEXICAL_PARENT,
+      }),
+    ];
+
+    await renderer.render({ outDir, l2Rows, linkRows });
+
+    const nodes = readJsonl(
+      path.join(outDir, "graph", "nodes.jsonl"),
+    ) as Array<{
+      id: string;
+      filePath: string;
+    }>;
+    const edges = readJsonl(path.join(outDir, "graph", "edges.jsonl"));
+    expect(nodes.find((node) => node.id === "l2:3")?.filePath).toBe(
+      "src/owner.ts",
+    );
+    expect(edges).toEqual(
+      expect.arrayContaining([
+        { source: "l2:2", target: "l2:3", type: LinkTypes.LEXICAL_OWNER },
+        { source: "l2:2", target: "l2:4", type: LinkTypes.LEXICAL_OWNER },
+        { source: "l2:4", target: "l2:5", type: LinkTypes.LEXICAL_PARENT },
+      ]),
+    );
   });
 
   it("uses node_key (STOR-005) as the exported id instead of the rowid when present", async () => {

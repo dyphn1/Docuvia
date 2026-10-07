@@ -1,5 +1,6 @@
 import {
   LinkTypes,
+  StructuralLinkTypes,
   type BlastRadiusEntry,
   type IGraphStore,
 } from "@workspace/contracts";
@@ -34,7 +35,7 @@ export class ImpactService extends BaseImpactService {
       .getIncomingRelations(node.id)
       .filter((relation) => relation.linkType === LinkTypes.CONTAINS)) {
       for (const dependent of store.graph.getIncomingRelations(container.id)) {
-        if (dependent.linkType === LinkTypes.CONTAINS) continue;
+        if (StructuralLinkTypes.includes(dependent.linkType)) continue;
         if (seen.has(dependent.name)) continue;
         direct.push(this.buildFileDependencyEntry(store, dependent));
         seen.add(dependent.name);

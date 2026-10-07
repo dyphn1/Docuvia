@@ -235,6 +235,7 @@ export {
   ProjectStatuses,
   L2NodeTypes,
   LinkTypes,
+  StructuralLinkTypes,
   L3NodeTypes,
   ValidityStatuses,
   L3DecisionSources,
@@ -463,6 +464,7 @@ export {
 } from "./constants/knowledge-snapshot.js";
 export {
   CallsProjectionCallerPolicies,
+  isCallsProjectionCallerPolicy,
   DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,

@@ -5,6 +5,8 @@ import {
   CallsProjectionCallerPolicies,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
   createPortableCallSiteKey,
+  LinkTypes,
+  type CallsProjectionCallerPolicy,
   type ParsedAstFileResult,
 } from "@workspace/contracts";
 import { GraphStore } from "@workspace/schema";
@@ -13,6 +15,24 @@ import { buildParseResponse } from "../ast/ast-worker.js";
 import { GraphPersisterService } from "./phase393-graph-persister.js";
 
 describe("GraphPersister call-resolution integration", () => {
+  const callbackOwnerSource = [
+    "export class Owner {",
+    "  field = () => { return 1; };",
+    "  method(): void {",
+    "    [1].map(() => 1);",
+    "  }",
+    "}",
+  ].join("\n");
+  const defaultPolicySource = [
+    "function localTarget(): void {}",
+    "export function outer(): void {",
+    "  [1].map((value) => {",
+    "    localTarget();",
+    "    return value;",
+    "  });",
+    "}",
+  ].join("\n");
+
   let store: GraphStore | undefined;
   let tempDir: string | undefined;
 
@@ -26,9 +46,10 @@ describe("GraphPersister call-resolution integration", () => {
     tempDir = undefined;
   });
 
-  async function persistSource(
+  async function persistSourceWithPolicy(
     code: string,
     sourceIndexComplete = true,
+    callerPolicy?: CallsProjectionCallerPolicy,
   ): Promise<{
     projectId: number;
     filePath: string;
@@ -67,10 +88,14 @@ describe("GraphPersister call-resolution integration", () => {
     if (!parsed.success || !parsed.data)
       throw new Error(parsed.error ?? "AST worker omitted file data");
 
-    await new GraphPersisterService(
-      new CallResolutionHypothesisService(),
-      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
-    ).persist({
+    const persister =
+      callerPolicy === undefined
+        ? new GraphPersisterService(new CallResolutionHypothesisService())
+        : new GraphPersisterService(
+            new CallResolutionHypothesisService(),
+            callerPolicy,
+          );
+    await persister.persist({
       store,
       workspaceRoot: tempDir,
       projectId,
@@ -82,6 +107,17 @@ describe("GraphPersister call-resolution integration", () => {
     });
 
     return { projectId, filePath, sourceContentHash, parsedData: parsed.data };
+  }
+
+  async function persistSource(
+    code: string,
+    sourceIndexComplete = true,
+  ): ReturnType<typeof persistSourceWithPolicy> {
+    return persistSourceWithPolicy(
+      code,
+      sourceIndexComplete,
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+    );
   }
 
   function projectedCallKeys(): Array<{ source: string; target: string }> {
@@ -129,6 +165,101 @@ describe("GraphPersister call-resolution integration", () => {
       data: parsed.data,
     };
   }
+
+  it("[regression][default-policy] constructs the persister without a policy and preserves the ScopeResolver calls projection", async () => {
+    const { projectId, filePath } =
+      await persistSourceWithPolicy(defaultPolicySource);
+    if (!store) throw new Error("GraphStore was not initialized");
+
+    expect(
+      store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      ),
+    ).toBe(CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1);
+    expect(projectedCallKeys()).toEqual([
+      { source: filePath, target: `${filePath}#localTarget` },
+    ]);
+    expect(
+      store.graph
+        .getAllLinks()
+        .map(({ link_type }) => link_type)
+        .filter(
+          (linkType) =>
+            linkType === LinkTypes.LEXICAL_PARENT ||
+            linkType === LinkTypes.LEXICAL_OWNER,
+        ),
+    ).toEqual([]);
+  });
+
+  it("[regression][exact-v1] does not persist v2 lexical links", async () => {
+    const { projectId } = await persistSourceWithPolicy(
+      callbackOwnerSource,
+      true,
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1,
+    );
+    if (!store) throw new Error("GraphStore was not initialized");
+
+    expect(
+      store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      ),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1);
+    expect(
+      store.graph
+        .getAllLinks()
+        .map(({ link_type }) => link_type)
+        .filter(
+          (linkType) =>
+            linkType === LinkTypes.LEXICAL_PARENT ||
+            linkType === LinkTypes.LEXICAL_OWNER,
+        ),
+    ).toEqual([]);
+  });
+
+  it("[regression][exact-v2] persists file ownership separately from function and class lexical context", async () => {
+    const { projectId, filePath } = await persistSource(callbackOwnerSource);
+    if (!store) throw new Error("GraphStore was not initialized");
+    const nodes = store.graph.getAllNodes();
+    const owner = nodes.find((node) => node.node_key === `${filePath}#Owner`);
+    const method = nodes.find((node) => node.name === "method");
+    const links = store.graph.getAllLinks();
+    expect(owner).toBeDefined();
+    expect(method).toBeDefined();
+    expect(
+      links.some(
+        (link) =>
+          link.source_node_id === owner?.id &&
+          link.link_type === LinkTypes.LEXICAL_OWNER,
+      ),
+    ).toBe(true);
+    expect(
+      links.some(
+        (link) =>
+          link.source_node_id === method?.id &&
+          link.link_type === LinkTypes.LEXICAL_PARENT,
+      ),
+    ).toBe(true);
+    const lexicalTargets = links
+      .filter(
+        ({ link_type }) =>
+          link_type === LinkTypes.LEXICAL_PARENT ||
+          link_type === LinkTypes.LEXICAL_OWNER,
+      )
+      .map(({ target_node_id }) => target_node_id);
+    for (const nodeId of new Set(lexicalTargets)) {
+      expect(
+        store.graph
+          .getIncomingRelations(nodeId)
+          .filter((relation) => relation.linkType === LinkTypes.CONTAINS)
+          .map((relation) => relation.name),
+      ).toEqual([filePath]);
+    }
+    expect(
+      store.meta.get(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+      ),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2);
+  });
 
   it("[happy][state-diff] persists the exact portable identity and projects a proven unique this-member target", async () => {
     const code = [
@@ -908,7 +1039,10 @@ describe("GraphPersister call-resolution integration", () => {
       );
     expect(callbackNode).toBeDefined();
     expect(store.graph.getIncomingRelations(callbackNode!.id)).toContainEqual(
-      expect.objectContaining({ name: "outer", linkType: "contains" }),
+      expect.objectContaining({
+        name: "outer",
+        linkType: LinkTypes.LEXICAL_PARENT,
+      }),
     );
     const nodeKeyById = new Map(
       store.graph

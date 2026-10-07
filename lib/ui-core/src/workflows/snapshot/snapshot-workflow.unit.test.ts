@@ -240,7 +240,7 @@ describe("SnapshotWorkflow.execute()", () => {
     },
   );
 
-  it("bulk-reads the store, renders via ISnapshotRenderer, packs onto the knowledge branch, then closes the store", async () => {
+  it("[regression][exact-v2] passes lexical edges through snapshot packing to the renderer", async () => {
     const store = makeMockStore({
       graph: {
         deleteNodesForPath: vi.fn(),
@@ -258,7 +258,9 @@ describe("SnapshotWorkflow.execute()", () => {
         getIncomingRelations: vi.fn(),
         getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn().mockReturnValue([{ id: 1 }]),
-        getAllLinks: vi.fn().mockReturnValue([{ id: 1 }]),
+        getAllLinks: vi
+          .fn()
+          .mockReturnValue([{ id: 1, link_type: "lexical_parent" }]),
         bulkLoadGraph: vi.fn(),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
         getExternalIncomingLinks: vi.fn().mockReturnValue([]),
@@ -308,7 +310,7 @@ describe("SnapshotWorkflow.execute()", () => {
     expect(renderer.render).toHaveBeenCalledWith(
       expect.objectContaining({
         l2Rows: [{ id: 1 }],
-        linkRows: [{ id: 1 }],
+        linkRows: [{ id: 1, link_type: "lexical_parent" }],
         metadata: {
           project: undefined,
           files: [],

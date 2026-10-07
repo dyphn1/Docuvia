@@ -93,10 +93,9 @@ export interface TopologyStats {
   nodeCount: number;
   linkCount: number;
   groupCount: number;
-  /** Non-CONTAINS edges collapsed into a same-file self-loop (and dropped) when folding to file
-   *  granularity — the "auto"/"file" collapse's default view otherwise reports a link count that
-   *  looks sparse even on a densely-connected repo, since most calls resolve within their own
-   *  file (see `TopologyBuilderService.buildCollapsed`). Always 0 at symbol granularity. */
+  /** Non-structural dependency edges collapsed into a same-file self-loop (and dropped) when
+   *  folding to file granularity — the "auto"/"file" collapse's default view otherwise reports a
+   *  link count that looks sparse even on a densely-connected repo. Always 0 at symbol granularity. */
   foldedLinkCount: number;
 }
 

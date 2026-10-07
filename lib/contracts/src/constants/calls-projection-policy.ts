@@ -8,6 +8,17 @@ export const CallsProjectionCallerPolicies = {
 export type CallsProjectionCallerPolicy =
   (typeof CallsProjectionCallerPolicies)[keyof typeof CallsProjectionCallerPolicies];
 
+export function isCallsProjectionCallerPolicy(
+  value: unknown,
+): value is CallsProjectionCallerPolicy {
+  return (
+    typeof value === "string" &&
+    Object.values(CallsProjectionCallerPolicies).some(
+      (policy) => policy === value,
+    )
+  );
+}
+
 /** Keep the historical projection as default until exact callers preserve the full impact set. */
 export const DEFAULT_CALLS_PROJECTION_CALLER_POLICY: CallsProjectionCallerPolicy =
   CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;

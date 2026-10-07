@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "measurement": "phase2-evaluation-license-exclusion-summary/1",
+  "policyVersion": "phase2-evaluation-license-v1",
+  "rulesEnforced": {
+    "repositoryPolicy": "allowed-or-excluded",
+    "excludedRepositoryRowsReachSplits": false,
+    "enterprisePathCallerOrTargetReachSplits": false
+  },
+  "onyxEnterprisePathExcludedSamples": {
+    "callerPathAcrossSourceReplay": 131,
+    "targetPathDuringTestEvaluation": 3,
+    "totalObserved": 134
+  },
+  "targetPathExclusionsBySplit": {
+    "train": 0,
+    "calibration": 0,
+    "test": 3,
+    "temporal": 0
+  },
+  "notes": "Counts are aggregate-only. No excluded repository identity, sample ID, snapshot ID, source hash, or row is included."
+}

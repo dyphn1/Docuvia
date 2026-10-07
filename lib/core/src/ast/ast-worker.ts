@@ -18,6 +18,7 @@ import {
   type AstExportDescriptor,
   type AstDeclaredTypeFacts,
   type AstCallSiteShapeFacts,
+  type AstUtf16Span,
   type SupportedLanguage,
 } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
@@ -80,7 +81,7 @@ export interface AstParseResponse {
       name: string;
       startLine: number;
       endLine: number;
-      declarationSpan?: { readonly start: number; readonly end: number };
+      declarationSpan?: AstUtf16Span;
       contentHash?: string;
       containerName?: string; // NEW — the enclosing class/struct name, or undefined for a top-level function
     }>;

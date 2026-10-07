@@ -2,6 +2,23 @@
 
 All notable changes to `docuvia` are documented in this file. Versions before 0.1.0 were backfilled from the roadmap's shipped items (see docs/gitbook/analysis/roadmap-and-open-items.md).
 
+## [1.19.1](https://github.com/dyphn1/Docuvia/compare/v1.19.0...v1.19.1) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** bind persisted proofs to their exact declaration node ([#571](https://github.com/dyphn1/Docuvia/issues/571), [#574](https://github.com/dyphn1/Docuvia/issues/574)) ([0faf355](https://github.com/dyphn1/Docuvia/commit/0faf355a89f0751e4eb909330130ad513b3dd956))
+- **call-resolution:** persist proven proposals with ambiguous graph node mapping ([#571](https://github.com/dyphn1/Docuvia/issues/571)) ([23e5c75](https://github.com/dyphn1/Docuvia/commit/23e5c75b3943cbe8d10eb6dad78ddff0bb9690d2))
+
+# [1.19.0](https://github.com/dyphn1/Docuvia/compare/v1.18.0...v1.19.0) (2026-10-07)
+
+### Bug Fixes
+
+- **call-resolution:** bind proofs to parser source hashes ([cb867ca](https://github.com/dyphn1/Docuvia/commit/cb867ca7a8667e72b17e2f89e1d901107f8544f4)), closes [#568](https://github.com/dyphn1/Docuvia/issues/568)
+
+### Features
+
+- **call-resolution:** raise Tier A candidate-list recall and add corpus license guard ([#567](https://github.com/dyphn1/Docuvia/issues/567)) ([8c330ee](https://github.com/dyphn1/Docuvia/commit/8c330ee851e352de154f91838a738353bdc589fd))
+
 # [1.18.0](https://github.com/dyphn1/Docuvia/compare/v1.17.2...v1.18.0) (2026-10-06)
 
 ### Bug Fixes

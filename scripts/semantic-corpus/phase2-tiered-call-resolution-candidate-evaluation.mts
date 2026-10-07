@@ -2,6 +2,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import {
   evaluateCandidateRecallSplit,
+  evaluateTierACandidateListRecall,
   type Phase2EvaluationObservation,
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
 import {
@@ -14,15 +15,20 @@ import {
   summarizeCandidateSetDistribution,
 } from "./phase2-tiered-call-resolution-candidate-audit.mjs";
 import {
-  allFactRows,
   canonicalHash,
   labelsForSplitIsolated,
+  licensedPhase2CorpusInputs,
   readJson,
   readJsonl,
   sha256,
-  verifyPhase1SourceSidecars,
   writeJson,
 } from "./phase2-tiered-call-resolution-support.mjs";
+import {
+  assertEvaluationRowAllowed,
+  assertEvaluationSplitLicenseAllowed,
+  classifyEvaluationRowLicense,
+  EVALUATION_LICENSE_POLICY_VERSION,
+} from "./phase2-tiered-call-resolution-license-policy.mjs";
 
 const MAPPING_IMPLEMENTATION_FILES = [
   "scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-audit.mts",
@@ -48,8 +54,10 @@ const ALLOWED_SPLITS = ["train", "calibration", "test", "temporal"] as const;
 type EvaluationSplit = (typeof ALLOWED_SPLITS)[number];
 
 interface CandidatePredictionManifest {
-  readonly schemaVersion: 2;
-  readonly measurement: "phase2-p2a-candidate-predictions/2";
+  readonly schemaVersion: 3;
+  readonly measurement: "phase2-p2a-candidate-predictions/3";
+  readonly licensePolicyVersion: typeof EVALUATION_LICENSE_POLICY_VERSION;
+  readonly licenseInputScope: "licensed-source-rows-and-target-facts-only";
   readonly candidateOracleMappingScope: "snapshotId+repoId";
   readonly predictionRows: number;
   readonly predictionSha256: string;
@@ -109,8 +117,11 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   );
   const manifest = readJson<CandidatePredictionManifest>(manifestPath);
   if (
-    manifest.schemaVersion !== 2 ||
-    manifest.measurement !== "phase2-p2a-candidate-predictions/2" ||
+    manifest.schemaVersion !== 3 ||
+    manifest.measurement !== "phase2-p2a-candidate-predictions/3" ||
+    manifest.licensePolicyVersion !== EVALUATION_LICENSE_POLICY_VERSION ||
+    manifest.licenseInputScope !==
+      "licensed-source-rows-and-target-facts-only" ||
     manifest.candidateOracleMappingScope !== "snapshotId+repoId"
   )
     throw new Error("Unsupported candidate prediction manifest.");
@@ -122,24 +133,78 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   );
   if (allObservations.length !== manifest.predictionRows)
     throw new Error("Candidate prediction row count differs from manifest.");
-  const observations = allObservations.filter(
+  for (const row of allObservations) {
+    if (!row.repoId || !row.callerFilePath)
+      throw new Error(
+        "Candidate prediction row lacks licensed source identity.",
+      );
+    assertEvaluationRowAllowed({
+      repoId: row.repoId,
+      callerFilePath: row.callerFilePath,
+    });
+    if (
+      row.repoId.toLowerCase() === "github.com/nestjs/nest" &&
+      row.revision?.startsWith("35142c3eca") &&
+      (row.split === "train" || row.split === "calibration")
+    )
+      throw new Error("Regression-only Nest source reached candidate tuning.");
+  }
+  const sourceObservations = allObservations.filter(
     (row) => row.split === options.split,
   );
-  const sampleIds = new Set(observations.map((row) => row.sampleId));
-  if (sampleIds.size !== observations.length)
+  const sampleIds = new Set(sourceObservations.map((row) => row.sampleId));
+  if (sampleIds.size !== sourceObservations.length)
     throw new Error("Candidate prediction split has duplicate sample IDs.");
-  const labels = await labelsForSplitIsolated(options.split, sampleIds);
   if (
-    observations.some(
-      (row) => row.snapshotId === undefined || row.repoId === undefined,
+    sourceObservations.some(
+      (row) =>
+        row.snapshotId === undefined ||
+        row.repoId === undefined ||
+        row.callerFilePath === undefined,
     )
   )
-    throw new Error("Snapshot-scoped predictions require source identities.");
-  const verifiedSourceHashes = verifyPhase1SourceSidecars();
-  for (const [name, hash] of Object.entries(manifest.sourceInputHashes))
-    if (verifiedSourceHashes[name] !== hash)
-      throw new Error(`Candidate source input hash changed for ${name}.`);
-  const oracleMapping = candidateOracleTargetMapping(allFactRows());
+    throw new Error(
+      "Snapshot-scoped predictions require licensed source identities.",
+    );
+  const licensedInputs = licensedPhase2CorpusInputs();
+  if (
+    canonicalHash(licensedInputs.sourceInputHashes) !==
+    canonicalHash(manifest.sourceInputHashes)
+  )
+    throw new Error(
+      "Licensed source inputs changed after candidate prediction.",
+    );
+  const rawLabels = await labelsForSplitIsolated(options.split, sampleIds);
+  const rawLabelsById = new Map(
+    rawLabels.map((label) => [label.sampleId, label]),
+  );
+  const observations: Phase2EvaluationObservation[] = [];
+  const labels: typeof rawLabels = [];
+  let licenseExcludedEnterprisePathSampleCount = 0;
+  for (const row of sourceObservations) {
+    const label = rawLabelsById.get(row.sampleId);
+    if (!label)
+      throw new Error(`Missing ${options.split} label ${row.sampleId}.`);
+    const targetFilePaths = label.positiveTargetIds.map((targetId) => {
+      const separator = targetId.indexOf("#");
+      return separator < 0 ? targetId : targetId.slice(0, separator);
+    });
+    const classification = classifyEvaluationRowLicense({
+      repoId: row.repoId!,
+      callerFilePath: row.callerFilePath!,
+      targetFilePaths,
+    });
+    if (classification === "excluded-repository")
+      throw new Error("Excluded repository reached candidate evaluation.");
+    if (classification === "excluded-path") {
+      licenseExcludedEnterprisePathSampleCount++;
+      continue;
+    }
+    observations.push(row);
+    labels.push(label);
+  }
+  assertEvaluationSplitLicenseAllowed(observations, labels);
+  const oracleMapping = candidateOracleTargetMapping(licensedInputs.factRows);
   const oracleMappingProvenance =
     candidateOracleMappingProvenance(oracleMapping);
   const mappingImplementation = mappingImplementationProvenance();
@@ -154,6 +219,11 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   const metrics = evaluateCandidateRecallSplit(
     currentUniqueInputs.observations,
     currentUniqueInputs.labels,
+    options.split,
+  );
+  const tierACandidateListRecall = evaluateTierACandidateListRecall(
+    observations,
+    labels,
     options.split,
   );
   const candidateSetDistribution = summarizeCandidateSetDistribution(
@@ -181,9 +251,12 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
         readonly phase1Sidecars?: Readonly<Record<string, string>>;
         readonly correctedDeclaredFactsSha256?: string;
         readonly implementationHash?: string;
+        readonly licensePolicyVersion?: string;
       };
     }>(baselineSummaryPath);
     if (
+      baselineSummary.inputs?.licensePolicyVersion !==
+        EVALUATION_LICENSE_POLICY_VERSION ||
       baselineSummary.inputs?.phase1Sidecars?.["callsites.jsonl"] !==
         manifest.sourceInputHashes?.["callsites.jsonl"] ||
       baselineSummary.inputs?.correctedDeclaredFactsSha256 !==
@@ -209,6 +282,16 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
     const baselineSplitRows = baselineRows.filter(
       (row) => row.split === options.split,
     );
+    for (const row of baselineRows) {
+      if (!row.repoId || !row.callerFilePath)
+        throw new Error(
+          "Baseline prediction row lacks licensed source identity.",
+        );
+      assertEvaluationRowAllowed({
+        repoId: row.repoId,
+        callerFilePath: row.callerFilePath,
+      });
+    }
     if (baselineSplitRows.length !== manifest.splitCounts[options.split])
       throw new Error(
         "Baseline split row count differs from current predictions.",
@@ -232,6 +315,11 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       baselineUniqueInputs.labels,
       options.split,
     );
+    const baselineTierACandidateListRecall = evaluateTierACandidateListRecall(
+      baselineWithCurrentShapes,
+      labels,
+      options.split,
+    );
     baselineComparison = {
       baselineRuleVersion: "declared-member-hypothesis-v2",
       currentRuleVersion: manifest.candidateGeneratorVersion,
@@ -248,6 +336,8 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
         "current source-only prediction rows, joined by sampleId for both versions",
       baselineMetrics,
       currentMetrics: metrics,
+      baselineTierACandidateListRecall,
+      currentTierACandidateListRecall: tierACandidateListRecall,
       uniqueOracleTargetDomain: {
         baseline: {
           siteCount: baselineUniqueInputs.siteCount,
@@ -321,10 +411,12 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
   }
   const result = {
     schemaVersion: 2,
-    measurement: "phase2-p2a-candidate-recall/2",
+    measurement: "phase2-p2b-candidate-list-recall/1",
     evaluatedAt: new Date().toISOString(),
     split: options.split,
+    licenseExcludedEnterprisePathSampleCount,
     provenance: {
+      licensePolicyVersion: EVALUATION_LICENSE_POLICY_VERSION,
       predictionSha256: manifest.predictionSha256,
       labelRowsHash,
       correctedFactsSha256: manifest.correctedFactsSha256,
@@ -359,6 +451,7 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       },
     },
     metrics,
+    tierACandidateListRecall,
     candidateSetDistribution,
     ...(baselineComparison ? { baselineComparison } : {}),
   };
@@ -369,8 +462,9 @@ async function run(options: CandidateEvaluationOptions): Promise<void> {
       `candidate-recall-${options.split}.json`,
     );
   writeJson(outputPath, result);
+  const boundedProposalList = tierACandidateListRecall.boundedProposalList;
   console.info(
-    `[phase2-p2a] ${options.split}: ${metrics.coveredGoldTargetCount}/${metrics.candidateGoldTargetCount} unique-mappable positive-target occurrences covered across ${metrics.eligibleSiteCount} sites; raw zero-candidate sites ${candidateSetDistribution.overall.zeroCandidateSiteCount}/${candidateSetDistribution.overall.eligibleSiteCount}; candidate size p50/p95 ${candidateSetDistribution.overall.candidateSetSizeP50}/${candidateSetDistribution.overall.candidateSetSizeP95}; wrote ${outputPath}`,
+    `[phase2-p2b] ${options.split}: generated candidate-list recall ${tierACandidateListRecall.candidateCoveredSiteCount}/${tierACandidateListRecall.resolvedSiteCount}; family mean/worst ${(tierACandidateListRecall.familyMeanRecall ?? 0).toFixed(4)}/${(tierACandidateListRecall.worstFamilyRecall ?? 0).toFixed(4)}; size p50/p90/p99 ${tierACandidateListRecall.candidateListSize.p50}/${tierACandidateListRecall.candidateListSize.p90}/${tierACandidateListRecall.candidateListSize.p99}; single/multi/zero ${tierACandidateListRecall.singleCandidateSiteCount} (${(tierACandidateListRecall.singleCandidateSiteRate * 100).toFixed(2)}%)/${tierACandidateListRecall.multiCandidateSiteCount} (${(tierACandidateListRecall.multiCandidateSiteRate * 100).toFixed(2)}%)/${tierACandidateListRecall.zeroCandidateSiteCount}; correct singleton ${tierACandidateListRecall.correctSingleCandidateCount}/${tierACandidateListRecall.singleCandidateSiteCount}, precision ${(tierACandidateListRecall.singleCandidateAcceptedPrecision ?? 0).toFixed(4)}, no-LSP ${(tierACandidateListRecall.noLspResolvableRate * 100).toFixed(2)}%; bounded proposal recall ${boundedProposalList.candidateCoveredSiteCount}/${boundedProposalList.resolvedSiteCount}; bounded size p50/p90/p99 ${boundedProposalList.candidateListSize.p50}/${boundedProposalList.candidateListSize.p90}/${boundedProposalList.candidateListSize.p99}; bounded truncation ${boundedProposalList.truncatedSiteCount} (${(boundedProposalList.truncatedSiteRate * 100).toFixed(2)}%); wrote ${outputPath}`,
   );
   if (baselineComparison) {
     const comparison = baselineComparison.comparison as {

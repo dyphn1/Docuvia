@@ -13,7 +13,10 @@ import { clopperPearsonLowerBound } from "./system1/eval/system1-eval-calibratio
 import { AstWorkerPool } from "../ast/ast-worker-pool.js";
 import type { AstParseResponse } from "../ast/ast-worker.js";
 import { registerCoreProviders } from "../register.js";
-import { candidateTargetKeyForDeclaration } from "./call-resolution-hypothesis-index.js";
+import {
+  candidateTargetKeyForDeclaration,
+  candidateTargetKeyForExportedValue,
+} from "./call-resolution-hypothesis-index.js";
 import { CallResolutionHypothesisService } from "./call-resolution-hypothesis.service.js";
 
 let pool: AstWorkerPool;
@@ -51,6 +54,7 @@ function indexWorkspace(
     sourceContentHash?: string;
     imports?: Awaited<ReturnType<typeof parseFile>>["imports"];
     exports?: Awaited<ReturnType<typeof parseFile>>["exports"];
+    reexports?: Awaited<ReturnType<typeof parseFile>>["reexports"];
     callSiteShapeFacts?: NonNullable<
       Awaited<ReturnType<typeof parseFile>>["callSiteShapeFacts"]
     > | null;
@@ -126,6 +130,8 @@ async function hypothesizeCallFromSources(
     readonly maxCandidates?: number;
     readonly sourceIndexComplete?: boolean;
     readonly configuredPathAliases?: CallResolutionConfiguredPathAliases;
+    readonly includeReexports?: boolean;
+    readonly omitUnknownProgramDeclarations?: boolean;
   } = {},
 ): Promise<CallResolutionHypothesisResultLike> {
   const parsedFiles = await Promise.all(
@@ -156,8 +162,18 @@ async function hypothesizeCallFromSources(
       sourceContentHash: createSha256(code),
       imports: data.imports,
       exports: data.exports,
+      ...(options.includeReexports ? { reexports: data.reexports } : {}),
       callSiteShapeFacts: data.callSiteShapeFacts,
-      declaredTypeFacts: data.declaredTypeFacts ?? null,
+      declaredTypeFacts:
+        data.declaredTypeFacts && options.omitUnknownProgramDeclarations
+          ? {
+              ...data.declaredTypeFacts,
+              declarations: data.declaredTypeFacts.declarations.filter(
+                ({ kind, owner }) =>
+                  kind !== "unknown" || owner.kind !== "program",
+              ),
+            }
+          : (data.declaredTypeFacts ?? null),
     })),
     options.sourceIndexComplete ?? true,
     options.configuredPathAliases,
@@ -200,6 +216,7 @@ async function hypothesizeAllNamedCallsFromSources(
       sourceContentHash: createSha256(code),
       imports: data.imports,
       exports: data.exports,
+      reexports: data.reexports,
       callSiteShapeFacts: data.callSiteShapeFacts,
       declaredTypeFacts: data.declaredTypeFacts ?? null,
     })),
@@ -355,6 +372,7 @@ function createAliasWorkspaceInput(
       sourceContentHash: createSha256(code),
       imports: data.imports,
       exports: data.exports,
+      reexports: data.reexports,
       callSiteShapeFacts: data.callSiteShapeFacts,
       declaredTypeFacts: data.declaredTypeFacts ?? null,
     })),
@@ -362,6 +380,361 @@ function createAliasWorkspaceInput(
 }
 
 describe("call-resolution hypothesis service", () => {
+  it("includes the declaration behind a default-import local name", async () => {
+    const targetCode = "export default function PrivateReportPage(): void {}";
+    const callerCode = [
+      'import ReportPage from "./page.js";',
+      "ReportPage();",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/page.ts", code: targetCode },
+        { filePath: "src/caller.ts", code: callerCode },
+      ],
+      "src/caller.ts",
+      "ReportPage",
+    );
+    const target = await parseFile("src/page.ts", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === "PrivateReportPage" && owner.kind === "program",
+    );
+    if (!declaration)
+      throw new Error("parser omitted the default function declaration");
+
+    const targetKey = candidateTargetKeyForDeclaration(
+      "src/page.ts",
+      declaration,
+    );
+    expect(result.generatedCandidateKeys).toContain(targetKey);
+    expect(result.candidates.map(({ targetKey: key }) => key)).toContain(
+      targetKey,
+    );
+  });
+
+  it("includes the exported declaration behind an aliased decorator call", async () => {
+    const targetCode = "export function Module(): void {}";
+    const callerCode = [
+      'import { Module as ModuleDecorator } from "./nest.js";',
+      "@ModuleDecorator()",
+      "class AppModule {}",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/nest.ts", code: targetCode },
+        { filePath: "src/caller.ts", code: callerCode },
+      ],
+      "src/caller.ts",
+      "ModuleDecorator",
+    );
+    const target = await parseFile("src/nest.ts", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) => name === "Module" && owner.kind === "program",
+    );
+    if (!declaration) throw new Error("parser omitted the decorator export");
+
+    const targetKey = candidateTargetKeyForDeclaration(
+      "src/nest.ts",
+      declaration,
+    );
+    expect(result.generatedCandidateKeys).toContain(targetKey);
+    expect(result.candidates.map(({ targetKey: key }) => key)).toContain(
+      targetKey,
+    );
+  });
+
+  it("includes exported candidates for an aliased import through an unresolved package barrel", async () => {
+    const targetCode = "export function Module(): void {}";
+    const callerCode = [
+      'import { Module as ModuleDecorator } from "@nestjs/common";',
+      "@ModuleDecorator()",
+      "class AppModule {}",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "packages/common/module.decorator.ts", code: targetCode },
+        {
+          filePath: "packages/common/index.ts",
+          code: 'export { Module } from "./module.decorator.js";',
+        },
+        { filePath: "apps/example/app.module.ts", code: callerCode },
+      ],
+      "apps/example/app.module.ts",
+      "ModuleDecorator",
+    );
+    const target = await parseFile(
+      "packages/common/module.decorator.ts",
+      targetCode,
+    );
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) => name === "Module" && owner.kind === "program",
+    );
+    if (!declaration) throw new Error("parser omitted the exported decorator");
+    const targetKey = candidateTargetKeyForDeclaration(
+      "packages/common/module.decorator.ts",
+      declaration,
+    );
+
+    expect(result.generatedCandidateKeys).toContain(targetKey);
+    expect(result.candidates.map(({ targetKey: key }) => key)).toContain(
+      targetKey,
+    );
+  });
+
+  it("follows a named export alias through a relative barrel", async () => {
+    const targetCode = "export function shutdown(): void {}";
+    const barrelCode =
+      'export { shutdown as finish } from "./implementation.js";';
+    const callerCode = [
+      'import { finish as execute } from "./barrel.js";',
+      "execute();",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/implementation.ts", code: targetCode },
+        { filePath: "src/barrel.ts", code: barrelCode },
+        { filePath: "src/caller.ts", code: callerCode },
+      ],
+      "src/caller.ts",
+      "execute",
+      { includeReexports: true, sourceIndexComplete: false },
+    );
+    const target = await parseFile("src/implementation.ts", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) => name === "shutdown" && owner.kind === "program",
+    );
+    if (!declaration) throw new Error("parser omitted the barrel target");
+    const targetKey = candidateTargetKeyForDeclaration(
+      "src/implementation.ts",
+      declaration,
+    );
+
+    expect(result.generatedCandidateKeys).toContain(targetKey);
+    expect(result.strictProof).toMatchObject({
+      status: "abstained",
+      targetKey: null,
+    });
+  });
+
+  it("maps a combined default import's local name through a source-bound path alias", async () => {
+    const targetCode =
+      "export default async function PrivateReportPage(): Promise<void> {}";
+    const callerCode = [
+      'import ReportPage, { generateMetadata } from "@/app/report/page";',
+      "ReportPage();",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/app/report/page.tsx", code: targetCode },
+        { filePath: "src/app/report/page.test.tsx", code: callerCode },
+      ],
+      "src/app/report/page.test.tsx",
+      "ReportPage",
+      {
+        configuredPathAliases: {
+          configurationFilePath: "tsconfig.json",
+          sourceContentHash: "a".repeat(64),
+          paths: { "@/*": ["./src/*"] },
+          baseUrl: null,
+          extends: [],
+        },
+      },
+    );
+    const target = await parseFile("src/app/report/page.tsx", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === "PrivateReportPage" && owner.kind === "program",
+    );
+    if (!declaration) throw new Error("parser omitted the default declaration");
+
+    expect(result.generatedCandidateKeys).toContain(
+      candidateTargetKeyForDeclaration("src/app/report/page.tsx", declaration),
+    );
+  });
+
+  it("lists an exported factory-valued import without promoting it to a proof", async () => {
+    const targetCode = "export const Module = createDecorator();";
+    const callerCode = [
+      'import { Module as ModuleDecorator } from "@framework/common";',
+      "@ModuleDecorator()",
+      "class AppModule {}",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "packages/common/module.decorator.ts", code: targetCode },
+        { filePath: "apps/example/app.module.ts", code: callerCode },
+      ],
+      "apps/example/app.module.ts",
+      "ModuleDecorator",
+      { omitUnknownProgramDeclarations: true },
+    );
+    expect(result.generatedCandidateKeys).toContain(
+      candidateTargetKeyForExportedValue(
+        "packages/common/module.decorator.ts",
+        "Module",
+      ),
+    );
+    expect(result.strictProof.status).toBe("abstained");
+  });
+
+  it("lists an unaliased package import of an exported factory value", async () => {
+    const targetCode = "export const Get = createMappingDecorator();";
+    const callerCode = [
+      'import { Get } from "@framework/common";',
+      "class Controller { @Get() handler(): void {} }",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "packages/common/request-mapping.ts", code: targetCode },
+        { filePath: "apps/example/controller.ts", code: callerCode },
+      ],
+      "apps/example/controller.ts",
+      "Get",
+      { omitUnknownProgramDeclarations: true },
+    );
+
+    expect(result.generatedCandidateKeys).toContain(
+      candidateTargetKeyForExportedValue(
+        "packages/common/request-mapping.ts",
+        "Get",
+      ),
+    );
+  });
+
+  it("lists a direct relative import of an exported factory value", async () => {
+    const targetCode = "export const useDashboardStore = createStore();";
+    const callerCode = [
+      'import { useDashboardStore } from "./store.js";',
+      "useDashboardStore();",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        { filePath: "src/store.ts", code: targetCode },
+        { filePath: "src/App.tsx", code: callerCode },
+      ],
+      "src/App.tsx",
+      "useDashboardStore",
+      { omitUnknownProgramDeclarations: true },
+    );
+
+    expect(result.generatedCandidateKeys).toContain(
+      candidateTargetKeyForExportedValue("src/store.ts", "useDashboardStore"),
+    );
+  });
+
+  it("restricts an imported static call to its syntactic class before capping", async () => {
+    const targetCode =
+      "export class ClientProxyFactory { static create(): void {} }";
+    const files = [
+      {
+        filePath: "src/noise-a.ts",
+        code: "export class A { static create(): void {} }",
+      },
+      {
+        filePath: "src/noise-b.ts",
+        code: "export class B { static create(): void {} }",
+      },
+      { filePath: "src/target.ts", code: targetCode },
+      {
+        filePath: "src/caller.ts",
+        code: [
+          'import { ClientProxyFactory } from "./target.js";',
+          "ClientProxyFactory.create();",
+        ].join("\n"),
+      },
+    ];
+    const result = await hypothesizeCallFromSources(
+      files,
+      "src/caller.ts",
+      "create",
+      { maxCandidates: 1 },
+    );
+    const target = await parseFile("src/target.ts", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === "create" &&
+        owner.kind === "class" &&
+        owner.name === "ClientProxyFactory",
+    );
+    if (!declaration) throw new Error("parser omitted the static class method");
+
+    const targetKey = candidateTargetKeyForDeclaration(
+      "src/target.ts",
+      declaration,
+    );
+    expect(result.generatedCandidateKeys).toEqual([targetKey]);
+    expect(result.candidates.map(({ targetKey: key }) => key)).toEqual([
+      targetKey,
+    ]);
+  });
+
+  it("restricts a package-imported static class before capping", async () => {
+    const targetCode =
+      "export class ClientProxyFactory { static create(): void {} }";
+    const callerCode = [
+      'import { ClientProxyFactory } from "@framework/microservices";',
+      "ClientProxyFactory.create();",
+    ].join("\n");
+    const result = await hypothesizeCallFromSources(
+      [
+        {
+          filePath: "packages/other.ts",
+          code: "export class Other { static create(): void {} }",
+        },
+        { filePath: "packages/client-proxy.ts", code: targetCode },
+        { filePath: "apps/example/app.ts", code: callerCode },
+      ],
+      "apps/example/app.ts",
+      "create",
+      { maxCandidates: 1 },
+    );
+    const target = await parseFile("packages/client-proxy.ts", targetCode);
+    const declaration = target.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === "create" &&
+        owner.kind === "class" &&
+        owner.name === "ClientProxyFactory",
+    );
+    if (!declaration) throw new Error("parser omitted the static class method");
+
+    expect(result.generatedCandidateKeys).toEqual([
+      candidateTargetKeyForDeclaration("packages/client-proxy.ts", declaration),
+    ]);
+  });
+
+  it("restricts a locally declared static call to its syntactic class", async () => {
+    const callerCode = [
+      "class ClientProxyFactory { static create(): void {} }",
+      "ClientProxyFactory.create();",
+    ].join("\n");
+    const files = [
+      {
+        filePath: "src/noise.ts",
+        code: "export class Unrelated { static create(): void {} }",
+      },
+      { filePath: "src/caller.ts", code: callerCode },
+    ];
+    const result = await hypothesizeCallFromSources(
+      files,
+      "src/caller.ts",
+      "create",
+      { maxCandidates: 1 },
+    );
+    const caller = await parseFile("src/caller.ts", callerCode);
+    const declaration = caller.declaredTypeFacts?.declarations.find(
+      ({ name, owner }) =>
+        name === "create" &&
+        owner.kind === "class" &&
+        owner.name === "ClientProxyFactory",
+    );
+    if (!declaration)
+      throw new Error("parser omitted the local static class method");
+
+    expect(result.generatedCandidateKeys).toEqual([
+      candidateTargetKeyForDeclaration("src/caller.ts", declaration),
+    ]);
+  });
+
   it("[positive] proves a direct explicitly named relative import without calibration", async () => {
     const result = await hypothesizeCallFromSources(
       [
@@ -965,6 +1338,9 @@ describe("call-resolution hypothesis service", () => {
     });
     expect(outcome.callKind).toBe("bare");
     expect(outcome.result.generatedCandidateKeys).toContain(outcome.targetKey);
+    expect(
+      outcome.result.candidates.map(({ targetKey }) => targetKey),
+    ).toContain(outcome.targetKey);
     expect(outcome.result.generatedCandidateKeys).toContain(
       outcome.existingKey,
     );
@@ -1113,10 +1489,14 @@ describe("call-resolution hypothesis service", () => {
         "src/implementation.ts",
         "shutdown",
       );
-      expect(
-        contexts.flatMap(({ result }) => result.generatedCandidateKeys),
-        scenario.name,
-      ).not.toContain(importedTargetKey);
+      const generatedKeys = contexts.flatMap(
+        ({ result }) => result.generatedCandidateKeys,
+      );
+      // An @/ specifier without hash-bound path-map evidence is not source-bound.
+      if (scenario.name === "barrel re-export chain")
+        expect(generatedKeys, scenario.name).toContain(importedTargetKey);
+      else
+        expect(generatedKeys, scenario.name).not.toContain(importedTargetKey);
       expect(
         contexts.every(({ result }) => result.candidateSetComplete === false),
         scenario.name,
@@ -1762,6 +2142,9 @@ describe("call-resolution hypothesis service", () => {
         scenario.files,
         "src/caller.ts",
         "close",
+        {
+          includeReexports: scenario.name === "import alias across a re-export",
+        },
       );
       if (scenario.expected.status === "abstained") {
         expect(result.strictProof, scenario.name).toEqual(

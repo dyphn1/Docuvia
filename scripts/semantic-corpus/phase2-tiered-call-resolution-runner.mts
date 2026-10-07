@@ -5,7 +5,10 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import ts from "typescript";
-import { CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION } from "../../lib/contracts/src/index.js";
+import {
+  CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+  CALL_RESOLUTION_RANKING_POLICY_VERSION,
+} from "../../lib/contracts/src/index.js";
 import { CallResolutionHypothesisService } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import {
   buildCalibrationRecords,
@@ -16,22 +19,22 @@ import {
   type Phase2EvaluationObservation,
 } from "./phase2-tiered-call-resolution-evaluation.mjs";
 import {
-  allFactRows,
-  allSourceRows,
   canonicalHash,
   labelsForSplit,
+  licensedPhase2CorpusInputs,
   PHASE2_CORPUS,
   PHASE2_DEFAULT_OUTPUT,
   PHASE2_DEFAULT_REPOSITORIES,
-  PHASE2_PHASE1,
   PHASE2_PHASE1_PARITY,
   readJson,
   sha256,
-  verifyPhase1Sidecars,
-  verifyPhase1SourceSidecars,
   writeJson,
   writeJsonl,
 } from "./phase2-tiered-call-resolution-support.mjs";
+import {
+  classifyEvaluationRowLicense,
+  EVALUATION_LICENSE_POLICY_VERSION,
+} from "./phase2-tiered-call-resolution-license-policy.mjs";
 import {
   makeAstProcessor,
   processPhase2Snapshot,
@@ -44,6 +47,7 @@ const SOURCE_FILES = [
   "scripts/semantic-corpus/phase2-tiered-call-resolution-source.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts",
   "scripts/semantic-corpus/phase2-tiered-call-resolution-evaluation.mts",
+  "scripts/semantic-corpus/phase2-tiered-call-resolution-license-policy.mts",
   "scripts/semantic-corpus/phase0-tiered-call-resolution-support.mts",
   "scripts/semantic-corpus/phase0-tiered-call-resolution-replay.mts",
   "scripts/semantic-corpus/phase0-snapshot-safety.mts",
@@ -80,30 +84,6 @@ interface CollectionSnapshot {
   readonly revision: string;
   readonly subtree: string | null;
   readonly snapshotHash: string;
-}
-
-interface Phase1RunSummary {
-  readonly node: string;
-  readonly typescript: string;
-  readonly denominator: {
-    readonly manifestRows: number;
-    readonly sourceRowsEmitted: number;
-    readonly sourceRowsMapped: number;
-    readonly sourceRowsExplicitlyExcluded: number;
-    readonly declaredTypeFacts: {
-      readonly files: number;
-      readonly facts: number;
-      readonly declarations: number;
-      readonly ownerInventories: number;
-    };
-  };
-  readonly pinnedSnapshots: readonly {
-    readonly snapshotId: string;
-    readonly expectedSnapshotHash: string;
-    readonly measuredSnapshotHash: string | null;
-    readonly parseFailures: number;
-    readonly snapshotStatus: string;
-  }[];
 }
 
 function parseOptions(argv: readonly string[]): Phase2RunOptions {
@@ -164,10 +144,13 @@ function snapshotsForCorpus(): Phase2PinnedSnapshot[] {
   const collection = readJson<{
     snapshots: readonly CollectionSnapshot[];
   }>(path.join(PHASE2_CORPUS, "collection-report.json"));
+  const allowedSnapshots = collection.snapshots.filter(
+    (row) => classifyEvaluationRowLicense({ repoId: row.repoId }) === "allowed",
+  );
   const specById = new Map(
     specification.snapshots.map((snapshot) => [snapshot.snapshotId, snapshot]),
   );
-  return collection.snapshots.map((row) => {
+  return allowedSnapshots.map((row) => {
     const source = specById.get(row.snapshotId);
     if (!source) throw new Error(`Corpus spec missing ${row.snapshotId}.`);
     if (source.subtree !== row.subtree)
@@ -276,24 +259,6 @@ function codeVersion(): { readonly node: string; readonly typescript: string } {
   return { node: process.version, typescript: ts.version };
 }
 
-function assertSourceDenominator(
-  sourceRows: readonly { readonly sampleId: string }[],
-  phase1Summary: Phase1RunSummary,
-  factRows: readonly { readonly snapshotId: string }[],
-): void {
-  if (new Set(sourceRows.map((row) => row.sampleId)).size !== sourceRows.length)
-    throw new Error("Phase 1 source sidecar contains duplicate sample IDs.");
-  if (
-    sourceRows.length !== phase1Summary.denominator.sourceRowsEmitted ||
-    sourceRows.length !== phase1Summary.denominator.manifestRows
-  )
-    throw new Error(
-      "Phase 2 source sidecar changed the fixed corpus denominator.",
-    );
-  if (factRows.length !== phase1Summary.denominator.declaredTypeFacts.files)
-    throw new Error("Corrected Phase 1 facts count differs from its report.");
-}
-
 function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
   return {
     snapshots: results.map((result) => ({
@@ -311,6 +276,7 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
       ambiguousCandidateMappingCount: result.ambiguousCandidateMappingCount,
       parsedCallFileCount: result.parsedCallFileCount,
       parsedImportTargetFileCount: result.parsedImportTargetFileCount,
+      parsedExportSourceFileCount: result.parsedExportSourceFileCount,
       parseFailureCount: result.parseFailureCount,
       parseWallMs: result.parseWallMs,
       hypothesisWallMs: result.hypothesisWallMs,
@@ -356,6 +322,10 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
       (sum, result) => sum + result.parsedImportTargetFileCount,
       0,
     ),
+    parsedExportSourceFileCount: results.reduce(
+      (sum, result) => sum + result.parsedExportSourceFileCount,
+      0,
+    ),
     parseFailureCount: results.reduce(
       (sum, result) => sum + result.parseFailureCount,
       0,
@@ -378,23 +348,30 @@ function sourceSummary(results: readonly Phase2SnapshotSourceResult[]) {
 
 async function run(options: Phase2RunOptions): Promise<void> {
   const started = performance.now();
-  const inputHashes = options.predictionsOnly
-    ? verifyPhase1SourceSidecars()
-    : verifyPhase1Sidecars();
+  const licensedInputs = licensedPhase2CorpusInputs();
+  const inputHashes = licensedInputs.sourceInputHashes;
   const implementation = implementationFingerprint();
-  const phase1Summary = readJson<Phase1RunSummary>(
-    path.join(PHASE2_PHASE1, "summary.json"),
+  const sourceRows = licensedInputs.sourceRows;
+  const factRows = licensedInputs.factRows;
+  const snapshots = snapshotsForCorpus();
+  const snapshotIds = new Set(snapshots.map(({ snapshotId }) => snapshotId));
+  if (
+    sourceRows.some((row) => !snapshotIds.has(row.snapshotId)) ||
+    factRows.some((row) => !snapshotIds.has(row.snapshotId))
+  )
+    throw new Error(
+      "Licensed source rows reference an unavailable corpus snapshot.",
+    );
+  console.info(
+    `[phase2-license] excluded source samples: repository=${licensedInputs.excludedRepositorySampleCount}, enterprise-path=${licensedInputs.excludedEnterprisePathSampleCount}`,
   );
-  const sourceRows = allSourceRows();
-  const factRows = allFactRows();
-  assertSourceDenominator(sourceRows, phase1Summary, factRows);
   const sourceBySnapshot = groupedBySnapshot(sourceRows);
   const service = new CallResolutionHypothesisService();
   const processor = makeAstProcessor();
   const tempRoot = mkdtempSync(path.join(os.tmpdir(), "docuvia-phase2-"));
   const results: Phase2SnapshotSourceResult[] = [];
   try {
-    for (const snapshot of snapshotsForCorpus()) {
+    for (const snapshot of snapshots) {
       console.info(
         `[phase2] ${snapshot.snapshotId}: verify, parse calls, rank`,
       );
@@ -412,6 +389,8 @@ async function run(options: Phase2RunOptions): Promise<void> {
         service,
         processor,
         factsSidecarHash: inputHashes["declared-type-facts-pass-a.jsonl"]!,
+        includeConfiguredPathAliases: true,
+        includeCombinedDefaultImportTargets: true,
       });
       results.push(result);
     }
@@ -458,13 +437,16 @@ async function run(options: Phase2RunOptions): Promise<void> {
     writeJson(
       path.join(options.outputDirectory, "candidate-prediction-manifest.json"),
       {
-        schemaVersion: 2,
-        measurement: "phase2-p2a-candidate-predictions/2",
+        schemaVersion: 3,
+        measurement: "phase2-p2a-candidate-predictions/3",
+        licensePolicyVersion: EVALUATION_LICENSE_POLICY_VERSION,
+        licenseInputScope: "licensed-source-rows-and-target-facts-only",
         candidateOracleMappingScope: "snapshotId+repoId",
         generatedAt: new Date().toISOString(),
         node: codeVersion().node,
         typescript: codeVersion().typescript,
         candidateGeneratorVersion: CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
+        rankingPolicyVersion: CALL_RESOLUTION_RANKING_POLICY_VERSION,
         sourceRows: sourceRows.length,
         predictionRows: observations.length,
         splitCounts,

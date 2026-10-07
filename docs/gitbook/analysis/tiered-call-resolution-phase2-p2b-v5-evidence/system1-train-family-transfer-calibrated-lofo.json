@@ -1,0 +1,1843 @@
+{
+  "schemaVersion": 2,
+  "measurement": "phase2-p2b-system1-family-transfer-calibrated-lofo-artifact/2",
+  "split": "train",
+  "generatedAt": "2026-10-06T20:05:33.797Z",
+  "provenance": {
+    "candidateGeneratorVersion": "declared-member-hypothesis-v7",
+    "rankingPolicyVersion": "ordered-evidence-v1",
+    "configurationHash": "83dfd953f1ad2c7afccd166dfa47a94ec0dba36fc40b60d0ee8fcb5e7492c5bb",
+    "sourceFactsSha256": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87",
+    "sourceInputHashes": {
+      "callsites.jsonl": "ee757c0d9cddfc4628d9ab89b1c79bf653c0bc3f0f66ae474a87df5685407bce",
+      "declared-type-facts-pass-a.jsonl": "d2114641901ff302fff98832e9ee6040005eb4fdb39a2931b8944f459f3a8f87"
+    },
+    "sourcePredictionSha256": "9556f18c95c5b0ca5962c69799f53e3beae4e8b355b3042eacfb1b1eb278223d",
+    "sourcePredictionManifestSha256": "de4b0573b1e6c3134156a083568843cfc80aa97e90927ead2f0a79ab030f32de",
+    "sourceImplementationHash": "27bb8f869ea9b664e78170ff25b84e66ae93b5684b873ebe47cb16301c45b286",
+    "systemOneImplementationHash": "05396cc509aa134eb50afd7d773308016d28a4bd3d59a02475b7fc5af8c38867",
+    "runnerImplementationHash": "6968f33dc603061f64dd1bd6b2d4e4b10b8b47a7ebe850ab90481e392b970164",
+    "sourceSplitAssignmentHash": "29b380be346baf59351b74aa9cdfa9442189df6ae16bacea3b5806d9bdefb3dc",
+    "sourceSplitCounts": {
+      "train": 13496,
+      "calibration": 2966,
+      "test": 6042,
+      "temporal": 0
+    },
+    "candidateOracleMappingScope": "snapshotId+repoId",
+    "snapshotScopedOracleMappingHash": "bf6b303fe926abf288b3d34248e4b728f68dc72d582cac3947359755781c5589",
+    "snapshotScopedUniqueAliasCount": 59175
+  },
+  "trainLabelRowsHash": "4983b8bd52ca2c8048fd5fc9a5f4b8efdb6f7d48843740044e097e7901f9f62a",
+  "licenseExcludedEnterprisePathSampleCount": 0,
+  "calibrationFreezeArtifactSha256": "8b9a2bcd48332c3f3a8eadf24283c76c074c59e33e913a8cc6a8837da8e745bb",
+  "inputFingerprint": "1e396c6e59f2dc8c04cc21171fcd029846d84aa246ec1ac23c9062c4efd951d1",
+  "labelSplitsRead": ["train"],
+  "heldoutModeInvoked": false,
+  "evaluation": {
+    "schemaVersion": 1,
+    "measurement": "phase2-p2b-system1-family-transfer-calibrated-lofo/1",
+    "split": "train",
+    "thresholdSelectionSource": "calibration-freeze",
+    "thresholdScore": 0,
+    "probabilityMapMethod": "beta-smoothed-isotonic-v1",
+    "probabilityMapSupportRule": {
+      "minimumTrainingDuplicateGroups": 50,
+      "minimumTrainingScoreLevels": 5
+    },
+    "sourceRowCount": 13496,
+    "eligibleSiteCount": 13496,
+    "duplicateGroupCount": 11843,
+    "crossFamilyDuplicateGroupCount": 0,
+    "crossFamilyDuplicateGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "crossFamilyGroupFamiliesHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "familyMacroRawTop1": 0.8675369401722366,
+    "worstFamilyRawTop1": 0.72,
+    "familyMacroEndToEndTop1": 0.7376218643815831,
+    "worstFamilyEndToEndTop1": 0.60475,
+    "folds": [
+      {
+        "heldOutFamily": "dyphn1/Docuvia",
+        "trainingFamilyNames": [
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 3610,
+        "heldOutEligibleSiteCount": 3610,
+        "trainingSourceRowCount": 9886,
+        "trainingEligibleSiteCount": 9886,
+        "trainingDuplicateGroupCount": 8594,
+        "heldOutDuplicateGroupCount": 3249,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "cf953d6df59a8d353b801bea82dcf69a6f442d2703e5c4a91aa6606deb7e1eea",
+        "heldOutSampleIdsHash": "dcb1e63baada1428c00ac93a4265aeb8a021ca856b9cab2a553e4371699b1c25",
+        "trainingLabelRowsHash": "fe44f401253ffbc7ed7871ed3c583215661ba914840754964f9f56aa7c40cb1f",
+        "heldOutLabelRowsHash": "306e710bb9f05c0fb7ecca18524dacc429577913efacad7ffddd0aee6e8c9250",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 0,
+        "thresholdQualifyingCount": 0,
+        "thresholdTrainingMetrics": null,
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "c1f4a8c927cda8d789368708050ffbe860f2c48c44377f2296a9e1c7be61d5f3",
+          "trainingExamplesHash": "b7bdf67a5550168f2f9f9e22899b3270c2ece76c0bcd9e91ac135ddccc8fdafd",
+          "selectedTrainingSiteCount": 6358,
+          "trainingDuplicateGroupCount": 5693,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 3610,
+          "scorableLabelSiteCount": 3565,
+          "unscorableLabelSiteCount": 45,
+          "rawTop1CorrectCount": 2884,
+          "rawTop1": 0.7988919667590028,
+          "selectedSiteCount": 2290,
+          "coverage": 0.6343490304709142,
+          "abstentionCount": 1320,
+          "abstentionRate": 0.3656509695290859,
+          "selectedCorrectSiteCount": 2290,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.6343490304709142,
+          "acceptedDuplicateGroupCount": 2030,
+          "correctAcceptedDuplicateGroupCount": 2030,
+          "duplicateGroupPrecision": 1,
+          "selectedIncompleteInventorySiteCount": 2290,
+          "familyMacroRawTop1": 0.7988919667590028,
+          "worstFamilyRawTop1": 0.7988919667590028,
+          "familyMacroEndToEndTop1": 0.6343490304709142,
+          "worstFamilyEndToEndTop1": 0.6343490304709142,
+          "families": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "rawTop1CorrectCount": 2884,
+              "selectedSiteCount": 2290,
+              "selectedCorrectSiteCount": 2290,
+              "rawTop1": 0.7988919667590028,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.6343490304709142
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 169,
+              "rawTop1CorrectCount": 135,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7988165680473372,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 1484,
+              "rawTop1CorrectCount": 1454,
+              "selectedSiteCount": 1378,
+              "selectedCorrectSiteCount": 1378,
+              "rawTop1": 0.9797843665768194,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.9285714285714286
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 1955,
+              "rawTop1CorrectCount": 1295,
+              "selectedSiteCount": 912,
+              "selectedCorrectSiteCount": 912,
+              "rawTop1": 0.6624040920716112,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.46649616368286445
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 3610,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 14,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "dyphn1/Docuvia",
+              "eligibleSiteCount": 3610,
+              "generatedCountAvailableSiteCount": 3610,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 3,
+              "generatedCandidateSizeP95": 44,
+              "generatedCandidateSizeMax": 98,
+              "mappedCandidateZeroSiteCount": 14,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 21,
+              "mappedCandidateSizeMax": 36,
+              "proposalCountAvailableSiteCount": 3610,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 169,
+              "generatedCountAvailableSiteCount": 169,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 15,
+              "generatedCandidateSizeP95": 15,
+              "generatedCandidateSizeMax": 15,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 15,
+              "mappedCandidateSizeP95": 15,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 169,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 12,
+              "proposalSizeP95": 12,
+              "proposalSizeMax": 13
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 1484,
+              "generatedCountAvailableSiteCount": 1484,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 44,
+              "generatedCandidateSizeMax": 44,
+              "mappedCandidateZeroSiteCount": 3,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 16,
+              "mappedCandidateSizeMax": 16,
+              "proposalCountAvailableSiteCount": 1484,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 1955,
+              "generatedCountAvailableSiteCount": 1955,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 15,
+              "generatedCandidateSizeP95": 62,
+              "generatedCandidateSizeMax": 98,
+              "mappedCandidateZeroSiteCount": 11,
+              "mappedCandidateSizeP50": 7,
+              "mappedCandidateSizeP95": 27,
+              "mappedCandidateSizeMax": 36,
+              "proposalCountAvailableSiteCount": 1955,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "generatedCountAvailableSiteCount": 2,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 14,
+              "generatedCandidateSizeP95": 14,
+              "generatedCandidateSizeMax": 14,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 4,
+              "mappedCandidateSizeP95": 4,
+              "mappedCandidateSizeMax": 4,
+              "proposalCountAvailableSiteCount": 2,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 14,
+              "proposalSizeP95": 14,
+              "proposalSizeMax": 14
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 2290,
+          "selectedScorableSiteCount": 2290,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 2030,
+          "siteWeighted": {
+            "siteCount": 2290,
+            "duplicateGroupCount": 2030,
+            "brierScore": 0.0002824559530171036,
+            "expectedCalibrationError": 0.015796684389718485
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 2290,
+            "duplicateGroupCount": 2030,
+            "brierScore": 0.0002824559530171036,
+            "expectedCalibrationError": 0.015796684389718485
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 2290,
+            "duplicateGroupCount": 2030,
+            "brierScore": 0.0002803518505648609,
+            "expectedCalibrationError": 0.01569884195421356
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 1378,
+              "siteWeighted": {
+                "siteCount": 1378,
+                "duplicateGroupCount": 1236,
+                "brierScore": 0.00033827186198508413,
+                "expectedCalibrationError": 0.018392168495978023
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 1378,
+                "duplicateGroupCount": 1236,
+                "brierScore": 0.00033827186198508413,
+                "expectedCalibrationError": 0.018392168495978023
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 1378,
+                "duplicateGroupCount": 1236,
+                "brierScore": 0.0003382718619850825,
+                "expectedCalibrationError": 0.018392168495987904
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 912,
+              "siteWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.0001981200730194207,
+                "expectedCalibrationError": 0.011874998974824358
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.0001981200730194207,
+                "expectedCalibrationError": 0.011874998974824358
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 912,
+                "duplicateGroupCount": 794,
+                "brierScore": 0.0001901892131399204,
+                "expectedCalibrationError": 0.011506207690283543
+              }
+            }
+          ]
+        },
+        "abstentionAttribution": {
+          "eligibleSiteCount": 3610,
+          "abstainedSiteCount": 1320,
+          "byCallShapeAndReason": [
+            {
+              "callShape": "arg-chain",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 169,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 169,
+                "structural-peer-member-usage": 169,
+                "same-directory": 24
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 3,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "bare",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 27,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 27,
+                "structural-peer-member-usage": 27,
+                "same-directory": 27
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "truncated-candidate-list",
+              "abstainedSiteCount": 76,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 76,
+                "structural-peer-member-usage": 76
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 139,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 54,
+                "structural-peer-member-usage": 104,
+                "same-directory": 24
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "truncated-candidate-list",
+              "abstainedSiteCount": 4,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 4,
+                "structural-peer-member-usage": 4
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 900,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 889,
+                "structural-peer-member-usage": 889,
+                "same-directory": 706
+              }
+            },
+            {
+              "callShape": "this",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 2,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 2,
+                "structural-peer-member-usage": 2
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "nestjs/nest",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 8000,
+        "heldOutEligibleSiteCount": 8000,
+        "trainingSourceRowCount": 5496,
+        "trainingEligibleSiteCount": 5496,
+        "trainingDuplicateGroupCount": 5045,
+        "heldOutDuplicateGroupCount": 6798,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "c023b6e34e85f6b71749763d9dc438b3bf76ae8c9a21322c42848d8598f7f7b9",
+        "heldOutSampleIdsHash": "4ad4ff42d4c416f37f418f73cc638b04759d94288a772fbe5d7228cec8d46835",
+        "trainingLabelRowsHash": "ea6d0e0d47d99e9a75800561fc48e29cdd94a0302b8380f8308dfe638412b54c",
+        "heldOutLabelRowsHash": "00e63401713dd456e44971ca3e6d3adc15e81086a49fa7020e11e009910df27d",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 0,
+        "thresholdQualifyingCount": 0,
+        "thresholdTrainingMetrics": null,
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "1cd5e3291509588a0b36a80d4e7d270ce29c6c5341a294b50a8764933ff0bd53",
+          "trainingExamplesHash": "3038b4d89e2e522566de6068075d49e691b1287b4d95fe803935f58cff7c7066",
+          "selectedTrainingSiteCount": 3809,
+          "trainingDuplicateGroupCount": 3478,
+          "scoreLevelCount": 9
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 8000,
+          "scorableLabelSiteCount": 6852,
+          "unscorableLabelSiteCount": 1148,
+          "rawTop1CorrectCount": 5760,
+          "rawTop1": 0.72,
+          "selectedSiteCount": 4839,
+          "coverage": 0.604875,
+          "abstentionCount": 3161,
+          "abstentionRate": 0.395125,
+          "selectedCorrectSiteCount": 4838,
+          "acceptedSitePrecision": 0.9997933457325894,
+          "endToEndTop1": 0.60475,
+          "acceptedDuplicateGroupCount": 4245,
+          "correctAcceptedDuplicateGroupCount": 4170,
+          "duplicateGroupPrecision": 0.9823321554770318,
+          "selectedIncompleteInventorySiteCount": 4839,
+          "familyMacroRawTop1": 0.72,
+          "worstFamilyRawTop1": 0.72,
+          "familyMacroEndToEndTop1": 0.60475,
+          "worstFamilyEndToEndTop1": 0.60475,
+          "families": [
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "rawTop1CorrectCount": 5760,
+              "selectedSiteCount": 4839,
+              "selectedCorrectSiteCount": 4838,
+              "rawTop1": 0.72,
+              "acceptedSitePrecision": 0.9997933457325894,
+              "endToEndTop1": 0.60475
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 341,
+              "rawTop1CorrectCount": 271,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0.7947214076246334,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 3025,
+              "rawTop1CorrectCount": 1834,
+              "selectedSiteCount": 1834,
+              "selectedCorrectSiteCount": 1834,
+              "rawTop1": 0.6062809917355372,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.6062809917355372
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 4430,
+              "rawTop1CorrectCount": 3571,
+              "selectedSiteCount": 2922,
+              "selectedCorrectSiteCount": 2921,
+              "rawTop1": 0.8060948081264109,
+              "acceptedSitePrecision": 0.9996577686516085,
+              "endToEndTop1": 0.6593679458239278
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 197,
+              "rawTop1CorrectCount": 84,
+              "selectedSiteCount": 83,
+              "selectedCorrectSiteCount": 83,
+              "rawTop1": 0.4263959390862944,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.4213197969543147
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 0,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 0,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 8000,
+          "generatedCandidateZeroSiteCount": 7,
+          "mappedCandidateZeroSiteCount": 888,
+          "proposalZeroSiteCount": 7,
+          "byFamily": [
+            {
+              "name": "nestjs/nest",
+              "eligibleSiteCount": 8000,
+              "generatedCountAvailableSiteCount": 8000,
+              "generatedCandidateZeroSiteCount": 7,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 70,
+              "generatedCandidateSizeMax": 118,
+              "mappedCandidateZeroSiteCount": 888,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 42,
+              "mappedCandidateSizeMax": 96,
+              "proposalCountAvailableSiteCount": 8000,
+              "proposalZeroSiteCount": 7,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 7,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 341,
+              "generatedCountAvailableSiteCount": 341,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 2,
+              "generatedCandidateSizeP95": 6,
+              "generatedCandidateSizeMax": 78,
+              "mappedCandidateZeroSiteCount": 28,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 6,
+              "mappedCandidateSizeMax": 26,
+              "proposalCountAvailableSiteCount": 341,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 6,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 3025,
+              "generatedCountAvailableSiteCount": 3025,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 30,
+              "mappedCandidateZeroSiteCount": 508,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 6,
+              "proposalCountAvailableSiteCount": 3025,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 3,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 4430,
+              "generatedCountAvailableSiteCount": 4430,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 2,
+              "generatedCandidateSizeP95": 73,
+              "generatedCandidateSizeMax": 118,
+              "mappedCandidateZeroSiteCount": 262,
+              "mappedCandidateSizeP50": 2,
+              "mappedCandidateSizeP95": 49,
+              "mappedCandidateSizeMax": 96,
+              "proposalCountAvailableSiteCount": 4430,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 11,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 197,
+              "generatedCountAvailableSiteCount": 197,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 2,
+              "generatedCandidateSizeP95": 10,
+              "generatedCandidateSizeMax": 31,
+              "mappedCandidateZeroSiteCount": 83,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 10,
+              "mappedCandidateSizeMax": 27,
+              "proposalCountAvailableSiteCount": 197,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 2,
+              "proposalSizeP95": 7,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "unmapped",
+              "eligibleSiteCount": 7,
+              "generatedCountAvailableSiteCount": 7,
+              "generatedCandidateZeroSiteCount": 7,
+              "generatedCandidateSizeP50": 0,
+              "generatedCandidateSizeP95": 0,
+              "generatedCandidateSizeMax": 0,
+              "mappedCandidateZeroSiteCount": 7,
+              "mappedCandidateSizeP50": 0,
+              "mappedCandidateSizeP95": 0,
+              "mappedCandidateSizeMax": 0,
+              "proposalCountAvailableSiteCount": 7,
+              "proposalZeroSiteCount": 7,
+              "proposalSizeP50": 0,
+              "proposalSizeP95": 0,
+              "proposalSizeMax": 0
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 4839,
+          "selectedScorableSiteCount": 4839,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 4245,
+          "siteWeighted": {
+            "siteCount": 4839,
+            "duplicateGroupCount": 4245,
+            "brierScore": 0.034974938962881584,
+            "expectedCalibrationError": 0.02979234028572464
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 4839,
+            "duplicateGroupCount": 4245,
+            "brierScore": 0.034974938962881584,
+            "expectedCalibrationError": 0.02979234028572464
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 4839,
+            "duplicateGroupCount": 4245,
+            "brierScore": 0.017501789568801714,
+            "expectedCalibrationError": 0.012124391319803918
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 1834,
+              "siteWeighted": {
+                "siteCount": 1834,
+                "duplicateGroupCount": 1580,
+                "brierScore": 0.000031043164084464516,
+                "expectedCalibrationError": 0.005571639263686423
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 1834,
+                "duplicateGroupCount": 1580,
+                "brierScore": 0.000031043164084464516,
+                "expectedCalibrationError": 0.005571639263686423
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 1834,
+                "duplicateGroupCount": 1580,
+                "brierScore": 0.00003104316408446463,
+                "expectedCalibrationError": 0.005571639263676764
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 2922,
+              "siteWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.056208054855739015,
+                "expectedCalibrationError": 0.05128198737534717
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.056208054855739015,
+                "expectedCalibrationError": 0.05128198737534717
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 2922,
+                "duplicateGroupCount": 2587,
+                "brierScore": 0.028316494175507714,
+                "expectedCalibrationError": 0.023079172420361838
+              }
+            },
+            {
+              "name": "this",
+              "selectedSiteCount": 83,
+              "siteWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.05960072518050988,
+                "expectedCalibrationError": 0.054669324591752555
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.05960072518050988,
+                "expectedCalibrationError": 0.054669324591752555
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 83,
+                "duplicateGroupCount": 78,
+                "brierScore": 0.012708693439374964,
+                "expectedCalibrationError": 0.007248873556843338
+              }
+            }
+          ]
+        },
+        "abstentionAttribution": {
+          "eligibleSiteCount": 8000,
+          "abstainedSiteCount": 3161,
+          "byCallShapeAndReason": [
+            {
+              "callShape": "arg-chain",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 341,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 313,
+                "structural-peer-member-usage": 313,
+                "same-directory": 312
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 508,
+              "zeroRankScoreSiteCount": 6,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "bare",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 142,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 142,
+                "structural-peer-member-usage": 142,
+                "same-directory": 140
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "truncated-candidate-list",
+              "abstainedSiteCount": 35,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "bare",
+              "reason": "unmapped-target",
+              "abstainedSiteCount": 506,
+              "zeroRankScoreSiteCount": 456,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 456,
+                "structural-peer-member-usage": 456,
+                "compatible-argument-count": 456,
+                "same-directory": 456
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 194,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "member",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 336,
+              "zeroRankScoreSiteCount": 28,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 242,
+                "structural-peer-member-usage": 307,
+                "same-directory": 330,
+                "compatible-argument-count": 28
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "truncated-candidate-list",
+              "abstainedSiteCount": 65,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 64,
+                "structural-peer-member-usage": 64,
+                "same-directory": 42
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "unmapped-target",
+              "abstainedSiteCount": 147,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "member",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 766,
+              "zeroRankScoreSiteCount": 2,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 695,
+                "structural-peer-member-usage": 695,
+                "same-directory": 627
+              }
+            },
+            {
+              "callShape": "this",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 83,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "this",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 17,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 17,
+                "structural-peer-member-usage": 13,
+                "same-directory": 6
+              }
+            },
+            {
+              "callShape": "this",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 14,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 14,
+                "structural-peer-member-usage": 14
+              }
+            },
+            {
+              "callShape": "unmapped",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 7,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "tirth8205/code-review-graph",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "trailhq/Graft",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 77,
+        "heldOutEligibleSiteCount": 77,
+        "trainingSourceRowCount": 13419,
+        "trainingEligibleSiteCount": 13419,
+        "trainingDuplicateGroupCount": 11768,
+        "heldOutDuplicateGroupCount": 75,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "abc3af05204b34a56c5e05865e9554c333ad4c55ec6af30ff9b9227aad9731c2",
+        "heldOutSampleIdsHash": "32dff8e6e1fbeeac0110e7883f46a201fbc9b5baacec844255d217cc22b841e0",
+        "trainingLabelRowsHash": "033a45d8be4307099f78d2e720af13241e4be6cb05f020dadcc7043e50326a4d",
+        "heldOutLabelRowsHash": "ed8d26e64078b1520ab9ca8a0db277675305a616714ecf7de9b74a3657abf50f",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 0,
+        "thresholdQualifyingCount": 0,
+        "thresholdTrainingMetrics": null,
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "2229c4ee8a193fb562ef801398ed7aaec729b70c6c6b3c623e93afe7906869ee",
+          "trainingExamplesHash": "974d00e3a0e117ae92ca6778a5e5cd4ff5e9b38dc20f6b2fa332548315f18763",
+          "selectedTrainingSiteCount": 8583,
+          "trainingDuplicateGroupCount": 7660,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 77,
+          "scorableLabelSiteCount": 77,
+          "unscorableLabelSiteCount": 0,
+          "rawTop1CorrectCount": 77,
+          "rawTop1": 1,
+          "selectedSiteCount": 65,
+          "coverage": 0.8441558441558441,
+          "abstentionCount": 12,
+          "abstentionRate": 0.15584415584415584,
+          "selectedCorrectSiteCount": 65,
+          "acceptedSitePrecision": 1,
+          "endToEndTop1": 0.8441558441558441,
+          "acceptedDuplicateGroupCount": 63,
+          "correctAcceptedDuplicateGroupCount": 63,
+          "duplicateGroupPrecision": 1,
+          "selectedIncompleteInventorySiteCount": 65,
+          "familyMacroRawTop1": 1,
+          "worstFamilyRawTop1": 1,
+          "familyMacroEndToEndTop1": 0.8441558441558441,
+          "worstFamilyEndToEndTop1": 0.8441558441558441,
+          "families": [
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "rawTop1CorrectCount": 77,
+              "selectedSiteCount": 65,
+              "selectedCorrectSiteCount": 65,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8441558441558441
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 8,
+              "rawTop1CorrectCount": 8,
+              "selectedSiteCount": 8,
+              "selectedCorrectSiteCount": 8,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 1
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 69,
+              "rawTop1CorrectCount": 69,
+              "selectedSiteCount": 57,
+              "selectedCorrectSiteCount": 57,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.8260869565217391
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 77,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 0,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "tirth8205/code-review-graph",
+              "eligibleSiteCount": 77,
+              "generatedCountAvailableSiteCount": 77,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 6,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 6,
+              "proposalCountAvailableSiteCount": 77,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 5
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 8,
+              "generatedCountAvailableSiteCount": 8,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 3,
+              "generatedCandidateSizeMax": 3,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 3,
+              "mappedCandidateSizeMax": 3,
+              "proposalCountAvailableSiteCount": 8,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 2
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 69,
+              "generatedCountAvailableSiteCount": 69,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 2,
+              "generatedCandidateSizeMax": 6,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 2,
+              "mappedCandidateSizeMax": 6,
+              "proposalCountAvailableSiteCount": 69,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 5
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 65,
+          "selectedScorableSiteCount": 65,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 63,
+          "siteWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.00015890954594227082,
+            "expectedCalibrationError": 0.011729467496803592
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.00015890954594227082,
+            "expectedCalibrationError": 0.011729467496803592
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 65,
+            "duplicateGroupCount": 63,
+            "brierScore": 0.00015779677287134603,
+            "expectedCalibrationError": 0.011659703912057506
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 8,
+              "siteWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00019396189767640208,
+                "expectedCalibrationError": 0.013927020416312996
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00019396189767640208,
+                "expectedCalibrationError": 0.013927020416312996
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 8,
+                "duplicateGroupCount": 6,
+                "brierScore": 0.00019396189767640208,
+                "expectedCalibrationError": 0.013927020416312996
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 57,
+              "siteWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00015398991762870863,
+                "expectedCalibrationError": 0.011421039016872747
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00015398991762870863,
+                "expectedCalibrationError": 0.011421039016872747
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 57,
+                "duplicateGroupCount": 57,
+                "brierScore": 0.00015398991762870863,
+                "expectedCalibrationError": 0.011421039016872747
+              }
+            }
+          ]
+        },
+        "abstentionAttribution": {
+          "eligibleSiteCount": 77,
+          "abstainedSiteCount": 12,
+          "byCallShapeAndReason": [
+            {
+              "callShape": "member",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 12,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 12,
+                "structural-peer-member-usage": 12,
+                "same-directory": 12
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "trailhq/Graft",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "typescript-language-server/typescript-language-server"
+        ],
+        "heldOutSourceRowCount": 888,
+        "heldOutEligibleSiteCount": 888,
+        "trainingSourceRowCount": 12608,
+        "trainingEligibleSiteCount": 12608,
+        "trainingDuplicateGroupCount": 10961,
+        "heldOutDuplicateGroupCount": 882,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "8497c47cea79cbbbdaaedefae9eacf2c921ae300f17a26f1e72f995c474d0c6b",
+        "heldOutSampleIdsHash": "02662d8cc3d1f07e5e6717689ec776249346e98e1c8fd4986caeeba7a21c280e",
+        "trainingLabelRowsHash": "62de6e5c8f330b77b8830a1512b45ad7a22245d1c71f241cb1d91b3962d7b853",
+        "heldOutLabelRowsHash": "812badb1a8ec020915a68e88f10f949239e47bb572e1fbfef19f2ce1e38e9729",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 0,
+        "thresholdQualifyingCount": 0,
+        "thresholdTrainingMetrics": null,
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "872abb277a3d49b5dcd4e534b348743b229918f521c47d0b9b5f6796bb5772d4",
+          "trainingExamplesHash": "9f3caadaf59e6545e73ba7d89eddaedd218679ba2c14980a75069b58e114f6f7",
+          "selectedTrainingSiteCount": 7778,
+          "trainingDuplicateGroupCount": 6859,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 888,
+          "scorableLabelSiteCount": 883,
+          "unscorableLabelSiteCount": 5,
+          "rawTop1CorrectCount": 864,
+          "rawTop1": 0.972972972972973,
+          "selectedSiteCount": 870,
+          "coverage": 0.9797297297297297,
+          "abstentionCount": 18,
+          "abstentionRate": 0.02027027027027027,
+          "selectedCorrectSiteCount": 863,
+          "acceptedSitePrecision": 0.9919540229885058,
+          "endToEndTop1": 0.9718468468468469,
+          "acceptedDuplicateGroupCount": 864,
+          "correctAcceptedDuplicateGroupCount": 857,
+          "duplicateGroupPrecision": 0.9918981481481481,
+          "selectedIncompleteInventorySiteCount": 870,
+          "familyMacroRawTop1": 0.972972972972973,
+          "worstFamilyRawTop1": 0.972972972972973,
+          "familyMacroEndToEndTop1": 0.9718468468468469,
+          "worstFamilyEndToEndTop1": 0.9718468468468469,
+          "families": [
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "rawTop1CorrectCount": 864,
+              "selectedSiteCount": 870,
+              "selectedCorrectSiteCount": 863,
+              "rawTop1": 0.972972972972973,
+              "acceptedSitePrecision": 0.9919540229885058,
+              "endToEndTop1": 0.9718468468468469
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 835,
+              "rawTop1CorrectCount": 817,
+              "selectedSiteCount": 818,
+              "selectedCorrectSiteCount": 817,
+              "rawTop1": 0.9784431137724551,
+              "acceptedSitePrecision": 0.9987775061124694,
+              "endToEndTop1": 0.9784431137724551
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 53,
+              "rawTop1CorrectCount": 47,
+              "selectedSiteCount": 52,
+              "selectedCorrectSiteCount": 46,
+              "rawTop1": 0.8867924528301887,
+              "acceptedSitePrecision": 0.8846153846153846,
+              "endToEndTop1": 0.8679245283018868
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 888,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 6,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "trailhq/Graft",
+              "eligibleSiteCount": 888,
+              "generatedCountAvailableSiteCount": 888,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 2,
+              "generatedCandidateSizeMax": 28,
+              "mappedCandidateZeroSiteCount": 6,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 2,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 888,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 21
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "bare",
+              "eligibleSiteCount": 835,
+              "generatedCountAvailableSiteCount": 835,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 22,
+              "mappedCandidateZeroSiteCount": 6,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 15,
+              "proposalCountAvailableSiteCount": 835,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 21
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 53,
+              "generatedCountAvailableSiteCount": 53,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 7,
+              "generatedCandidateSizeMax": 28,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 7,
+              "mappedCandidateSizeMax": 10,
+              "proposalCountAvailableSiteCount": 53,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 3,
+              "proposalSizeMax": 6
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 870,
+          "selectedScorableSiteCount": 867,
+          "selectedUnscorableSiteCount": 3,
+          "selectedDuplicateGroupCount": 864,
+          "siteWeighted": {
+            "siteCount": 870,
+            "duplicateGroupCount": 864,
+            "brierScore": 0.008018483188986169,
+            "expectedCalibrationError": 0.00621197957017916
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 867,
+            "duplicateGroupCount": 861,
+            "brierScore": 0.004686351169167105,
+            "expectedCalibrationError": 0.009643147926160611
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 870,
+            "duplicateGroupCount": 864,
+            "brierScore": 0.008072685945161808,
+            "expectedCalibrationError": 0.006153699395724965
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 818,
+              "siteWeighted": {
+                "siteCount": 818,
+                "duplicateGroupCount": 812,
+                "brierScore": 0.0014000727918914908,
+                "expectedCalibrationError": 0.013381830803973038
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 818,
+                "duplicateGroupCount": 812,
+                "brierScore": 0.0014000727918914908,
+                "expectedCalibrationError": 0.013381830803973038
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 818,
+                "duplicateGroupCount": 812,
+                "brierScore": 0.001408842150208216,
+                "expectedCalibrationError": 0.013372797597906994
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 52,
+              "siteWeighted": {
+                "siteCount": 52,
+                "duplicateGroupCount": 52,
+                "brierScore": 0.11213116982020668,
+                "expectedCalibrationError": 0.10657529560759094
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 49,
+                "duplicateGroupCount": 49,
+                "brierScore": 0.05954707999797266,
+                "expectedCalibrationError": 0.052769966238147115
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 52,
+                "duplicateGroupCount": 52,
+                "brierScore": 0.11213116982020668,
+                "expectedCalibrationError": 0.10657529560759094
+              }
+            }
+          ]
+        },
+        "abstentionAttribution": {
+          "eligibleSiteCount": 888,
+          "abstainedSiteCount": 18,
+          "byCallShapeAndReason": [
+            {
+              "callShape": "bare",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 6,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "bare",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 10,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 10,
+                "structural-peer-member-usage": 10,
+                "same-directory": 10
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "unmapped-target",
+              "abstainedSiteCount": 1,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "member",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 1,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 1,
+                "structural-peer-member-usage": 1
+              }
+            }
+          ]
+        }
+      },
+      {
+        "heldOutFamily": "typescript-language-server/typescript-language-server",
+        "trainingFamilyNames": [
+          "dyphn1/Docuvia",
+          "nestjs/nest",
+          "tirth8205/code-review-graph",
+          "trailhq/Graft"
+        ],
+        "heldOutSourceRowCount": 921,
+        "heldOutEligibleSiteCount": 921,
+        "trainingSourceRowCount": 12575,
+        "trainingEligibleSiteCount": 12575,
+        "trainingDuplicateGroupCount": 11004,
+        "heldOutDuplicateGroupCount": 839,
+        "excludedCrossFamilyTrainingRowCount": 0,
+        "excludedCrossFamilyTrainingSiteCount": 0,
+        "excludedCrossFamilyTrainingGroupCount": 0,
+        "trainingHeldGroupOverlapCount": 0,
+        "trainingSampleIdsHash": "e001afb0686d22e94d65ab607b5e90f0dce64db75f3ab9e8c2a76e7003bf0ff1",
+        "heldOutSampleIdsHash": "545b3ce4cacae6765127efd993df3e144259884458bf99aead316d47cf1aadcb",
+        "trainingLabelRowsHash": "359ec8e5e98d10eaa5ee3155821b306f50b22bc2bd2eb938b605767dfce32d07",
+        "heldOutLabelRowsHash": "b51b4b4b827431feac8cae4b1f374847af825cc6f33b7d658429c1ed98e60596",
+        "excludedCrossFamilyGroupsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "thresholdScore": 0,
+        "thresholdCandidateCount": 0,
+        "thresholdQualifyingCount": 0,
+        "thresholdTrainingMetrics": null,
+        "probabilityMap": {
+          "status": "supported",
+          "reason": null,
+          "fitHash": "87371d979ffbd1a8fc24b2134d53208e90e0b4eec73d284a095aa78f92772300",
+          "trainingExamplesHash": "891399178c98f8fc75234c2e5de82bcff0144286690fe632df93c8377bd1a4df",
+          "selectedTrainingSiteCount": 8064,
+          "trainingDuplicateGroupCount": 7202,
+          "scoreLevelCount": 12
+        },
+        "heldOutMetrics": {
+          "split": "train",
+          "eligibleSiteCount": 921,
+          "scorableLabelSiteCount": 800,
+          "unscorableLabelSiteCount": 121,
+          "rawTop1CorrectCount": 779,
+          "rawTop1": 0.8458197611292074,
+          "selectedSiteCount": 584,
+          "coverage": 0.6340933767643865,
+          "abstentionCount": 337,
+          "abstentionRate": 0.36590662323561346,
+          "selectedCorrectSiteCount": 583,
+          "acceptedSitePrecision": 0.9982876712328768,
+          "endToEndTop1": 0.6330076004343105,
+          "acceptedDuplicateGroupCount": 521,
+          "correctAcceptedDuplicateGroupCount": 519,
+          "duplicateGroupPrecision": 0.9961612284069098,
+          "selectedIncompleteInventorySiteCount": 584,
+          "familyMacroRawTop1": 0.8458197611292074,
+          "worstFamilyRawTop1": 0.8458197611292074,
+          "familyMacroEndToEndTop1": 0.6330076004343105,
+          "worstFamilyEndToEndTop1": 0.6330076004343105,
+          "families": [
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "rawTop1CorrectCount": 779,
+              "selectedSiteCount": 584,
+              "selectedCorrectSiteCount": 583,
+              "rawTop1": 0.8458197611292074,
+              "acceptedSitePrecision": 0.9982876712328768,
+              "endToEndTop1": 0.6330076004343105
+            }
+          ],
+          "callShapes": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 7,
+              "rawTop1CorrectCount": 7,
+              "selectedSiteCount": 0,
+              "selectedCorrectSiteCount": 0,
+              "rawTop1": 1,
+              "acceptedSitePrecision": null,
+              "endToEndTop1": 0
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 332,
+              "rawTop1CorrectCount": 230,
+              "selectedSiteCount": 205,
+              "selectedCorrectSiteCount": 205,
+              "rawTop1": 0.6927710843373494,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 0.6174698795180723
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 580,
+              "rawTop1CorrectCount": 540,
+              "selectedSiteCount": 377,
+              "selectedCorrectSiteCount": 376,
+              "rawTop1": 0.9310344827586207,
+              "acceptedSitePrecision": 0.9973474801061007,
+              "endToEndTop1": 0.6482758620689655
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "rawTop1CorrectCount": 2,
+              "selectedSiteCount": 2,
+              "selectedCorrectSiteCount": 2,
+              "rawTop1": 1,
+              "acceptedSitePrecision": 1,
+              "endToEndTop1": 1
+            }
+          ]
+        },
+        "candidateAvailability": {
+          "allEligibleSiteCount": 921,
+          "generatedCandidateZeroSiteCount": 0,
+          "mappedCandidateZeroSiteCount": 22,
+          "proposalZeroSiteCount": 0,
+          "byFamily": [
+            {
+              "name": "typescript-language-server/typescript-language-server",
+              "eligibleSiteCount": 921,
+              "generatedCountAvailableSiteCount": 921,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 97,
+              "generatedCandidateSizeMax": 97,
+              "mappedCandidateZeroSiteCount": 22,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 8,
+              "mappedCandidateSizeMax": 9,
+              "proposalCountAvailableSiteCount": 921,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            }
+          ],
+          "byCallShape": [
+            {
+              "name": "arg-chain",
+              "eligibleSiteCount": 7,
+              "generatedCountAvailableSiteCount": 7,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 1,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 1,
+              "proposalCountAvailableSiteCount": 7,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 1
+            },
+            {
+              "name": "bare",
+              "eligibleSiteCount": 332,
+              "generatedCountAvailableSiteCount": 332,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 97,
+              "generatedCandidateSizeMax": 97,
+              "mappedCandidateZeroSiteCount": 1,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 8,
+              "mappedCandidateSizeMax": 8,
+              "proposalCountAvailableSiteCount": 332,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 25,
+              "proposalSizeMax": 25
+            },
+            {
+              "name": "member",
+              "eligibleSiteCount": 580,
+              "generatedCountAvailableSiteCount": 580,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 9,
+              "generatedCandidateSizeMax": 77,
+              "mappedCandidateZeroSiteCount": 21,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 9,
+              "mappedCandidateSizeMax": 9,
+              "proposalCountAvailableSiteCount": 580,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 2,
+              "proposalSizeMax": 9
+            },
+            {
+              "name": "this",
+              "eligibleSiteCount": 2,
+              "generatedCountAvailableSiteCount": 2,
+              "generatedCandidateZeroSiteCount": 0,
+              "generatedCandidateSizeP50": 1,
+              "generatedCandidateSizeP95": 1,
+              "generatedCandidateSizeMax": 1,
+              "mappedCandidateZeroSiteCount": 0,
+              "mappedCandidateSizeP50": 1,
+              "mappedCandidateSizeP95": 1,
+              "mappedCandidateSizeMax": 1,
+              "proposalCountAvailableSiteCount": 2,
+              "proposalZeroSiteCount": 0,
+              "proposalSizeP50": 1,
+              "proposalSizeP95": 1,
+              "proposalSizeMax": 1
+            }
+          ]
+        },
+        "selectedProbabilityMetrics": {
+          "selectedSiteCount": 584,
+          "selectedScorableSiteCount": 584,
+          "selectedUnscorableSiteCount": 0,
+          "selectedDuplicateGroupCount": 521,
+          "siteWeighted": {
+            "siteCount": 584,
+            "duplicateGroupCount": 521,
+            "brierScore": 0.0035007642417253233,
+            "expectedCalibrationError": 0.009003395681196458
+          },
+          "scorableOnlySiteWeighted": {
+            "siteCount": 584,
+            "duplicateGroupCount": 521,
+            "brierScore": 0.0035007642417253233,
+            "expectedCalibrationError": 0.009003395681196458
+          },
+          "duplicateGroupWeighted": {
+            "siteCount": 584,
+            "duplicateGroupCount": 521,
+            "brierScore": 0.003899264066090559,
+            "expectedCalibrationError": 0.008369668525794016
+          },
+          "callShapes": [
+            {
+              "name": "bare",
+              "selectedSiteCount": 205,
+              "siteWeighted": {
+                "siteCount": 205,
+                "duplicateGroupCount": 181,
+                "brierScore": 0.0002084654592629818,
+                "expectedCalibrationError": 0.014438332980745927
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 205,
+                "duplicateGroupCount": 181,
+                "brierScore": 0.0002084654592629818,
+                "expectedCalibrationError": 0.014438332980745927
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 205,
+                "duplicateGroupCount": 181,
+                "brierScore": 0.00020846545926298183,
+                "expectedCalibrationError": 0.01443833298074626
+              }
+            },
+            {
+              "name": "member",
+              "selectedSiteCount": 377,
+              "siteWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.005308472061273634,
+                "expectedCalibrationError": 0.006019225864198785
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.005308472061273634,
+                "expectedCalibrationError": 0.006019225864198785
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 377,
+                "duplicateGroupCount": 338,
+                "brierScore": 0.005897536684580062,
+                "expectedCalibrationError": 0.005083971498400119
+              }
+            },
+            {
+              "name": "this",
+              "selectedSiteCount": 2,
+              "siteWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00020846545926298213,
+                "expectedCalibrationError": 0.014438332980748925
+              },
+              "scorableOnlySiteWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00020846545926298213,
+                "expectedCalibrationError": 0.014438332980748925
+              },
+              "duplicateGroupWeighted": {
+                "siteCount": 2,
+                "duplicateGroupCount": 2,
+                "brierScore": 0.00020846545926298213,
+                "expectedCalibrationError": 0.014438332980748925
+              }
+            }
+          ]
+        },
+        "abstentionAttribution": {
+          "eligibleSiteCount": 921,
+          "abstainedSiteCount": 337,
+          "byCallShapeAndReason": [
+            {
+              "callShape": "arg-chain",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 7,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 7,
+                "structural-peer-member-usage": 7
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "no-ranked-candidate",
+              "abstainedSiteCount": 1,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {}
+            },
+            {
+              "callShape": "bare",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 5,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 5,
+                "structural-peer-member-usage": 5,
+                "same-directory": 5
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "truncated-candidate-list",
+              "abstainedSiteCount": 116,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 31,
+                "structural-peer-member-usage": 31,
+                "same-directory": 1
+              }
+            },
+            {
+              "callShape": "bare",
+              "reason": "unmapped-target",
+              "abstainedSiteCount": 5,
+              "zeroRankScoreSiteCount": 5,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 5,
+                "structural-peer-member-usage": 5,
+                "compatible-argument-count": 5,
+                "same-directory": 5
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "rank-tie",
+              "abstainedSiteCount": 10,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 8,
+                "structural-peer-member-usage": 10,
+                "same-directory": 5
+              }
+            },
+            {
+              "callShape": "member",
+              "reason": "unsupported-call-shape",
+              "abstainedSiteCount": 193,
+              "zeroRankScoreSiteCount": 0,
+              "lowRankScoreSiteCount": 0,
+              "missingSignalCounts": {
+                "explicit-receiver-type": 172,
+                "structural-peer-member-usage": 172,
+                "same-directory": 94
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "limitations": [
+      "This is train-family transfer analysis, not unseen-family certification.",
+      "The threshold is frozen from calibration; each held-family probability map fits only on other TRAIN families.",
+      "Cross-family duplicate groups are excluded from each fold's fit rows and retained in held-family evaluation.",
+      "The probability map is a Beta-smoothed isotonic estimate with conservative unscorable outcomes; abstentions receive no probability.",
+      "No calibration, test, or temporal labels are read; no System One heldout mode is invoked."
+    ]
+  }
+}

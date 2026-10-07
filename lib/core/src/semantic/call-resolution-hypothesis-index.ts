@@ -315,11 +315,48 @@ function namedFunctionInventoryIsIncomplete(
       !HASH_PATTERN.test(source.sourceContentHash) ||
       facts.schemaVersion !== AST_DECLARED_TYPE_FACTS_SCHEMA_VERSION ||
       !["typescript", "tsx", "javascript"].includes(facts.language) ||
-      facts.declarations.some(
-        ({ kind, owner, unsupportedReason }) =>
-          owner.kind === "program" &&
-          (kind === "unknown" || unsupportedReason !== undefined),
-      ))
+      facts.declarations.some((declaration) => {
+        if (declaration.owner.kind !== "program") return false;
+        if (declaration.unsupportedReason !== undefined) return true;
+        return (
+          declaration.kind === "unknown" &&
+          !isCandidateOnlyExportedValue(source, facts, declaration)
+        );
+      }))
+  );
+}
+
+/**
+ * #570 records directly exported, non-callable values as `unknown` declarations
+ * so candidate generation can surface them. A unique variable export is complete
+ * syntax evidence that this declaration cannot widen the strict named-function
+ * proof inventory; every other program-level `unknown` still fails closed.
+ */
+function isCandidateOnlyExportedValue(
+  source: CallResolutionHypothesisWorkspaceInput["sourceFiles"][number],
+  facts: AstDeclaredTypeFacts,
+  declaration: AstDeclaredDeclaration,
+): boolean {
+  if (
+    declaration.kind !== "unknown" ||
+    declaration.unsupportedReason !== undefined ||
+    declaration.owner.kind !== "program" ||
+    !declaration.name
+  )
+    return false;
+  const matchingExports = source.exports?.filter(
+    ({ name }) => name === declaration.name,
+  );
+  const matchingUnknownDeclarations = facts.declarations.filter(
+    (candidate) =>
+      candidate.kind === "unknown" &&
+      candidate.owner.kind === "program" &&
+      candidate.name === declaration.name,
+  );
+  return (
+    matchingExports?.length === 1 &&
+    matchingExports[0]?.type === "variable" &&
+    matchingUnknownDeclarations.length === 1
   );
 }
 

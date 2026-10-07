@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/declared-type-facts.unit.test.ts#anonymous@L389
+id: lib/core/src/ast/declared-type-facts.unit.test.ts#anonymous@L47
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/declared-type-facts.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/core/src/ast/declared-type-facts.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/declared-type-facts.unit.test.ts`
+

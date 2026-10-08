@@ -1,11 +1,14 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Database from "better-sqlite3";
 import {
   AnalyzeResultKind,
   createNoopLogger,
+  DocuviaError,
   docuviaMemory,
+  ErrorCodes,
   MemoryKeys,
 } from "@workspace/contracts";
+import { GitLocalProvider } from "@workspace/git-local";
 import { docuviaApi } from "@workspace/ui-core";
 import { TestSandbox } from "../../support/sandbox.js";
 import { SUBPROCESS_TEST_TIMEOUT_MS } from "@workspace/contracts/testing/timeouts";
@@ -104,6 +107,27 @@ function readGraphSnapshot(workspaceRoot: string): GraphSnapshot {
   }
 }
 
+function readProjectFileHashes(
+  workspaceRoot: string,
+): Map<string, string | null> {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+    { readonly: true },
+  ]);
+  try {
+    const rows = db
+      .prepare(
+        "SELECT file_path, content_hash FROM project_files ORDER BY file_path",
+      )
+      .all() as { file_path: string; content_hash: string | null }[];
+    return new Map(
+      rows.map(({ file_path, content_hash }) => [file_path, content_hash]),
+    );
+  } finally {
+    db.close();
+  }
+}
+
 async function commitAll(sandbox: TestSandbox, message: string): Promise<void> {
   const runGit = sandbox.runGit.bind(sandbox);
   await runGit(["add", "-A"]);
@@ -154,6 +178,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   const scopes: string[] = [];
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     for (const scope of scopes.splice(0)) docuviaMemory.deleteScope(scope);
     await Promise.all(sandboxes.splice(0).map((sandbox) => sandbox.teardown()));
   });
@@ -552,6 +577,227 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
         ),
       );
       expect(delta).toEqual(readGraphSnapshot(fullSandbox.dir));
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[error-handling] falls back when the HEAD source inventory is unavailable",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox);
+      const initialFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function target() { return "before"; }\n',
+        "src/caller.ts":
+          'import { target } from "./target.js";\nexport function caller() { return target(); }\n',
+      };
+      await sandbox.setup({ initGit: true, files: initialFiles });
+      await commitAll(sandbox, "commit A: inventory fallback baseline");
+      const scopeId = `delta-inventory-fallback-${Date.now()}`;
+      scopes.push(scopeId);
+      await initializeAtCurrentCommit(sandbox, scopeId);
+
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      await fs.writeFile(
+        path.join(sandbox.dir, "src/target.ts"),
+        'export function target() { return "after"; }\n',
+        "utf8",
+      );
+      await commitAll(sandbox, "commit B: change target");
+
+      const inventoryFailure = new DocuviaError(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "tracked source inventory unavailable",
+      );
+      const inventorySpy = vi
+        .spyOn(GitLocalProvider.prototype, "listTrackedFilesWithBlobHash")
+        .mockRejectedValue(inventoryFailure);
+
+      const result = await docuviaApi.analyze(scopeId, createNoopLogger());
+
+      expect(result.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(inventorySpy).toHaveBeenCalledTimes(1);
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        strictProofReproofStatus: "scope-resolver-fallback",
+        strictProofReproofFallbackReason:
+          "head-source-file-inventory-unavailable",
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] keeps git blob hashes when dirty worktree blocks source-index repair",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const targetAtA = 'export function target() { return "A"; }\n';
+      const targetAtB = 'export function target() { return "B"; }\n';
+      const dirtyAtA = "export function dirty() { return 1; }\n";
+      const initialFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": targetAtA,
+        "src/dirty.ts": dirtyAtA,
+        "notes.md": "baseline\n",
+      };
+      await deltaSandbox.setup({ initGit: true, files: initialFiles });
+      await commitAll(deltaSandbox, "commit A: dirty fallback baseline");
+      const deltaScope = `delta-dirty-blob-hash-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "src/target.ts"),
+        targetAtB,
+        "utf8",
+      );
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "src/dirty.ts"),
+        "export function dirty() { return 2; }\n",
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "commit B: change target", [
+        "src/target.ts",
+      ]);
+
+      const inventorySpy = vi.spyOn(
+        GitLocalProvider.prototype,
+        "listTrackedFilesWithBlobHash",
+      );
+      const deltaResult = await docuviaApi.analyze(
+        deltaScope,
+        createNoopLogger(),
+      );
+      expect(deltaResult.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(inventorySpy).toHaveBeenCalledTimes(1);
+      expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+        strictProofReproofStatus: "scope-resolver-fallback",
+        strictProofReproofFallbackReason:
+          "working-tree-has-uncommitted-changes",
+      });
+
+      await fullSandbox.setup({
+        initGit: true,
+        files: { ...initialFiles, "src/target.ts": targetAtB },
+      });
+      await commitAll(fullSandbox, "commit B: full-init reference");
+      const fullScope = `full-dirty-blob-hash-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+      const deltaTargetHash = readProjectFileHashes(deltaSandbox.dir).get(
+        "src/target.ts",
+      );
+      const fullTargetHash = readProjectFileHashes(fullSandbox.dir).get(
+        "src/target.ts",
+      );
+      expect(deltaTargetHash).toBe(
+        (
+          await deltaSandbox.runGit(["rev-parse", "HEAD:src/target.ts"])
+        ).stdout.trim(),
+      );
+      expect(deltaTargetHash).toBe(fullTargetHash);
+
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "src/dirty.ts"),
+        dirtyAtA,
+        "utf8",
+      );
+      inventorySpy.mockClear();
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "notes.md"),
+        "recovery commit\n",
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "commit C: recover source index", [
+        "notes.md",
+      ]);
+      const recoveryResult = await docuviaApi.analyze(
+        deltaScope,
+        createNoopLogger(),
+      );
+      expect(recoveryResult.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(inventorySpy).toHaveBeenCalledTimes(1);
+
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "notes.md"),
+        "steady state\n",
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "commit D: verify stable hashes", [
+        "notes.md",
+      ]);
+      const stableResult = await docuviaApi.analyze(
+        deltaScope,
+        createNoopLogger(),
+      );
+      expect(stableResult.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+        filesReparsed: 0,
+        strictProofReproofRecoveredSourceFiles: 0,
+        strictProofReproofStatus: "complete",
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] keeps combined default and named import calls in delta/full parity",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const target = [
+        "export default function DefaultThing() {}",
+        "export function named() {}",
+      ].join("\n");
+      const caller = [
+        'import DefaultThing, { named } from "./x.js";',
+        "export function caller() {",
+        "  DefaultThing();",
+        "  named();",
+        "}",
+      ].join("\n");
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/x.ts": target,
+        "src/caller.ts": caller,
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "commit A: combined import baseline");
+      const deltaScope = `delta-combined-import-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+
+      const fs = await import("node:fs/promises");
+      const path = await import("node:path");
+      await fs.writeFile(
+        path.join(deltaSandbox.dir, "src/caller.ts"),
+        `// changed caller\n${caller}`,
+        "utf8",
+      );
+      await commitAll(deltaSandbox, "commit B: reparse combined import caller");
+      expect(
+        (await docuviaApi.analyze(deltaScope, createNoopLogger())).kind,
+      ).toBe(AnalyzeResultKind.AUTO_DELTA);
+
+      await fullSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(fullSandbox, "commit B: full-init reference");
+      const fullScope = `full-combined-import-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+      const deltaSnapshot = readGraphSnapshot(deltaSandbox.dir);
+      const fullSnapshot = readGraphSnapshot(fullSandbox.dir);
+      expect(deltaSnapshot.calls).toEqual(fullSnapshot.calls);
+      expect(deltaSnapshot.calls).toContainEqual({
+        source_node_key: "src/caller.ts#caller",
+        target_node_key: "src/x.ts#named",
+      });
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

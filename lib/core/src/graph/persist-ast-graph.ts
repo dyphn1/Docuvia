@@ -90,6 +90,14 @@ function hypothesisSourceFileForResult(
   };
 }
 
+function normalizeResolverImports(
+  imports: CallResolutionHypothesisSourceFile["imports"],
+): Array<NonNullable<CallResolutionHypothesisSourceFile["imports"]>[number]> {
+  return (imports ?? []).filter(
+    (descriptor) => !descriptor.isCombinedDefaultImport,
+  );
+}
+
 function resolverLocalSymbolsForResult(result: ParsedAstFileResult): string[] {
   return [
     ...(result.data.functions ?? []).map(({ name }) => name),
@@ -429,9 +437,7 @@ export class GraphPersisterService implements IGraphPersister {
       const locals = resolverLocalSymbolsForResult(result);
       resolver.registerFile(
         result.file,
-        (result.data.imports || []).filter(
-          (descriptor) => !descriptor.isCombinedDefaultImport,
-        ),
+        normalizeResolverImports(result.data.imports),
         [],
         locals,
       );
@@ -460,7 +466,7 @@ export class GraphPersisterService implements IGraphPersister {
       for (const source of completeSources) {
         resolver.registerFile(
           source.filePath,
-          [...(source.sourceFile.imports ?? [])],
+          normalizeResolverImports(source.sourceFile.imports),
           [],
           [...source.localSymbols],
         );

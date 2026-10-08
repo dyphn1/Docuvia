@@ -37,6 +37,8 @@ import {
 } from "../../lib/core/src/graph/node-key.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
 import {
+  buildExactCallerSampleKey,
+  buildRepositoryIdentity,
   EXACT_CALLER_ADDITION_CATEGORIES,
   hasPathSegment,
   type ExactCallerAdditionCategory,
@@ -754,6 +756,18 @@ function markdownSummary(totals: Record<string, number>): string {
 
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
+  const repositoryHeadSha = execFileSync(
+    "git",
+    ["-C", options.repositoryRoot, "rev-parse", "HEAD"],
+    { encoding: "utf8" },
+  ).trim();
+  const repositoryRemoteUrl = readOriginRemote(options.repositoryRoot);
+  const repository = path.basename(options.repositoryRoot);
+  const repositoryIdentity = buildRepositoryIdentity(
+    repositoryRemoteUrl,
+    options.repositoryRoot,
+    repositoryHeadSha,
+  );
   const sourceFiles = discoverSourceFiles(
     options.repositoryRoot,
     options.excludedPathPrefixes,
@@ -811,7 +825,10 @@ async function main(): Promise<void> {
     );
     const report = {
       ...buildReport(
-        path.basename(options.repositoryRoot),
+        repository,
+        repositoryIdentity,
+        repositoryHeadSha,
+        repositoryRemoteUrl,
         parsed.parsed.length,
         locations,
         allLocations,
@@ -821,6 +838,9 @@ async function main(): Promise<void> {
         v2,
       ),
       repositoryRoot: options.repositoryRoot,
+      repositoryIdentity,
+      repositoryHeadSha,
+      repositoryRemoteUrl,
       excludedPathPrefixes: options.excludedPathPrefixes,
       excludedPathSegments: options.excludedPathSegments,
     };
@@ -836,8 +856,32 @@ async function main(): Promise<void> {
   }
 }
 
+function readOriginRemote(repositoryRoot: string): string | null {
+  try {
+    return (
+      execFileSync(
+        "git",
+        ["-C", repositoryRoot, "config", "--get", "remote.origin.url"],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ).trim() || null
+    );
+  } catch (error) {
+    const status =
+      typeof error === "object" && error !== null && "status" in error
+        ? error.status
+        : undefined;
+    if (status === 1) return null;
+    throw new Error(`Unable to read origin remote for ${repositoryRoot}`, {
+      cause: error,
+    });
+  }
+}
+
 function buildReport(
   repository: string,
+  repositoryIdentity: string,
+  repositoryHeadSha: string,
+  repositoryRemoteUrl: string | null,
   parsedFileCount: number,
   locations: ReadonlyMap<string, FunctionLocation>,
   allLocations: ReadonlyMap<string, SourceLocation>,
@@ -899,6 +943,7 @@ function buildReport(
   const v2OnlyImpactAdditions: Array<{
     readonly repo: string;
     readonly sampleKey: string;
+    readonly samplingKey: string;
     readonly category: ExactCallerAdditionCategory;
     readonly target: NonNullable<ReturnType<typeof publicLocation>>;
     readonly addedCaller: NonNullable<ReturnType<typeof publicLocation>>;
@@ -1025,7 +1070,12 @@ function buildReport(
         });
       v2OnlyImpactAdditions.push({
         repo: repository,
-        sampleKey: `${repository}\0${targetKey}\0${addedCallerKey}`,
+        sampleKey: buildExactCallerSampleKey(
+          repositoryIdentity,
+          targetKey,
+          addedCallerKey,
+        ),
+        samplingKey: `${repository}\0${targetKey}\0${addedCallerKey}`,
         category,
         target: publicLocation(targetLocation)!,
         addedCaller: publicLocation(addedCallerLocation)!,
@@ -1151,6 +1201,9 @@ function buildReport(
   );
   return {
     repository,
+    repositoryIdentity,
+    repositoryHeadSha,
+    repositoryRemoteUrl,
     policies: {
       baseline: CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1,
       candidate: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,

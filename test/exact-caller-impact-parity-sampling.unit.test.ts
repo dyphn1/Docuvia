@@ -5,6 +5,12 @@ import {
   estimatePopulationWeightedPrecision,
   evaluateAcceptanceGate,
   extractCallSiteEvidence,
+  findMatchingReviewLabel,
+  buildEvidenceFingerprint,
+  buildExactCallerSampleKey,
+  buildRepositoryIdentity,
+  indexAuditsByIdentity,
+  assertUniqueRepositoryIdentities,
   hasPathSegment,
   isExcludedBundlePath,
   labelCounts,
@@ -144,6 +150,127 @@ describe("exact caller parity sampling", () => {
 
     expect(gate.status).toBe("inconclusive");
     expect(gate.insufficientCoverageCategories).toEqual(["other"]);
+  });
+
+  it("[invalid-input] invalidates a label when source evidence changes under stable node keys", () => {
+    const repositoryIdentity = buildRepositoryIdentity(
+      "https://example.test/team/repo.git",
+      "/workspace/repo",
+      "head-1",
+    );
+    const sampleKey = buildExactCallerSampleKey(
+      repositoryIdentity,
+      "target-node",
+      "caller-node",
+    );
+    const originalFingerprint = buildEvidenceFingerprint(
+      "head-1",
+      "exact-enclosing-v2",
+      {
+        targetSnippet: "function target() {}",
+        addedCallerSnippet: "function caller() { target(); }",
+        callSiteSnippets: ["target();"],
+      },
+    );
+    const changedFingerprint = buildEvidenceFingerprint(
+      "head-1",
+      "exact-enclosing-v2",
+      {
+        targetSnippet: "function target() {}",
+        addedCallerSnippet: "function caller() { unrelated(); }",
+        callSiteSnippets: ["unrelated();"],
+      },
+    );
+    const previousLabel = findMatchingReviewLabel(
+      [
+        {
+          sampleKey,
+          evidenceFingerprint: originalFingerprint,
+          label: "TP",
+          justification: "Reviewed source.",
+        },
+      ],
+      sampleKey,
+      changedFingerprint,
+    );
+    const eligibleCounts = { ...EMPTY_ELIGIBLE_COUNTS, other: 20 };
+    const sample = [
+      {
+        category: "other" as const,
+        sampleKey,
+        label: previousLabel?.label ?? ("unsure" as const),
+        reviewed: previousLabel !== undefined,
+      },
+    ];
+    const weighted = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    expect(previousLabel).toEqual(undefined);
+    expect(
+      evaluateAcceptanceGate(eligibleCounts, sample, weighted).status,
+    ).toBe("inconclusive");
+  });
+
+  it("[invalid-input] isolates same-basename repositories and rejects duplicate audit identities", () => {
+    const firstIdentity = buildRepositoryIdentity(
+      null,
+      "/audit/one/shared",
+      "head-one",
+    );
+    const secondIdentity = buildRepositoryIdentity(
+      null,
+      "/audit/two/shared",
+      "head-two",
+    );
+    const firstSampleKey = buildExactCallerSampleKey(
+      firstIdentity,
+      "target",
+      "caller",
+    );
+    const secondSampleKey = buildExactCallerSampleKey(
+      secondIdentity,
+      "target",
+      "caller",
+    );
+
+    expect(firstIdentity).not.toBe(secondIdentity);
+    expect(firstSampleKey).not.toBe(secondSampleKey);
+    expect(
+      findMatchingReviewLabel(
+        [
+          {
+            sampleKey: firstSampleKey,
+            evidenceFingerprint: "same-source-hash",
+            label: "TP",
+            justification: "Only applies to the first root.",
+          },
+        ],
+        secondSampleKey,
+        "same-source-hash",
+      ),
+    ).toEqual(undefined);
+    const indexed = indexAuditsByIdentity([
+      {
+        repository: "shared",
+        repositoryIdentity: firstIdentity,
+        sourceBody: "first repo source",
+      },
+      {
+        repository: "shared",
+        repositoryIdentity: secondIdentity,
+        sourceBody: "second repo source",
+      },
+    ]);
+    expect(indexed.get(firstIdentity)?.sourceBody).toBe("first repo source");
+    expect(indexed.get(secondIdentity)?.sourceBody).toBe("second repo source");
+    expect(() =>
+      indexAuditsByIdentity([
+        { repository: "shared", repositoryIdentity: firstIdentity },
+        { repository: "shared", repositoryIdentity: firstIdentity },
+      ]),
+    ).toThrow("Duplicate repository audit identity");
   });
 
   it("[happy] weights precision by eligible stratum counts and returns simultaneous Wilson bounds", () => {

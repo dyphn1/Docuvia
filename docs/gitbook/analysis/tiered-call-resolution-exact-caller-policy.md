@@ -43,6 +43,12 @@ The gate uses a population-weighted precision estimate over reviewable additions
 
 The default gate passes only when adequate review coverage is present, the population-weighted interval's lower bound is at least 0.90, and every category with at least 10 eligible additions has a conservative TP rate of at least 0.80. A category with fewer than 10 eligible additions must be exhaustively labeled and is reported separately without a category floor. If any category misses its coverage requirement, the result is **inconclusive**, never pass. The weighted lower bound protects the population-level decision; category floors prevent a low-precision high-volume stratum from being hidden by the other categories.
 
+### Review-label provenance
+
+Review artifacts use unique repository audit identities (`remote URL + HEAD SHA`, or absolute root path + HEAD SHA when no origin exists). Those identities key report lookup and sample labels, so equal basenames cannot mix source evidence. Duplicate identities are rejected before sampling. A review label is carried by `--labels-from` only when both its unique sample key and SHA-256 evidence fingerprint match. The fingerprint covers the audit HEAD, candidate caller policy, target and caller snippets, and call-site evidence. A mismatch becomes an unreviewed placeholder and makes the gate inconclusive until it is reviewed again.
+
+Legacy artifacts may be migrated only with the explicit `--migrate-legacy-labels-from` option. Migration requires an exact match of the old target/caller node keys and source snippets; the resulting artifact stores the new unique key and fingerprint. This migration path is not used by ordinary label carryover.
+
 ### Historical pre-fix measurements
 
 The original PR review at `bd5f4bb` reported 5,666 v1 named-function pairs and 7,711 v2 pairs: zero omissions, 2,045 additions, and 966 unique added nodes. Those counts measure parity/recall vs v1 and do not establish whether additions are correct.
@@ -88,7 +94,7 @@ The single missing pair remains Onyx `jquery.js#bb` for `preventDefault`; source
 | Stratified stress score (TP / reviewed)   |                 48.3% |                85.0% |
 | File delta median / p90 / min / max       |  0 / 0 / -1,177 / +75 | 0 / 0 / -1,177 / +75 |
 
-The post-fix sample has 60 source-reviewed items and seed `pr583-selfguard-final-20261008`. Labels were retained while the weighted estimate and audit metrics were recomputed from the current reports; no items were relabeled. Its rows, source snippets, and one-line justifications are in [the post-fix review artifact](tiered-call-resolution-exact-caller-impact-review.json).
+The post-fix sample has 60 source-reviewed items and seed `pr583-selfguard-final-20261008`. Labels were retained through the explicit legacy migration because each selected item matched its current source snippets; all 60 now carry repo HEAD, policy, and evidence fingerprint provenance. Its rows, source snippets, and one-line justifications are in [the post-fix review artifact](tiered-call-resolution-exact-caller-impact-review.json).
 
 | Category                            |   Eligible | Reviewed |     TP |    FP | Unsure |                    Conservative TP rate |            Stratum uncertainty interval |   Weight |
 | ----------------------------------- | ---------: | -------: | -----: | ----: | -----: | --------------------------------------: | --------------------------------------: | -------: |

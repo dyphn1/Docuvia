@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 
 export const EXACT_CALLER_ADDITION_CATEGORIES = [
   "anonymous-callback/lexical-parent",
@@ -14,9 +15,117 @@ export type ExactCallerAdditionCategory =
 export interface SampleCandidate {
   readonly category: ExactCallerAdditionCategory;
   readonly sampleKey: string;
+  /** Stable review-selection key retained across the audit-identity migration. */
+  readonly samplingKey?: string;
 }
 
 export type ReviewLabel = "TP" | "FP" | "unsure";
+
+export interface ReviewLabelProvenance {
+  readonly sampleKey: string;
+  readonly evidenceFingerprint?: string;
+  readonly label: ReviewLabel;
+  readonly justification: string;
+  readonly reviewed?: boolean;
+}
+
+export interface ReviewEvidence {
+  readonly targetSnippet: string | null;
+  readonly addedCallerSnippet: string | null;
+  readonly callSiteSnippets: readonly string[];
+}
+
+export function buildRepositoryIdentity(
+  remoteUrl: string | null,
+  repositoryRoot: string,
+  headSha: string,
+): string {
+  const source = remoteUrl?.trim()
+    ? `remote:${remoteUrl.trim()}`
+    : `root:${path.resolve(repositoryRoot)}`;
+  return `${source}\0${headSha.trim()}`;
+}
+
+export function buildExactCallerSampleKey(
+  repositoryIdentity: string,
+  targetNodeKey: string,
+  addedCallerNodeKey: string,
+): string {
+  return JSON.stringify([
+    repositoryIdentity,
+    targetNodeKey,
+    addedCallerNodeKey,
+  ]);
+}
+
+export function buildEvidenceFingerprint(
+  repositoryHeadSha: string,
+  callerPolicy: string,
+  evidence: ReviewEvidence,
+): string {
+  const canonicalEvidence = JSON.stringify({
+    repositoryHeadSha,
+    callerPolicy,
+    targetSnippet: evidence.targetSnippet,
+    addedCallerSnippet: evidence.addedCallerSnippet,
+    callSiteSnippets: [...evidence.callSiteSnippets],
+  });
+  return createHash("sha256").update(canonicalEvidence).digest("hex");
+}
+
+export function assertUniqueRepositoryIdentities(
+  repositories: readonly {
+    readonly repository: string;
+    readonly identity: string;
+  }[],
+): void {
+  const repositoryByIdentity = new Map<string, string>();
+  for (const { repository, identity } of repositories) {
+    const previousRepository = repositoryByIdentity.get(identity);
+    if (previousRepository !== undefined) {
+      throw new Error(
+        `Duplicate repository audit identity for ${previousRepository} and ${repository}: ${identity}`,
+      );
+    }
+    repositoryByIdentity.set(identity, repository);
+  }
+}
+
+export function indexAuditsByIdentity<
+  T extends {
+    readonly repository: string;
+    readonly repositoryIdentity: string;
+  },
+>(reports: readonly T[]): ReadonlyMap<string, T> {
+  assertUniqueRepositoryIdentities(
+    reports.map(({ repository, repositoryIdentity }) => ({
+      repository,
+      identity: repositoryIdentity,
+    })),
+  );
+  return new Map(
+    reports.map((report) => [report.repositoryIdentity, report] as const),
+  );
+}
+
+export function findMatchingReviewLabel(
+  labels: readonly ReviewLabelProvenance[],
+  sampleKey: string,
+  evidenceFingerprint: string,
+): ReviewLabelProvenance | undefined {
+  const matching = labels.filter(
+    (label) =>
+      label.sampleKey === sampleKey &&
+      label.evidenceFingerprint === evidenceFingerprint &&
+      label.reviewed !== false,
+  );
+  if (matching.length > 1) {
+    throw new Error(
+      `Duplicate review-label provenance for sample ${sampleKey}`,
+    );
+  }
+  return matching[0];
+}
 
 export interface LabeledSampleCandidate extends SampleCandidate {
   readonly label: ReviewLabel;
@@ -208,7 +317,7 @@ export function selectSeededStratifiedSample<T extends SampleCandidate>(
       .filter((candidate) => candidate.category === category)
       .map((candidate) => ({
         candidate,
-        rank: seededRank(seed, candidate.sampleKey),
+        rank: seededRank(seed, candidate.samplingKey ?? candidate.sampleKey),
       }))
       .sort(
         (left, right) =>

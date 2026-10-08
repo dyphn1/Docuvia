@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/files-repo.ts#ProjectFilesRepo.anonymous
+id: lib/schema/src/sqlite/repos/files-repo.ts#ProjectFilesRepo.anonymous@L53
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/files-repo.ts
@@ -7,4 +7,3 @@ filePath: lib/schema/src/sqlite/repos/files-repo.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/repos/files-repo.ts`
-ts`

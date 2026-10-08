@@ -7,3 +7,4 @@ filePath: lib/core/src/semantic/call-resolution-exported-value-inventory.integra
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-exported-value-inventory.integration.test.ts`
+

@@ -14,6 +14,7 @@ import {
   indexAuditsByIdentity,
   limitSourceEvidence,
   labelCounts,
+  recomputeAndVerifySourceManifest,
   selectSeededStratifiedSample,
   partitionBundleReviewCandidates,
   type ExactCallerAdditionCategory,
@@ -21,6 +22,7 @@ import {
   type SampleCandidate,
   type ReviewEvidence,
   type ReviewLabelProvenance,
+  type SourceManifest,
 } from "./exact-caller-impact-parity-sampling.js";
 
 type Location = {
@@ -52,6 +54,10 @@ type AuditReport = {
   readonly repositoryIdentity?: string;
   readonly repositoryHeadSha?: string;
   readonly repositoryRemoteUrl?: string | null;
+  readonly manifestSha256?: string;
+  readonly manifestFileCount?: number;
+  readonly manifestDefinition?: SourceManifest["definition"];
+  readonly sourceTreeDirty?: boolean;
   readonly policies?: { readonly candidate?: string };
   readonly excludedPathPrefixes?: readonly string[];
   readonly excludedPathSegments?: readonly string[];
@@ -94,7 +100,6 @@ type Options = {
   readonly seed: string;
   readonly sampleSize: number;
   readonly labelsPath?: string;
-  readonly migrateLegacyLabelsPath?: string;
 };
 
 type PreparedAuditReport = AuditReport & {
@@ -102,15 +107,15 @@ type PreparedAuditReport = AuditReport & {
   readonly repositoryHeadSha: string;
   readonly repositoryRemoteUrl: string | null;
   readonly callerPolicy: string;
+  readonly manifestSha256: string;
+  readonly manifestFileCount: number;
+  readonly manifestDefinition: SourceManifest["definition"];
+  readonly sourceTreeDirty: boolean;
 };
 
-type PriorSampleItem = ReviewLabelProvenance & {
-  readonly repo: string;
-  readonly category: ExactCallerAdditionCategory;
-  readonly target: Location;
-  readonly addedCaller: Location;
-  readonly evidence?: ReviewEvidence;
-  readonly reviewed?: boolean;
+type ReviewLabelArtifact = {
+  readonly sample?: readonly ReviewLabelProvenance[];
+  readonly labelReaffirmation?: string;
 };
 
 function parseOptions(argv: readonly string[]): Options {
@@ -126,13 +131,12 @@ function parseOptions(argv: readonly string[]): Options {
         "--seed",
         "--sample-size",
         "--labels-from",
-        "--migrate-legacy-labels-from",
       ].includes(key ?? "") ||
       !value ||
       value.startsWith("--")
     ) {
       throw new Error(
-        "Usage: exact-caller-impact-sample.mts --input <audit.json>... --out <review.json> --seed <seed> --sample-size <count> [--labels-from <review.json> | --migrate-legacy-labels-from <review.json>]",
+        "Usage: exact-caller-impact-sample.mts --input <audit.json>... --out <review.json> --seed <seed> --sample-size <count> [--labels-from <review.json>]",
       );
     }
     if (key === "--input") {
@@ -145,17 +149,15 @@ function parseOptions(argv: readonly string[]): Options {
   const seed = values.get("--seed");
   const sampleSizeValue = Number(values.get("--sample-size"));
   const labelsPath = values.get("--labels-from");
-  const migrateLegacyLabelsPath = values.get("--migrate-legacy-labels-from");
   if (
     inputs.length === 0 ||
     !outputPath ||
     !seed ||
     !Number.isSafeInteger(sampleSizeValue) ||
-    sampleSizeValue < 0 ||
-    (labelsPath !== undefined && migrateLegacyLabelsPath !== undefined)
+    sampleSizeValue < 0
   ) {
     throw new Error(
-      "Usage: exact-caller-impact-sample.mts --input <audit.json>... --out <review.json> --seed <seed> --sample-size <count> [--labels-from <review.json> | --migrate-legacy-labels-from <review.json>]",
+      "Usage: exact-caller-impact-sample.mts --input <audit.json>... --out <review.json> --seed <seed> --sample-size <count> [--labels-from <review.json>]",
     );
   }
   return {
@@ -164,9 +166,6 @@ function parseOptions(argv: readonly string[]): Options {
     seed,
     sampleSize: sampleSizeValue,
     ...(labelsPath ? { labelsPath: path.resolve(labelsPath) } : {}),
-    ...(migrateLegacyLabelsPath
-      ? { migrateLegacyLabelsPath: path.resolve(migrateLegacyLabelsPath) }
-      : {}),
   };
 }
 
@@ -210,6 +209,30 @@ function prepareAuditReport(report: AuditReport): PreparedAuditReport {
       `Audit revision mismatch for ${report.repository}: recorded ${report.repositoryHeadSha}, current ${currentHead}`,
     );
   }
+  if (
+    !report.manifestSha256 ||
+    report.manifestFileCount === undefined ||
+    !report.manifestDefinition ||
+    report.sourceTreeDirty === undefined
+  ) {
+    throw new Error(
+      `Audit report for ${report.repository} lacks a source manifest; re-run the audit`,
+    );
+  }
+  const sourceDiscoveryOptions = {
+    excludedPathPrefixes: report.excludedPathPrefixes ?? [],
+    excludedPathSegments: report.excludedPathSegments ?? [],
+  };
+  const liveManifest = recomputeAndVerifySourceManifest(
+    repositoryRoot,
+    report.repository,
+    {
+      manifestSha256: report.manifestSha256,
+      manifestFileCount: report.manifestFileCount,
+      definition: report.manifestDefinition,
+    },
+    sourceDiscoveryOptions,
+  );
   const remoteUrl =
     report.repositoryRemoteUrl ??
     (readGitValue(repositoryRoot, ["config", "--get", "remote.origin.url"]) ||
@@ -218,6 +241,7 @@ function prepareAuditReport(report: AuditReport): PreparedAuditReport {
     remoteUrl,
     repositoryRoot,
     currentHead,
+    liveManifest.manifestSha256,
   );
   if (
     report.repositoryIdentity &&
@@ -234,50 +258,11 @@ function prepareAuditReport(report: AuditReport): PreparedAuditReport {
     repositoryRemoteUrl: remoteUrl,
     repositoryIdentity,
     callerPolicy: report.policies?.candidate ?? "exact-enclosing-v2",
+    manifestSha256: liveManifest.manifestSha256,
+    manifestFileCount: liveManifest.manifestFileCount,
+    manifestDefinition: liveManifest.definition,
+    sourceTreeDirty: report.sourceTreeDirty,
   };
-}
-
-function sameLegacyEvidence(
-  previous: PriorSampleItem,
-  current: ReviewEvidence,
-): boolean {
-  const oldEvidence = previous.evidence;
-  return (
-    previous.reviewed === true &&
-    oldEvidence !== undefined &&
-    oldEvidence.targetSnippet === current.targetSnippet &&
-    oldEvidence.addedCallerSnippet === current.addedCallerSnippet &&
-    JSON.stringify(oldEvidence.callSiteSnippets ?? []) ===
-      JSON.stringify(current.callSiteSnippets)
-  );
-}
-
-function legacyLabelForCandidate(
-  previousItems: readonly PriorSampleItem[],
-  candidate: AdditionReviewItem & { readonly samplingKey: string },
-  currentEvidence: ReviewEvidence,
-): ReviewLabelProvenance | undefined {
-  const matches = previousItems.filter(
-    (previous) =>
-      previous.sampleKey === candidate.samplingKey &&
-      previous.repo === candidate.repo &&
-      previous.category === candidate.category &&
-      previous.target.nodeKey === candidate.target.nodeKey &&
-      previous.addedCaller.nodeKey === candidate.addedCaller.nodeKey,
-  );
-  if (matches.length > 1) {
-    throw new Error(
-      `Ambiguous legacy review labels for ${candidate.repo} ${candidate.sampleKey}`,
-    );
-  }
-  const previous = matches[0];
-  return previous && sameLegacyEvidence(previous, currentEvidence)
-    ? {
-        sampleKey: candidate.sampleKey,
-        label: previous.label,
-        justification: previous.justification,
-      }
-    : undefined;
 }
 
 function callerCallSiteSnippets(
@@ -358,6 +343,9 @@ function main(): void {
       samplingKey: item.samplingKey ?? item.sampleKey,
       repositoryIdentity: report.repositoryIdentity,
       repositoryHeadSha: report.repositoryHeadSha,
+      manifestSha256: report.manifestSha256,
+      manifestFileCount: report.manifestFileCount,
+      sourceTreeDirty: report.sourceTreeDirty,
       callerPolicy: report.callerPolicy,
     })),
   );
@@ -368,17 +356,12 @@ function main(): void {
     options.sampleSize,
     options.seed,
   );
-  const previousItems =
-    options.labelsPath || options.migrateLegacyLabelsPath
-      ? ((
-          JSON.parse(
-            readFileSync(
-              options.labelsPath ?? options.migrateLegacyLabelsPath ?? "",
-              "utf8",
-            ),
-          ) as { readonly sample?: readonly PriorSampleItem[] }
-        ).sample ?? [])
-      : [];
+  const previousLabelArtifact = options.labelsPath
+    ? (JSON.parse(
+        readFileSync(options.labelsPath, "utf8"),
+      ) as ReviewLabelArtifact)
+    : undefined;
+  const previousItems = previousLabelArtifact?.sample ?? [];
   const sample = selected.map((item) => {
     const report = reportsByRepository.get(item.repositoryIdentity);
     if (!report) throw new Error(`Missing audit report for ${item.repo}`);
@@ -400,6 +383,7 @@ function main(): void {
     };
     const evidenceFingerprint = buildEvidenceFingerprint(
       item.repositoryHeadSha,
+      item.manifestSha256,
       item.callerPolicy,
       fingerprintEvidence,
     );
@@ -409,9 +393,7 @@ function main(): void {
           item.sampleKey,
           evidenceFingerprint,
         )
-      : options.migrateLegacyLabelsPath
-        ? legacyLabelForCandidate(previousItems, item, fingerprintEvidence)
-        : undefined;
+      : undefined;
     const { samplingKey, ...reviewItem } = item;
     return {
       ...reviewItem,
@@ -488,7 +470,7 @@ function main(): void {
     ),
   );
   const artifact = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     policies: {
       baseline: "scope-resolver-v1",
       candidate: "exact-enclosing-v2",
@@ -502,13 +484,17 @@ function main(): void {
         repositoryIdentity: report.repositoryIdentity,
         repositoryHeadSha: report.repositoryHeadSha,
         repositoryRemoteUrl: report.repositoryRemoteUrl,
+        manifestSha256: report.manifestSha256,
+        manifestFileCount: report.manifestFileCount,
+        manifestDefinition: report.manifestDefinition,
+        sourceTreeDirty: report.sourceTreeDirty,
         excludedPathPrefixes: report.excludedPathPrefixes ?? [],
         excludedPathSegments: report.excludedPathSegments ?? [],
       })),
       sampling:
         "SHA-256(seed, legacy selection key retained for migration), balanced round-robin by category after explicit bundle exclusion; audit sample keys use repository identity + target and caller node keys",
       labelProvenance:
-        "A carried label requires exact sampleKey and SHA-256 evidenceFingerprint match over audit repository HEAD, candidate caller policy, target snippet, added-caller snippet, and call-site snippets. Legacy migration additionally requires exact source evidence equality.",
+        "A carried label requires exact sampleKey and SHA-256 evidenceFingerprint match over audit repository HEAD, source manifest SHA-256, candidate caller policy, target snippet, added-caller snippet, and call-site snippets. Live source manifests are recomputed using the audit discovery rules before sampling; a mismatch rejects the audit. Legacy migration additionally requires exact source evidence equality.",
       bundleExclusion:
         "Minified and vendored target/caller source paths remain counted in the audit population and are reported separately, but are not selected for precision labels.",
       stratifiedStressScore:
@@ -517,11 +503,12 @@ function main(): void {
         "Each reviewable category's TP rate (unsure counts as not-TP) is weighted by its eligible population count. The nominal 95% interval sums weighted per-stratum 99% Wilson bounds; Bonferroni correction spans the five categories, exhaustive strata use exact bounds, and sampled strata do not use a finite-population correction.",
       precisionGate:
         "Pass requires adequate reviewed-sample coverage, a population-weighted nominal 95% lower bound >= 0.90, and conservative per-category TP rates >= 0.80 for categories with at least 10 eligible items. Categories with fewer than 10 eligible items must be exhaustively labeled. The stratified stress score is diagnostic and does not drive the gate.",
-      labelCarryover: options.migrateLegacyLabelsPath
-        ? `Explicit legacy migration from ${path.relative(process.cwd(), options.migrateLegacyLabelsPath)}; only reviewed labels with an exact evidence match were carried.`
-        : options.labelsPath
-          ? `Strict key-and-fingerprint carryover from ${path.relative(process.cwd(), options.labelsPath)}.`
-          : "No prior labels were imported.",
+      labelCarryover: options.labelsPath
+        ? previousLabelArtifact?.labelReaffirmation
+          ? "Pre-manifest labels were not carried automatically. The source judgments were reaffirmed against matching repository HEADs and unchanged target/caller/call-site evidence, then strict manifest-bound keys and fingerprints were verified."
+          : `Strict manifest-bound key-and-fingerprint carryover from ${path.relative(process.cwd(), options.labelsPath)}.`
+        : "No prior labels were imported.",
+      labelReaffirmation: previousLabelArtifact?.labelReaffirmation ?? null,
     },
     auditTotals: addTotals(reports),
     categoryEligibleCounts: categoryCounts(candidates, "category"),

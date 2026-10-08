@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "policies": {
     "baseline": "scope-resolver-v1",
     "candidate": "exact-enclosing-v2"
@@ -11,74 +11,152 @@
       {
         "repository": "Graft",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/Graft",
-        "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+        "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
         "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
         "repositoryRemoteUrl": "https://github.com/trailhq/Graft",
+        "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+        "manifestFileCount": 282,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "nest",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/nest",
-        "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+        "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
         "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
         "repositoryRemoteUrl": "https://github.com/nestjs/nest.git",
+        "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+        "manifestFileCount": 2003,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "typescript-language-server",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/typescript-language-server",
-        "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+        "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\u00003e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
         "repositoryHeadSha": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
         "repositoryRemoteUrl": "https://github.com/typescript-language-server/typescript-language-server.git",
+        "manifestSha256": "3e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
+        "manifestFileCount": 106,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "code-review-graph",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/code-review-graph",
-        "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88",
+        "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\u000088d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
         "repositoryHeadSha": "343ab7cea29d47a3e805381e09f8243a43d43d88",
         "repositoryRemoteUrl": "https://github.com/tirth8205/code-review-graph.git",
+        "manifestSha256": "88d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
+        "manifestFileCount": 309,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "repomind",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/repomind",
-        "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5",
+        "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
         "repositoryHeadSha": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
         "repositoryRemoteUrl": "https://github.com/403errors/repomind",
+        "manifestSha256": "8c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
+        "manifestFileCount": 329,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "Understand-Anything",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/Understand-Anything",
-        "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+        "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
         "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
         "repositoryRemoteUrl": "https://github.com/Egonex-AI/Understand-Anything.git",
+        "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+        "manifestFileCount": 310,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": [],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": []
       },
       {
         "repository": "onyx",
         "repositoryRoot": "/Users/daniel.chang/Desktop/GitHub/onyx",
-        "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+        "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
         "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
         "repositoryRemoteUrl": "https://github.com/onyx-dot-app/onyx",
+        "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+        "manifestFileCount": 6387,
+        "manifestDefinition": {
+          "fileListing": "git ls-files --cached --others --exclude-standard -z",
+          "sourcePredicate": "isDiscoverableSourceFile",
+          "maxFileSizeBytes": 512000,
+          "excludedPathPrefixes": [],
+          "excludedPathSegments": ["ee"],
+          "bundleHandling": "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels"
+        },
+        "sourceTreeDirty": false,
         "excludedPathPrefixes": [],
         "excludedPathSegments": ["ee"]
       }
     ],
     "sampling": "SHA-256(seed, legacy selection key retained for migration), balanced round-robin by category after explicit bundle exclusion; audit sample keys use repository identity + target and caller node keys",
-    "labelProvenance": "A carried label requires exact sampleKey and SHA-256 evidenceFingerprint match over audit repository HEAD, candidate caller policy, target snippet, added-caller snippet, and call-site snippets. Legacy migration additionally requires exact source evidence equality.",
+    "labelProvenance": "A carried label requires exact sampleKey and SHA-256 evidenceFingerprint match over audit repository HEAD, source manifest SHA-256, candidate caller policy, target snippet, added-caller snippet, and call-site snippets. Live source manifests are recomputed using the audit discovery rules before sampling; a mismatch rejects the audit. Legacy migration additionally requires exact source evidence equality.",
     "bundleExclusion": "Minified and vendored target/caller source paths remain counted in the audit population and are reported separately, but are not selected for precision labels.",
     "stratifiedStressScore": "Diagnostic only: TP / all reviewed sample items, with unsure in the denominator. The balanced-stratum score is not a population precision estimate.",
     "populationWeightedPrecision": "Each reviewable category's TP rate (unsure counts as not-TP) is weighted by its eligible population count. The nominal 95% interval sums weighted per-stratum 99% Wilson bounds; Bonferroni correction spans the five categories, exhaustive strata use exact bounds, and sampled strata do not use a finite-population correction.",
     "precisionGate": "Pass requires adequate reviewed-sample coverage, a population-weighted nominal 95% lower bound >= 0.90, and conservative per-category TP rates >= 0.80 for categories with at least 10 eligible items. Categories with fewer than 10 eligible items must be exhaustively labeled. The stratified stress score is diagnostic and does not drive the gate.",
-    "labelCarryover": "Strict key-and-fingerprint carryover from docs/gitbook/analysis/tiered-call-resolution-exact-caller-impact-review.json."
+    "labelCarryover": "Pre-manifest labels were not carried automatically. The source judgments were reaffirmed against matching repository HEADs and unchanged target/caller/call-site evidence, then strict manifest-bound keys and fingerprints were verified.",
+    "labelReaffirmation": "Reaffirmed 60 source-reviewed labels after the pre-manifest artifact carried 0 labels automatically: all selected target/caller locations and target/caller/call-site snippets matched exactly, all seven repository HEADs matched the prior artifact, and all seven audit trees were clean."
   },
   "auditTotals": {
     "addedNamedFunctionImpactPairs": 4631,
@@ -4240,7 +4318,7 @@
   "sample": [
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/craft/utils/pathSanitizer.ts#stripSessionPrefix\",\"web/src/app/craft/utils/pathSanitizer.test.ts#anonymous\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/craft/utils/pathSanitizer.ts#stripSessionPrefix\",\"web/src/app/craft/utils/pathSanitizer.test.ts#anonymous\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "stripSessionPrefix",
@@ -4297,18 +4375,21 @@
           "23:     expect(\n24:       stripSessionPrefix(\n25:         \"/Users/wenxi-onyx/data/sandboxes/b29c196e-fa14-46b8-8182-ff4a7f67b47b/sessions/9c7662c1-785f-4f1c-b9e0-9021ddbf2893/user_library/docs/report.pdf\""
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/craft/utils/pathSanitizer.ts#stripSessionPrefix\u0000web/src/app/craft/utils/pathSanitizer.test.ts#anonymous",
-      "evidenceFingerprint": "6bb270e513b019544c791a5d06442d1dba340a2786f668857f73e0f0633cd41a",
+      "evidenceFingerprint": "3a4d8ff32ed84e42e02a14702fcbda5f79429a7b8be9a51353be1b233830d517",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct stripSessionPrefix call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "typescript-language-server",
-      "sampleKey": "[\"remote:https://github.com/typescript-language-server/typescript-language-server.git\\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\",\"src/features/codeActions/quickFix.ts#ApplyFixAllCodeAction.execute\",\"src/features/codeActions/quickFix.ts#SupportedCodeActionProvider\"]",
+      "sampleKey": "[\"remote:https://github.com/typescript-language-server/typescript-language-server.git\\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\\u00003e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9\",\"src/features/codeActions/quickFix.ts#ApplyFixAllCodeAction.execute\",\"src/features/codeActions/quickFix.ts#SupportedCodeActionProvider\"]",
       "category": "class-ownership",
       "target": {
         "symbol": "execute",
@@ -4363,18 +4444,21 @@
           "183:     private readonly fixableDiagnosticCodes = new Lazy<Thenable<Set<string>>>(() => {\n184:         return this.client.execute(CommandTypes.GetSupportedCodeFixes, null)\n185:             .then(response => response.type === 'response' ? response.body || [] : [])"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\u00003e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
       "repositoryHeadSha": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "manifestSha256": "3e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
+      "manifestFileCount": 106,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "typescript-language-server\u0000src/features/codeActions/quickFix.ts#ApplyFixAllCodeAction.execute\u0000src/features/codeActions/quickFix.ts#SupportedCodeActionProvider",
-      "evidenceFingerprint": "3ec17e1e7a8943c08beb82f9ec5baa688942a9cc7dfffbccec155b916eb26c8e",
+      "evidenceFingerprint": "b55c3b3e8665e9c44e8389a802f71f3306cd0e7ebfae7bca72e7039cade50efa",
       "label": "FP",
       "reviewed": true,
       "justification": "This class calls this.client.execute for a TypeScript service command; it does not call ApplyFixAllCodeAction.execute."
     },
     {
       "repo": "repomind",
-      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\",\"src/components/chat/useMessageSelection.ts#getModelContainer\",\"src/components/chat/useMessageSelection.ts#handleSelection\"]",
+      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c\",\"src/components/chat/useMessageSelection.ts#getModelContainer\",\"src/components/chat/useMessageSelection.ts#handleSelection\"]",
       "category": "other",
       "target": {
         "symbol": "getModelContainer",
@@ -4410,18 +4494,21 @@
           "44:         const startContainer = getModelContainer(selection.anchorNode);\n45:         const endContainer = getModelContainer(selection.focusNode);\n46:         if (!startContainer || startContainer !== endContainer) {"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
       "repositoryHeadSha": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "manifestSha256": "8c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
+      "manifestFileCount": 329,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "repomind\u0000src/components/chat/useMessageSelection.ts#getModelContainer\u0000src/components/chat/useMessageSelection.ts#handleSelection",
-      "evidenceFingerprint": "ae61d763ef802fce6c494d52a812bb6ffd50c4b049e281917a494cde8c74a820",
+      "evidenceFingerprint": "cf3acdc5ea4ee47bfa1ae133a91bd438212f7b065bb7fbb9e2bec752ee4a8748",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows handleSelection directly invoking getModelContainer on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/common/decorators/http/create-route-param-metadata.decorator.ts#createParamDecorator\",\"packages/common/test/decorators/create-param-decorator.spec.ts#anonymous@L240\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/common/decorators/http/create-route-param-metadata.decorator.ts#createParamDecorator\",\"packages/common/test/decorators/create-param-decorator.spec.ts#anonymous@L240\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "createParamDecorator",
@@ -4478,18 +4565,21 @@
           "250:     );\n251:     const customTypeDecorator = createParamDecorator<User>(factoryFn);\n252: "
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/common/decorators/http/create-route-param-metadata.decorator.ts#createParamDecorator\u0000packages/common/test/decorators/create-param-decorator.spec.ts#anonymous@L240",
-      "evidenceFingerprint": "61f701269dd734afd88c03e44b4d92f16f75f5b929aa79b502526eb5ff99d8ef",
+      "evidenceFingerprint": "559666c737d048e1c7c29c596d23e7d760f592800b38fe155bd1d422578cd860",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct createParamDecorator call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "typescript-language-server",
-      "sampleKey": "[\"remote:https://github.com/typescript-language-server/typescript-language-server.git\\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\",\"src/diagnosticsManager.ts#FileDiagnostics.publishDiagnostics\",\"src/diagnosticsManager.ts#FileDiagnostics\"]",
+      "sampleKey": "[\"remote:https://github.com/typescript-language-server/typescript-language-server.git\\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\\u00003e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9\",\"src/diagnosticsManager.ts#FileDiagnostics.publishDiagnostics\",\"src/diagnosticsManager.ts#FileDiagnostics\"]",
       "category": "class-ownership",
       "target": {
         "symbol": "publishDiagnostics",
@@ -4546,18 +4636,21 @@
           "58:         this.diagnosticsPerKind.clear();\n59:         this.publishDiagnostics();\n60:         this.closed = true;"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "repositoryIdentity": "remote:https://github.com/typescript-language-server/typescript-language-server.git\u0000cf9c47ba0cf7c29448309c088765f5c16eabe6ce\u00003e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
       "repositoryHeadSha": "cf9c47ba0cf7c29448309c088765f5c16eabe6ce",
+      "manifestSha256": "3e082d2f4f61869feaa980e6255c585ac6955b2a33b4951e4d36044455388fb9",
+      "manifestFileCount": 106,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "typescript-language-server\u0000src/diagnosticsManager.ts#FileDiagnostics.publishDiagnostics\u0000src/diagnosticsManager.ts#FileDiagnostics",
-      "evidenceFingerprint": "e406d8f507979ec0e4b118c110a6b69cf8be7ef75e08facc42f63a0212d13f87",
+      "evidenceFingerprint": "be4d22121a848247d2605cd0a51414e932fe0afffeb047feda1ff329584c42e2",
       "label": "TP",
       "reviewed": true,
       "justification": "FileDiagnostics.clearDiagnosticsForFile calls this.publishDiagnostics, so the owning class contains a confirmed caller."
     },
     {
       "repo": "repomind",
-      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\",\"src/components/FilePreview.tsx#getFileType\",\"src/components/FilePreview.tsx#fetchFileContent\"]",
+      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c\",\"src/components/FilePreview.tsx#getFileType\",\"src/components/FilePreview.tsx#fetchFileContent\"]",
       "category": "other",
       "target": {
         "symbol": "getFileType",
@@ -4592,18 +4685,21 @@
           "76:             try {\n77:                 const type = getFileType(filePath);\n78:                 setFileType(type);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
       "repositoryHeadSha": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "manifestSha256": "8c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
+      "manifestFileCount": 329,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "repomind\u0000src/components/FilePreview.tsx#getFileType\u0000src/components/FilePreview.tsx#fetchFileContent",
-      "evidenceFingerprint": "7a7f4487a1e2e8f28bc41b6f5f6c73e4d3b21bedf5f0b464e123b880414b4831",
+      "evidenceFingerprint": "866c3bd4adb1e5c44791fa610f2c4a701ae0f7293e7f1c0333987a6dc60f5fcc",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows fetchFileContent directly invoking getFileType on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/core/middleware/utils.ts#mapToClass\",\"packages/core/test/middleware/utils.spec.ts#anonymous@L51\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/core/middleware/utils.ts#mapToClass\",\"packages/core/test/middleware/utils.spec.ts#anonymous@L51\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "mapToClass",
@@ -4658,18 +4754,21 @@
           "53:         it('should return an identity', () => {\n54:           const type = mapToClass(Test, [], noopAdapter);\n55:           expect(type).toEqual(Test);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/core/middleware/utils.ts#mapToClass\u0000packages/core/test/middleware/utils.spec.ts#anonymous@L51",
-      "evidenceFingerprint": "325908883fdb4bc6d9328cf4577f8f098fe3d3e0b5e28ff2776a7852eb532d35",
+      "evidenceFingerprint": "55a0d2742fb20e201fd42d4d59c067b4bcdee50ecb81602dbd4bba17ecab4f66",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct mapToClass call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"integration/file-upload/e2e/fastify.spec.ts#instanceOf\",\"integration/file-upload/e2e/fastify.spec.ts#setup@L140\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"integration/file-upload/e2e/fastify.spec.ts#instanceOf\",\"integration/file-upload/e2e/fastify.spec.ts#setup@L140\"]",
       "category": "other",
       "target": {
         "symbol": "instanceOf",
@@ -4724,18 +4823,21 @@
           "140:           adapter: new FastifyAdapter({ multipart: false }),\n141:           setup: app => instanceOf(app).register(multipart, limits),\n142:         }),"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000integration/file-upload/e2e/fastify.spec.ts#instanceOf\u0000integration/file-upload/e2e/fastify.spec.ts#setup@L140",
-      "evidenceFingerprint": "dc36f6aa860d696a1e24ad4aa36ee5acc5eba55f93b0b5b514d0e185e5bedb21",
+      "evidenceFingerprint": "32bf6af9db380d6d028cc34ff132cbc78ddc95475de1931fb4b801d7599452ea",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows setup directly invoking instanceOf on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/hooks/useChatController.ts#handleNewSessionNaming\",\"web/src/hooks/useChatController.ts#useChatController\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/hooks/useChatController.ts#handleNewSessionNaming\",\"web/src/hooks/useChatController.ts#useChatController\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "handleNewSessionNaming",
@@ -4770,18 +4872,21 @@
           "1509:       if (shouldAutoNameChatSessionAfterResponse) {\n1510:         handleNewSessionNaming(currChatSessionId);\n1511:       }"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/hooks/useChatController.ts#handleNewSessionNaming\u0000web/src/hooks/useChatController.ts#useChatController",
-      "evidenceFingerprint": "59526d86068eb7b48fd30ebc3bed0edd7dad97ef4ad463bdcb02a11f225f8674",
+      "evidenceFingerprint": "98e219768f50a1c709bc2dad1fa96710a2525d73696d27d85d7d4599d6efc43d",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct handleNewSessionNaming call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#referencedAliasName\",\"web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#resolvesToUnknown\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#referencedAliasName\",\"web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#resolvesToUnknown\"]",
       "category": "other",
       "target": {
         "symbol": "referencedAliasName",
@@ -4816,18 +4921,21 @@
           "69:       }\n70:       const name = referencedAliasName(type);\n71:       if (name === null || visited.has(name) || shadowedAliases.has(name))"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#referencedAliasName\u0000web/tools/oxlint/anti-slop/rules/no-unknown-returns.ts#resolvesToUnknown",
-      "evidenceFingerprint": "0dddc1cfc834e25b2ddba19b4513455eae59b78cc0b532945dd61f492adcc962",
+      "evidenceFingerprint": "0452f8f7fa0d30c514f857aaec32ba7587f0fbfefeb6ff75b780f11c6628b993",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows resolvesToUnknown directly invoking referencedAliasName on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"mobile/src/hooks/__tests__/useChatController.test.tsx#endPacket\",\"mobile/src/hooks/__tests__/useChatController.test.tsx#anonymous@L118\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"mobile/src/hooks/__tests__/useChatController.test.tsx#endPacket\",\"mobile/src/hooks/__tests__/useChatController.test.tsx#anonymous@L118\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "endPacket",
@@ -4882,18 +4990,21 @@
           "125:         idInfo,\n126:         endPacket(),\n127:       ]),"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000mobile/src/hooks/__tests__/useChatController.test.tsx#endPacket\u0000mobile/src/hooks/__tests__/useChatController.test.tsx#anonymous@L118",
-      "evidenceFingerprint": "b87782292be4ac025694ee858d642d1587502cd8d6727b27979ac8287a63e95a",
+      "evidenceFingerprint": "d05ba1e7c686d40e15f05b0a39b2ccde7c54f12f10e39eb39ff1fddf55ea65f3",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct endPacket call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.next\",\"packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.targetCallback\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.next\",\"packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.targetCallback\"]",
       "category": "other",
       "target": {
         "symbol": "next",
@@ -4926,18 +5037,21 @@
         ],
         "callSiteSnippets": ["173: \n174:       return next();\n175:     };"]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.next\u0000packages/microservices/context/rpc-context-creator.ts#RpcContextCreator.targetCallback",
-      "evidenceFingerprint": "229bdcd240fc83e3e1725af03db43acffe58a39b67f571a8eee3ce2be252f898",
+      "evidenceFingerprint": "b754e4e2f6fe739e3e6fa84eae6576e17556ca0e7d7dbfea5645eaab4059beb1",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows targetCallback directly invoking next on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/app/message/messageComponents/timeline/hooks/__tests__/testHelpers.ts#createStopPacket\",\"web/src/app/app/message/messageComponents/timeline/hooks/usePacketProcessor.test.tsx#anonymous@L57\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/app/message/messageComponents/timeline/hooks/__tests__/testHelpers.ts#createStopPacket\",\"web/src/app/app/message/messageComponents/timeline/hooks/usePacketProcessor.test.tsx#anonymous@L57\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "createStopPacket",
@@ -4994,18 +5108,21 @@
           "410:         createMessageStartPacket({ turn_index: 0 }),\n411:         createStopPacket(),\n412:       ];"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/app/message/messageComponents/timeline/hooks/__tests__/testHelpers.ts#createStopPacket\u0000web/src/app/app/message/messageComponents/timeline/hooks/usePacketProcessor.test.tsx#anonymous@L57",
-      "evidenceFingerprint": "b6e712dc69915c7dbc57a4138704e75e59ad39606cd2beebf8f9cc7c0fde55ad",
+      "evidenceFingerprint": "0ce9b6a8ee0a7c89171f8d49bc0ab8f59118e5bc71d7fa50f2862ef8bf0d60e5",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct createStopPacket call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"backend/onyx/redis/tenant_redis_client.py#_prefix_key\",\"backend/onyx/redis/tenant_redis_client.py#TenantRedisClient.delete\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"backend/onyx/redis/tenant_redis_client.py#_prefix_key\",\"backend/onyx/redis/tenant_redis_client.py#TenantRedisClient.delete\"]",
       "category": "other",
       "target": {
         "symbol": "_prefix_key",
@@ -5060,18 +5177,21 @@
           "241:         \"\"\"\n242:         prefixed = [_prefix_key(self._prefix, n) for n in names]\n243:         return cast(int, self._r.delete(*prefixed))"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000backend/onyx/redis/tenant_redis_client.py#_prefix_key\u0000backend/onyx/redis/tenant_redis_client.py#TenantRedisClient.delete",
-      "evidenceFingerprint": "21c286c43e0065e0d10e3858079687b2d0440c0816de1c0cdd8ec00b349f9c2e",
+      "evidenceFingerprint": "ca2eb72ce84843bc219732e42c65a5510ee4064223acf2a7319bc54d2dcc12a2",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows delete directly invoking _prefix_key on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/tests/e2e/admin/group-manager/fixtures.ts#worldTest\",\"web/tests/e2e/admin/group-manager/page-access.spec.ts#anonymous@L121\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/tests/e2e/admin/group-manager/fixtures.ts#worldTest\",\"web/tests/e2e/admin/group-manager/page-access.spec.ts#anonymous@L121\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "worldTest",
@@ -5124,18 +5244,21 @@
         ],
         "callSiteSnippets": []
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/tests/e2e/admin/group-manager/fixtures.ts#worldTest\u0000web/tests/e2e/admin/group-manager/page-access.spec.ts#anonymous@L121",
-      "evidenceFingerprint": "43d57bff9a2e498121330e2be7daad041711f84ee68f814323a05b7e2b1add2f",
+      "evidenceFingerprint": "f9fe6c4b7df0c47f537429b1c79a4d7b3abbb90597a7969774e835ba76db993e",
       "label": "TP",
       "reviewed": true,
       "justification": "The spec imports worldTest as test and registers this callback through that fixture, which provides the world fixture used by the callback."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"backend/onyx/tracing/framework/spans.py#SpanImpl.start\",\"backend/onyx/tracing/framework/spans.py#NoOpSpan.__enter__\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"backend/onyx/tracing/framework/spans.py#SpanImpl.start\",\"backend/onyx/tracing/framework/spans.py#NoOpSpan.__enter__\"]",
       "category": "other",
       "target": {
         "symbol": "start",
@@ -5180,18 +5303,21 @@
           "227:     def __enter__(self) -> Span[TSpanData]:\n228:         self.start(mark_as_current=True)\n229:         return self"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000backend/onyx/tracing/framework/spans.py#SpanImpl.start\u0000backend/onyx/tracing/framework/spans.py#NoOpSpan.__enter__",
-      "evidenceFingerprint": "4601dd86f854e89937d5cc934f1b9a2b90e4904f9bf08ad647e9f6721806e556",
+      "evidenceFingerprint": "3643a2097f7bfa28fc73e97eb1a86649b90659cb546daf3b718e73cc65a312ed",
       "label": "FP",
       "reviewed": true,
       "justification": "NoOpSpan.__enter__ calls NoOpSpan.start; the target is the separate SpanImpl.start method."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/core/test/nest-application-context.spec.ts#testHelper\",\"packages/core/test/nest-application-context.spec.ts#anonymous@L67\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/core/test/nest-application-context.spec.ts#testHelper\",\"packages/core/test/nest-application-context.spec.ts#anonymous@L67\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "testHelper",
@@ -5246,18 +5372,21 @@
           "71:       let promisesResolved = false;\n72:       const applicationContext = await testHelper(A, Scope.DEFAULT);\n73:       applicationContext.enableShutdownHooks([signal]);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/core/test/nest-application-context.spec.ts#testHelper\u0000packages/core/test/nest-application-context.spec.ts#anonymous@L67",
-      "evidenceFingerprint": "e77c8080eff5f5bbc15c1d62003c3694acebaa577bb96e599dbc93c506be7da8",
+      "evidenceFingerprint": "bb10cd78e2da69d889ce23cb71c2926e32e7561b221fd706e3b8e0fa13810896",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct testHelper call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/craft/components/CraftInputBar.tsx#focus\",\"web/src/sections/agents/InsertUserVariableMenu.tsx\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/craft/components/CraftInputBar.tsx#focus\",\"web/src/sections/agents/InsertUserVariableMenu.tsx\"]",
       "category": "other",
       "target": {
         "symbol": "focus",
@@ -5281,18 +5410,21 @@
           "45:       requestAnimationFrame(() => {\n46:         textarea.focus();\n47:         const caret = start + token.length;"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/craft/components/CraftInputBar.tsx#focus\u0000web/src/sections/agents/InsertUserVariableMenu.tsx",
-      "evidenceFingerprint": "40d93670205b7b5099a5905e6468ab30a4d531c24bd2e9799e9af824728f4991",
+      "evidenceFingerprint": "b2b98676df1d3033c88993a6940e11e0787c1b81d86bdeeb0adfd78f52bace44",
       "label": "FP",
       "reviewed": true,
       "justification": "The callback focuses a DOM textarea; the target is CraftInputBar’s imperative-handle focus function."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"tests/skill/understand/test_scan_project.test.mjs#setupTree\",\"tests/skill/understand/test_scan_project.test.mjs#anonymous@L479\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"tests/skill/understand/test_scan_project.test.mjs#setupTree\",\"tests/skill/understand/test_scan_project.test.mjs#anonymous@L479\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "setupTree",
@@ -5349,18 +5481,21 @@
           "523:   it('can exclude persistent analysis data for isolated benchmark scans', () => {\n524:     projectRoot = setupTree({\n525:       '.ua/knowledge-graph.json': '{ \"nodes\": [] }\\n',"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000tests/skill/understand/test_scan_project.test.mjs#setupTree\u0000tests/skill/understand/test_scan_project.test.mjs#anonymous@L479",
-      "evidenceFingerprint": "d935757853d925dfe86cebfe4097d1f37204c7e71f48123e985df0b2420e3238",
+      "evidenceFingerprint": "a72dcae4639c400d1508e1ab95f39a762870ea16f71c778b5f4f8955c07115cc",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct setupTree call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "code-review-graph",
-      "sampleKey": "[\"remote:https://github.com/tirth8205/code-review-graph.git\\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\",\"code_review_graph/embeddings.py#VoyageEmbeddingProvider._call_api\",\"code_review_graph/embeddings.py#OpenAIEmbeddingProvider.embed\"]",
+      "sampleKey": "[\"remote:https://github.com/tirth8205/code-review-graph.git\\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\\u000088d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9\",\"code_review_graph/embeddings.py#VoyageEmbeddingProvider._call_api\",\"code_review_graph/embeddings.py#OpenAIEmbeddingProvider.embed\"]",
       "category": "other",
       "target": {
         "symbol": "_call_api",
@@ -5415,18 +5550,21 @@
           "605:         for i in range(0, len(texts), self._batch_size):\n606:             results.extend(self._call_api(texts[i:i + self._batch_size]))\n607:         return results"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88",
+      "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\u000088d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
       "repositoryHeadSha": "343ab7cea29d47a3e805381e09f8243a43d43d88",
+      "manifestSha256": "88d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
+      "manifestFileCount": 309,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "code-review-graph\u0000code_review_graph/embeddings.py#VoyageEmbeddingProvider._call_api\u0000code_review_graph/embeddings.py#OpenAIEmbeddingProvider.embed",
-      "evidenceFingerprint": "1b6084d19965b35dd939b8129a20fe9f3f1ad6a2420b2be5e4fcb3038ab46e5d",
+      "evidenceFingerprint": "df3e168095c9e2c38e0f554cc4a23cbf1f77a7e3ca0e5b7cdbab621593158fed",
       "label": "FP",
       "reviewed": true,
       "justification": "OpenAIEmbeddingProvider calls its own _call_api method; the target belongs to VoyageEmbeddingProvider."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/core/test/utils/string.cleaner.ts#stringCleaner\",\"packages/core/test/errors/test/messages.spec.ts#anonymous@L65\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/core/test/utils/string.cleaner.ts#stringCleaner\",\"packages/core/test/errors/test/messages.spec.ts#anonymous@L65\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "stringCleaner",
@@ -5482,18 +5620,21 @@
           "79: \n80:       const actualMessage = stringCleaner(\n81:         new UnknownDependenciesException('CatService', {"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/core/test/utils/string.cleaner.ts#stringCleaner\u0000packages/core/test/errors/test/messages.spec.ts#anonymous@L65",
-      "evidenceFingerprint": "44d4e947ef7c6fb99f9fc8ac7b7d50e469ad752b5b3df2ce86694b651abce4f4",
+      "evidenceFingerprint": "bdd990ae015ae37c624fc967eab9fbedd8447f0e4a3fb602d4d333994799e045",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct stringCleaner call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/packages/core/src/plugins/symbol-ast.ts#unwrap\",\"understand-anything-plugin/packages/core/src/plugins/symbol-evidence.ts#visit\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/packages/core/src/plugins/symbol-ast.ts#unwrap\",\"understand-anything-plugin/packages/core/src/plugins/symbol-evidence.ts#visit\"]",
       "category": "other",
       "target": {
         "symbol": "unwrap",
@@ -5548,18 +5689,21 @@
           "214:     if ((isJS && node.type === \"call_expression\") || (isPython && node.type === \"call\")) {\n215:       const callee = unwrap(node.childForFieldName(\"function\"));\n216:       const access = member(callee);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/packages/core/src/plugins/symbol-ast.ts#unwrap\u0000understand-anything-plugin/packages/core/src/plugins/symbol-evidence.ts#visit",
-      "evidenceFingerprint": "62e057ff53ab9e56a24cac413abeb168cce9b8d201ed6e34dfed410c3f7c0d8c",
+      "evidenceFingerprint": "396046db3017d9256cdabfcb1f58cf64f17fcc1383b24efbfb912179d8f7bd13",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows visit directly invoking unwrap on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/common/index.ts\",\"packages/common/test/decorators/route-params.decorator.spec.ts#anonymous@L752\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/common/index.ts\",\"packages/common/test/decorators/route-params.decorator.spec.ts#anonymous@L752\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "packages/common/index.ts",
@@ -5612,18 +5756,21 @@
         ],
         "callSiteSnippets": []
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/common/index.ts\u0000packages/common/test/decorators/route-params.decorator.spec.ts#anonymous@L752",
-      "evidenceFingerprint": "bc815aceb669b0f01069a7bc63ed2332ae6bf5ed01ad9dca1a9c4991ec9bab68",
+      "evidenceFingerprint": "e5d1127bacc1fbae82d6c60fd3d25f824bd4dbb25a15fb47287104e6c3a619ab",
       "label": "TP",
       "reviewed": true,
       "justification": "The test imports decorators from ../../index.js and applies those exported decorators inside this callback, making the barrel an exercised dependency."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/app/message/errorHelpers.tsx#getErrorIcon\",\"web/src/app/app/message/Resubmit.tsx#ErrorBanner\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/app/message/errorHelpers.tsx#getErrorIcon\",\"web/src/app/app/message/Resubmit.tsx#ErrorBanner\"]",
       "category": "other",
       "target": {
         "symbol": "getErrorIcon",
@@ -5668,18 +5815,21 @@
           "201:       <Alert variant=\"broken\">\n202:         {getErrorIcon(errorCode)}\n203:         <AlertTitle>{title}</AlertTitle>"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/app/message/errorHelpers.tsx#getErrorIcon\u0000web/src/app/app/message/Resubmit.tsx#ErrorBanner",
-      "evidenceFingerprint": "4e1153a3def02111d0d59f6569b949c0e107236f7610fad5698768d03baf0b6f",
+      "evidenceFingerprint": "d140674b359be9b971ca0541d3713ab08c59fcd914cbfdbd0299ab5019681087",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows ErrorBanner directly invoking getErrorIcon on the target’s receiver or binding."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"test/graph-enrich-pending.test.ts#calcFixture\",\"test/graph-enrich-pending.test.ts#anonymous@L79\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"test/graph-enrich-pending.test.ts#calcFixture\",\"test/graph-enrich-pending.test.ts#anonymous@L79\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "calcFixture",
@@ -5725,18 +5875,21 @@
           "95:   const prior = new Map(nodes.map((n) => [n.id, structuredClone(n)]));\n96:   const { nodes: again } = calcFixture();\n97:   let calls = 0;"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000test/graph-enrich-pending.test.ts#calcFixture\u0000test/graph-enrich-pending.test.ts#anonymous@L79",
-      "evidenceFingerprint": "1b136d632e00ec0e5da079be6c8f69bd9f7abdb14cb84a35c6a14adc4cebf2bd",
+      "evidenceFingerprint": "d01d5d5e458d93e9bb3234312d12873a826d4a9274b4501a714f5955203905de",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct calcFixture call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"src/graph/resolve.ts#add\",\"src/graph/resolve.ts#hitsFor\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"src/graph/resolve.ts#add\",\"src/graph/resolve.ts#hitsFor\"]",
       "category": "other",
       "target": {
         "symbol": "add",
@@ -5791,18 +5944,21 @@
           "607:       const cand = r === \"\" ? rel : `${r}/${rel}`;\n608:       if (byId.has(cand)) hits.add(cand);\n609:     }"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000src/graph/resolve.ts#add\u0000src/graph/resolve.ts#hitsFor",
-      "evidenceFingerprint": "68e326c3bf9891d11d48eebb796884ba2a5593318c9c74ef54b01b71ad774fda",
+      "evidenceFingerprint": "4bc1ff95d6d3f5f86e091d1180ff249a83b320f63626857f3ae778dff524768c",
       "label": "FP",
       "reviewed": true,
       "justification": "hits.add(cand) invokes Set.add; the target is the local graph resolver add helper."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/skills/understand/validate-incremental-symbols.mjs#compareFileSymbols\",\"tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L167\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/skills/understand/validate-incremental-symbols.mjs#compareFileSymbols\",\"tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L167\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "compareFileSymbols",
@@ -5858,18 +6014,21 @@
           "182:     // operation from accepting an old symbol across source revisions.\n183:     expect(compareFileSymbols(graph(nodes), graph(nodes), unknown, unknown, true).missing).toEqual([]);\n184:   });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/skills/understand/validate-incremental-symbols.mjs#compareFileSymbols\u0000tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L167",
-      "evidenceFingerprint": "077977cf25d3a28c3664d117d6f244d5b27694b9b7c0402e7ca2d637dca125ff",
+      "evidenceFingerprint": "bc09ae063023052a8bfe2c75bcc78503140828a437196390f4c58f76779ca1d4",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct compareFileSymbols call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L491\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L491\"]",
       "category": "other",
       "target": {
         "symbol": "analyzeFileFull",
@@ -5925,18 +6084,21 @@
           "492:       analyzeFileFull(path, content) {\n493:         return parser.analyzeFileFull(path, content);\n494:       },"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\u0000tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L491",
-      "evidenceFingerprint": "efa6763d3cb79af5e018b493e0d7f5bb5eb4ac54be7f7f5b61dbfd58cb609742",
+      "evidenceFingerprint": "3b7998f0a5cc868588ece270c302e9ac51704c11bd1806e99b34ba8c4b2233be",
       "label": "FP",
       "reviewed": true,
       "justification": "This wrapper calls parser.analyzeFileFull on a parser fixture; the target is a different registry stub in another test."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"test/ask.test.ts#scoreByPointer\",\"test/ask.test.ts#anonymous@L431\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"test/ask.test.ts#scoreByPointer\",\"test/ask.test.ts#anonymous@L431\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "scoreByPointer",
@@ -5972,18 +6134,21 @@
           "455:     const baselineScores = scoreByPointer(baseline.hits);\n456:     const boundedScores = scoreByPointer(bounded.hits);\n457: "
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000test/ask.test.ts#scoreByPointer\u0000test/ask.test.ts#anonymous@L431",
-      "evidenceFingerprint": "757dbd920d343f3834125e25074ac3c5b1a40721534740ed855c81b808009efa",
+      "evidenceFingerprint": "bf1737988caeade2962dd958d89c86123590330c4479fb31090990f68ed088da",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct scoreByPointer call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "code-review-graph",
-      "sampleKey": "[\"remote:https://github.com/tirth8205/code-review-graph.git\\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\",\"tests/test_tools.py#TestCommunityTools._seed_data\",\"tests/test_tools.py#TestCommunityTools.setup_method\"]",
+      "sampleKey": "[\"remote:https://github.com/tirth8205/code-review-graph.git\\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\\u000088d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9\",\"tests/test_tools.py#TestCommunityTools._seed_data\",\"tests/test_tools.py#TestCommunityTools.setup_method\"]",
       "category": "other",
       "target": {
         "symbol": "_seed_data",
@@ -6038,18 +6203,21 @@
           "1591:         self.store = GraphStore(db_path)\n1592:         self._seed_data()\n1593:         self._build_communities()"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88",
+      "repositoryIdentity": "remote:https://github.com/tirth8205/code-review-graph.git\u0000343ab7cea29d47a3e805381e09f8243a43d43d88\u000088d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
       "repositoryHeadSha": "343ab7cea29d47a3e805381e09f8243a43d43d88",
+      "manifestSha256": "88d8c79cb1703bc74e6e4ce6b7a1ba773eb0e89d87da04c008dbe7ec7421aca9",
+      "manifestFileCount": 309,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "code-review-graph\u0000tests/test_tools.py#TestCommunityTools._seed_data\u0000tests/test_tools.py#TestCommunityTools.setup_method",
-      "evidenceFingerprint": "e40539008e34c38867b88a8cd66358de436d12c42072161c6205a578fbaae2aa",
+      "evidenceFingerprint": "39cfa7d6b3b3543b82b6ac3d193d99c11ccddda0bf8eeeb84396633f50f1de1e",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows setup_method directly invoking _seed_data on the target’s receiver or binding."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/packages/dashboard/src/components/StalenessBanner.tsx#buildFreshnessBanner\",\"understand-anything-plugin/packages/dashboard/src/components/__tests__/StalenessBanner.test.ts#anonymous@L152\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/packages/dashboard/src/components/StalenessBanner.tsx#buildFreshnessBanner\",\"understand-anything-plugin/packages/dashboard/src/components/__tests__/StalenessBanner.test.ts#anonymous@L152\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "buildFreshnessBanner",
@@ -6104,18 +6272,21 @@
           "153:   it(\"makes endpoint failures visible instead of treating them as fresh\", () => {\n154:     const banner = buildFreshnessBanner({\n155:       graphs: {"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/packages/dashboard/src/components/StalenessBanner.tsx#buildFreshnessBanner\u0000understand-anything-plugin/packages/dashboard/src/components/__tests__/StalenessBanner.test.ts#anonymous@L152",
-      "evidenceFingerprint": "59c5e59575792c642ec3c5c47347d19b03b11a0db5eaf3861a59a6ea75e3a653",
+      "evidenceFingerprint": "69f79923197c2b5446e7c679f1fc728fda7189e3ca40e1e5f9ebcdcd7b9d4a3f",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct buildFreshnessBanner call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L401\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\",\"tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L401\"]",
       "category": "other",
       "target": {
         "symbol": "analyzeFileFull",
@@ -6171,18 +6342,21 @@
           "402:       analyzeFileFull(path, content) {\n403:         return parser.analyzeFileFull(path, content);\n404:       },"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L709\u0000tests/skill/understand/test_extract_structure_outcomes.test.mjs#analyzeFileFull@L401",
-      "evidenceFingerprint": "797d2984505acca74f9c20962aec69829b569baa29ddfe144daa4f8f3c46c3d7",
+      "evidenceFingerprint": "ea828de0df3bb0532e6754c3ff392073c58580575b94f427f234801547dfa1fb",
       "label": "FP",
       "reviewed": true,
       "justification": "This wrapper calls parser.analyzeFileFull on a parser fixture; the target is a different registry stub in another test."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"scripts/lib/large-repo-benchmark.mjs#hasFailedIntegrity\",\"tests/benchmark/test_large_repo_benchmark.test.mjs#anonymous@L711\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"scripts/lib/large-repo-benchmark.mjs#hasFailedIntegrity\",\"tests/benchmark/test_large_repo_benchmark.test.mjs#anonymous@L711\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "hasFailedIntegrity",
@@ -6239,18 +6413,21 @@
           "813:     });\n814:     expect(benchmark.hasFailedIntegrity(integrity)).toBe(true);\n815:   });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000scripts/lib/large-repo-benchmark.mjs#hasFailedIntegrity\u0000tests/benchmark/test_large_repo_benchmark.test.mjs#anonymous@L711",
-      "evidenceFingerprint": "6ceaa1ed69e19446960f2db891db87720b82970c18988a21a2d8a46ce8bb7202",
+      "evidenceFingerprint": "36a7e8d14694d2b9ba667531f79c837f47865c5884c178d51be33cd8e8fd7d30",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct hasFailedIntegrity call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/packages/dashboard/src/utils/filters.ts#filterNodes\",\"understand-anything-plugin/packages/dashboard/src/components/ExportMenu.tsx#exportJSON\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/packages/dashboard/src/utils/filters.ts#filterNodes\",\"understand-anything-plugin/packages/dashboard/src/components/ExportMenu.tsx#exportJSON\"]",
       "category": "other",
       "target": {
         "symbol": "filterNodes",
@@ -6305,18 +6482,21 @@
           "192: \n193:       filteredGraphNodes = filterNodes(filteredGraphNodes, nodeIdToLayerIds, filters);\n194:       const filteredNodeIds = new Set(filteredGraphNodes.map((n) => n.id));"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/packages/dashboard/src/utils/filters.ts#filterNodes\u0000understand-anything-plugin/packages/dashboard/src/components/ExportMenu.tsx#exportJSON",
-      "evidenceFingerprint": "d5e6821256d2fbc0da24cd96de241ae82fee0178663d52115eacae87545c671c",
+      "evidenceFingerprint": "645803b5f39de90aa744042d741be243758067ac6776e457aa6ddd6c2a5c1103",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows exportJSON directly invoking filterNodes on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/core/router/utils/flatten-route-paths.util.ts#flattenRoutePaths\",\"packages/core/router/utils/flatten-route-paths.util.ts#anonymous\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/core/router/utils/flatten-route-paths.util.ts#flattenRoutePaths\",\"packages/core/router/utils/flatten-route-paths.util.ts#anonymous\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "flattenRoutePaths",
@@ -6371,18 +6551,21 @@
           "24:       });\n25:       result.push(...flattenRoutePaths(childrenRef));\n26:     }"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/core/router/utils/flatten-route-paths.util.ts#flattenRoutePaths\u0000packages/core/router/utils/flatten-route-paths.util.ts#anonymous",
-      "evidenceFingerprint": "0b79c8ebfe691130e3771ecf93c1465f949b605a4324cc6e3105d966fb959959",
+      "evidenceFingerprint": "88b286958b8fe9434a9d105a3f1560be7e1ea52173109399b7c58c7767b14b76",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct flattenRoutePaths call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/microservices/client/client-rmq.ts#ClientRMQ.setupChannel\",\"packages/microservices/client/client-rmq.ts#ClientRMQ.setup\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/microservices/client/client-rmq.ts#ClientRMQ.setupChannel\",\"packages/microservices/client/client-rmq.ts#ClientRMQ.setup\"]",
       "category": "other",
       "target": {
         "symbol": "setupChannel",
@@ -6417,18 +6600,21 @@
           "209:         json: false,\n210:         setup: (channel: Channel) => this.setupChannel(channel, resolve),\n211:       });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/microservices/client/client-rmq.ts#ClientRMQ.setupChannel\u0000packages/microservices/client/client-rmq.ts#ClientRMQ.setup",
-      "evidenceFingerprint": "4b0b017a198f7f1c1dba7f1fc37350a0418cd86f63baf08d30a04c4d7248ebce",
+      "evidenceFingerprint": "dbb7eab0329efab394bb92f1b5cd9f3c93175a58ac1dc6aa03d17a58c7b2e804",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows setup directly invoking setupChannel on the target’s receiver or binding."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"src/claude/hooks.ts#main\",\"test/claude-hooks.test.ts#anonymous@L391\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"src/claude/hooks.ts#main\",\"test/claude-hooks.test.ts#anonymous@L391\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "main",
@@ -6484,18 +6670,21 @@
           "409:     });\n410:     await runWithStdin(again, () => main('tool-savings'));\n411:     assert.equal(readSession(d, 's1').savedTokens, 2181 + 7510);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000src/claude/hooks.ts#main\u0000test/claude-hooks.test.ts#anonymous@L391",
-      "evidenceFingerprint": "74ed92008f7730b147ecab6fa4ee86008fb6eefcfe84f98a26114813ceedc242",
+      "evidenceFingerprint": "3333201b43f8047ae56d58fd2037dfa21d28bcc4215ed70325bd712566f6bb02",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct main call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/craft/components/CraftInputBar.tsx#reset\",\"backend/onyx/server/oidc_multi.py\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/craft/components/CraftInputBar.tsx#reset\",\"backend/onyx/server/oidc_multi.py\"]",
       "category": "other",
       "target": {
         "symbol": "reset",
@@ -6521,18 +6710,21 @@
           "141:         SESSION_TENANT_OVERRIDE_CONTEXTVAR.reset(override_token)\n142:         CURRENT_TENANT_ID_CONTEXTVAR.reset(tenant_token)\n143: "
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/craft/components/CraftInputBar.tsx#reset\u0000backend/onyx/server/oidc_multi.py",
-      "evidenceFingerprint": "eb3419aa5adedafc50227bd8f5c8b0277a873426b1e5d07c34c6f6751e6e277f",
+      "evidenceFingerprint": "d891dc0d606949058c1747f8dc4d0fe40f2d8495277a66ed13c19673b0719ea1",
       "label": "FP",
       "reviewed": true,
       "justification": "The Python ContextVar.reset call is unrelated to the TypeScript CraftInputBar reset function."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"tests/skill/understand/test_incremental_symbols.test.mjs#compare\",\"tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L225\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"tests/skill/understand/test_incremental_symbols.test.mjs#compare\",\"tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L225\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "compare",
@@ -6587,18 +6779,21 @@
           "227:     const code = 'function f() {}';\n228:     const result = compare([node('f', { id: 'old:one' }), node('f', { id: 'old:two' })],\n229:       [node('f', { id: 'new:one' })], code, code);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000tests/skill/understand/test_incremental_symbols.test.mjs#compare\u0000tests/skill/understand/test_incremental_symbols.test.mjs#anonymous@L225",
-      "evidenceFingerprint": "f0f2df139aca7e754dbe0892fd0fc0eb74f44ef0208e47986d074907cc87076f",
+      "evidenceFingerprint": "c227562c14d80ca0101b01a1979c7ff816c0c2a872109c4497e54df0a9a2440a",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct compare call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#resolvedVariableForIdentifier\",\"web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#checkAssertion\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#resolvedVariableForIdentifier\",\"web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#checkAssertion\"]",
       "category": "other",
       "target": {
         "symbol": "resolvedVariableForIdentifier",
@@ -6643,18 +6838,21 @@
           "386: \n387:       const variable = resolvedVariableForIdentifier(scopes, expression);\n388:       if (variable === null) return;"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#resolvedVariableForIdentifier\u0000web/tools/oxlint/anti-slop/rules/no-widen-then-assert.ts#checkAssertion",
-      "evidenceFingerprint": "4660e943ed4c274d3a818fc9a4f2ff3a241bbd3cbbbf781a0dd5eef15649f1f3",
+      "evidenceFingerprint": "ad995ff9af1643e5470e1f38bbbf6c8824b7944b9a3f35d1c2ba188cfc956df8",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows checkAssertion directly invoking resolvedVariableForIdentifier on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/microservices/test/server/server-grpc.spec.ts#NoopLogger.error\",\"packages/microservices/test/server/server-grpc.spec.ts#anonymous@L831\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/microservices/test/server/server-grpc.spec.ts#NoopLogger.error\",\"packages/microservices/test/server/server-grpc.spec.ts#anonymous@L831\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "error",
@@ -6689,18 +6887,21 @@
           "839:           subject.next('e');\n840:           subject.error(error);\n841:           expect(written).toEqual(['a', 'b']);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/microservices/test/server/server-grpc.spec.ts#NoopLogger.error\u0000packages/microservices/test/server/server-grpc.spec.ts#anonymous@L831",
-      "evidenceFingerprint": "724bf91cff9f2a4e2cd284e01e3bfdbdde239ae151e2a0e365dde597dfb9f4e4",
+      "evidenceFingerprint": "3a4cac03d207b174622feed8c8406029f85d9a815ec16697f1858bf85407ce3b",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct error call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "repomind",
-      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\",\"src/components/Mermaid.tsx#requestFixedMermaidCode\",\"src/components/Mermaid.tsx#renderDiagram\"]",
+      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c\",\"src/components/Mermaid.tsx#requestFixedMermaidCode\",\"src/components/Mermaid.tsx#renderDiagram\"]",
       "category": "other",
       "target": {
         "symbol": "requestFixedMermaidCode",
@@ -6745,18 +6946,21 @@
           "1056:                             const syntaxError = extractErrorMessage(renderError);\n1057:                             const fixed = await requestFixedMermaidCode({\n1058:                                 code: sanitized,"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
       "repositoryHeadSha": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "manifestSha256": "8c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
+      "manifestFileCount": 329,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "repomind\u0000src/components/Mermaid.tsx#requestFixedMermaidCode\u0000src/components/Mermaid.tsx#renderDiagram",
-      "evidenceFingerprint": "cf25769d8a4c659f511cd56f623509ea3ced3ec07b3035e7b89736c71df1ea7a",
+      "evidenceFingerprint": "323dde4775bd9a76759ebb95d0f8eac4ff5b7762c0c665717cccdde3f7ef1fff",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows renderDiagram directly invoking requestFixedMermaidCode on the target’s receiver or binding."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"test/graph-posix-paths.test.ts#repo\",\"test/graph-posix-paths.test.ts#anonymous\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"test/graph-posix-paths.test.ts#repo\",\"test/graph-posix-paths.test.ts#anonymous\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "repo",
@@ -6811,18 +7015,21 @@
           "60: test(\"a built graph stores no platform separator in any node id or path\", async () => {\n61:   const d = repo();\n62:   await buildGraph(d, { reuse: false });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000test/graph-posix-paths.test.ts#repo\u0000test/graph-posix-paths.test.ts#anonymous",
-      "evidenceFingerprint": "9c495a4ccbe763f9a070b9a44f28b9b6444de16e129deb5efbcc03a7f0a89e57",
+      "evidenceFingerprint": "a5168affbdf8e6c750cad08442c4bb512cddde9b58029556371b4ad7e14f72a0",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct repo call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/craft/hooks/useBuildSessionStore.ts#waitForWebappReady\",\"web/src/app/craft/hooks/useBuildSessionStore.ts#loadSession\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/craft/hooks/useBuildSessionStore.ts#waitForWebappReady\",\"web/src/app/craft/hooks/useBuildSessionStore.ts#loadSession\"]",
       "category": "other",
       "target": {
         "symbol": "waitForWebappReady",
@@ -6857,18 +7064,21 @@
           "1670:         // which reloads itself until the server responds.\n1671:         await waitForWebappReady(sessionId);\n1672:         updateSessionData(sessionId, {"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/craft/hooks/useBuildSessionStore.ts#waitForWebappReady\u0000web/src/app/craft/hooks/useBuildSessionStore.ts#loadSession",
-      "evidenceFingerprint": "3ecb412fcc7c12032ffe2fe65744568b2aa14e93218608e162097d4e1edba428",
+      "evidenceFingerprint": "f11d269360572bd18f9c23e4a67ef78863ca46a7a6f7cca996a13b1a5acea93a",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows loadSession directly invoking waitForWebappReady on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/sections/knowledge/SourceHierarchyBrowser.tsx#loadNodes\",\"web/src/sections/knowledge/SourceHierarchyBrowser.tsx#anonymous@L242\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/sections/knowledge/SourceHierarchyBrowser.tsx#loadNodes\",\"web/src/sections/knowledge/SourceHierarchyBrowser.tsx#anonymous@L242\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "loadNodes",
@@ -6903,18 +7113,21 @@
           "266: \n267:     loadNodes();\n268:   }, [source, t]);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/sections/knowledge/SourceHierarchyBrowser.tsx#loadNodes\u0000web/src/sections/knowledge/SourceHierarchyBrowser.tsx#anonymous@L242",
-      "evidenceFingerprint": "5e6a09fa72d1594c4089ef2e017f5604f1e57623bf4883571f4a2e7893644e7b",
+      "evidenceFingerprint": "6e62fc92ff81fc889cba86d40e25d861734feab93d51a9b01d154897c11930c5",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct loadNodes call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"src/graph/extract.ts#languageLabelOf\",\"src/graph/lsp/enrich.ts#langOf\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"src/graph/extract.ts#languageLabelOf\",\"src/graph/lsp/enrich.ts#langOf\"]",
       "category": "other",
       "target": {
         "symbol": "languageLabelOf",
@@ -6969,18 +7182,21 @@
           "24: \n25: const langOf = (path: string): string | null => genericLangOf(path)?.name ?? languageLabelOf(path);\n26: "
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000src/graph/extract.ts#languageLabelOf\u0000src/graph/lsp/enrich.ts#langOf",
-      "evidenceFingerprint": "0695c67b0d96053387db0cc87020bfbeaaab7cb67d7db953f502ff34d4de696c",
+      "evidenceFingerprint": "516cc17622606c5160520d8c3441eab252892a2740ec462243c4247191fc2361",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows langOf directly invoking languageLabelOf on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/app/services/packetUtils.test.ts#createPacket\",\"web/src/app/app/services/packetUtils.test.ts#anonymous@L217\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/app/services/packetUtils.test.ts#createPacket\",\"web/src/app/app/services/packetUtils.test.ts#anonymous@L217\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "createPacket",
@@ -7036,18 +7252,21 @@
           "220:         createPacket(PacketType.MESSAGE_START),\n221:         createPacket(PacketType.MESSAGE_DELTA),\n222:       ];"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/app/services/packetUtils.test.ts#createPacket\u0000web/src/app/app/services/packetUtils.test.ts#anonymous@L217",
-      "evidenceFingerprint": "b618c585fd2b88aabdbc77c2dbae4391ff993929c34d578bfcd9d08f5c1e1661",
+      "evidenceFingerprint": "e54b804715cd240ee603c5e53c4e356f201e35aa78548bc54f242b59c82c794e",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct createPacket call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/app/craft/components/CraftInputBar.tsx#focus\",\"web/src/refresh-components/modals/MemoriesModal.tsx\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/app/craft/components/CraftInputBar.tsx#focus\",\"web/src/refresh-components/modals/MemoriesModal.tsx\"]",
       "category": "other",
       "target": {
         "symbol": "focus",
@@ -7071,18 +7290,21 @@
           "58:       const el = textareaRef.current;\n59:       el.focus();\n60:       el.selectionStart = el.selectionEnd = el.value.length;"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/app/craft/components/CraftInputBar.tsx#focus\u0000web/src/refresh-components/modals/MemoriesModal.tsx",
-      "evidenceFingerprint": "e1239bd6ed3a9d7f61023f2175eb5bcdbec611ed73ad1071d8f3e612e2a6ccb5",
+      "evidenceFingerprint": "948616c3f6f8afbe8f5a88e6906fd29f0be5315b42b78a48c8603be71865fd05",
       "label": "FP",
       "reviewed": true,
       "justification": "The callback focuses a DOM textarea; the target is CraftInputBar’s imperative-handle focus function."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#parse\",\"understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#anonymous@L374\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#parse\",\"understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#anonymous@L374\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "parse",
@@ -7139,18 +7361,21 @@
           "413:     it(\"treats private[scope] as not exported\", () => {\n414:       const { tree, parser, root } = parse(`private[service] def helper(): Unit = ()\n415: `);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#parse\u0000understand-anything-plugin/packages/core/src/plugins/extractors/__tests__/scala-extractor.test.ts#anonymous@L374",
-      "evidenceFingerprint": "02bf8e909831576200544bcd101ab8c0935f08ac48743f79bf82f8740e2a5a4c",
+      "evidenceFingerprint": "c96908e36cd3d47b992af1178f9eff2f2a1bc23efb974d56de95a0d5783ffef6",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct parse call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"mobile/src/chat/__tests__/fixtures.ts#makePlacedPacket\",\"mobile/src/hooks/timeline/__tests__/usePacketProcessor.test.ts#imageStart\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"mobile/src/chat/__tests__/fixtures.ts#makePlacedPacket\",\"mobile/src/hooks/timeline/__tests__/usePacketProcessor.test.ts#imageStart\"]",
       "category": "other",
       "target": {
         "symbol": "makePlacedPacket",
@@ -7205,18 +7430,21 @@
           "47: const imageStart = (turn: number): Packet =>\n48:   makePlacedPacket({ type: \"image_generation_start\" }, { turn_index: turn });\n49: const imageFinal = (turn: number): Packet =>"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000mobile/src/chat/__tests__/fixtures.ts#makePlacedPacket\u0000mobile/src/hooks/timeline/__tests__/usePacketProcessor.test.ts#imageStart",
-      "evidenceFingerprint": "6afbaa67ffdf3da7c4d4f990e4a20a4d84c7706dcfa4cb356e640ee871f1f375",
+      "evidenceFingerprint": "aefd6c1122889269fefdfe1809cdbb14cdf5978ea9501a7039eec9357a72b803",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows imageStart directly invoking makePlacedPacket on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/common/test/file-stream/streamable-file.spec.ts#read\",\"packages/common/test/file-stream/streamable-file.spec.ts#anonymous@L52\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/common/test/file-stream/streamable-file.spec.ts#read\",\"packages/common/test/file-stream/streamable-file.spec.ts#anonymous@L52\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "read",
@@ -7262,18 +7490,21 @@
           "66:         const stream = streamableFile.getStream();\n67:         expect(stream.read()).toEqual(Buffer.from(buffer));\n68:       });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/common/test/file-stream/streamable-file.spec.ts#read\u0000packages/common/test/file-stream/streamable-file.spec.ts#anonymous@L52",
-      "evidenceFingerprint": "642654e46d2efa86d3216876afeba30e0965d9257bf6539ccdf9a4ffb1425fd0",
+      "evidenceFingerprint": "e3f88b98eefb8c6f468491887edcb118358e21e6b3638e93bb8fbfe2c445970b",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct read call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"backend/onyx/document_index/vespa/vespa_document_index.py#_update_single_chunk\",\"backend/onyx/document_index/vespa/vespa_document_index.py#VespaDocumentIndex.update\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"backend/onyx/document_index/vespa/vespa_document_index.py#_update_single_chunk\",\"backend/onyx/document_index/vespa/vespa_document_index.py#VespaDocumentIndex.update\"]",
       "category": "other",
       "target": {
         "symbol": "_update_single_chunk",
@@ -7308,18 +7539,21 @@
           "846:                     for doc_chunk_id in doc_chunk_ids:\n847:                         _update_single_chunk(\n848:                             doc_chunk_id,"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000backend/onyx/document_index/vespa/vespa_document_index.py#_update_single_chunk\u0000backend/onyx/document_index/vespa/vespa_document_index.py#VespaDocumentIndex.update",
-      "evidenceFingerprint": "989610e924ffc265cbf2f684182256325d2205a860ee0e04f3b69792c065036f",
+      "evidenceFingerprint": "30873c6061fcbca8aa86c60dbe6b138c5bc4aa3ba02ab51cf75f6d3333d71bf7",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows update directly invoking _update_single_chunk on the target’s receiver or binding."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"test/claude-shim-resolve.test.ts#fakeInstall\",\"test/claude-shim-resolve.test.ts#anonymous@L99\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"test/claude-shim-resolve.test.ts#fakeInstall\",\"test/claude-shim-resolve.test.ts#anonymous@L99\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "fakeInstall",
@@ -7374,18 +7608,21 @@
           "101:   const root = tmpRepo('shim-single');\n102:   const only = fakeInstall(root, 'only', '0.9.1');\n103:   mkdirSync(join(root, 'project'), { recursive: true });"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000test/claude-shim-resolve.test.ts#fakeInstall\u0000test/claude-shim-resolve.test.ts#anonymous@L99",
-      "evidenceFingerprint": "aca14bfd781561ace39cf2ffe0f9ad636fba8aa6dc6a6653cf1b8dc3aca8fddc",
+      "evidenceFingerprint": "89440ff667fce793c80f4e8ad02500289d833595f56c5d38ac4374722a16cbb3",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct fakeInstall call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/common/decorators/http/route-params.decorator.ts#Param\",\"packages/common/test/decorators/route-params.decorator.spec.ts#Test.testUsingArray@L457\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/common/decorators/http/route-params.decorator.ts#Param\",\"packages/common/test/decorators/route-params.decorator.spec.ts#Test.testUsingArray@L457\"]",
       "category": "other",
       "target": {
         "symbol": "Param",
@@ -7440,18 +7677,21 @@
           "459:         @Query() query,\n460:         @Param() params,\n461:         @HostParam() hostParams,"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/common/decorators/http/route-params.decorator.ts#Param\u0000packages/common/test/decorators/route-params.decorator.spec.ts#Test.testUsingArray@L457",
-      "evidenceFingerprint": "de8a5ea123c1a68663d9ec0d0c006ffc06cf6845b4b3b0416523f88bf6fdbf73",
+      "evidenceFingerprint": "bf82da72e5cfc03dbc4ee36c45d02511bdced2f8bd114d7951065328b36297cd",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows testUsingArray directly invoking Param on the target’s receiver or binding."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"src/telemetry/sessions.ts#flushClosedSessions\",\"test/telemetry-sessions.test.ts#anonymous@L66\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"src/telemetry/sessions.ts#flushClosedSessions\",\"test/telemetry-sessions.test.ts#anonymous@L66\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "flushClosedSessions",
@@ -7506,18 +7746,21 @@
           "70:   // the flusher passes no host → default claude-code; the file's stamp must win.\n71:   assert.equal(flushClosedSessions(repo, Date.now(), home, OPEN), 1);\n72:   const [ev] = peek(home) as { properties: Record<string, string> }[];"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000src/telemetry/sessions.ts#flushClosedSessions\u0000test/telemetry-sessions.test.ts#anonymous@L66",
-      "evidenceFingerprint": "d12ccfa3fab24b15550322770f10de732efbeab8987e0a74cf69c1ba74a6d1e4",
+      "evidenceFingerprint": "48208f4256d67c8eb3d4ec9e0a429ad63ee042dbafd73e9c9ba6e76412c82c3e",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct flushClosedSessions call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Graft",
-      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\",\"src/ask/ask.ts#score\",\"src/ask/ask.ts#lex\"]",
+      "sampleKey": "[\"remote:https://github.com/trailhq/Graft\\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a\",\"src/ask/ask.ts#score\",\"src/ask/ask.ts#lex\"]",
       "category": "other",
       "target": {
         "symbol": "score",
@@ -7563,18 +7806,21 @@
           "736:               (score(q, name, idf) * 3 +\n737:                 score(q, path, idf) * 2 +\n738:                 bm25(q, body, idf, bodyLen(body), avgBodyLen)) *"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "repositoryIdentity": "remote:https://github.com/trailhq/Graft\u0000f06070d702b501ce38a2fe0cf7191b9f579888ae\u0000725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
       "repositoryHeadSha": "f06070d702b501ce38a2fe0cf7191b9f579888ae",
+      "manifestSha256": "725681144149f17f1614e1589d0ee0392b2aadfa7811e09252617aad866ccc6a",
+      "manifestFileCount": 282,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Graft\u0000src/ask/ask.ts#score\u0000src/ask/ask.ts#lex",
-      "evidenceFingerprint": "0fe8ed61be36f45afb36f4f2556ee103e1b44a863059ffbf139ad45cdff78c5a",
+      "evidenceFingerprint": "ed5a85b5e16f331303cb5ea47da87c3b3b62a889b343765e8613ed7bc9e88c76",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows lex directly invoking score on the target’s receiver or binding."
     },
     {
       "repo": "onyx",
-      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\",\"web/src/lib/tools/components/ToolsPopover.tsx#handleServerAuthentication\",\"web/src/lib/tools/components/ToolsPopover.tsx#anonymous@L459\"]",
+      "sampleKey": "[\"remote:https://github.com/onyx-dot-app/onyx\\u0000e0de28315672dfb72f13431ac51f057f937d6267\\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4\",\"web/src/lib/tools/components/ToolsPopover.tsx#handleServerAuthentication\",\"web/src/lib/tools/components/ToolsPopover.tsx#anonymous@L459\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "handleServerAuthentication",
@@ -7619,18 +7865,21 @@
           "459:               }\n460:               onAuthenticate={() => handleServerAuthentication(server)}\n461:             />"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267",
+      "repositoryIdentity": "remote:https://github.com/onyx-dot-app/onyx\u0000e0de28315672dfb72f13431ac51f057f937d6267\u00000149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
       "repositoryHeadSha": "e0de28315672dfb72f13431ac51f057f937d6267",
+      "manifestSha256": "0149549e0f8f90c86afcda2d0c6a8c0ca5f863d81aa99b94a7f3a22a6f52bcb4",
+      "manifestFileCount": 6387,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "onyx\u0000web/src/lib/tools/components/ToolsPopover.tsx#handleServerAuthentication\u0000web/src/lib/tools/components/ToolsPopover.tsx#anonymous@L459",
-      "evidenceFingerprint": "fb2975a720ced5823804d8276b3e5af78b0b5deaebdc49cce509397e4a93da20",
+      "evidenceFingerprint": "d2a6777b558ec1aecd50cea3cede99ed806c650d24e8140c6c1a0717209b1df0",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct handleServerAuthentication call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "Understand-Anything",
-      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\",\"understand-anything-plugin/packages/dashboard/src/freshness.ts#refresh\",\"understand-anything-plugin/packages/dashboard/src/freshness.ts#handleFocus\"]",
+      "sampleKey": "[\"remote:https://github.com/Egonex-AI/Understand-Anything.git\\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c\",\"understand-anything-plugin/packages/dashboard/src/freshness.ts#refresh\",\"understand-anything-plugin/packages/dashboard/src/freshness.ts#handleFocus\"]",
       "category": "other",
       "target": {
         "symbol": "refresh",
@@ -7675,18 +7924,21 @@
           "238: \n239:   const handleFocus: EventListener = () => refresh();\n240:   target.addEventListener(\"focus\", handleFocus);"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "repositoryIdentity": "remote:https://github.com/Egonex-AI/Understand-Anything.git\u00006df3065f1d8ddc2ce3615314d1d493f36d6b1c80\u00001525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
       "repositoryHeadSha": "6df3065f1d8ddc2ce3615314d1d493f36d6b1c80",
+      "manifestSha256": "1525726689de11aa53d444a0c68b2d21c5b187f03c2f022aa79a9a8c6169f42c",
+      "manifestFileCount": 310,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "Understand-Anything\u0000understand-anything-plugin/packages/dashboard/src/freshness.ts#refresh\u0000understand-anything-plugin/packages/dashboard/src/freshness.ts#handleFocus",
-      "evidenceFingerprint": "35c469a71162a3d2b281e4a8ba7197ee210a68155797688d12f3ea7e85bd6d7b",
+      "evidenceFingerprint": "d09b8f7084f1fe3e425cd2073f7679a5f4f156e1a0ebb6b079c3d69dcc8a9f6b",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows handleFocus directly invoking refresh on the target’s receiver or binding."
     },
     {
       "repo": "nest",
-      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\",\"packages/microservices/client/client-redis.ts#ClientRedis.handleClose\",\"packages/microservices/client/client-redis.ts#ClientRedis.anonymous@L201\"]",
+      "sampleKey": "[\"remote:https://github.com/nestjs/nest.git\\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60\",\"packages/microservices/client/client-redis.ts#ClientRedis.handleClose\",\"packages/microservices/client/client-redis.ts#ClientRedis.anonymous@L201\"]",
       "category": "anonymous-callback/lexical-parent",
       "target": {
         "symbol": "handleClose",
@@ -7731,18 +7983,21 @@
           "206:       this._status$.next(RedisStatus.DISCONNECTED);\n207:       this.handleClose();\n208:       this.logger.error('Disconnected from Redis.');"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "repositoryIdentity": "remote:https://github.com/nestjs/nest.git\u0000b1014b6862c3602e86b5a4c750d26bf25ff4b524\u000074ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
       "repositoryHeadSha": "b1014b6862c3602e86b5a4c750d26bf25ff4b524",
+      "manifestSha256": "74ec34d77c7b4afcdbcba1676a1aefa4751e2df12a44ff0bad96a3b48c2b0d60",
+      "manifestFileCount": 2003,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "nest\u0000packages/microservices/client/client-redis.ts#ClientRedis.handleClose\u0000packages/microservices/client/client-redis.ts#ClientRedis.anonymous@L201",
-      "evidenceFingerprint": "76b49ea62926e902d93970ca1fcd07f0ac6806ffa3665ee1cc26c81d669a33cf",
+      "evidenceFingerprint": "dd934671d9c862aa68aad53ef313acd916c82355f150a50c7507273de7987959",
       "label": "TP",
       "reviewed": true,
       "justification": "The callback contains the shown direct handleClose call, so its enclosing test or callback context is a true caller."
     },
     {
       "repo": "repomind",
-      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\",\"src/components/Mermaid.tsx#requestFixedMermaidCode\",\"src/components/Mermaid.tsx#handleRetry\"]",
+      "sampleKey": "[\"remote:https://github.com/403errors/repomind\\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c\",\"src/components/Mermaid.tsx#requestFixedMermaidCode\",\"src/components/Mermaid.tsx#handleRetry\"]",
       "category": "other",
       "target": {
         "symbol": "requestFixedMermaidCode",
@@ -7787,11 +8042,14 @@
           "1168: \n1169:             const fixed = await requestFixedMermaidCode({\n1170:                 code: sanitized,"
         ]
       },
-      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "repositoryIdentity": "remote:https://github.com/403errors/repomind\u00006a46bb25a132f3bb35da76ef678b99718e37c2f5\u00008c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
       "repositoryHeadSha": "6a46bb25a132f3bb35da76ef678b99718e37c2f5",
+      "manifestSha256": "8c39bf40542f1e6f6726bbed3b5be28d5c9bed41347be0f348b6c4b4062ad37c",
+      "manifestFileCount": 329,
+      "sourceTreeDirty": false,
       "callerPolicy": "exact-enclosing-v2",
       "selectionKey": "repomind\u0000src/components/Mermaid.tsx#requestFixedMermaidCode\u0000src/components/Mermaid.tsx#handleRetry",
-      "evidenceFingerprint": "0d44961ed919cbdb677790cd1cd0dfc29e92d3d66983412cec5da119393aa9e1",
+      "evidenceFingerprint": "3d0963eb07d3ea06d54749297f3dbdd59a05c0d009e431452b3c2aadc3f334f2",
       "label": "TP",
       "reviewed": true,
       "justification": "The source snippet shows handleRetry directly invoking requestFixedMermaidCode on the target’s receiver or binding."

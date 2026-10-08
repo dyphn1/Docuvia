@@ -1,22 +1,10 @@
-import {
-  closeSync,
-  fstatSync,
-  mkdirSync,
-  mkdtempSync,
-  openSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import {
   CallsProjectionCallerPolicies,
-  isDiscoverableSourceFile,
   LinkTypes,
-  MAX_FILE_SIZE_BYTES,
   type BlastRadiusEntry,
   type IGraphStore,
   type ParsedAstFileResult,
@@ -39,8 +27,10 @@ import { ANONYMOUS_SYMBOL_NAME } from "../../lib/core/src/constants/symbols.js";
 import {
   buildExactCallerSampleKey,
   buildRepositoryIdentity,
+  computeSourceManifest,
+  discoverSourceFiles,
   EXACT_CALLER_ADDITION_CATEGORIES,
-  hasPathSegment,
+  isSourceTreeDirty,
   type ExactCallerAdditionCategory,
 } from "./exact-caller-impact-parity-sampling.js";
 
@@ -144,64 +134,6 @@ function parseOptions(argv: readonly string[]): Options {
     excludedPathPrefixes,
     excludedPathSegments,
   };
-}
-
-function discoverSourceFiles(
-  root: string,
-  excludedPathPrefixes: readonly string[],
-  excludedPathSegments: readonly string[],
-) {
-  const files: Array<{ file: string; hash: string; code: string }> = [];
-  const listedFiles = execFileSync(
-    "git",
-    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-    { cwd: root },
-  )
-    .toString("utf8")
-    .split("\0");
-  for (const file of listedFiles) {
-    if (!file || !isDiscoverableSourceFile(file)) continue;
-    const relativeFile = file.replaceAll("\\", "/");
-    if (
-      excludedPathPrefixes.some((prefix) => relativeFile.startsWith(prefix)) ||
-      excludedPathSegments.some((segment) =>
-        hasPathSegment(relativeFile, segment),
-      )
-    ) {
-      continue;
-    }
-    const absolutePath = path.resolve(root, file);
-    let fileDescriptor: number;
-    try {
-      fileDescriptor = openSync(absolutePath, "r");
-    } catch (error) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "ENOENT"
-      ) {
-        continue;
-      }
-      throw error;
-    }
-    try {
-      if (fstatSync(fileDescriptor).size > MAX_FILE_SIZE_BYTES) continue;
-      const bytes = readFileSync(fileDescriptor);
-      files.push({
-        file,
-        hash: createSha256(bytes),
-        code: bytes.toString("utf8"),
-      });
-    } finally {
-      closeSync(fileDescriptor);
-    }
-  }
-  return files.sort((left, right) => left.file.localeCompare(right.file));
-}
-
-function createSha256(value: Buffer): string {
-  return createHash("sha256").update(value).digest("hex");
 }
 
 function functionLocations(
@@ -763,15 +695,27 @@ async function main(): Promise<void> {
   ).trim();
   const repositoryRemoteUrl = readOriginRemote(options.repositoryRoot);
   const repository = path.basename(options.repositoryRoot);
+  const sourceDiscoveryOptions = {
+    excludedPathPrefixes: options.excludedPathPrefixes,
+    excludedPathSegments: options.excludedPathSegments,
+  };
+  const sourceFiles = discoverSourceFiles(
+    options.repositoryRoot,
+    sourceDiscoveryOptions,
+  );
+  const sourceManifest = computeSourceManifest(
+    sourceFiles,
+    sourceDiscoveryOptions,
+  );
+  const sourceTreeDirty = isSourceTreeDirty(options.repositoryRoot);
   const repositoryIdentity = buildRepositoryIdentity(
     repositoryRemoteUrl,
     options.repositoryRoot,
     repositoryHeadSha,
+    sourceManifest.manifestSha256,
   );
-  const sourceFiles = discoverSourceFiles(
-    options.repositoryRoot,
-    options.excludedPathPrefixes,
-    options.excludedPathSegments,
+  process.stdout.write(
+    `Source manifest: ${sourceManifest.manifestSha256} (${sourceManifest.manifestFileCount} files); dirty: ${sourceTreeDirty}\n`,
   );
   if (
     options.excludedPathPrefixes.length > 0 ||
@@ -841,6 +785,10 @@ async function main(): Promise<void> {
       repositoryIdentity,
       repositoryHeadSha,
       repositoryRemoteUrl,
+      manifestSha256: sourceManifest.manifestSha256,
+      manifestFileCount: sourceManifest.manifestFileCount,
+      manifestDefinition: sourceManifest.definition,
+      sourceTreeDirty,
       excludedPathPrefixes: options.excludedPathPrefixes,
       excludedPathSegments: options.excludedPathSegments,
     };

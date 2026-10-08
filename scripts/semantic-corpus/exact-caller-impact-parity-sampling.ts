@@ -1,5 +1,204 @@
 import { createHash } from "node:crypto";
+import { closeSync, fstatSync, openSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
+import {
+  isDiscoverableSourceFile,
+  MAX_FILE_SIZE_BYTES,
+} from "../../lib/contracts/src/index.js";
+
+export interface SourceDiscoveryOptions {
+  readonly excludedPathPrefixes: readonly string[];
+  readonly excludedPathSegments: readonly string[];
+}
+
+export interface DiscoveredSourceFile {
+  readonly file: string;
+  readonly hash: string;
+  readonly code?: string;
+}
+
+export interface DiscoveredSourceFileWithCode extends DiscoveredSourceFile {
+  readonly code: string;
+}
+
+export interface SourceManifest {
+  readonly manifestSha256: string;
+  readonly manifestFileCount: number;
+  readonly definition: {
+    readonly fileListing: string;
+    readonly sourcePredicate: string;
+    readonly maxFileSizeBytes: number;
+    readonly excludedPathPrefixes: readonly string[];
+    readonly excludedPathSegments: readonly string[];
+    readonly bundleHandling: string;
+  };
+}
+
+function normalizedSourcePath(file: string): string {
+  return file.replaceAll("\\", "/");
+}
+
+function sourcePathIsExcluded(
+  file: string,
+  options: SourceDiscoveryOptions,
+): boolean {
+  const relativeFile = normalizedSourcePath(file);
+  return (
+    options.excludedPathPrefixes.some((prefix) =>
+      relativeFile.startsWith(normalizedSourcePath(prefix)),
+    ) ||
+    options.excludedPathSegments.some((segment) =>
+      hasPathSegment(relativeFile, segment),
+    )
+  );
+}
+
+function readDiscoveredSourceFile(
+  root: string,
+  file: string,
+  includeCode: boolean,
+): DiscoveredSourceFile | undefined {
+  const absolutePath = path.resolve(root, file);
+  let fileDescriptor: number;
+  try {
+    fileDescriptor = openSync(absolutePath, "r");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return undefined;
+    }
+    throw error;
+  }
+  try {
+    if (fstatSync(fileDescriptor).size > MAX_FILE_SIZE_BYTES) return undefined;
+    const bytes = readFileSync(fileDescriptor);
+    return {
+      file: normalizedSourcePath(file),
+      hash: createHash("sha256").update(bytes).digest("hex"),
+      ...(includeCode ? { code: bytes.toString("utf8") } : {}),
+    };
+  } finally {
+    closeSync(fileDescriptor);
+  }
+}
+
+/** Lists and reads exactly the tracked plus non-ignored untracked source files the audit parses. */
+export function discoverSourceFiles(
+  root: string,
+  options: SourceDiscoveryOptions,
+): DiscoveredSourceFileWithCode[];
+export function discoverSourceFiles(
+  root: string,
+  options: SourceDiscoveryOptions,
+  includeCode: true,
+): DiscoveredSourceFileWithCode[];
+export function discoverSourceFiles(
+  root: string,
+  options: SourceDiscoveryOptions,
+  includeCode: false,
+): DiscoveredSourceFile[];
+export function discoverSourceFiles(
+  root: string,
+  options: SourceDiscoveryOptions,
+  includeCode = true,
+): DiscoveredSourceFile[] {
+  const listedFiles = execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    { cwd: root },
+  )
+    .toString("utf8")
+    .split("\0");
+  const files: DiscoveredSourceFile[] = [];
+  for (const file of listedFiles) {
+    if (!file || !isDiscoverableSourceFile(file)) continue;
+    if (sourcePathIsExcluded(file, options)) continue;
+    const sourceFile = readDiscoveredSourceFile(root, file, includeCode);
+    if (sourceFile) files.push(sourceFile);
+  }
+  return files.sort((left, right) =>
+    left.file < right.file ? -1 : left.file > right.file ? 1 : 0,
+  );
+}
+
+/** Hashes sorted relative-path/content pairs plus the effective discovery rules. */
+export function computeSourceManifest(
+  sourceFiles: readonly DiscoveredSourceFile[],
+  options: SourceDiscoveryOptions,
+): SourceManifest {
+  const definition = {
+    fileListing: "git ls-files --cached --others --exclude-standard -z",
+    sourcePredicate: "isDiscoverableSourceFile",
+    maxFileSizeBytes: MAX_FILE_SIZE_BYTES,
+    excludedPathPrefixes: options.excludedPathPrefixes
+      .map(normalizedSourcePath)
+      .sort(),
+    excludedPathSegments: [...options.excludedPathSegments].sort(),
+    bundleHandling:
+      "isExcludedBundlePath files stay in the parsed manifest and are excluded only from precision labels",
+  } as const;
+  const files = sourceFiles
+    .map(
+      ({ file, hash }) =>
+        [normalizedSourcePath(file), hash, isExcludedBundlePath(file)] as const,
+    )
+    .sort(([leftPath], [rightPath]) =>
+      leftPath < rightPath ? -1 : leftPath > rightPath ? 1 : 0,
+    );
+  const manifestSha256 = createHash("sha256")
+    .update(JSON.stringify({ definition, files }))
+    .digest("hex");
+  return {
+    manifestSha256,
+    manifestFileCount: files.length,
+    definition,
+  };
+}
+
+export function assertSourceManifestMatches(
+  repository: string,
+  auditedManifest: SourceManifest,
+  currentManifest: SourceManifest,
+): void {
+  if (
+    auditedManifest.manifestSha256 === currentManifest.manifestSha256 &&
+    auditedManifest.manifestFileCount === currentManifest.manifestFileCount
+  ) {
+    return;
+  }
+  throw new Error(
+    `source tree changed since audit; re-run the audit for ${repository} (manifest ${auditedManifest.manifestSha256}/${auditedManifest.manifestFileCount} files, current ${currentManifest.manifestSha256}/${currentManifest.manifestFileCount} files)`,
+  );
+}
+
+/** Recomputes the exact audit source set before a sampler trusts report metadata. */
+export function recomputeAndVerifySourceManifest(
+  repositoryRoot: string,
+  repository: string,
+  auditedManifest: SourceManifest,
+  options: SourceDiscoveryOptions,
+): SourceManifest {
+  const currentManifest = computeSourceManifest(
+    discoverSourceFiles(repositoryRoot, options, false),
+    options,
+  );
+  assertSourceManifestMatches(repository, auditedManifest, currentManifest);
+  return currentManifest;
+}
+
+export function isSourceTreeDirty(repositoryRoot: string): boolean {
+  return (
+    execFileSync("git", ["status", "--porcelain"], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+    }).trim().length > 0
+  );
+}
 
 export const EXACT_CALLER_ADDITION_CATEGORIES = [
   "anonymous-callback/lexical-parent",
@@ -39,11 +238,12 @@ export function buildRepositoryIdentity(
   remoteUrl: string | null,
   repositoryRoot: string,
   headSha: string,
+  manifestSha256: string,
 ): string {
   const source = remoteUrl?.trim()
     ? `remote:${remoteUrl.trim()}`
     : `root:${path.resolve(repositoryRoot)}`;
-  return `${source}\0${headSha.trim()}`;
+  return `${source}\0${headSha.trim()}\0${manifestSha256.trim()}`;
 }
 
 export function buildExactCallerSampleKey(
@@ -60,11 +260,13 @@ export function buildExactCallerSampleKey(
 
 export function buildEvidenceFingerprint(
   repositoryHeadSha: string,
+  manifestSha256: string,
   callerPolicy: string,
   evidence: ReviewEvidence,
 ): string {
   const canonicalEvidence = JSON.stringify({
     repositoryHeadSha,
+    manifestSha256,
     callerPolicy,
     targetSnippet: evidence.targetSnippet,
     addedCallerSnippet: evidence.addedCallerSnippet,

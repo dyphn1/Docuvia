@@ -69,12 +69,18 @@ interface TraceContext {
   readonly dependencies: Map<string, string>;
 }
 
-function abstain(reason: AbstentionReason): CallResolutionStrictProof {
+function abstain(
+  reason: AbstentionReason,
+  consultedCandidateMemberNames: readonly string[] = [],
+): CallResolutionStrictProof {
   return {
     status: "abstained",
     targetKey: null,
     ruleSignature: null,
     reason,
+    ...(consultedCandidateMemberNames.length > 0
+      ? { consultedCandidateMemberNames }
+      : {}),
   };
 }
 
@@ -717,6 +723,9 @@ function proofFromTrace(
     return trace.sawReexport ? abstain("unresolved-call-binding") : null;
   }
   if (trace.target.hops === 0) return null;
+  const candidateMemberName = trace.target.declaration.name;
+  if (!candidateMemberName) return abstain("no-unique-owner-candidate");
+  const consultedCandidateMemberNames = [candidateMemberName];
   if (
     !uniqueFinalCandidate(
       workspace,
@@ -725,7 +734,7 @@ function proofFromTrace(
       trace.target.targetKey,
     )
   )
-    return abstain("no-unique-owner-candidate");
+    return abstain("no-unique-owner-candidate", consultedCandidateMemberNames);
 
   return {
     status: "proven",
@@ -734,6 +743,7 @@ function proofFromTrace(
     reason: "unique-named-import",
     targetFilePath: trace.target.filePath,
     targetName: trace.target.targetName,
+    consultedCandidateMemberNames,
     dependencies: [...dependencies]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([filePath, contentHash]) => ({ filePath, contentHash })),

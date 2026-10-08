@@ -31,11 +31,25 @@ export async function stampFullIngestionForTierB(deps: {
   git: IGitProvider;
   workspaceRoot: string;
   parsedResults: ParsedAstFileResult[];
+  sourceIndexComplete?: boolean;
 }): Promise<void> {
-  const { store, git, workspaceRoot, parsedResults } = deps;
+  const { store, git, workspaceRoot, parsedResults, sourceIndexComplete } =
+    deps;
 
   const headSha = await git.getHeadSha(workspaceRoot);
-  if (!headSha) return;
+  if (!headSha) {
+    if (sourceIndexComplete !== undefined)
+      await store.withWriteLock(() =>
+        store.meta.set(
+          GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
+          "",
+        ),
+      );
+    return;
+  }
+  const sourceIndexIsAtHead =
+    sourceIndexComplete !== undefined &&
+    !(await git.hasUncommittedChanges(workspaceRoot));
 
   const tierBEntries: TierBQueueEntry[] = parsedResults.map((r) => ({
     file: r.file,
@@ -43,6 +57,16 @@ export async function stampFullIngestionForTierB(deps: {
   }));
   await store.withWriteLock(() => {
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
+    if (sourceIndexComplete !== undefined)
+      store.meta.set(
+        GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
+        sourceIndexIsAtHead ? headSha : "",
+      );
+    if (sourceIndexComplete === true && sourceIndexIsAtHead)
+      store.meta.set(
+        GitConstants.META_KEY_CALL_RESOLUTION_REPROOF_PENDING_PATHS,
+        "[]",
+      );
     store.meta.set(
       GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION,
       CURRENT_NODE_KEY_FORMAT_VERSION,

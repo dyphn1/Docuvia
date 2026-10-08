@@ -1,12 +1,15 @@
 import { createHash } from "node:crypto";
 import {
   type ICallResolutionHypothesisService,
+  type CallResolutionFunctionNodeReference,
+  type CallResolutionHypothesisSourceFile,
   type CallResolutionHypothesisWorkspaceIndex,
   type CallResolutionStrictProof,
   type CallSiteResolutionRecord,
   type CallSiteResolutionObservationInput,
   type ParsedAstFileResult,
   CallSiteResolutionClasses,
+  CallSiteResolutionDependencyKinds,
   CallSiteResolutionObservationSources,
   CallSiteVerificationStatuses,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
@@ -18,16 +21,10 @@ import {
 } from "@workspace/contracts";
 import { candidateTargetKeyForDeclaration } from "../semantic/call-resolution-hypothesis-index.js";
 
-export type FunctionNodeReference = {
-  readonly nodeKey: string;
-  /** Transient local id; omitted from portable proof records and offline parity fixtures. */
+/** `graphNodeId` is a transient local id; it is never persisted in the source index or in
+ *  portable proof records. */
+export type FunctionNodeReference = CallResolutionFunctionNodeReference & {
   readonly graphNodeId?: number;
-  readonly name: string;
-  readonly containerName?: string;
-  readonly startLine: number;
-  readonly endLine: number;
-  readonly declarationSpan?: { readonly start: number; readonly end: number };
-  readonly declarationTargetKeys: readonly string[];
 };
 
 export type StrictCallProofExclusion = {
@@ -42,7 +39,7 @@ export type StrictCallProofExclusion = {
 export type CallSiteProof = {
   readonly callSiteKey: string;
   readonly resolution: CallSiteResolutionRecord;
-  readonly strictObservation: CallSiteResolutionObservationInput;
+  readonly strictObservation?: CallSiteResolutionObservationInput;
 };
 
 type ParsedCall = NonNullable<ParsedAstFileResult["data"]["calls"]>[number];
@@ -60,6 +57,12 @@ type Q3ReceiverProof = Extract<
 >;
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const CANDIDATE_DOMAIN_ABSTENTION_REASONS = new Set([
+  "ambiguous-owner-declaration",
+  "no-unique-owner-candidate",
+  "candidate-list-truncated",
+  "incomplete-inventory",
+]);
 const Q3_RECEIVER_RULE_SIGNATURES = new Set<string>([
   CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
   CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
@@ -84,10 +87,26 @@ export function sourceManifestFingerprint(
   parsedResults: readonly ParsedAstFileResult[],
   sourceIndexComplete: boolean,
 ): string {
-  const manifest = parsedResults
-    .map((result) => ({
-      file: result.file,
-      hash: sourceContentHashForProof(result),
+  return sourceFileManifestFingerprint(
+    parsedResults.map((result) => ({
+      filePath: result.file,
+      sourceContentHash: sourceContentHashForProof(result),
+    })),
+    sourceIndexComplete,
+  );
+}
+
+export function sourceFileManifestFingerprint(
+  sourceFiles: readonly Pick<
+    CallResolutionHypothesisSourceFile,
+    "filePath" | "sourceContentHash"
+  >[],
+  sourceIndexComplete: boolean,
+): string {
+  const manifest = sourceFiles
+    .map(({ filePath, sourceContentHash }) => ({
+      file: filePath,
+      hash: sourceContentHash ?? "",
     }))
     .sort(
       (left, right) =>
@@ -374,8 +393,13 @@ function createCallSiteProof(input: {
       ? strictProof.dependencies
       : [{ filePath: result.file, contentHash: sourceHash }]
   )
-    .slice()
-    .sort((left, right) => left.filePath.localeCompare(right.filePath));
+    .concat(
+      candidateMemberDependencies(
+        callSite.calleeName,
+        strictProof.consultedCandidateMemberNames ?? [],
+      ),
+    )
+    .sort(compareResolutionDependencies);
   const dependencyFingerprint = sha256(JSON.stringify(dependencies));
   const evidenceJson = JSON.stringify({
     kind: strictProof.reason,
@@ -420,6 +444,108 @@ function createCallSiteProof(input: {
   return { callSiteKey, resolution, strictObservation };
 }
 
+function candidateMemberDependencies(
+  calleeName: string,
+  consultedNames: readonly string[],
+): CallSiteResolutionRecord["dependencies"] {
+  const memberNames = consultedNames.length > 0 ? consultedNames : [calleeName];
+  return [...new Set(memberNames)]
+    .filter((name) => name.length > 0)
+    .sort((left, right) => left.localeCompare(right))
+    .map((filePath) => ({
+      kind: CallSiteResolutionDependencyKinds.CANDIDATE_MEMBER,
+      filePath,
+      contentHash: null,
+    }));
+}
+
+function candidateMemberNamesForAbstention(
+  result: ParsedAstFileResult,
+  callSite: CallSiteShape,
+  strictProof: CallResolutionStrictProof,
+): string[] {
+  const importedNames = (result.data.imports ?? [])
+    .filter(({ localName }) => localName === callSite.calleeName)
+    .map(({ originalName }) => originalName)
+    .filter((name) => name !== "default" && name !== "*");
+  const consultedNames = strictProof.consultedCandidateMemberNames ?? [];
+  if (consultedNames.length > 0) return [...new Set(consultedNames)];
+  if (importedNames.length > 0) return [...new Set(importedNames)];
+  return [callSite.calleeName];
+}
+
+function shouldPersistCandidateDomainAbstention(
+  strictProof: CallResolutionStrictProof,
+): boolean {
+  if (strictProof.status === "proven") return true;
+  if (strictProof.reason === "unresolved-type-binding") {
+    return (strictProof.consultedCandidateMemberNames?.length ?? 0) > 0;
+  }
+  return CANDIDATE_DOMAIN_ABSTENTION_REASONS.has(strictProof.reason);
+}
+
+function compareResolutionDependencies(
+  left: CallSiteResolutionRecord["dependencies"][number],
+  right: CallSiteResolutionRecord["dependencies"][number],
+): number {
+  return (
+    (left.kind ?? CallSiteResolutionDependencyKinds.FILE).localeCompare(
+      right.kind ?? CallSiteResolutionDependencyKinds.FILE,
+    ) || left.filePath.localeCompare(right.filePath)
+  );
+}
+
+function createCandidateDependencyOnlyRow(input: {
+  result: ParsedAstFileResult;
+  call: ParsedCall;
+  callSite: CallSiteShape;
+  sourceHash: string;
+  strictProof: CallResolutionStrictProof;
+  functionNodes: readonly FunctionNodeReference[];
+  sourceFingerprint: string;
+}): CallSiteProof {
+  const { result, call, callSite, sourceHash, strictProof, functionNodes } =
+    input;
+  const callSiteKey = portableCallSiteKey(result.file, sourceHash, callSite);
+  const dependencies = [
+    { filePath: result.file, contentHash: sourceHash },
+    ...candidateMemberDependencies(
+      callSite.calleeName,
+      candidateMemberNamesForAbstention(result, callSite, strictProof),
+    ),
+  ].sort(compareResolutionDependencies);
+  const evidenceJson = JSON.stringify({
+    kind: strictProof.reason,
+    sourceFingerprint: input.sourceFingerprint,
+  });
+  return {
+    callSiteKey,
+    resolution: {
+      callSiteKey,
+      identityVersion: 1,
+      filePath: result.file,
+      sourceContentHash: sourceHash,
+      startLine: callSite.startLine,
+      startColumn: callSite.startColumn,
+      calleeKind: callSite.calleeKind,
+      calleeName: callSite.calleeName,
+      callerNodeKey: exactCallerNodeForCall(result, call, functionNodes)
+        .nodeKey,
+      resolutionClass: CallSiteResolutionClasses.UNRESOLVED,
+      selectedTargetNodeKey: null,
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature: `strict-proof-candidate-domain:${strictProof.reason}`,
+      dependencyFingerprint: sha256(JSON.stringify(dependencies)),
+      dependencies,
+      verificationStatus: CallSiteVerificationStatuses.UNVERIFIED,
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    },
+  };
+}
+
 function proofForCall(
   service: ICallResolutionHypothesisService,
   workspaceIndex: CallResolutionHypothesisWorkspaceIndex,
@@ -442,7 +568,20 @@ function proofForCall(
     workspaceIndex,
   });
   const { strictProof } = hypothesis;
-  if (strictProof.status !== "proven") return {};
+  if (strictProof.status !== "proven") {
+    if (!shouldPersistCandidateDomainAbstention(strictProof)) return {};
+    return {
+      proof: createCandidateDependencyOnlyRow({
+        result,
+        call,
+        callSite,
+        sourceHash,
+        strictProof,
+        functionNodes,
+        sourceFingerprint: hypothesis.sourceFingerprint,
+      }),
+    };
+  }
 
   const targetMatch = isQ3ReceiverProof(strictProof)
     ? q3TargetFunction(strictProof, functionNodesByFile)
@@ -452,6 +591,15 @@ function proofForCall(
       : strictTargetFunction(result, strictProof.targetKey, functionNodes);
   if (!("functionNode" in targetMatch)) {
     return {
+      proof: createCandidateDependencyOnlyRow({
+        result,
+        call,
+        callSite,
+        sourceHash,
+        strictProof,
+        functionNodes,
+        sourceFingerprint: hypothesis.sourceFingerprint,
+      }),
       exclusion: {
         callSiteKey: portableCallSiteKey(result.file, sourceHash, callSite),
         filePath: result.file,

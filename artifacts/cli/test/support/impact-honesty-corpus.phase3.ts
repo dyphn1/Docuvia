@@ -602,11 +602,41 @@ async function readText(path: string): Promise<string> {
   return existsSync(path) ? readFile(path, "utf8") : "";
 }
 
+function parseJsonLogLine(line: string): Record<string, unknown> | undefined {
+  try {
+    const parsed: unknown = JSON.parse(line);
+    return parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function eventNames(logText: string): string[] {
   return logText
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
-    .map((line) => String((JSON.parse(line) as { event?: unknown }).event));
+    .flatMap((line) => {
+      const parsed = parseJsonLogLine(line);
+      return parsed ? [String(parsed.event)] : [];
+    });
+}
+
+export function parseAnalyzeDeltaSummary(
+  logText: string,
+): Record<string, unknown> | undefined {
+  return logText
+    .split(/\r?\n/u)
+    .filter((line) => line.trim().length > 0)
+    .map(parseJsonLogLine)
+    .filter(
+      (line): line is Record<string, unknown> =>
+        line?.event === "analyze.delta.summary",
+    )
+    .at(-1);
 }
 
 /** Real `docuvia analyze`, capturing exit code and the analyze log events this run appended. */
@@ -618,7 +648,21 @@ export async function runAnalyze(
   const before = (await readText(logPath)).length;
   const run = await sandbox.runDistCli(["analyze"], { reject: false });
   const appended = (await readText(logPath)).slice(before);
-  return { label, exitCode: run.exitCode ?? 1, events: eventNames(appended) };
+  const deltaSummary = parseAnalyzeDeltaSummary(appended);
+  return {
+    label,
+    exitCode: run.exitCode ?? 1,
+    events: eventNames(appended),
+    ...(typeof deltaSummary?.strictProofReproofStatus === "string"
+      ? { strictProofReproofStatus: deltaSummary.strictProofReproofStatus }
+      : {}),
+    ...(typeof deltaSummary?.strictProofReproofFallbackReason === "string"
+      ? {
+          strictProofReproofFallbackReason:
+            deltaSummary.strictProofReproofFallbackReason,
+        }
+      : {}),
+  };
 }
 
 /** Concurrent-writer artifact (a filesystem lock file, not a DB edit). */

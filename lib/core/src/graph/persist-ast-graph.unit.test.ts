@@ -348,6 +348,10 @@ describe("GraphPersisterService.persist()", () => {
       callResolution: undefined,
       callResolutionByFile: {},
       strictCallProofExclusions: [],
+      strictCallProofIndex: {
+        complete: false,
+        fallbackReason: "proof-index-provider-unavailable",
+      },
     });
 
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");

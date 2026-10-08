@@ -165,6 +165,11 @@ export type {
   CallResolutionHypothesisWorkspaceInput,
   ICallResolutionHypothesisService,
 } from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export type {
+  CallResolutionFunctionNodeReference,
+  PersistedCallResolutionSourceFile,
+  CallResolutionSourceIndexRead,
+} from "./interfaces/call-resolution-source-index.interfaces.js";
 export {
   CALL_RESOLUTION_CANDIDATE_GENERATOR_VERSION,
   CALL_RESOLUTION_Q1_NAMED_IMPORT_RULE_SIGNATURE,
@@ -179,6 +184,7 @@ export {
   CALL_RESOLUTION_RANKING_POLICY_VERSION,
   CALL_RESOLUTION_HYPOTHESIS_SCHEMA_VERSION,
 } from "./interfaces/call-resolution-hypothesis.interfaces.js";
+export { CALL_RESOLUTION_SOURCE_INDEX_SCHEMA_VERSION } from "./interfaces/call-resolution-source-index.interfaces.js";
 export type {
   ProjectRow,
   ProjectFileRow,
@@ -213,6 +219,7 @@ export type {
   CallSiteResolutionObservationSource,
   CallSiteResolutionCandidate,
   CallSiteResolutionDependency,
+  CallSiteResolutionDependencyKind,
   CallSiteResolutionInvalidationResult,
   CallSiteResolutionRecord,
   SnapshotCallResolutionRow,
@@ -242,6 +249,7 @@ export {
   CallSiteResolutionClasses,
   CallSiteVerificationStatuses,
   CallSiteResolutionObservationSources,
+  CallSiteResolutionDependencyKinds,
   CallSiteRuleQuarantineReasons,
   CALL_SITE_VERIFICATION_POLICY_VERSION,
 } from "./interfaces/graph-store.interfaces.js";

@@ -1420,6 +1420,58 @@ export function createIndexedWorkspace(
   });
 }
 
+/** Returns candidate-key signatures per source without including source positions or bodies. */
+export function candidateMemberDomainSignaturesByFile(
+  sourceFiles: readonly CallResolutionHypothesisWorkspaceInput["sourceFiles"][number][],
+): Map<string, Map<string, string>> {
+  const result = new Map<string, Map<string, string>>();
+  for (const sourceFile of sourceFiles) {
+    const workspace = createIndexedWorkspace(
+      {
+        sourceFingerprint: hash({
+          candidateMemberDomain: sourceFile.filePath,
+        }),
+        sourceIndexComplete: true,
+        sourceFiles: [sourceFile],
+      },
+      "candidate-member-domain",
+    );
+    const signatures = new Map<string, string>();
+    for (const [memberName, candidates] of workspace.candidatesByMember) {
+      const candidateSignatures = candidates
+        .map((candidate) =>
+          JSON.stringify({
+            ownerKind: candidate.owner.kind,
+            ownerName: candidate.owner.name ?? null,
+            memberName: candidate.memberName,
+            isStatic: candidate.isStatic,
+            sourceLanguage: candidate.sourceLanguage,
+            inventoryComplete: candidate.inventoryComplete,
+            declarations: candidate.declarations
+              .map((declaration) => ({
+                kind: declaration.kind,
+                visibility: declaration.visibility,
+                isStatic: declaration.isStatic,
+                isAbstract: declaration.isAbstract,
+                isOptional: declaration.isOptional,
+                arity: declaration.arity,
+                genericTypeParameterNames:
+                  declaration.genericTypeParameterNames,
+                unsupportedReason: declaration.unsupportedReason ?? null,
+              }))
+              .sort((left, right) =>
+                JSON.stringify(left).localeCompare(JSON.stringify(right)),
+              ),
+          }),
+        )
+        .sort((left, right) => left.localeCompare(right));
+      signatures.set(memberName, JSON.stringify(candidateSignatures));
+    }
+    result.set(sourceFile.filePath, signatures);
+  }
+  return result;
+}
+
 export function getReceiverTypeFact(
   workspace: IndexedWorkspace,
   request: CallResolutionHypothesisRequest,

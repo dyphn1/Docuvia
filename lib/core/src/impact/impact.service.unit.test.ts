@@ -178,6 +178,33 @@ describe("ImpactService", () => {
   });
 
   describe("getBlastRadius()", () => {
+    it("[performance] avoids loading every project resolution for a call edge", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "target",
+        pathPatterns: ["src/target.ts"],
+      });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/caller.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.CALLS,
+      });
+      const getAllForProject = vi.spyOn(
+        store.callSiteResolutions!,
+        "getAllForProject",
+      );
+
+      expect(impactService.getBlastRadius(store, "target")).toEqual([
+        { name: "caller", type: "module" },
+      ]);
+      expect(getAllForProject).not.toHaveBeenCalled();
+    });
+
     it("returns undefined when the target does not resolve to any node", () => {
       const result = impactService.getBlastRadius(store, "nope");
       expect(result).toBeUndefined();
@@ -202,6 +229,36 @@ describe("ImpactService", () => {
 
       const result = impactService.getBlastRadius(store, "sharedUtil");
       expect(result).toEqual([{ name: "caller", type: "module" }]);
+    });
+
+    it("orders blast-radius entries stably instead of by SQLite row id", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "stableTarget",
+        pathPatterns: ["src/target.ts"],
+      });
+      const laterCallerId = store.graph.insertNode({
+        projectId,
+        name: "zCaller",
+        pathPatterns: ["src/z.ts"],
+      });
+      const earlierCallerId = store.graph.insertNode({
+        projectId,
+        name: "aCaller",
+        pathPatterns: ["src/a.ts"],
+      });
+      for (const sourceNodeId of [laterCallerId, earlierCallerId])
+        store.graph.insertLink({
+          sourceNodeId,
+          targetNodeId: targetId,
+          linkType: LinkTypes.CALLS,
+        });
+
+      expect(
+        impactService
+          .getBlastRadius(store, "stableTarget")
+          ?.map(({ name }) => name),
+      ).toEqual(["aCaller", "zCaller"]);
     });
 
     it("[happy][state-diff] expands exact callback callers to their enclosing function, callers, and files", () => {

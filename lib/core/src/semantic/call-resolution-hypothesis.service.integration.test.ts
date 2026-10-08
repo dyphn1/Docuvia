@@ -2063,6 +2063,7 @@ describe("call-resolution hypothesis service", () => {
       targetFilePath: "src/caller.ts",
       targetName: "close",
       targetOwnerName: "Logger",
+      consultedCandidateMemberNames: ["close"],
       dependencies: [
         { filePath: "src/caller.ts", contentHash: sourceContentHash },
       ],
@@ -2147,9 +2148,14 @@ describe("call-resolution hypothesis service", () => {
         },
       );
       if (scenario.expected.status === "abstained") {
-        expect(result.strictProof, scenario.name).toEqual(
-          abstainedForUnresolvedType,
-        );
+        const expectedStrictProof =
+          scenario.name === "import alias across a re-export"
+            ? {
+                ...abstainedForUnresolvedType,
+                consultedCandidateMemberNames: ["close"],
+              }
+            : abstainedForUnresolvedType;
+        expect(result.strictProof, scenario.name).toEqual(expectedStrictProof);
         continue;
       }
       const proof = result.strictProof;

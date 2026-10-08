@@ -87,6 +87,7 @@ function makeMockStore(): IGraphStore {
 function makeMockGitProvider(headSha: string | undefined): IGitProvider {
   return {
     getHeadSha: vi.fn().mockResolvedValue(headSha),
+    hasUncommittedChanges: vi.fn().mockResolvedValue(false),
   } as unknown as IGitProvider;
 }
 
@@ -113,6 +114,24 @@ describe("stampFullIngestionForTierB()", () => {
 
     expect(store.meta.set).toHaveBeenCalledWith(
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      "cafebabecafebabecafebabecafebabecafebabe",
+    );
+  });
+
+  it("stamps a clean HEAD even when some source facts are unavailable", async () => {
+    const store = makeMockStore();
+    const git = makeMockGitProvider("cafebabecafebabecafebabecafebabecafebabe");
+
+    await stampFullIngestionForTierB({
+      store,
+      git,
+      workspaceRoot: "/workspace",
+      parsedResults,
+      sourceIndexComplete: false,
+    });
+
+    expect(store.meta.set).toHaveBeenCalledWith(
+      GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
       "cafebabecafebabecafebabecafebabecafebabe",
     );
   });

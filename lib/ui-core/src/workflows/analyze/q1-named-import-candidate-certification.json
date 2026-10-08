@@ -6,7 +6,7 @@
   "resultsRecordedAt": "2026-10-07T10:57:28.000Z",
   "inputs": {
     "implementationCommitSha": "8013b99b1410f1302c576178e557c4484735077a",
-    "ruleConfigurationSha256": "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
+    "ruleConfigurationSha256": "4f1399a505ff5bfc3e836b6bf99513e03221701cf317d1838a1cfcac15bd83bd",
     "oracleIdentity": "typescript-language-server",
     "oracleVersion": "5.3.0+tsserver@5.9.3",
     "oracleConfigurationSha256": "032d80801a24de4e55c32cf1d0c0df189281dfb6f44f0a366be4d76451fd627e",

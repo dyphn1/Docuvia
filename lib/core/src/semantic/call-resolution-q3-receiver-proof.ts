@@ -31,6 +31,7 @@ const SIMPLE_TYPE_NAME = /^[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}]*$/u;
 interface ProofContext {
   readonly workspace: IndexedWorkspace;
   readonly dependencies: Map<string, string>;
+  readonly consultedCandidateMemberNames: Set<string>;
 }
 
 interface ClassReference {
@@ -38,6 +39,10 @@ interface ClassReference {
   readonly name: string;
   readonly owner: AstDeclaredTypeOwner;
   readonly scopeSpan: { readonly start: number; readonly end: number };
+}
+
+function sortedConsultedCandidateMemberNames(context: ProofContext): string[] {
+  return [...context.consultedCandidateMemberNames].sort();
 }
 
 interface SourceBoundClassFact {
@@ -699,6 +704,7 @@ function candidateForMemberDeclaration(
   declaration: AstDeclaredDeclaration,
   context: ProofContext,
 ): Pick<CallResolutionHypothesisCandidate, "targetKey"> | null {
+  context.consultedCandidateMemberNames.add(memberName);
   const candidates = (
     context.workspace.candidatesByMember.get(memberName) ?? []
   ).filter(
@@ -811,6 +817,7 @@ function proven(
     targetName: memberName,
     targetOwnerName: classRef.name,
     dependencies: dependencyRows(context.dependencies),
+    consultedCandidateMemberNames: sortedConsultedCandidateMemberNames(context),
   } as CallResolutionStrictProof;
 }
 
@@ -1044,24 +1051,34 @@ export function proveUniqueQ3Receiver(
   const context: ProofContext = {
     workspace,
     dependencies: new Map(),
+    consultedCandidateMemberNames: new Set(),
   };
   const caller = sourceFor(request.callerFilePath, context);
   if (!caller) return abstain("source-snapshot-unbound");
 
-  if (receiverKind === "super")
-    return proveSuperCall(request, workspace, context);
-  if (receiverKind === "this-inherited")
-    return proveInheritedThis(request, workspace, context);
-  if (receiverKind === "typed")
-    return proveTypedReceiver(request, workspace, context);
+  let proof: CallResolutionStrictProof;
+  if (receiverKind === "super") {
+    proof = proveSuperCall(request, workspace, context);
+  } else if (receiverKind === "this-inherited") {
+    proof = proveInheritedThis(request, workspace, context);
+  } else if (receiverKind === "typed") {
+    proof = proveTypedReceiver(request, workspace, context);
+  } else {
+    const receiverTypeName = newReceiverTypeName(request, context);
+    proof = receiverTypeName
+      ? proveTypedOrNewReceiver(
+          request,
+          context,
+          receiverTypeName,
+          CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
+          "unique-new-receiver-member",
+        )
+      : abstain("unresolved-type-binding");
+  }
 
-  const receiverTypeName = newReceiverTypeName(request, context);
-  if (!receiverTypeName) return abstain("unresolved-type-binding");
-  return proveTypedOrNewReceiver(
-    request,
-    context,
-    receiverTypeName,
-    CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
-    "unique-new-receiver-member",
-  );
+  const consultedCandidateMemberNames =
+    sortedConsultedCandidateMemberNames(context);
+  return consultedCandidateMemberNames.length > 0
+    ? { ...proof, consultedCandidateMemberNames }
+    : proof;
 }

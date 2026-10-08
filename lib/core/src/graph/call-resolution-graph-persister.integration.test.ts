@@ -191,6 +191,17 @@ describe("GraphPersister call-resolution integration", () => {
     ).toEqual([]);
   });
 
+  it("[regression][caller-local] omits unresolved-call-binding abstentions from persisted rows", async () => {
+    const { projectId, filePath } = await persistSource(
+      "export function caller(): void { unresolvedCall(); }\n",
+    );
+    if (!store) throw new Error("GraphStore was not initialized");
+
+    expect(store.callSiteResolutions?.getForFile(projectId, filePath)).toEqual(
+      [],
+    );
+  });
+
   it("[regression][exact-v1] does not persist v2 lexical links", async () => {
     const { projectId } = await persistSourceWithPolicy(
       callbackOwnerSource,
@@ -309,6 +320,11 @@ describe("GraphPersister call-resolution integration", () => {
       isStale: false,
     });
     expect(resolution?.candidates).toHaveLength(1);
+    expect(resolution?.dependencies).toContainEqual({
+      kind: "candidate-member",
+      filePath: "close",
+      contentHash: null,
+    });
 
     expect(projectedCallKeys()).toContainEqual({
       source: `${filePath}#Service.call`,
@@ -390,6 +406,7 @@ describe("GraphPersister call-resolution integration", () => {
       calleeName: callSite.calleeName,
     });
     const dependencies = [
+      { kind: "candidate-member", filePath: "shutdown", contentHash: null },
       { filePath: "src/caller.ts", contentHash: caller.hash },
       {
         filePath: "src/implementation.ts",
@@ -513,6 +530,7 @@ describe("GraphPersister call-resolution integration", () => {
       calleeName: callSite.calleeName,
     });
     const dependencies = [
+      { kind: "candidate-member", filePath: "work", contentHash: null },
       {
         filePath: "src/barrel.ts",
         contentHash: createHash("sha256")
@@ -864,9 +882,30 @@ describe("GraphPersister call-resolution integration", () => {
     ].join("\n");
     const { filePath, projectId } = await persistSource(code);
 
-    expect(store?.callSiteResolutions?.getForFile(projectId, filePath)).toEqual(
-      [],
-    );
+    expect(
+      store?.callSiteResolutions
+        ?.getForFile(projectId, filePath)
+        .map(({ resolutionClass, ruleSignature, dependencies }) => ({
+          resolutionClass,
+          ruleSignature,
+          dependencies: dependencies.map(
+            ({ kind, filePath: dependencyPath }) => ({
+              kind: kind ?? "file",
+              filePath: dependencyPath,
+            }),
+          ),
+        })),
+    ).toEqual([
+      {
+        resolutionClass: "unresolved",
+        ruleSignature:
+          "strict-proof-candidate-domain:ambiguous-owner-declaration",
+        dependencies: [
+          { kind: "candidate-member", filePath: "close" },
+          { kind: "file", filePath },
+        ],
+      },
+    ]);
     expect(projectedCallKeys()).toContainEqual({
       source: `${filePath}#Service.call`,
       target: `${filePath}#Service.close`,
@@ -896,10 +935,13 @@ describe("GraphPersister call-resolution integration", () => {
           ruleSignature,
           selectedTargetNodeKey,
           callerNodeKey,
-          dependencies: dependencies.map(({ filePath: dependencyPath }) => ({
-            filePath: dependencyPath,
-            contentHash: sourceContentHash,
-          })),
+          dependencies: dependencies.map(
+            ({ kind, filePath: dependencyPath, contentHash }) => ({
+              ...(kind ? { kind } : {}),
+              filePath: dependencyPath,
+              contentHash,
+            }),
+          ),
         }),
       ),
     ).toEqual([
@@ -908,7 +950,14 @@ describe("GraphPersister call-resolution integration", () => {
         ruleSignature: "q3:typed-receiver:v1",
         selectedTargetNodeKey: `${filePath}#Service.close`,
         callerNodeKey: filePath,
-        dependencies: [{ filePath, contentHash: sourceContentHash }],
+        dependencies: [
+          {
+            kind: "candidate-member",
+            filePath: "close",
+            contentHash: null,
+          },
+          { filePath, contentHash: sourceContentHash },
+        ],
       },
     ]);
     expect(projectedCallKeys()).toContainEqual({
@@ -924,9 +973,20 @@ describe("GraphPersister call-resolution integration", () => {
     ].join("\n");
     const { filePath, projectId } = await persistSource(code);
 
-    expect(store?.callSiteResolutions?.getForFile(projectId, filePath)).toEqual(
-      [],
-    );
+    expect(
+      store?.callSiteResolutions
+        ?.getForFile(projectId, filePath)
+        .map(({ resolutionClass, ruleSignature, dependencies }) => ({
+          resolutionClass,
+          ruleSignature,
+          dependencies: dependencies.map(
+            ({ kind, filePath: dependencyPath }) => ({
+              kind: kind ?? "file",
+              filePath: dependencyPath,
+            }),
+          ),
+        })),
+    ).toEqual([]);
     expect(projectedCallKeys()).toContainEqual({
       source: filePath,
       target: `${filePath}#Client.close`,

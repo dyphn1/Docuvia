@@ -31,6 +31,7 @@ import {
   getReceiverTypeFact,
   hashFeatureInput,
   canSearchWorkspaceExportsForImportSpecifier,
+  candidateMemberDomainSignaturesByFile,
   isWorkspaceBoundSourcePath,
   resolveDirectConfiguredImportPath,
   resolveDirectRelativeImportPath,
@@ -174,6 +175,8 @@ function strictProofForCandidates(
       targetKey: null,
       ruleSignature: null,
       reason: "unresolved-type-binding" as const,
+      consultedCandidateMemberNames:
+        thisMemberProof.consultedCandidateMemberNames ?? [],
     };
   return thisMemberProof;
 }
@@ -347,6 +350,12 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
   constructor(options: CallResolutionHypothesisServiceOptions = {}) {
     this.options = normalizeServiceOptions(options);
     this.configurationHash = createConfigurationHash(this.options);
+  }
+
+  candidateMemberDomainSignaturesByFile(
+    sourceFiles: readonly CallResolutionHypothesisWorkspaceInput["sourceFiles"][number][],
+  ): Map<string, Map<string, string>> {
+    return candidateMemberDomainSignaturesByFile(sourceFiles);
   }
 
   indexWorkspace(

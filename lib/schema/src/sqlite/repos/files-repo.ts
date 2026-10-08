@@ -1,8 +1,15 @@
 import type Database from "better-sqlite3";
 import type {
+  CallResolutionFunctionNodeReference,
+  CallResolutionHypothesisSourceFile,
+  CallResolutionSourceIndexRead,
   IProjectFilesRepo,
   ProjectFileRow,
   ProjectFileSnapshotMetadata,
+} from "@workspace/contracts";
+import {
+  CALL_RESOLUTION_SOURCE_INDEX_SCHEMA_VERSION,
+  type PersistedCallResolutionSourceFile,
 } from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
 
@@ -57,15 +64,94 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
     projectId: number;
     filePath: string;
     contentHash: string | null;
+    sourceIndexFile?: CallResolutionHypothesisSourceFile;
+    sourceIndexFunctionNodeReferences?: readonly CallResolutionFunctionNodeReference[];
+    sourceIndexResolverLocalSymbols?: readonly string[];
   }): void {
+    const sourceIndexJson = input.sourceIndexFile
+      ? JSON.stringify({
+          schemaVersion: CALL_RESOLUTION_SOURCE_INDEX_SCHEMA_VERSION,
+          sourceFile: input.sourceIndexFile,
+          functionNodeReferences:
+            input.sourceIndexFunctionNodeReferences ?? null,
+          resolverLocalSymbols: input.sourceIndexResolverLocalSymbols ?? null,
+        } satisfies Omit<
+          PersistedCallResolutionSourceFile,
+          "functionNodeReferences" | "resolverLocalSymbols"
+        > & {
+          functionNodeReferences:
+            readonly CallResolutionFunctionNodeReference[] | null;
+          resolverLocalSymbols: readonly string[] | null;
+        })
+      : null;
     this.db
       .prepare(
-        `INSERT INTO ${SchemaTables.PROJECT_FILES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.CONTENT_HASH}, last_parsed_at)
-         VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        `INSERT INTO ${SchemaTables.PROJECT_FILES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.CONTENT_HASH}, last_parsed_at, ${SchemaColumns.SOURCE_INDEX_JSON})
+         VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)
          ON CONFLICT(${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH})
-         DO UPDATE SET ${SchemaColumns.CONTENT_HASH} = excluded.${SchemaColumns.CONTENT_HASH}, last_parsed_at = CURRENT_TIMESTAMP`,
+         DO UPDATE SET ${SchemaColumns.CONTENT_HASH} = excluded.${SchemaColumns.CONTENT_HASH}, last_parsed_at = CURRENT_TIMESTAMP,
+           ${SchemaColumns.SOURCE_INDEX_JSON} = COALESCE(excluded.${SchemaColumns.SOURCE_INDEX_JSON}, ${SchemaTables.PROJECT_FILES}.${SchemaColumns.SOURCE_INDEX_JSON})`,
       )
-      .run(input.projectId, input.filePath, input.contentHash);
+      .run(input.projectId, input.filePath, input.contentHash, sourceIndexJson);
+  }
+
+  clearCallResolutionSourceFiles(projectId: number): void {
+    this.db
+      .prepare(
+        `UPDATE ${SchemaTables.PROJECT_FILES} SET ${SchemaColumns.SOURCE_INDEX_JSON} = NULL WHERE ${SchemaColumns.PROJECT_ID} = ?`,
+      )
+      .run(projectId);
+  }
+
+  getCallResolutionSourceFiles(
+    projectId: number,
+  ): CallResolutionSourceIndexRead {
+    const rows = this.db
+      .prepare(
+        `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.SOURCE_INDEX_JSON} FROM ${SchemaTables.PROJECT_FILES} WHERE ${SchemaColumns.PROJECT_ID} = ? ORDER BY ${SchemaColumns.FILE_PATH}`,
+      )
+      .all(projectId) as Pick<
+      ProjectFileRow,
+      "file_path" | "source_index_json"
+    >[];
+    const sourceFiles: CallResolutionHypothesisSourceFile[] = [];
+    const functionNodeReferencesByFile: {
+      filePath: string;
+      functionNodeReferences: readonly CallResolutionFunctionNodeReference[];
+    }[] = [];
+    const resolverLocalSymbolsByFile: {
+      filePath: string;
+      localSymbols: readonly string[];
+    }[] = [];
+    const incompleteFilePaths: string[] = [];
+
+    for (const row of rows) {
+      const persistedSourceFile = parsePersistedSourceFile(
+        row.file_path,
+        row.source_index_json,
+      );
+      if (!persistedSourceFile) {
+        incompleteFilePaths.push(row.file_path);
+        continue;
+      }
+      sourceFiles.push(persistedSourceFile.sourceFile);
+      functionNodeReferencesByFile.push({
+        filePath: row.file_path,
+        functionNodeReferences: persistedSourceFile.functionNodeReferences,
+      });
+      resolverLocalSymbolsByFile.push({
+        filePath: row.file_path,
+        localSymbols: persistedSourceFile.resolverLocalSymbols,
+      });
+    }
+
+    return {
+      sourceFiles,
+      functionNodeReferencesByFile,
+      resolverLocalSymbolsByFile,
+      complete: incompleteFilePaths.length === 0,
+      incompleteFilePaths,
+    };
   }
 
   /** Removes one path's row (see `IProjectFilesRepo.deleteFile`, #508 D6/D11). */
@@ -143,4 +229,127 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
       .get() as { total: number; processed: number | null };
     return { totalFiles: row.total, processedFiles: row.processed ?? 0 };
   }
+}
+
+function parsePersistedSourceFile(
+  filePath: string,
+  json: string | null,
+): PersistedCallResolutionSourceFile | undefined {
+  if (!json) return undefined;
+
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined;
+    throw error;
+  }
+
+  return isPersistedSourceFile(value, filePath) ? value : undefined;
+}
+
+function isPersistedSourceFile(
+  value: unknown,
+  filePath: string,
+): value is PersistedCallResolutionSourceFile {
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== CALL_RESOLUTION_SOURCE_INDEX_SCHEMA_VERSION
+  )
+    return false;
+  const sourceFile = value.sourceFile;
+  return (
+    isRecord(sourceFile) &&
+    hasSourceFileIdentity(sourceFile, filePath) &&
+    hasSourceFileFacts(sourceFile) &&
+    hasFunctionNodeReferences(value.functionNodeReferences) &&
+    hasResolverLocalSymbols(value.resolverLocalSymbols)
+  );
+}
+
+function hasFunctionNodeReferences(
+  value: unknown,
+): value is readonly CallResolutionFunctionNodeReference[] {
+  return Array.isArray(value) && value.every(isFunctionNodeReference);
+}
+
+function hasResolverLocalSymbols(value: unknown): value is readonly string[] {
+  return (
+    Array.isArray(value) && value.every((symbol) => typeof symbol === "string")
+  );
+}
+
+function isFunctionNodeReference(
+  value: unknown,
+): value is CallResolutionFunctionNodeReference {
+  if (!isRecord(value)) return false;
+  return (
+    hasFunctionNodeIdentity(value) &&
+    hasFunctionNodeLocation(value) &&
+    hasFunctionNodeTargets(value)
+  );
+}
+
+function hasFunctionNodeIdentity(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.nodeKey === "string" &&
+    typeof value.name === "string" &&
+    (value.containerName === undefined ||
+      typeof value.containerName === "string")
+  );
+}
+
+function hasFunctionNodeLocation(value: Record<string, unknown>): boolean {
+  return (
+    Number.isSafeInteger(value.startLine) &&
+    Number.isSafeInteger(value.endLine) &&
+    (value.declarationSpan === undefined ||
+      isValidDeclarationSpan(value.declarationSpan))
+  );
+}
+
+function hasFunctionNodeTargets(value: Record<string, unknown>): boolean {
+  return (
+    Array.isArray(value.declarationTargetKeys) &&
+    value.declarationTargetKeys.every((key: unknown) => typeof key === "string")
+  );
+}
+
+function isValidDeclarationSpan(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Number.isSafeInteger(value.start) &&
+    Number.isSafeInteger(value.end) &&
+    Number(value.start) <= Number(value.end)
+  );
+}
+
+function hasSourceFileIdentity(
+  sourceFile: Record<string, unknown>,
+  filePath: string,
+): boolean {
+  return (
+    sourceFile.filePath === filePath &&
+    typeof sourceFile.sourceContentHash === "string" &&
+    /^[a-f0-9]{64}$/u.test(sourceFile.sourceContentHash)
+  );
+}
+
+function hasSourceFileFacts(sourceFile: Record<string, unknown>): boolean {
+  return (
+    Array.isArray(sourceFile.imports) &&
+    Array.isArray(sourceFile.exports) &&
+    (sourceFile.reexports === undefined ||
+      Array.isArray(sourceFile.reexports)) &&
+    "declaredTypeFacts" in sourceFile &&
+    (sourceFile.declaredTypeFacts === null ||
+      isRecord(sourceFile.declaredTypeFacts)) &&
+    "callSiteShapeFacts" in sourceFile &&
+    (sourceFile.callSiteShapeFacts === null ||
+      isRecord(sourceFile.callSiteShapeFacts))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

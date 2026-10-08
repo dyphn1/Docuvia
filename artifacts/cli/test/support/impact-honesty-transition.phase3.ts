@@ -216,6 +216,8 @@ export interface Phase3OperationResult {
   readonly exitCode: number;
   /** Analyze log event names appended by this operation, in order. */
   readonly events: readonly string[];
+  readonly strictProofReproofStatus?: string;
+  readonly strictProofReproofFallbackReason?: string;
 }
 
 export interface Phase3StoreCounts {
@@ -1276,6 +1278,89 @@ function stdoutByTarget(
   );
 }
 
+function differingJsonFields(observed: string, expected: string): string[] {
+  try {
+    const observedValue = JSON.parse(observed) as unknown;
+    const expectedValue = JSON.parse(expected) as unknown;
+    if (
+      observedValue === null ||
+      expectedValue === null ||
+      typeof observedValue !== "object" ||
+      typeof expectedValue !== "object" ||
+      Array.isArray(observedValue) ||
+      Array.isArray(expectedValue)
+    )
+      return ["<top-level-value>"];
+    const left = observedValue as Record<string, unknown>;
+    const right = expectedValue as Record<string, unknown>;
+    return sortedUnique([...Object.keys(left), ...Object.keys(right)])
+      .filter((key) => JSON.stringify(left[key]) !== JSON.stringify(right[key]))
+      .flatMap((key) =>
+        key === "blastRadius"
+          ? blastRadiusDifference(left[key], right[key])
+          : [key],
+      );
+  } catch {
+    return ["<raw-json>"];
+  }
+}
+
+function blastRadiusDifference(observed: unknown, expected: unknown): string[] {
+  if (!Array.isArray(observed) || !Array.isArray(expected))
+    return ["blastRadius shape"];
+  const observedByName = new Map(observed.map(blastRadiusEntry));
+  const expectedByName = new Map(expected.map(blastRadiusEntry));
+  const observedOrder = observed.map(
+    (entry, index) => blastRadiusEntry(entry, index)[0],
+  );
+  const expectedOrder = expected.map(
+    (entry, index) => blastRadiusEntry(entry, index)[0],
+  );
+  const names = sortedUnique([
+    ...observedByName.keys(),
+    ...expectedByName.keys(),
+  ]);
+  const differences = names
+    .filter(
+      (name) =>
+        JSON.stringify(observedByName.get(name)) !==
+        JSON.stringify(expectedByName.get(name)),
+    )
+    .slice(0, 8)
+    .map((name) => {
+      const left = observedByName.get(name);
+      const right = expectedByName.get(name);
+      if (!left) return `blastRadius +${name}`;
+      if (!right) return `blastRadius -${name}`;
+      const fields = sortedUnique([
+        ...Object.keys(left),
+        ...Object.keys(right),
+      ]).filter(
+        (key) => JSON.stringify(left[key]) !== JSON.stringify(right[key]),
+      );
+      return `blastRadius ${name}(${fields.join(",")})`;
+    });
+  if (
+    differences.length === 0 &&
+    observedOrder.join("\u0000") !== expectedOrder.join("\u0000")
+  )
+    differences.push(
+      `blastRadius order (${observedOrder.join(",")}) vs (${expectedOrder.join(",")})`,
+    );
+  return differences;
+}
+
+function blastRadiusEntry(
+  value: unknown,
+  index: number,
+): [string, Record<string, unknown>] {
+  const entry =
+    value !== null && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : { value };
+  return [String(entry.name ?? entry.filePath ?? entry.path ?? index), entry];
+}
+
 function accumulationProblem(
   result: Phase3CheckpointResult,
   reference: Phase3CheckpointResult,
@@ -1295,9 +1380,12 @@ function accumulationProblem(
   const differing = Object.keys(observed).filter(
     (target) => observed[target] !== expected[target],
   );
-  return differing.length > 0
-    ? `stdout differs for ${differing.join(", ")}`
-    : null;
+  if (differing.length === 0) return null;
+  const fields = differing.map((target) => {
+    const changed = differingJsonFields(observed[target], expected[target]);
+    return `${target} fields ${changed.join(",")}`;
+  });
+  return `stdout differs for ${fields.join("; ")}`;
 }
 
 function gateAccumulation(evaluation: Phase3Evaluation): Phase3GateViolation[] {

@@ -9,6 +9,7 @@ import {
   PHASE3_ANALYZE_EVENTS,
   PHASE3_CHECKPOINTS,
   PHASE3_FILES,
+  PHASE3_R1_STEPS,
   PHASE3_TARGETS,
   runPhase3Corpus,
   type Phase3CorpusRun,
@@ -219,6 +220,15 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     );
   });
 
+  it("[state-diff] every R1 accumulation gate keeps I1@after as its reference", () => {
+    expect(
+      PHASE3_CHECKPOINTS.filter(
+        (checkpoint) =>
+          checkpoint.id.startsWith("R1") && checkpoint.id.endsWith("@after"),
+      ).map((checkpoint) => checkpoint.accumulationReference),
+    ).toEqual(Array.from({ length: PHASE3_R1_STEPS.length }, () => "I1@after"));
+  });
+
   it("[state-diff] deleted and renamed files leave no per-path rows or edges behind (T5, T6, T7) (#508 D11)", () => {
     expect(gatesFor(merged, ["T5@after", "T6@after", "T7@after"])).toEqual([]);
   });
@@ -278,6 +288,26 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
     expect(
       after?.ungatedOperations?.map((operation) => operation.label),
     ).toEqual(["I1-background"]);
+  });
+
+  it("[state-diff] clean F1 and I1 retries re-establish strict-proof completeness", () => {
+    const f1 = first.observations.find(
+      (observation) => observation.checkpointId === "F1@after",
+    );
+    const i1 = first.observations.find(
+      (observation) => observation.checkpointId === "I1@after",
+    );
+    const i1Background = i1?.ungatedOperations?.[0];
+    expect(f1?.operation).toMatchObject({
+      strictProofReproofStatus: "complete",
+    });
+    expect(i1Background).toMatchObject({
+      strictProofReproofStatus: "complete",
+    });
+    expect(f1?.operation).not.toHaveProperty(
+      "strictProofReproofFallbackReason",
+    );
+    expect(i1Background).not.toHaveProperty("strictProofReproofFallbackReason");
   });
 
   it("[error-handling] F1: a failed ingestion exits non-zero on the lock timeout and does not advance the graph sha", () => {

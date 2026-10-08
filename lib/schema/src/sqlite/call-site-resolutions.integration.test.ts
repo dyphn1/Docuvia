@@ -1398,6 +1398,188 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toEqual([]);
   });
 
+  it("[state-diff] invalidates only resolutions that consulted a changed candidate member", () => {
+    const caller = resolution(portableKey("candidate-member"), [], {
+      dependencies: [
+        {
+          kind: "candidate-member",
+          filePath: "greet",
+          contentHash: null,
+        },
+      ],
+    });
+    const unrelated = resolution(portableKey("other-member"), [], {
+      filePath: "src/other-caller.ts",
+      callerNodeKey: "src/other-caller.ts#caller",
+      dependencies: [
+        {
+          kind: "candidate-member",
+          filePath: "run",
+          contentHash: null,
+        },
+      ],
+    });
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      caller,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, "src/other-caller.ts", [
+      unrelated,
+    ]);
+
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts")[0]
+        ?.dependencies,
+    ).toContainEqual({
+      kind: "candidate-member",
+      filePath: "greet",
+      contentHash: null,
+    });
+    expect(
+      store.callSiteResolutions.hasMissingCandidateMemberDependencies(
+        projectId,
+      ),
+    ).toBe(false);
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        {
+          kind: "candidate-member",
+          filePath: "greet",
+          contentHash: null,
+        },
+      ]),
+    ).toEqual({ invalidatedCount: 1, affectedFilePaths: ["src/caller.ts"] });
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts")[0]
+        ?.isStale,
+    ).toBe(true);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/other-caller.ts")[0]
+        ?.isStale,
+    ).toBe(false);
+  });
+
+  it("[state-diff] reads an exact projection edge and stales candidate proofs when coverage is incomplete", () => {
+    const callerA = "src/caller.ts#callerA";
+    const callerB = "src/caller.ts#callerB";
+    const targetA = "src/target.ts#targetA";
+    const targetB = "src/target.ts#targetB";
+    const callerAId = store.graph.insertNode({
+      projectId,
+      name: "callerA",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerA,
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "callerB",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerB,
+    });
+    const targetAId = store.graph.insertNode({
+      projectId,
+      name: "targetA",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: targetA,
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "targetB",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: targetB,
+    });
+    const provenKey = portableKey("candidate-domain-proven");
+    const abstainedKey = portableKey("candidate-domain-abstained");
+    const localKey = portableKey("caller-local-abstention");
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      [
+        resolution(provenKey, [], {
+          callerNodeKey: callerA,
+          resolver: "strict-proof",
+          selectedTargetNodeKey: targetA,
+          dependencies: [
+            { kind: "candidate-member", filePath: "greet", contentHash: null },
+          ],
+        }),
+        resolution(abstainedKey, [], {
+          callerNodeKey: callerB,
+          resolver: "strict-proof",
+          resolutionClass: "unresolved",
+          selectedTargetNodeKey: null,
+          dependencies: [
+            { kind: "candidate-member", filePath: "greet", contentHash: null },
+          ],
+        }),
+        resolution(localKey, [], {
+          callerNodeKey: callerB,
+          resolver: "strict-proof",
+          resolutionClass: "unresolved",
+          selectedTargetNodeKey: null,
+          dependencies: [
+            { filePath: "src/caller.ts", contentHash: "d".repeat(64) },
+          ],
+        }),
+      ],
+      [{ callSiteKey: provenKey, callerNodeKey: callerA }],
+    );
+
+    expect(
+      store.callSiteResolutions
+        .getForProjectionEdge(projectId, callerA, targetA)
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([provenKey]);
+    expect(
+      store.callSiteResolutions.getForProjectionEdge(
+        projectId,
+        callerB,
+        targetB,
+      ),
+    ).toEqual([]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerAId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetAId, name: "targetA", type: "module", linkType: "calls" },
+    ]);
+
+    expect(
+      store.callSiteResolutions.invalidateCandidateDomainProofs(projectId),
+    ).toEqual({
+      invalidatedCount: 2,
+      affectedFilePaths: ["src/caller.ts"],
+    });
+    const expectedStaleStates = [
+      { callSiteKey: abstainedKey, isStale: true },
+      { callSiteKey: localKey, isStale: false },
+      { callSiteKey: provenKey, isStale: true },
+    ].sort((left, right) => left.callSiteKey.localeCompare(right.callSiteKey));
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ callSiteKey, isStale }) => ({ callSiteKey, isStale })),
+    ).toEqual(expectedStaleStates);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerAId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
+  it("[legacy] detects strict-proof rows without candidate-member dependencies", () => {
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(portableKey("legacy-candidate-index"), [], {
+        resolver: "strict-proof",
+      }),
+    ]);
+    expect(
+      store.callSiteResolutions.hasMissingCandidateMemberDependencies(
+        projectId,
+      ),
+    ).toBe(true);
+  });
+
   it("[error-handling][state-diff] rolls back invalidation when projection rebuilding fails", () => {
     const callerId = store.graph.insertNode({
       projectId,

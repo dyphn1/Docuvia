@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import {
   CallSiteResolutionClasses,
+  CallSiteResolutionDependencyKinds,
   CallSiteResolutionObservationSources,
   CallSiteRuleQuarantineReasons,
   CallSiteVerificationStatuses,
@@ -139,6 +140,7 @@ interface QuarantineClearAuditDbRow {
 
 interface DependencyDbRow {
   call_site_key: string;
+  dependency_kind: "file" | "candidate-member";
   dependency_path: string;
   content_hash: string | null;
 }
@@ -246,8 +248,8 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           );
           const insertDependency = this.db.prepare(
             `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} (
-              project_id, call_site_key, dependency_path, content_hash
-            ) VALUES (?, ?, ?, ?)`,
+              project_id, call_site_key, dependency_kind, dependency_path, content_hash
+            ) VALUES (?, ?, ?, ?, ?)`,
           );
 
           for (const resolution of resolutions) {
@@ -298,6 +300,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
               insertDependency.run(
                 projectId,
                 currentResolution.callSiteKey,
+                dependency.kind ?? CallSiteResolutionDependencyKinds.FILE,
                 dependency.filePath,
                 dependency.contentHash,
               );
@@ -379,70 +382,80 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
         )
         .all(projectId, filePath) as ResolutionDbRow[];
 
-      const result: CallSiteResolutionRecord[] = [];
-      let current: CallSiteResolutionRecord | undefined;
-      for (const row of rows) {
-        if (!current || current.callSiteKey !== row.call_site_key) {
-          current = {
-            callSiteKey: row.call_site_key,
-            identityVersion: row.identity_version,
-            filePath: row.file_path,
-            sourceContentHash: row.source_content_hash,
-            startLine: row.start_line,
-            startColumn: row.start_column,
-            calleeKind: row.callee_kind,
-            calleeName: row.callee_name,
-            callerNodeKey: row.caller_node_key,
-            resolutionClass: row.resolution_class,
-            selectedTargetNodeKey: row.selected_target_node_key,
-            confidence: row.confidence,
-            resolver: row.resolver,
-            ruleSignature: row.rule_signature,
-            dependencyFingerprint: row.dependency_fingerprint,
-            verificationStatus: row.verification_status,
-            verifiedTargetNodeKey: row.verified_target_node_key,
-            isStale: row.is_stale === 1,
-            dependencies: [],
-            candidates: [],
-          };
-          result.push(current);
-        }
-        if (
-          row.ordinal !== null &&
-          row.candidate_target_node_key !== null &&
-          row.evidence_json !== null
-        ) {
-          current.candidates.push({
-            ordinal: row.ordinal,
-            targetNodeKey: row.candidate_target_node_key,
-            evidenceJson: row.evidence_json,
-          });
-        }
-      }
+      const result = buildResolutionRecords(rows);
       const dependencyRows = this.db
         .prepare(
-          `SELECT d.call_site_key, d.dependency_path, d.content_hash
+          `SELECT d.call_site_key, d.dependency_kind, d.dependency_path, d.content_hash
            FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
            JOIN ${SchemaTables.CALL_SITE_RESOLUTIONS} r
              ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
            WHERE r.project_id = ? AND r.file_path = ?
-           ORDER BY d.call_site_key COLLATE BINARY, d.dependency_path COLLATE BINARY`,
+           ORDER BY d.call_site_key COLLATE BINARY, d.dependency_kind COLLATE BINARY,
+                    d.dependency_path COLLATE BINARY`,
         )
         .all(projectId, filePath) as DependencyDbRow[];
-      const byKey = new Map(
-        result.map((resolution) => [resolution.callSiteKey, resolution]),
-      );
-      for (const row of dependencyRows) {
-        byKey.get(row.call_site_key)?.dependencies.push({
-          filePath: row.dependency_path,
-          contentHash: row.content_hash,
-        });
-      }
+      appendResolutionDependencies(result, dependencyRows);
       return result;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         CALL_SITE_RESOLUTIONS_ERRORS.READ_FILE_FAILED(projectId, filePath),
+        err,
+      );
+    }
+  }
+
+  getForProjectionEdge(
+    projectId: number,
+    callerNodeKey: string,
+    targetNodeKey: string,
+  ): SnapshotCallResolutionRow[] {
+    assertProjectId(projectId);
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT r.call_site_key, r.identity_version, r.file_path, r.source_content_hash,
+                  r.start_line, r.start_column, r.callee_kind, r.callee_name,
+                  r.caller_node_key, r.resolution_class, r.selected_target_node_key,
+                  r.confidence, r.resolver, r.rule_signature, r.dependency_fingerprint,
+                  r.verification_status, r.verified_target_node_key, r.is_stale,
+                  c.ordinal, c.target_node_key AS candidate_target_node_key, c.evidence_json
+           FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} p
+             ON p.project_id = r.project_id AND p.call_site_key = r.call_site_key
+           LEFT JOIN ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES} c
+             ON c.project_id = r.project_id AND c.call_site_key = r.call_site_key
+           WHERE r.project_id = ? AND p.caller_node_key = ?
+             AND r.selected_target_node_key = ?
+           ORDER BY r.call_site_key COLLATE BINARY, c.ordinal`,
+        )
+        .all(projectId, callerNodeKey, targetNodeKey) as ResolutionDbRow[];
+      const records = buildResolutionRecords(rows);
+      if (records.length === 0) return [];
+
+      const dependencyRows = this.db
+        .prepare(
+          `SELECT d.call_site_key, d.dependency_kind, d.dependency_path, d.content_hash
+           FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} p
+             ON p.project_id = d.project_id AND p.call_site_key = d.call_site_key
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+             ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+           WHERE d.project_id = ? AND p.caller_node_key = ?
+             AND r.selected_target_node_key = ?
+           ORDER BY d.call_site_key COLLATE BINARY, d.dependency_kind COLLATE BINARY,
+                    d.dependency_path COLLATE BINARY`,
+        )
+        .all(projectId, callerNodeKey, targetNodeKey) as DependencyDbRow[];
+      appendResolutionDependencies(records, dependencyRows);
+      return records.map((record) => ({
+        ...record,
+        projectionCallerNodeKey: callerNodeKey,
+      }));
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.READ_PROJECT_FAILED(projectId),
         err,
       );
     }
@@ -563,8 +576,8 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           );
           const insertDependency = this.db.prepare(
             `INSERT INTO ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} (
-              project_id, call_site_key, dependency_path, content_hash
-            ) VALUES (?, ?, ?, ?)`,
+              project_id, call_site_key, dependency_kind, dependency_path, content_hash
+            ) VALUES (?, ?, ?, ?, ?)`,
           );
           for (const resolution of resolutions) {
             insertResolution.run(
@@ -610,6 +623,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
               insertDependency.run(
                 projectId,
                 resolution.callSiteKey,
+                dependency.kind ?? CallSiteResolutionDependencyKinds.FILE,
                 dependency.filePath,
                 dependency.contentHash,
               );
@@ -785,8 +799,9 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
                  FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
                  WHERE d.project_id = ${SchemaTables.CALL_SITE_RESOLUTIONS}.project_id
                    AND d.call_site_key = ${SchemaTables.CALL_SITE_RESOLUTIONS}.call_site_key
+                   AND d.dependency_kind = ?
                    AND d.dependency_path = ?
-                   AND d.content_hash IS NOT ?
+                   AND (d.dependency_kind = 'candidate-member' OR d.content_hash IS NOT ?)
                )`,
           );
           const findAffectedFiles = this.db.prepare(
@@ -798,8 +813,9 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
                  FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
                  WHERE d.project_id = r.project_id
                    AND d.call_site_key = r.call_site_key
+                   AND d.dependency_kind = ?
                    AND d.dependency_path = ?
-                   AND d.content_hash IS NOT ?
+                   AND (d.dependency_kind = 'candidate-member' OR d.content_hash IS NOT ?)
                )`,
           );
           let newlyStale = 0;
@@ -807,6 +823,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           for (const dependency of dependencies) {
             for (const { file_path: filePath } of findAffectedFiles.all(
               projectId,
+              dependency.kind ?? CallSiteResolutionDependencyKinds.FILE,
               dependency.filePath,
               dependency.contentHash,
             ) as Array<{ file_path: string }>) {
@@ -814,6 +831,7 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
             }
             newlyStale += markStale.run(
               projectId,
+              dependency.kind ?? CallSiteResolutionDependencyKinds.FILE,
               dependency.filePath,
               dependency.contentHash,
             ).changes;
@@ -827,6 +845,98 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           };
         })
         .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_DEPENDENCIES_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  invalidateCandidateDomainProofs(
+    projectId: number,
+  ): CallSiteResolutionInvalidationResult {
+    assertProjectId(projectId);
+    try {
+      return this.db
+        .transaction(() => {
+          const affectedFilePaths = (
+            this.db
+              .prepare(
+                `SELECT DISTINCT r.file_path
+                 FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+                 WHERE r.project_id = ? AND r.is_stale = 0
+                   AND r.resolver = 'strict-proof'
+                   AND (
+                     r.resolution_class = ? OR EXISTS (
+                       SELECT 1
+                       FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                       WHERE d.project_id = r.project_id
+                         AND d.call_site_key = r.call_site_key
+                         AND d.dependency_kind = 'candidate-member'
+                     )
+                   )
+                 ORDER BY r.file_path COLLATE BINARY`,
+              )
+              .all(projectId, CallSiteResolutionClasses.PROVEN) as Array<{
+              file_path: string;
+            }>
+          ).map(({ file_path: filePath }) => filePath);
+          const result = this.db
+            .prepare(
+              `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS} AS r
+               SET is_stale = 1
+               WHERE r.project_id = ? AND r.is_stale = 0
+                 AND r.resolver = 'strict-proof'
+                 AND (
+                   r.resolution_class = ? OR EXISTS (
+                     SELECT 1
+                     FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                     WHERE d.project_id = r.project_id
+                       AND d.call_site_key = r.call_site_key
+                       AND d.dependency_kind = 'candidate-member'
+                   )
+                 )`,
+            )
+            .run(projectId, CallSiteResolutionClasses.PROVEN);
+          for (const filePath of affectedFilePaths) {
+            rebuildCallsProjection(this.db, projectId, filePath);
+          }
+          return {
+            invalidatedCount: result.changes,
+            affectedFilePaths,
+          };
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_DEPENDENCIES_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  hasMissingCandidateMemberDependencies(projectId: number): boolean {
+    assertProjectId(projectId);
+    try {
+      const row = this.db
+        .prepare(
+          `SELECT 1 AS missing
+           FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+           WHERE r.project_id = ? AND r.resolver = 'strict-proof'
+             AND NOT EXISTS (
+               SELECT 1
+               FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+               WHERE d.project_id = r.project_id
+                 AND d.call_site_key = r.call_site_key
+                 AND d.dependency_kind = 'candidate-member'
+             )
+           LIMIT 1`,
+        )
+        .get(projectId) as { missing: 1 } | undefined;
+      return row !== undefined;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
@@ -1256,37 +1366,113 @@ function validateTierBResults(results: CallSiteLspResolutionResult[]): void {
   }
 }
 
+function buildResolutionRecords(
+  rows: ResolutionDbRow[],
+): CallSiteResolutionRecord[] {
+  const result: CallSiteResolutionRecord[] = [];
+  let current: CallSiteResolutionRecord | undefined;
+  for (const row of rows) {
+    if (!current || current.callSiteKey !== row.call_site_key) {
+      current = resolutionRecordFromRow(row);
+      result.push(current);
+    }
+    if (hasCandidateFields(row)) {
+      current.candidates.push({
+        ordinal: row.ordinal,
+        targetNodeKey: row.candidate_target_node_key,
+        evidenceJson: row.evidence_json,
+      });
+    }
+  }
+  return result;
+}
+
+function resolutionRecordFromRow(
+  row: ResolutionDbRow,
+): CallSiteResolutionRecord {
+  return {
+    callSiteKey: row.call_site_key,
+    identityVersion: row.identity_version,
+    filePath: row.file_path,
+    sourceContentHash: row.source_content_hash,
+    startLine: row.start_line,
+    startColumn: row.start_column,
+    calleeKind: row.callee_kind,
+    calleeName: row.callee_name,
+    callerNodeKey: row.caller_node_key,
+    resolutionClass: row.resolution_class,
+    selectedTargetNodeKey: row.selected_target_node_key,
+    confidence: row.confidence,
+    resolver: row.resolver,
+    ruleSignature: row.rule_signature,
+    dependencyFingerprint: row.dependency_fingerprint,
+    verificationStatus: row.verification_status,
+    verifiedTargetNodeKey: row.verified_target_node_key,
+    isStale: row.is_stale === 1,
+    dependencies: [],
+    candidates: [],
+  };
+}
+
+function hasCandidateFields(row: ResolutionDbRow): row is ResolutionDbRow & {
+  ordinal: number;
+  candidate_target_node_key: string;
+  evidence_json: string;
+} {
+  return (
+    row.ordinal !== null &&
+    row.candidate_target_node_key !== null &&
+    row.evidence_json !== null
+  );
+}
+
+function appendResolutionDependencies(
+  resolutions: CallSiteResolutionRecord[],
+  rows: DependencyDbRow[],
+): void {
+  const byKey = new Map(
+    resolutions.map((resolution) => [resolution.callSiteKey, resolution]),
+  );
+  for (const row of rows) {
+    byKey.get(row.call_site_key)?.dependencies.push({
+      ...(row.dependency_kind === CallSiteResolutionDependencyKinds.FILE
+        ? {}
+        : { kind: row.dependency_kind }),
+      filePath: row.dependency_path,
+      contentHash: row.content_hash,
+    });
+  }
+}
+
 function normalizeResolutionDependencies(
   resolution: CallSiteResolutionRecord,
 ): CallSiteResolutionDependency[] {
   if (!Array.isArray(resolution.dependencies)) {
     throw invalidInput("Call-site dependencies must be an array");
   }
-  const byPath = new Map<string, string | null>();
-  for (const dependency of resolution.dependencies) {
-    assertWorkspacePath(dependency?.filePath);
-    assertNullableHash(dependency.contentHash, "dependency content hash");
-    const priorHash = byPath.get(dependency.filePath);
-    if (
-      byPath.has(dependency.filePath) &&
-      priorHash !== dependency.contentHash
-    ) {
-      throw invalidInput("Duplicate dependency paths must have the same hash");
-    }
-    byPath.set(dependency.filePath, dependency.contentHash);
-  }
-
-  const callerHash = byPath.get(resolution.filePath);
+  const byKey = normalizeDependencyRows(resolution.dependencies, {
+    candidateMemberHashError:
+      "Candidate member dependencies must not have a hash",
+    duplicateHashError: "Duplicate dependency paths must have the same hash",
+  });
+  const callerKey = `${CallSiteResolutionDependencyKinds.FILE}\0${resolution.filePath}`;
+  const callerDependency = byKey.get(callerKey);
   if (
-    byPath.has(resolution.filePath) &&
-    callerHash !== resolution.sourceContentHash
+    callerDependency &&
+    callerDependency.contentHash !== resolution.sourceContentHash
   ) {
     throw invalidInput("Caller dependency hash must match source content hash");
   }
-  byPath.set(resolution.filePath, resolution.sourceContentHash);
-  return [...byPath]
-    .sort(([left], [right]) => comparePaths(left, right))
-    .map(([filePath, contentHash]) => ({ filePath, contentHash }));
+  byKey.set(callerKey, {
+    filePath: resolution.filePath,
+    contentHash: resolution.sourceContentHash,
+  });
+  return [...byKey.values()].sort(
+    (left, right) =>
+      (left.kind ?? CallSiteResolutionDependencyKinds.FILE).localeCompare(
+        right.kind ?? CallSiteResolutionDependencyKinds.FILE,
+      ) || comparePaths(left.filePath, right.filePath),
+  );
 }
 
 function normalizeChangedDependencies(
@@ -1295,21 +1481,76 @@ function normalizeChangedDependencies(
   if (!Array.isArray(changedDependencies)) {
     throw invalidInput("Changed dependencies must be an array");
   }
-  const byPath = new Map<string, string | null>();
-  for (const dependency of changedDependencies) {
-    assertWorkspacePath(dependency?.filePath);
-    assertNullableHash(dependency.contentHash, "dependency content hash");
-    if (
-      byPath.has(dependency.filePath) &&
-      byPath.get(dependency.filePath) !== dependency.contentHash
-    ) {
-      throw invalidInput("Changed dependency paths must have one current hash");
+  const byKey = normalizeDependencyRows(changedDependencies, {
+    candidateMemberHashError:
+      "Changed candidate member dependencies must not have a hash",
+    duplicateHashError: "Changed dependency paths must have one current hash",
+  });
+  return [...byKey.values()].sort(
+    (left, right) =>
+      (left.kind ?? CallSiteResolutionDependencyKinds.FILE).localeCompare(
+        right.kind ?? CallSiteResolutionDependencyKinds.FILE,
+      ) || comparePaths(left.filePath, right.filePath),
+  );
+}
+
+function normalizeDependencyRows(
+  dependencies: CallSiteResolutionDependency[],
+  messages: {
+    candidateMemberHashError: string;
+    duplicateHashError: string;
+  },
+): Map<string, CallSiteResolutionDependency> {
+  const byKey = new Map<string, CallSiteResolutionDependency>();
+  for (const dependency of dependencies) {
+    const normalized = normalizeDependencyRow(dependency, messages);
+    const key = `${normalizeDependencyKind(dependency?.kind)}\0${normalized.filePath}`;
+    const prior = byKey.get(key);
+    if (prior !== undefined && prior.contentHash !== normalized.contentHash) {
+      throw invalidInput(messages.duplicateHashError);
     }
-    byPath.set(dependency.filePath, dependency.contentHash);
+    byKey.set(key, normalized);
   }
-  return [...byPath]
-    .sort(([left], [right]) => comparePaths(left, right))
-    .map(([filePath, contentHash]) => ({ filePath, contentHash }));
+  return byKey;
+}
+
+function normalizeDependencyRow(
+  dependency: CallSiteResolutionDependency,
+  messages: { candidateMemberHashError: string },
+): CallSiteResolutionDependency {
+  const kind = normalizeDependencyKind(dependency?.kind);
+  if (kind === CallSiteResolutionDependencyKinds.CANDIDATE_MEMBER) {
+    assertCandidateMemberName(dependency?.filePath);
+    if (dependency.contentHash !== null)
+      throw invalidInput(messages.candidateMemberHashError);
+  } else {
+    assertWorkspacePath(dependency?.filePath);
+  }
+  assertNullableHash(dependency.contentHash, "dependency content hash");
+  return {
+    ...(kind === CallSiteResolutionDependencyKinds.FILE ? {} : { kind }),
+    filePath: dependency.filePath,
+    contentHash: dependency.contentHash,
+  };
+}
+
+function normalizeDependencyKind(
+  kind: CallSiteResolutionDependency["kind"],
+): "file" | "candidate-member" {
+  if (kind === undefined || kind === CallSiteResolutionDependencyKinds.FILE)
+    return CallSiteResolutionDependencyKinds.FILE;
+  if (kind === CallSiteResolutionDependencyKinds.CANDIDATE_MEMBER) return kind;
+  throw invalidInput("Unknown call-site dependency kind");
+}
+
+function assertCandidateMemberName(
+  value: string | undefined,
+): asserts value is string {
+  if (typeof value !== "string")
+    throw invalidInput("Candidate member name must be a string");
+  assertNonEmpty(value, "candidate member name");
+  if (value.includes("\0"))
+    throw invalidInput("Candidate member names must not contain NUL");
 }
 
 /** Rebuilds the collapsed `calls` edge projection from current per-site selections.

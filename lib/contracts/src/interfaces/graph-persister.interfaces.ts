@@ -59,14 +59,23 @@ export interface IGraphPersister {
     projectId: number;
     parsedResults: ParsedAstFileResult[];
     tags: string[];
-    /** True only for a full discovery pass that parsed every candidate source file. Absent on
-     *  delta/default calls; strict source-index proofs must fail closed without this assertion. */
+    /** True only when parsed or persisted facts cover every expected discoverable source file at
+     *  the revision being persisted; strict source-index proofs fail closed without this assertion. */
     sourceIndexComplete?: boolean;
+    /** `replace` is an authoritative full pass; `merge` updates the changed/repaired subset. */
+    sourceIndexUpdateMode?: "replace" | "merge";
+    /** Complete discoverable source inventory at the revision being persisted. Required to
+     *  validate candidate-domain coverage when merging persisted facts during delta ingestion. */
+    sourceIndexExpectedFilePaths?: readonly string[];
   }): Promise<{
     updatedCount: number;
     /** Issue #221: per-run aggregate + per-file call-site resolution counters. Optional so
      *  existing mock persisters keep satisfying the interface unchanged. */
     callResolution?: CallResolutionStats;
     callResolutionByFile?: Record<string, CallResolutionStats>;
+    strictCallProofIndex?: {
+      readonly complete: boolean;
+      readonly fallbackReason?: string;
+    };
   }>;
 }

@@ -92,7 +92,7 @@ export async function runFullIngestion(deps: {
     removeTierCQueueEntriesForFiles(store, pathsToRetire);
   });
 
-  const { parsedResults, failures, callResolutionByFile } =
+  const { parsedResults, failures, callResolutionByFile, sourceIndexComplete } =
     await runParseAndPersist({
       astProcessor,
       graphPersister,
@@ -101,6 +101,7 @@ export async function runFullIngestion(deps: {
       projectId: project.id,
       filesToParse: discoveryResult.filesToParse,
       candidateFileCount: discoveryResult.candidateFileCount,
+      sourceIndexUpdateMode: "replace",
       skippedOversized: discoveryResult.skippedOversized,
       tags: discoveryResult.tags,
       appendLogLine: appendAnalyzeLogLine,
@@ -152,6 +153,7 @@ export async function runFullIngestion(deps: {
     git,
     workspaceRoot,
     parsedResults,
+    sourceIndexComplete,
   });
 
   // Mirrors init-workflow.ts's step 4c: a full re-ingestion means the knowledge branch had

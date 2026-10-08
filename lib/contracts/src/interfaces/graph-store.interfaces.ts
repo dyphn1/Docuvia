@@ -1,3 +1,9 @@
+import type { CallResolutionHypothesisSourceFile } from "./call-resolution-hypothesis.interfaces.js";
+import type {
+  CallResolutionFunctionNodeReference,
+  CallResolutionSourceIndexRead,
+} from "./call-resolution-source-index.interfaces.js";
+
 /**
  * Row shapes for the local SQLite schema (see `lib/schema`'s migrations). Defined here, not in
  * `lib/schema`, per the Virtual Contracts "Mandatory Mapping" rule — `lib/schema` must map its
@@ -42,6 +48,8 @@ export interface ProjectFileRow {
   /** HEAD sha at the time this file was last Tier B-processed — null when
    *  `last_tier_b_processed_at` is also null, or when the batch ran on an unborn/headless HEAD. */
   last_tier_b_commit_sha: string | null;
+  /** Versioned AST facts used to rebuild the strict call-resolution source index. */
+  source_index_json: string | null;
 }
 
 export interface ProjectFileSnapshotMetadata {
@@ -250,7 +258,16 @@ export interface IProjectFilesRepo {
     projectId: number;
     filePath: string;
     contentHash: string | null;
+    sourceIndexFile?: CallResolutionHypothesisSourceFile;
+    sourceIndexFunctionNodeReferences?: readonly CallResolutionFunctionNodeReference[];
+    sourceIndexResolverLocalSymbols?: readonly string[];
   }): void;
+  /** Clears the durable proof facts before an authoritative full replacement pass. */
+  clearCallResolutionSourceFiles?(projectId: number): void;
+  /** Reads every project file's proof facts; missing or malformed rows make the index incomplete. */
+  getCallResolutionSourceFiles?(
+    projectId: number,
+  ): CallResolutionSourceIndexRead;
   /**
    * Issue #508 Phase 3 (D6/D11): removes the `project_files` row of a path that left the tree
    * (deleted, or the old side of a rename), keyed on (project_id, file_path). A missing row is a
@@ -803,8 +820,17 @@ export interface CallSiteResolutionCandidate {
   evidenceJson: string;
 }
 
+export const CallSiteResolutionDependencyKinds = {
+  FILE: "file",
+  CANDIDATE_MEMBER: "candidate-member",
+} as const;
+export type CallSiteResolutionDependencyKind =
+  (typeof CallSiteResolutionDependencyKinds)[keyof typeof CallSiteResolutionDependencyKinds];
+
 /** File inputs whose hashes contributed to the current resolution's dependency fingerprint. */
 export interface CallSiteResolutionDependency {
+  /** Omitted for legacy callers and interpreted as `file`. */
+  kind?: CallSiteResolutionDependencyKind;
   filePath: string;
   contentHash: string | null;
 }
@@ -883,6 +909,12 @@ export interface ICallSiteResolutionsRepo {
   deleteForFile(projectId: number, filePath: string): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Reads exact resolutions projected onto one caller-to-target graph edge. */
+  getForProjectionEdge?(
+    projectId: number,
+    callerNodeKey: string,
+    targetNodeKey: string,
+  ): SnapshotCallResolutionRow[];
   /** Stable portable read for snapshot packing. Optional for alternate providers. */
   getAllForProject?(projectId: number): SnapshotCallResolutionRow[];
   /** Replaces portable current state without rebuilding graph edges during hydration. */
@@ -915,8 +947,14 @@ export interface ICallSiteResolutionsRepo {
     projectId: number,
     changedDependencies: CallSiteResolutionDependency[],
   ): CallSiteResolutionInvalidationResult;
+  /** Stales strict proofs and candidate-dependent abstentions when source coverage is incomplete. */
+  invalidateCandidateDomainProofs?(
+    projectId: number,
+  ): CallSiteResolutionInvalidationResult;
   /** Marks every current resolution stale before a full graph replacement or hydration. */
   invalidateAll(projectId: number): CallSiteResolutionInvalidationResult;
+  /** True when strict-proof rows lack the candidate-member dependency index. */
+  hasMissingCandidateMemberDependencies?(projectId: number): boolean;
   /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
   appendObservation(
     projectId: number,

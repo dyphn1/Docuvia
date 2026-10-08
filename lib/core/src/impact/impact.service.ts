@@ -17,16 +17,31 @@ import {
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
 } from "@workspace/contracts";
-import {
-  getCallResolutionSummariesForEdge,
-  getCurrentCallResolutionRows,
-} from "../semantic/call-resolution-output.js";
+import { getCallResolutionSummariesForEdge } from "../semantic/call-resolution-output.js";
 
 const ImpactMessages = {
   NO_NODE_RESOLVED: "No node resolved for impact target",
   RESOLVED_BLAST_RADIUS: "Resolved blast radius",
   LSP_FALLBACK_APPLIED: "Applied ast_call_sites fallback for blast radius",
 } as const;
+
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
+function compareBlastRadiusEntries(
+  left: BlastRadiusEntry,
+  right: BlastRadiusEntry,
+): number {
+  return (
+    compareText(left.name, right.name) ||
+    compareText(left.type, right.type) ||
+    compareText(left.edgeSource ?? "", right.edgeSource ?? "") ||
+    compareText(JSON.stringify(left), JSON.stringify(right))
+  );
+}
 
 /**
  * Absolute-count FLOORS `computeRiskLevel()`'s scaled thresholds can never fall below -- the
@@ -94,7 +109,6 @@ function getCallResolutionsByCallerId(
   targetNodeKey: string | undefined,
   options?: { explainResolution?: boolean },
 ): Map<number, NonNullable<BlastRadiusEntry["callResolutions"]>> {
-  const resolutionRows = getCurrentCallResolutionRows(store);
   const byCallerId = new Map<
     number,
     NonNullable<BlastRadiusEntry["callResolutions"]>
@@ -106,7 +120,6 @@ function getCallResolutionsByCallerId(
       store.graph.getNodeKeyById?.(relation.id),
       targetNodeKey,
       options?.explainResolution,
-      resolutionRows,
     );
     if (
       callResolutions.every((resolution) => resolution.callSiteKey === null)
@@ -213,7 +226,7 @@ export class ImpactService implements IImpactService {
       target,
       count: blastRadius.length,
     });
-    return blastRadius;
+    return blastRadius.sort(compareBlastRadiusEntries);
   }
 
   private buildDirectIncomingEntry(

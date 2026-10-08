@@ -229,6 +229,7 @@ function attachInvalidationRepo(
   ) => CallSiteResolutionInvalidationResult,
 ) {
   const repository = {
+    invalidateAll: vi.fn((projectId: number) => invalidate(projectId, [])),
     invalidateChangedDependencies: vi.fn(invalidate),
   };
   Object.defineProperty(store, "callSiteResolutions", {
@@ -301,12 +302,17 @@ describe("runDeltaIngestion()", () => {
     ]);
     const operations: string[] = [];
     const resolutions = {
-      invalidateChangedDependencies: vi.fn(() => {
+      invalidateAll: vi.fn(() => {
         operations.push("invalidate");
         return {
           invalidatedCount: 1,
           affectedFilePaths: ["src/caller.ts"],
         };
+      }),
+      invalidateChangedDependencies: vi.fn(() => {
+        throw new Error(
+          "source changes should invalidate the candidate domain",
+        );
       }),
     };
     semanticDiffAnalyzer.analyzeFile = vi.fn().mockImplementation(async () => {
@@ -344,16 +350,17 @@ describe("runDeltaIngestion()", () => {
       headSha: HEAD_SHA,
     });
 
-    expect(resolutions.invalidateChangedDependencies).toHaveBeenCalledWith(1, [
-      { filePath: "src/target.ts", contentHash: sha256(targetContent) },
-    ]);
-    expect(operations).toEqual(["invalidate", "classify"]);
-    expect(astProcessor.processFiles).toHaveBeenCalledWith(tmpDir, [
+    expect(resolutions.invalidateAll).toHaveBeenCalledWith(1);
+    expect(resolutions.invalidateChangedDependencies).not.toHaveBeenCalled();
+    expect(operations).toEqual(["classify", "invalidate"]);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(1, tmpDir, [
       {
         file: "src/target.ts",
         hash: sha256(targetContent),
         code: targetContent,
       },
+    ]);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(2, tmpDir, [
       {
         file: "src/caller.ts",
         hash: sha256(callerContent),
@@ -395,15 +402,15 @@ describe("runDeltaIngestion()", () => {
       headSha: HEAD_SHA,
     });
 
-    expect(repository.invalidateChangedDependencies).toHaveBeenCalledWith(1, [
-      { filePath: "src/barrel.ts", contentHash: sha256(barrelContent) },
-    ]);
-    expect(astProcessor.processFiles).toHaveBeenCalledWith(tmpDir, [
+    expect(repository.invalidateAll).toHaveBeenCalledWith(1);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(1, tmpDir, [
       {
         file: "src/barrel.ts",
         hash: sha256(barrelContent),
         code: barrelContent,
       },
+    ]);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(2, tmpDir, [
       {
         file: "src/caller.ts",
         hash: sha256(callerContent),
@@ -445,9 +452,7 @@ describe("runDeltaIngestion()", () => {
       headSha: HEAD_SHA,
     });
 
-    expect(repository.invalidateChangedDependencies).toHaveBeenCalledWith(1, [
-      { filePath: "tsconfig.json", contentHash: sha256(configContent) },
-    ]);
+    expect(repository.invalidateAll).toHaveBeenCalledWith(1);
     expect(astProcessor.processFiles).toHaveBeenCalledWith(tmpDir, [
       {
         file: "src/caller.ts",
@@ -457,17 +462,26 @@ describe("runDeltaIngestion()", () => {
     ]);
   });
 
-  it("[state-diff] leaves caller resolutions untouched for an unrelated one-file edit", async () => {
+  it("[state-diff] re-proves callers after an unrelated source file edit", async () => {
     const unrelatedContent = "export const unrelated = true;";
+    const callerContent = "export function caller() { return 1; }";
     const repository = attachInvalidationRepo(store, () => ({
-      invalidatedCount: 0,
-      affectedFilePaths: [],
+      invalidatedCount: 1,
+      affectedFilePaths: ["src/caller.ts"],
     }));
     const git = makeMockGitProvider({
       getChangedFilesSince: vi
         .fn()
         .mockResolvedValue([{ file: "src/unrelated.ts", status: "modified" }]),
-      readFileAtRef: vi.fn().mockResolvedValue(unrelatedContent),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation(async (_root, ref, file) =>
+          ref === HEAD_SHA
+            ? file === "src/caller.ts"
+              ? callerContent
+              : unrelatedContent
+            : undefined,
+        ),
     });
 
     await runDeltaIngestion({
@@ -481,16 +495,69 @@ describe("runDeltaIngestion()", () => {
       headSha: HEAD_SHA,
     });
 
-    expect(repository.invalidateChangedDependencies).toHaveBeenCalledWith(1, [
-      { filePath: "src/unrelated.ts", contentHash: sha256(unrelatedContent) },
-    ]);
-    expect(astProcessor.processFiles).toHaveBeenCalledWith(tmpDir, [
+    expect(repository.invalidateAll).toHaveBeenCalledWith(1);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(1, tmpDir, [
       {
         file: "src/unrelated.ts",
         hash: sha256(unrelatedContent),
         code: unrelatedContent,
       },
     ]);
+    expect(astProcessor.processFiles).toHaveBeenNthCalledWith(2, tmpDir, [
+      {
+        file: "src/caller.ts",
+        hash: sha256(callerContent),
+        code: callerContent,
+      },
+    ]);
+  });
+
+  it("does not count candidate-domain reproof files as changed commit bytes", async () => {
+    const targetContent = "export function target() { return 1; }";
+    const stableContent = "export const stable = true;";
+    const contentByPath = new Map([
+      ["src/target.ts", targetContent],
+      ["src/stable.ts", stableContent],
+    ]);
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/target.ts", status: "modified" }]),
+      listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(
+        new Map([
+          ["src/target.ts", sha256(targetContent)],
+          ["src/stable.ts", sha256(stableContent)],
+        ]),
+      ),
+      getChangedLineRanges: vi
+        .fn()
+        .mockResolvedValue([{ startRow: 0, endRow: 1 }]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation(async (_root, ref, file) =>
+          ref === HEAD_SHA
+            ? contentByPath.get(file)
+            : file === "src/target.ts"
+              ? "export function target() { return 0; }"
+              : contentByPath.get(file),
+        ),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES)).toBe(
+      String(Buffer.byteLength(targetContent, "utf8")),
+    );
+    expect(semanticDiffAnalyzer.analyzeFile).toHaveBeenCalledTimes(1);
   });
 
   it("[invalid-input][error-handling] rejects an invalid dependency path before persistence", async () => {
@@ -517,9 +584,7 @@ describe("runDeltaIngestion()", () => {
         headSha: HEAD_SHA,
       }),
     ).rejects.toThrowError("dependency path escapes workspace");
-    expect(repository.invalidateChangedDependencies).toHaveBeenCalledWith(1, [
-      { filePath: "../outside.ts", contentHash: sha256(outsideContent) },
-    ]);
+    expect(repository.invalidateAll).toHaveBeenCalledWith(1);
     expect(graphPersister.persist).not.toHaveBeenCalled();
   });
 
@@ -527,6 +592,10 @@ describe("runDeltaIngestion()", () => {
     Object.defineProperty(store, "callSiteResolutions", {
       configurable: true,
       value: {
+        invalidateAll: vi.fn().mockReturnValue({
+          invalidatedCount: 0,
+          affectedFilePaths: [],
+        }),
         invalidateChangedDependencies: vi.fn().mockReturnValue({
           invalidatedCount: 0,
           affectedFilePaths: [],
@@ -620,6 +689,10 @@ describe("runDeltaIngestion()", () => {
     Object.defineProperty(store, "callSiteResolutions", {
       value: {
         deleteForFile: deleteResolutionForFile,
+        invalidateAll: vi.fn().mockReturnValue({
+          invalidatedCount: 0,
+          affectedFilePaths: [],
+        }),
         invalidateChangedDependencies: vi.fn().mockReturnValue({
           invalidatedCount: 0,
           affectedFilePaths: [],

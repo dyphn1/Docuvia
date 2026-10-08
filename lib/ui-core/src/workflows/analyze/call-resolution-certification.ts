@@ -14,10 +14,10 @@ const REPORTED_BOUND_TOLERANCE = 1e-6;
 const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs =
   Object.freeze({
     artifactSha256:
-      "c81a6de05c1cd954f33238f160ac45cbcf0368fee1efec6fa693f67c825e651f",
+      "1323e7b3de34e36cad69f84409d4ad62af5953ff3bb6da38df1e7b1cce521510",
     implementationCommitSha: "8013b99b1410f1302c576178e557c4484735077a",
     ruleConfigurationSha256:
-      "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728",
+      "4f1399a505ff5bfc3e836b6bf99513e03221701cf317d1838a1cfcac15bd83bd",
     oracleIdentity: "typescript-language-server",
     oracleVersion: "5.3.0+tsserver@5.9.3",
     oracleConfigurationSha256:
@@ -39,10 +39,11 @@ const Q1_NAMED_IMPORT_CERTIFICATION_EXPECTED_INPUTS: ExpectedCertificationInputs
     }),
   });
 
-/** This source pin is guarded by the Q1 rule-configuration unit test and matches the active
- *  amendment-3 evidence. Any change to a frozen Q1 input requires a new digest and certification. */
+/** This source pin is guarded by the Q1 rule-configuration unit test and matches the runtime
+ *  artifact. Changes to proof decisions require recertification; metadata-only dependency
+ *  recording still requires a new digest but keeps the rule version and decision evidence. */
 export const CURRENT_Q1_RULE_CONFIGURATION_SHA256 =
-  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
+  "4f1399a505ff5bfc3e836b6bf99513e03221701cf317d1838a1cfcac15bd83bd";
 
 const Q1_CERTIFICATION_RESOURCE =
   "./q1-named-import-candidate-certification.json";

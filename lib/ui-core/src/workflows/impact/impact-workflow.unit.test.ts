@@ -15,6 +15,7 @@ import {
   resetFactoryForTests,
   createMockLogger,
   type GraphStoreOpenOptions,
+  type BlastRadiusEntry,
   type IGraphStore,
   type IHydrationService,
   type IImpactService,
@@ -22,6 +23,7 @@ import {
 } from "@workspace/contracts";
 import { ImpactWorkflow } from "./impact-workflow.js";
 import { IMPACT_MESSAGES } from "./impact-messages.js";
+import * as impactEpistemic from "./resolve-impact-epistemic.js";
 
 function makeMockHydrationService(
   overrides: Partial<IHydrationService> = {},
@@ -412,7 +414,8 @@ describe("ImpactWorkflow.execute()", () => {
 
   describe("issue #508 Phase 2 D7: the target's own containing-file entry is context, not a dependent", () => {
     function registerSymbolTarget(
-      blastRadius: Array<{ name: string; type: string }>,
+      blastRadius: BlastRadiusEntry[],
+      coverage = { totalFiles: 10, processedFiles: 10 },
     ) {
       const store = makeMockStore({
         graph: {
@@ -423,6 +426,10 @@ describe("ImpactWorkflow.execute()", () => {
             type: "function",
             filePath: "src/target.ts",
           }),
+        },
+        files: {
+          ...makeMockStore().files,
+          getTierBCoverage: vi.fn().mockReturnValue(coverage),
         },
       });
       docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
@@ -439,6 +446,75 @@ describe("ImpactWorkflow.execute()", () => {
       docuviaFactory.lock();
       return { store, impactService };
     }
+
+    it("[happy] keeps caller candidates visible but excludes them from confirmed risk and exactness", async () => {
+      const blastRadius: BlastRadiusEntry[] = [
+        { name: "evalCaller", type: "function" },
+        {
+          name: "legacyCaller",
+          type: "function",
+          edgeSource: "caller-candidate",
+          callResolutions: [
+            {
+              callSiteKey: "candidate-site",
+              resolutionClass: "proven",
+              verificationStatus: "unverified",
+              selectedTargetNodeKey: "src/target.ts#target",
+              isStale: false,
+              alternatives: [],
+              candidates: [],
+            },
+          ],
+        },
+      ];
+      const { store, impactService } = registerSymbolTarget(blastRadius);
+      const resolveEpistemicSpy = vi.spyOn(
+        impactEpistemic,
+        "resolveImpactEpistemic",
+      );
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result?.blastRadius).toEqual(blastRadius);
+      expect(impactService.computeRiskLevel).toHaveBeenCalledWith(store, 1);
+      expect(result).not.toHaveProperty("callResolutionBreakdown");
+      expect(resolveEpistemicSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ blastRadiusCount: 1 }),
+      );
+      expect(result).not.toHaveProperty("epistemic");
+      expect(result?.riskLevel).toBe("MEDIUM");
+      resolveEpistemicSpy.mockRestore();
+    });
+
+    it("[state-diff] caller candidates alone do not upgrade an incomplete result to exact or confirmed", async () => {
+      const blastRadius: BlastRadiusEntry[] = [
+        {
+          name: "legacyCaller",
+          type: "function",
+          edgeSource: "caller-candidate",
+        },
+      ];
+      const { store, impactService } = registerSymbolTarget(blastRadius, {
+        totalFiles: 10,
+        processedFiles: 3,
+      });
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("evalTarget");
+
+      expect(result?.blastRadius).toEqual(blastRadius);
+      expect(impactService.computeRiskLevel).toHaveBeenCalledWith(store, 0);
+      expect(result).toMatchObject({
+        riskLevel: "UNKNOWN",
+        epistemic: "lower-bound",
+        riskNote: IMPACT_MESSAGES.RISK_NOTE_EMPTY_WITH_PARTIAL_COVERAGE(3, 10),
+      });
+    });
 
     it("[state-diff] a symbol whose only confirmed entry is its own file is UNKNOWN lower-bound, never exact", async () => {
       const { store, impactService } = registerSymbolTarget([

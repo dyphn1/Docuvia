@@ -314,7 +314,11 @@ export function mapEvidenceChannel(
   edgeSource: string | undefined,
 ): ImpactHonestyEvidenceChannel {
   if (edgeSource === undefined) return "static";
-  if (edgeSource === "lsp-fallback" || edgeSource === "dynamic-candidate") {
+  if (
+    edgeSource === "lsp-fallback" ||
+    edgeSource === "dynamic-candidate" ||
+    edgeSource === "caller-candidate"
+  ) {
     return edgeSource;
   }
   throw new Error(`unknown impact edgeSource: ${edgeSource}`);

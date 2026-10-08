@@ -116,7 +116,8 @@ export type DynamicEvidenceAvailability =
  * identifies an unresolved call-site recovery; `dynamic-candidate` identifies a source file that
  * is only a statically-bounded candidate for a runtime dependency; `caller-candidate` identifies
  * a legacy caller attribution retained as lower-confidence context when exact lexical ancestry is
- * unavailable. Candidate entries do not assert dependency or containment edges.
+ * unavailable. Candidate entries do not assert dependency or containment edges and do not
+ * contribute to confirmed impact counts.
  */
 export const BlastRadiusEdgeSources = {
   LSP_FALLBACK: "lsp-fallback",

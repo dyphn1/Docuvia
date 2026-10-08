@@ -16,6 +16,65 @@ export interface SampleCandidate {
   readonly sampleKey: string;
 }
 
+export type ReviewLabel = "TP" | "FP" | "unsure";
+
+export interface LabeledSampleCandidate extends SampleCandidate {
+  readonly label: ReviewLabel;
+  /** False means the artifact contains a placeholder label that was not source-reviewed. */
+  readonly reviewed?: boolean;
+}
+
+export type EligibleCounts = Record<ExactCallerAdditionCategory, number>;
+
+export interface ConfidenceInterval {
+  readonly lower: number;
+  readonly upper: number;
+}
+
+export interface PopulationWeightedPrecisionEstimate {
+  readonly eligibleCount: number;
+  readonly estimate: number | null;
+  readonly interval: {
+    readonly confidenceLevel: 0.95;
+    readonly method: string;
+    readonly lower: number | null;
+    readonly upper: number | null;
+  };
+  readonly strata: Record<
+    ExactCallerAdditionCategory,
+    {
+      readonly eligibleCount: number;
+      readonly sampleCount: number;
+      readonly truePositives: number;
+      readonly falsePositives: number;
+      readonly unsure: number;
+      readonly conservativePrecision: number | null;
+      readonly weight: number;
+      readonly interval: ConfidenceInterval | null;
+      readonly intervalMethod: "exact-census" | "wilson-99-bonferroni" | null;
+    }
+  >;
+}
+
+export interface AcceptanceGateResult {
+  readonly status: "pass" | "fail" | "inconclusive";
+  readonly coverageSufficient: boolean;
+  readonly insufficientCoverageCategories: ExactCallerAdditionCategory[];
+  readonly overallThreshold: 0.9;
+  readonly categoryThreshold: 0.8;
+  readonly weightedLowerBound: number | null;
+  readonly categoryFloors: Record<
+    ExactCallerAdditionCategory,
+    {
+      readonly applies: boolean;
+      readonly eligibleCount: number;
+      readonly reviewedCount: number;
+      readonly conservativePrecision: number | null;
+      readonly passes: boolean;
+    }
+  >;
+}
+
 export interface NumericDistribution {
   readonly count: number;
   readonly median: number | null;
@@ -106,6 +165,8 @@ export function extractCallSiteEvidence(
 ): string[] {
   const escapedName = targetSymbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // `\b` cannot anchor names that start with `$`, so require a non-identifier character instead.
+  // This evidence heuristic accepts one generic-argument level; nested generic calls are
+  // intentionally unmatched rather than using a backtracking-prone nested pattern.
   const callPattern = new RegExp(
     `(?<![\\w$])${escapedName}\\s*(?:<[^>]*>)?\\s*\\(`,
   );
@@ -202,11 +263,20 @@ export function distribution(values: readonly number[]): NumericDistribution {
 }
 
 export function labelCounts(
-  items: readonly { readonly category: string; readonly label?: string }[],
+  items: readonly {
+    readonly category: string;
+    readonly label?: string;
+    readonly reviewed?: boolean;
+  }[],
 ) {
   return Object.fromEntries(
     EXACT_CALLER_ADDITION_CATEGORIES.map((category) => {
-      const selected = items.filter((item) => item.category === category);
+      const selected = items.filter(
+        (item) =>
+          item.category === category &&
+          item.reviewed !== false &&
+          item.label !== undefined,
+      );
       const truePositives = selected.filter(
         (item) => item.label === "TP",
       ).length;
@@ -229,4 +299,198 @@ export function labelCounts(
       ];
     }),
   );
+}
+
+const WILSON_99_BONFERRONI_Z = 2.5758293035489004;
+
+function wilsonInterval99(
+  successes: number,
+  trials: number,
+): ConfidenceInterval {
+  const zSquared = WILSON_99_BONFERRONI_Z ** 2;
+  const proportion = successes / trials;
+  const denominator = 1 + zSquared / trials;
+  const center = (proportion + zSquared / (2 * trials)) / denominator;
+  const margin =
+    (WILSON_99_BONFERRONI_Z / denominator) *
+    Math.sqrt(
+      (proportion * (1 - proportion)) / trials +
+        zSquared / (4 * trials * trials),
+    );
+  return {
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+  };
+}
+
+function labelCountsByCategory(
+  sample: readonly LabeledSampleCandidate[],
+): ReturnType<typeof labelCounts> {
+  return labelCounts(sample);
+}
+
+/** Estimates reviewable-population precision from category-specific rates and eligible counts. */
+export function estimatePopulationWeightedPrecision(
+  eligibleCounts: EligibleCounts,
+  sample: readonly LabeledSampleCandidate[],
+): PopulationWeightedPrecisionEstimate {
+  const totalEligible = EXACT_CALLER_ADDITION_CATEGORIES.reduce(
+    (total, category) => total + eligibleCounts[category],
+    0,
+  );
+  const counts = labelCountsByCategory(sample);
+  const strata = Object.fromEntries(
+    EXACT_CALLER_ADDITION_CATEGORIES.map((category) => {
+      const eligibleCount = eligibleCounts[category];
+      const categoryCounts = counts[category];
+      const sampleCount = categoryCounts.sampleCount;
+      const conservativePrecision = categoryCounts.conservativePrecision;
+      const interval =
+        sampleCount === 0 || conservativePrecision === null
+          ? null
+          : sampleCount === eligibleCount
+            ? {
+                lower: conservativePrecision,
+                upper: conservativePrecision,
+              }
+            : wilsonInterval99(categoryCounts.truePositives, sampleCount);
+      return [
+        category,
+        {
+          eligibleCount,
+          sampleCount,
+          truePositives: categoryCounts.truePositives,
+          falsePositives: categoryCounts.falsePositives,
+          unsure: categoryCounts.unsure,
+          conservativePrecision,
+          weight: totalEligible === 0 ? 0 : eligibleCount / totalEligible,
+          interval,
+          intervalMethod:
+            interval === null
+              ? null
+              : sampleCount === eligibleCount
+                ? "exact-census"
+                : "wilson-99-bonferroni",
+        },
+      ];
+    }),
+  ) as PopulationWeightedPrecisionEstimate["strata"];
+
+  const isEstimable =
+    totalEligible > 0 &&
+    EXACT_CALLER_ADDITION_CATEGORIES.every(
+      (category) =>
+        eligibleCounts[category] === 0 || strata[category].sampleCount > 0,
+    );
+  if (!isEstimable) {
+    return {
+      eligibleCount: totalEligible,
+      estimate: null,
+      interval: {
+        confidenceLevel: 0.95,
+        method:
+          "Weighted 99% Wilson stratum bounds with Bonferroni correction across five categories; census strata use exact bounds; no finite-population correction.",
+        lower: null,
+        upper: null,
+      },
+      strata,
+    };
+  }
+
+  const estimate = EXACT_CALLER_ADDITION_CATEGORIES.reduce(
+    (total, category) =>
+      total +
+      strata[category].weight * (strata[category].conservativePrecision ?? 0),
+    0,
+  );
+  const intervalsComplete = EXACT_CALLER_ADDITION_CATEGORIES.every(
+    (category) =>
+      eligibleCounts[category] === 0 || strata[category].interval !== null,
+  );
+  const lower = intervalsComplete
+    ? EXACT_CALLER_ADDITION_CATEGORIES.reduce(
+        (total, category) =>
+          total +
+          strata[category].weight * (strata[category].interval?.lower ?? 0),
+        0,
+      )
+    : null;
+  const upper = intervalsComplete
+    ? EXACT_CALLER_ADDITION_CATEGORIES.reduce(
+        (total, category) =>
+          total +
+          strata[category].weight * (strata[category].interval?.upper ?? 0),
+        0,
+      )
+    : null;
+  return {
+    eligibleCount: totalEligible,
+    estimate,
+    interval: {
+      confidenceLevel: 0.95,
+      method:
+        "Weighted 99% Wilson stratum bounds with Bonferroni correction across five categories; census strata use exact bounds; no finite-population correction.",
+      lower,
+      upper,
+    },
+    strata,
+  };
+}
+
+/** Applies reviewed-sample coverage requirements before allowing a pass/fail precision decision. */
+export function evaluateAcceptanceGate(
+  eligibleCounts: EligibleCounts,
+  sample: readonly LabeledSampleCandidate[],
+  populationWeightedPrecision: PopulationWeightedPrecisionEstimate,
+): AcceptanceGateResult {
+  const counts = labelCountsByCategory(sample);
+  const insufficientCoverageCategories =
+    EXACT_CALLER_ADDITION_CATEGORIES.filter((category) => {
+      const eligibleCount = eligibleCounts[category];
+      const reviewedCount = counts[category].sampleCount;
+      return eligibleCount >= 10
+        ? reviewedCount < 10
+        : reviewedCount !== eligibleCount;
+    });
+  const categoryFloors = Object.fromEntries(
+    EXACT_CALLER_ADDITION_CATEGORIES.map((category) => {
+      const eligibleCount = eligibleCounts[category];
+      const categoryCounts = counts[category];
+      const applies = eligibleCount >= 10;
+      const passes =
+        !applies ||
+        (categoryCounts.conservativePrecision !== null &&
+          categoryCounts.conservativePrecision >= 0.8);
+      return [
+        category,
+        {
+          applies,
+          eligibleCount,
+          reviewedCount: categoryCounts.sampleCount,
+          conservativePrecision: categoryCounts.conservativePrecision,
+          passes,
+        },
+      ];
+    }),
+  ) as AcceptanceGateResult["categoryFloors"];
+  const coverageSufficient =
+    insufficientCoverageCategories.length === 0 &&
+    populationWeightedPrecision.eligibleCount > 0;
+  const precisionPasses =
+    populationWeightedPrecision.interval.lower !== null &&
+    populationWeightedPrecision.interval.lower >= 0.9 &&
+    Object.values(categoryFloors).every(({ passes }) => passes);
+  return {
+    status: !coverageSufficient
+      ? "inconclusive"
+      : precisionPasses
+        ? "pass"
+        : "fail",
+    coverageSufficient,
+    insufficientCoverageCategories,
+    overallThreshold: 0.9,
+    categoryThreshold: 0.8,
+    weightedLowerBound: populationWeightedPrecision.interval.lower,
+    categoryFloors,
+  };
 }

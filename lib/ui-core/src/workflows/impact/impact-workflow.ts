@@ -24,6 +24,10 @@ import {
   resolveImpactEpistemic,
   type TargetFileResolution,
 } from "./resolve-impact-epistemic.js";
+import {
+  filterConfirmedImpactDependencies,
+  isConfirmedImpactDependency,
+} from "./is-confirmed-impact-dependency.js";
 import { readCallResolution } from "../analyze/call-resolution-stats.js";
 import type { ImpactGraphFreshness, ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -188,14 +192,9 @@ export class ImpactWorkflow {
         resolveCallSiteFallbackUnavailableReason(impactService, store, target);
       // #508 D8: resolved once -- it feeds both the epistemic ladder and the result field.
       const freshnessField = await resolveStaleGraph(workspaceRoot, store);
-      // Issue #393: candidate entries are intentionally visible in the blast-radius table but do
-      // not count as confirmed dependents for risk scoring. If candidates are the only evidence,
-      // the epistemic layer below returns UNKNOWN rather than manufacturing MEDIUM risk from a
-      // dependency that may not occur at runtime.
-      const confirmedEntries = blastRadius.filter(
-        (entry) =>
-          entry.edgeSource !== BlastRadiusEdgeSources.DYNAMIC_CANDIDATE,
-      );
+      // Candidate rows stay visible in `blastRadius`, but neither contributes confirmed
+      // dependents nor independently changes the epistemic verdict.
+      const confirmedEntries = filterConfirmedImpactDependencies(blastRadius);
       const confirmedBlastRadiusCount = confirmedEntries.length;
       const riskLevel = impactService.computeRiskLevel(
         store,
@@ -502,9 +501,7 @@ function resolveCallResolutionBreakdown(
   const breakdown = { verifiedProven: 0, heuristicProvisional: 0, unknown: 0 };
   let foundCallContribution = false;
   for (const entry of entries) {
-    if (entry.edgeSource === BlastRadiusEdgeSources.DYNAMIC_CANDIDATE) {
-      continue;
-    }
+    if (!isConfirmedImpactDependency(entry)) continue;
     if (entry.callResolutions && entry.callResolutions.length > 0) {
       foundCallContribution = true;
       for (const resolution of entry.callResolutions) {

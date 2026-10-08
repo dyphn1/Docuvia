@@ -28,6 +28,7 @@ import {
   computeRiskLevelFromCounts,
   ImpactService,
 } from "../../lib/core/src/impact/impact.service.js";
+import { filterConfirmedImpactDependencies } from "../../lib/ui-core/src/workflows/impact/is-confirmed-impact-dependency.js";
 import { CallResolutionHypothesisService } from "../../lib/core/src/semantic/call-resolution-hypothesis.service.js";
 import { GraphStore } from "../../lib/schema/src/index.js";
 import {
@@ -893,6 +894,8 @@ function buildReport(
   let missingNamedFunctionImpactPairs = 0;
   let addedNamedFunctionImpactPairs = 0;
   let comparedCalleeCount = 0;
+  const v1GraphNodeCount = v1.store.graph.count().l2Nodes;
+  const v2GraphNodeCount = v2.store.graph.count().l2Nodes;
   const v2OnlyImpactAdditions: Array<{
     readonly repo: string;
     readonly sampleKey: string;
@@ -913,8 +916,14 @@ function buildReport(
     readonly v1ImpactedFiles: number;
     readonly v2ImpactedFiles: number;
     readonly delta: number;
-    readonly v1RiskLevel: string;
-    readonly v2RiskLevel: string;
+    readonly v1FileLevelRiskProxy: string;
+    readonly v2FileLevelRiskProxy: string;
+    readonly v1ConfirmedImpactEntryCount: number;
+    readonly v2ConfirmedImpactEntryCount: number;
+    readonly v1ProductionRiskLevel: string;
+    readonly v2ProductionRiskLevel: string;
+    readonly v1GraphNodeCount: number;
+    readonly v2GraphNodeCount: number;
   }> = [];
   const worstFileLevelDropDetails: Array<{
     readonly target: NonNullable<ReturnType<typeof publicLocation>>;
@@ -1032,13 +1041,37 @@ function buildReport(
     const v2FilePaths = impactFilePaths(v2Run, v2, allLocations);
     const v1FileCount = v1FilePaths.size;
     const v2FileCount = v2FilePaths.size;
+    const v1ConfirmedImpactEntryCount = filterConfirmedImpactDependencies(
+      v1Run.entries,
+    ).length;
+    const v2ConfirmedImpactEntryCount = filterConfirmedImpactDependencies(
+      v2Run.entries,
+    ).length;
     const fileDeltaRow = {
       target: publicLocation(targetLocation)!,
       v1ImpactedFiles: v1FileCount,
       v2ImpactedFiles: v2FileCount,
       delta: v2FileCount - v1FileCount,
-      v1RiskLevel: computeRiskLevelFromCounts(v1FileCount, v1.nodesByKey.size),
-      v2RiskLevel: computeRiskLevelFromCounts(v2FileCount, v2.nodesByKey.size),
+      v1FileLevelRiskProxy: computeRiskLevelFromCounts(
+        v1FileCount,
+        v1GraphNodeCount,
+      ),
+      v2FileLevelRiskProxy: computeRiskLevelFromCounts(
+        v2FileCount,
+        v2GraphNodeCount,
+      ),
+      v1ConfirmedImpactEntryCount,
+      v2ConfirmedImpactEntryCount,
+      v1ProductionRiskLevel: computeRiskLevelFromCounts(
+        v1ConfirmedImpactEntryCount,
+        v1GraphNodeCount,
+      ),
+      v2ProductionRiskLevel: computeRiskLevelFromCounts(
+        v2ConfirmedImpactEntryCount,
+        v2GraphNodeCount,
+      ),
+      v1GraphNodeCount,
+      v2GraphNodeCount,
     };
     fileBlastRadiusDeltaRows.push(fileDeltaRow);
     if (fileDeltaRow.delta < 0) {

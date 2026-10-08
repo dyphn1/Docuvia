@@ -37,7 +37,11 @@ The earlier deterministic full-source parity audit compared ImpactService member
 
 ## V2 default acceptance gate
 
-The parity audit measures recall/parity vs v1. It does not establish precision. The default gate therefore uses a reproducible, source-reviewed sample of v2-only additions: overall conservative precision must be at least 0.90, and categories with at least 10 sampled items must each be at least 0.80. Conservative precision is TP / (TP + FP + unsure). A category with fewer than 10 eligible, reviewable additions is fully labeled and reported separately; it has no category floor. The 0.90 overall bar limits measured false or unresolved additions to 10%, while the 0.80 floor prevents a large category from hiding a weak high-volume stratum.
+The parity audit measures recall/parity vs v1; it does not establish addition precision. The unweighted balanced sample score is retained as a **stratified stress score** (TP / all reviewed sample items, with unsure counted as not-TP). It is a diagnostic that gives sampled strata similar influence and is not a population precision estimate.
+
+The gate uses a population-weighted precision estimate over reviewable additions. Within each category, the conservative TP rate is TP / reviewed items; unsure counts as not-TP. Each category rate is weighted by that category's eligible reviewable additions. The reported nominal 95% interval sums the same weights times per-stratum 99% Wilson bounds, with Bonferroni correction across the five fixed categories; a fully labeled stratum uses its exact finite-population rate, and no finite-population correction is used for sampled strata. This interval treats the deterministic hash-ranked sample as randomized within each stratum, so it is a sampling uncertainty estimate rather than a guarantee against label or corpus bias.
+
+The default gate passes only when adequate review coverage is present, the population-weighted interval's lower bound is at least 0.90, and every category with at least 10 eligible additions has a conservative TP rate of at least 0.80. A category with fewer than 10 eligible additions must be exhaustively labeled and is reported separately without a category floor. If any category misses its coverage requirement, the result is **inconclusive**, never pass. The weighted lower bound protects the population-level decision; category floors prevent a low-precision high-volume stratum from being hidden by the other categories.
 
 ### Historical pre-fix measurements
 
@@ -45,14 +49,14 @@ The original PR review at `bd5f4bb` reported 5,666 v1 named-function pairs and 7
 
 Before the self-entry fix, the seven-repository audit at `aeae294e4` parsed 9,726 files and compared 19,451 callees. The old source-review artifact is preserved at [the pre-fix artifact](tiered-call-resolution-exact-caller-impact-review-pre-fix.json), with seed `pr583-aeae294e`:
 
-| Pre-fix measure                 |                             Result |
-| ------------------------------- | ---------------------------------: |
-| V1 / V2 named-function pairs    |                    38,655 / 43,755 |
-| V1 omissions / v2 additions     |                          1 / 5,101 |
-| Unique v2-added named nodes     |                              3,186 |
-| V2-only impact entries          |                             24,881 |
-| Sample labels                   | 29 TP, 21 FP, 10 unsure (60 total) |
-| Conservative / judged precision |                      48.3% / 58.0% |
+| Pre-fix measure                              |                             Result |
+| -------------------------------------------- | ---------------------------------: |
+| V1 / V2 named-function pairs                 |                    38,655 / 43,755 |
+| V1 omissions / v2 additions                  |                          1 / 5,101 |
+| Unique v2-added named nodes                  |                              3,186 |
+| V2-only impact entries                       |                             24,881 |
+| Sample labels                                | 29 TP, 21 FP, 10 unsure (60 total) |
+| Stratified stress score / judged sample rate |                      48.3% / 58.0% |
 
 All 29 non-TP items in the caller-candidate and ambiguous-span sample strata were self entries (`target.nodeKey === addedCaller.nodeKey`). The self-entry guard removes those artifacts from current impact results. The ten minified D3 rows in the pre-fix artifact remain marked unsure; the revised review excludes minified and vendored bundles from labels but still counts and reports them.
 
@@ -81,25 +85,34 @@ The single missing pair remains Onyx `jquery.js#bb` for `preventDefault`; source
 | Unique v2-added named nodes               |                 3,186 |                2,760 |
 | V2-only impact entries                    |                24,881 |               24,411 |
 | Sample TP / FP / unsure (different seeds) |          29 / 21 / 10 |           51 / 9 / 0 |
-| Conservative sample precision             |                 48.3% |                85.0% |
+| Stratified stress score (TP / reviewed)   |                 48.3% |                85.0% |
 | File delta median / p90 / min / max       |  0 / 0 / -1,177 / +75 | 0 / 0 / -1,177 / +75 |
 
-The new stratified sample has 60 items and seed `pr583-selfguard-final-20261008`. Its labeled rows, source snippets, and justifications are in [the post-fix review artifact](tiered-call-resolution-exact-caller-impact-review.json).
+The post-fix sample has 60 source-reviewed items and seed `pr583-selfguard-final-20261008`. Labels were retained while the weighted estimate and audit metrics were recomputed from the current reports; no items were relabeled. Its rows, source snippets, and one-line justifications are in [the post-fix review artifact](tiered-call-resolution-exact-caller-impact-review.json).
 
-| Category                            | Reviewable eligible | Sample |     TP |    FP | Unsure | Conservative precision | Floor applies      |
-| ----------------------------------- | ------------------: | -----: | -----: | ----: | -----: | ---------------------: | ------------------ |
-| Anonymous callback / lexical parent |              21,718 |     29 |     29 |     0 |      0 |                 100.0% | Yes                |
-| Ambiguous spans                     |                   0 |      0 |      0 |     0 |      0 |                      — | No; fully reviewed |
-| Class ownership                     |                   2 |      2 |      1 |     1 |      0 |                  50.0% | No; fully reviewed |
-| Caller candidate                    |                   0 |      0 |      0 |     0 |      0 |                      — | No; fully reviewed |
-| Other                               |               1,880 |     29 |     21 |     8 |      0 |                  72.4% | **Fail**           |
-| **Overall**                         |          **23,600** | **60** | **51** | **9** |  **0** |              **85.0%** | **Fail**           |
+| Category                            |   Eligible | Reviewed |     TP |    FP | Unsure |                    Conservative TP rate |            Stratum uncertainty interval |   Weight |
+| ----------------------------------- | ---------: | -------: | -----: | ----: | -----: | --------------------------------------: | --------------------------------------: | -------: |
+| Anonymous callback / lexical parent |     21,718 |       29 |     29 |     0 |      0 |                                  100.0% |                 99% Wilson: 81.4–100.0% |   92.03% |
+| Ambiguous spans                     |          0 |        0 |      0 |     0 |      0 |                                       — |                          Not applicable |    0.00% |
+| Class ownership                     |          2 |        2 |      1 |     1 |      0 |                                   50.0% |                Exact census: 50.0–50.0% |    0.01% |
+| Caller candidate                    |          0 |        0 |      0 |     0 |      0 |                                       — |                          Not applicable |    0.00% |
+| Other                               |      1,880 |       29 |     21 |     8 |      0 |                                   72.4% |                  99% Wilson: 48.5–88.0% |    7.97% |
+| **All reviewable additions**        | **23,600** |   **60** | **51** | **9** |  **0** | **97.8% population-weighted precision** | **95% stratified interval: 78.8–99.0%** | **100%** |
 
-The 811 minified or vendored additions are counted as unjudgeable outside the precision labels: 500 callback/lexical-parent and 311 other. Thus all 24,411 additions are accounted for as 23,600 reviewable plus 811 bundle exclusions. The `other` category fails its 0.80 floor at 21/29 (72.4%). Overall conservative precision also fails the 0.90 gate at 51/60 (85.0%). Class ownership has only two eligible additions, so both items were labeled and reported separately without applying the category floor. Ambiguous spans and caller candidates have zero eligible additions after the self-entry fix.
+The weighted estimate is the sum of each category's reviewed TP rate (unsure counts as not-TP) times its share of eligible reviewable additions. The interval combines the weighted category bounds: each sampled stratum uses a 99% Wilson interval with Bonferroni correction across five categories; fully reviewed strata use exact census bounds; sampled strata use no finite-population correction. This gives a nominal 95% simultaneous interval. It assumes the deterministic seeded sample behaves like a within-category random sample and does not account for source-label or corpus bias. The 85.0% balanced sample result (51/60) is a **stratified stress score**, not population precision.
+
+The 811 minified or vendored additions are excluded from source labels and counted separately: 500 callback/lexical-parent and 311 other. Thus all 24,411 additions are accounted for as 23,600 reviewable additions plus 811 bundle exclusions. Categories with at least 10 eligible additions need at least 10 reviewed labels; categories below 10 need exhaustive labels. The callback and `other` categories meet the coverage rule with 29 reviewed items each. Class ownership has two eligible additions and both were labeled; ambiguous spans and caller candidates have zero eligible additions after the self-entry fix. The small class-ownership stratum is reported but has no category floor.
 
 ### File-level blast radius and known recall gaps
 
-Across the same 19,451 callees, v2 minus v1 impacted-file deltas have median 0, nearest-rank p90 0, minimum -1,177, and maximum +75. The risk transitions are unchanged by the self-entry fix: `MEDIUM→MEDIUM` 19,285; `HIGH→HIGH` 83; `CRITICAL→CRITICAL` 8; `HIGH→MEDIUM` 38; `CRITICAL→MEDIUM` 30; `MEDIUM→HIGH` 2; `MEDIUM→CRITICAL` 5.
+Across the same 19,451 callees, v2 minus v1 distinct impacted-file deltas have median 0, nearest-rank p90 0, minimum -1,177, and maximum +75. This is a **file-level risk proxy**. Production risk uses the confirmed blast-radius entry count (excluding dynamic and caller-candidate rows) and each graph's actual `l2Nodes` count, matching `ImpactWorkflow` and `ImpactService.computeRiskLevelFromCounts`. Its v2-minus-v1 confirmed-entry delta has median 0, p90 3, minimum -1,176, and maximum +187.
+
+| Risk numerator / transition | MEDIUM→MEDIUM | MEDIUM→HIGH | MEDIUM→CRITICAL | HIGH→MEDIUM | HIGH→HIGH | HIGH→CRITICAL | CRITICAL→MEDIUM | CRITICAL→HIGH | CRITICAL→CRITICAL |
+| --------------------------- | ------------: | ----------: | --------------: | ----------: | --------: | ------------: | --------------: | ------------: | ----------------: |
+| File-level proxy            |        19,285 |           2 |               5 |          38 |        83 |             0 |              30 |             0 |                 8 |
+| Production risk             |        17,371 |       1,052 |              99 |          39 |       755 |            37 |              17 |             2 |                79 |
+
+The file-level proxy has 30 CRITICAL→MEDIUM and 38 HIGH→MEDIUM transitions. The production-equivalent metric has 17 CRITICAL→MEDIUM and 39 HIGH→MEDIUM transitions. The distinction matters: these transitions use different numerators even though both use the product risk bands.
 
 The five largest negative deltas are Onyx cases. In each, v1's broad name-based fallback includes many unrelated `get`, `set`, or `delete` calls, but source inspection also found a real caller among the v1-only files:
 
@@ -113,7 +126,7 @@ The five largest negative deltas are Onyx cases. In each, v1's broad name-based 
 
 These examples are not losses from the bounded lexical-parent walk. The two monkeypatch cases depend on runtime substitution; the pipeline cases need receiver type flow through `pipeline()`; and the persona helper needs imported class-qualified method resolution. Reopening the broad same-name fallback would restore hundreds of unrelated files alongside those real callers. These file-level recall gaps are disclosed separately from the addition precision gate. They remain unaddressed in exact-v2 because the audit does not establish a narrow receiver-aware repair.
 
-**Measured decision: FAIL. Keep `scope-resolver-v1` as the default; `exact-enclosing-v2` remains opt-in.** The sample reaches only 85.0% overall conservative precision, below 0.90, and the `other` category reaches 72.4%, below 0.80. Its eight false positives are same-name calls on a different receiver or to a different local binding: `this.client.execute`, DOM `focus()`, Python `ContextVar.reset()`, `Set.add()`, independent `_call_api` and `analyzeFileFull` methods, and `NoOpSpan.start()`. The class-ownership stratum has two fully reviewed rows (one TP, one FP) and does not trigger a category floor.
+**Measured decision: FAIL. Keep `scope-resolver-v1` as the default; `exact-enclosing-v2` remains opt-in.** The population-weighted point estimate is 97.8%, but its 95% stratified lower bound is 78.8%, below the 90% gate; the `other` category also fails its 80% floor at 21/29 (72.4%). The 85.0% figure is the stratified stress score, not population precision. The eight false positives are same-name calls on a different receiver or to a different local binding: `this.client.execute`, DOM `focus()`, Python `ContextVar.reset()`, `Set.add()`, independent `_call_api` and `analyzeFileFull` methods, and `NoOpSpan.start()`. The class-ownership stratum has two fully reviewed rows (one TP, one FP); its 50.0% population rate is reported without applying the floor because the stratum is smaller than 10.
 
 To reproduce the per-repository parity/recall audit, run the package script once for each corpus root:
 
@@ -127,7 +140,7 @@ For Onyx, add `--exclude-segment ee`. To regenerate the seeded sample from those
 pnpm run eval:exact-caller-impact-sample --input /tmp/graft-parity.json --input /tmp/nest-parity.json --out /tmp/review.json --seed pr583-selfguard-final-20261008 --sample-size 60
 ```
 
-Supply reviewed labels with `--labels-from /path/to/review.json`. The audit output calls membership comparisons parity/recall vs v1; the source-reviewed sample reports precision.
+Supply reviewed labels with `--labels-from /path/to/review.json`. The audit output calls membership comparisons parity/recall vs v1; the sample output reports the stratified stress score and population-weighted estimate separately. The weighted lower interval bound plus per-category floors, subject to the coverage rule, drives the default decision.
 
 ## Selecting the active policy
 

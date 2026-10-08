@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { aggregateImpactHonesty } from "./impact-eval-honesty.js";
+import {
+  aggregateImpactHonesty,
+  IMPACT_HONESTY_SCHEMA_VERSION,
+  scoreImpactHonestyCase,
+} from "./impact-eval-honesty.js";
 import {
   KNOWN_PRODUCT_DEFECTS,
   PHASE2_GOLDEN,
   PHASE2_GOLDEN_C,
   PHASE2_O65_FIRST_64_PATHS,
 } from "./impact-honesty-corpus.phase2.js";
+import { mapEvidenceChannel } from "./impact-honesty-corpus.phase1.js";
 import {
   PHASE2_ERROR_REASONS,
   PHASE2_MAX_BOUNDED_CANDIDATES,
@@ -367,6 +372,28 @@ describe("Phase 2 gates on ideal output (#508)", () => {
     expect(() => assertPhase2ImpactHonestyGates(evaluation, SUBSET)).toThrow(
       /errored/,
     );
+  });
+
+  it("[happy] caller-candidate remains a separate non-confirmed honesty channel", () => {
+    const channel = mapEvidenceChannel("caller-candidate");
+    const result = scoreImpactHonestyCase({
+      schemaVersion: IMPACT_HONESTY_SCHEMA_VERSION,
+      scenario: "caller-candidate-context",
+      target: "evalTarget",
+      intent: "epistemic-unknown",
+      expectedStatus: "unknown",
+      expectedConfirmedFiles: [],
+      expectedCandidateFiles: [],
+      observedStatus: "unknown",
+      predictions: [{ file: "src/legacy-caller.ts", channel }],
+    });
+
+    expect(channel).toBe("caller-candidate");
+    expect(result.confirmedPredictedFiles).toEqual([]);
+    expect(result.candidatePredictedFiles).toEqual([]);
+    expect(result.predictions).toEqual([
+      { file: "src/legacy-caller.ts", channel: "caller-candidate" },
+    ]);
   });
 
   it("[invalid-input] a not-found target cannot pass as UNKNOWN", () => {

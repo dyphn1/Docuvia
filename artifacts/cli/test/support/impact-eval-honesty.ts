@@ -28,7 +28,7 @@ export type ImpactHonestyExpectedStatus = Exclude<
 >;
 
 export type ImpactHonestyEvidenceChannel =
-  "static" | "lsp-fallback" | "dynamic-candidate";
+  "static" | "lsp-fallback" | "dynamic-candidate" | "caller-candidate";
 
 export interface ImpactHonestyPrediction {
   readonly file: string;

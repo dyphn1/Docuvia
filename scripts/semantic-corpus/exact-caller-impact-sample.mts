@@ -2,6 +2,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   distribution,
+  estimatePopulationWeightedPrecision,
+  evaluateAcceptanceGate,
   EXACT_CALLER_ADDITION_CATEGORIES,
   extractCallSiteEvidence,
   limitSourceEvidence,
@@ -9,6 +11,7 @@ import {
   selectSeededStratifiedSample,
   partitionBundleReviewCandidates,
   type ExactCallerAdditionCategory,
+  type LabeledSampleCandidate,
   type SampleCandidate,
 } from "./exact-caller-impact-parity-sampling.js";
 
@@ -47,8 +50,14 @@ type AuditReport = {
     readonly v1ImpactedFiles: number;
     readonly v2ImpactedFiles: number;
     readonly delta: number;
-    readonly v1RiskLevel: string;
-    readonly v2RiskLevel: string;
+    readonly v1FileLevelRiskProxy: string;
+    readonly v2FileLevelRiskProxy: string;
+    readonly v1ConfirmedImpactEntryCount: number;
+    readonly v2ConfirmedImpactEntryCount: number;
+    readonly v1ProductionRiskLevel: string;
+    readonly v2ProductionRiskLevel: string;
+    readonly v1GraphNodeCount: number;
+    readonly v2GraphNodeCount: number;
   }[];
   readonly worstFileLevelDropDetails?: readonly {
     readonly target: Location;
@@ -174,6 +183,19 @@ function addTotals(reports: readonly AuditReport[]) {
   );
 }
 
+function incrementTransition(
+  transitions: Record<string, number>,
+  from: string,
+  to: string,
+): void {
+  const key = `${from}->${to}`;
+  transitions[key] = (transitions[key] ?? 0) + 1;
+}
+
+function formatPercent(value: number | null): string {
+  return value === null ? "n/a" : `${(value * 100).toFixed(1)}%`;
+}
+
 function categoryCounts(
   items: readonly AdditionReviewItem[],
   key: "category" | "label",
@@ -240,6 +262,7 @@ function main(): void {
         callSiteSnippets: callerCallSiteSnippets(report.repositoryRoot, item),
       },
       label: previousLabel?.label ?? "unsure",
+      reviewed: previousLabel !== undefined,
       justification: previousLabel?.justification ?? "Not reviewed yet.",
     };
   });
@@ -249,23 +272,33 @@ function main(): void {
   const allDeltas = reports.flatMap((report) =>
     report.fileBlastRadiusDeltaRows.map(({ delta }) => delta),
   );
-  const riskLevelTransitions: Record<string, number> = {};
+  const fileLevelRiskProxyTransitions: Record<string, number> = {};
+  const productionRiskTransitions: Record<string, number> = {};
   for (const report of reports) {
     for (const row of report.fileBlastRadiusDeltaRows) {
-      const key = `${row.v1RiskLevel}->${row.v2RiskLevel}`;
-      riskLevelTransitions[key] = (riskLevelTransitions[key] ?? 0) + 1;
+      incrementTransition(
+        fileLevelRiskProxyTransitions,
+        row.v1FileLevelRiskProxy,
+        row.v2FileLevelRiskProxy,
+      );
+      incrementTransition(
+        productionRiskTransitions,
+        row.v1ProductionRiskLevel,
+        row.v2ProductionRiskLevel,
+      );
     }
   }
   const worstFileLevelBlastRadiusDrops = reports
     .flatMap((report) => report.worstFileLevelDropDetails ?? [])
     .sort((left, right) => left.delta - right.delta)
     .slice(0, 5);
+  const reviewedSample = sample.filter(({ reviewed }) => reviewed);
   const labelSummary = labelCounts(sample);
   const reviewableCategoryEligibleCounts = categoryCounts(
     reviewableCandidates,
     "category",
   );
-  const overallCounts = sample.reduce(
+  const overallCounts = reviewedSample.reduce(
     (counts, { label }) => {
       if (label === "TP") counts.truePositives += 1;
       else if (label === "FP") counts.falsePositives += 1;
@@ -276,45 +309,29 @@ function main(): void {
   );
   const judgedCount =
     overallCounts.truePositives + overallCounts.falsePositives;
-  const overallConservativePrecision =
-    sample.length === 0 ? null : overallCounts.truePositives / sample.length;
-  const categoryFloors = Object.fromEntries(
-    EXACT_CALLER_ADDITION_CATEGORIES.map((category) => {
-      const result = labelSummary[category];
-      const applies = result.sampleCount >= 10;
-      return [
-        category,
-        {
-          applies,
-          reviewableEligibleCount: reviewableCategoryEligibleCounts[category],
-          sampleCount: result.sampleCount,
-          conservativePrecision: result.conservativePrecision,
-          passes:
-            !applies ||
-            (result.conservativePrecision !== null &&
-              result.conservativePrecision >= 0.8),
-          fullySampledWhenUnderTenEligible:
-            reviewableCategoryEligibleCounts[category] >= 10 ||
-            result.sampleCount === reviewableCategoryEligibleCounts[category],
-        },
-      ];
-    }),
+  const stratifiedStressScore =
+    reviewedSample.length === 0
+      ? null
+      : overallCounts.truePositives / reviewedSample.length;
+  const populationWeightedPrecision = estimatePopulationWeightedPrecision(
+    reviewableCategoryEligibleCounts,
+    reviewedSample as LabeledSampleCandidate[],
   );
-  const acceptanceGate = {
-    overallThreshold: 0.9,
-    categoryThreshold: 0.8,
-    overallConservativePrecision,
-    overallPass:
-      overallConservativePrecision !== null &&
-      overallConservativePrecision >= 0.9,
-    categoryFloors,
-    passes:
-      overallConservativePrecision !== null &&
-      overallConservativePrecision >= 0.9 &&
-      Object.values(categoryFloors).every(({ passes }) => passes),
-  };
+  const acceptanceGate = evaluateAcceptanceGate(
+    reviewableCategoryEligibleCounts,
+    reviewedSample as LabeledSampleCandidate[],
+    populationWeightedPrecision,
+  );
+  const productionRiskNumeratorDelta = distribution(
+    reports.flatMap((report) =>
+      report.fileBlastRadiusDeltaRows.map(
+        (row) =>
+          row.v2ConfirmedImpactEntryCount - row.v1ConfirmedImpactEntryCount,
+      ),
+    ),
+  );
   const artifact = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     policies: {
       baseline: "scope-resolver-v1",
       candidate: "exact-enclosing-v2",
@@ -332,8 +349,12 @@ function main(): void {
         "SHA-256(seed, repo + target node key + added caller node key), balanced round-robin by category after explicit bundle exclusion",
       bundleExclusion:
         "Minified and vendored target/caller source paths remain counted in the audit population and are reported separately, but are not selected for precision labels.",
-      precisionGateMetric:
-        "Conservative precision = TP / (TP + FP + unsure); overall threshold 0.90; per-category threshold 0.80 only when at least 10 items are sampled.",
+      stratifiedStressScore:
+        "Diagnostic only: TP / all reviewed sample items, with unsure in the denominator. The balanced-stratum score is not a population precision estimate.",
+      populationWeightedPrecision:
+        "Each reviewable category's TP rate (unsure counts as not-TP) is weighted by its eligible population count. The nominal 95% interval sums weighted per-stratum 99% Wilson bounds; Bonferroni correction spans the five categories, exhaustive strata use exact bounds, and sampled strata do not use a finite-population correction.",
+      precisionGate:
+        "Pass requires adequate reviewed-sample coverage, a population-weighted nominal 95% lower bound >= 0.90, and conservative per-category TP rates >= 0.80 for categories with at least 10 eligible items. Categories with fewer than 10 eligible items must be exhaustively labeled. The stratified stress score is diagnostic and does not drive the gate.",
     },
     auditTotals: addTotals(reports),
     categoryEligibleCounts: categoryCounts(candidates, "category"),
@@ -344,25 +365,31 @@ function main(): void {
       sampledCount: 0,
     },
     fileLevelBlastRadiusDelta: distribution(allDeltas),
-    riskLevelTransitions,
+    fileLevelRiskProxyTransitions,
+    productionRiskTransitions,
+    productionRiskNumeratorDelta,
     worstFileLevelBlastRadiusDrops,
     sampleCounts: categoryCounts(sample, "category"),
-    precision: {
-      overall: {
+    reviewedSampleCounts: categoryCounts(reviewedSample, "category"),
+    sampleScores: {
+      stratifiedStress: {
         ...overallCounts,
+        reviewedSampleCount: reviewedSample.length,
+        selectedSampleCount: sample.length,
         judgedPrecision:
           judgedCount === 0 ? null : overallCounts.truePositives / judgedCount,
-        conservativePrecision: overallConservativePrecision,
+        stratifiedStressScore,
       },
-      byCategory: labelSummary,
     },
+    categoryPrecision: labelSummary,
+    populationWeightedPrecision,
     acceptanceGate,
     sample,
   };
   mkdirSync(path.dirname(options.outputPath), { recursive: true });
   writeFileSync(options.outputPath, `${JSON.stringify(artifact, null, 2)}\n`);
   process.stdout.write(
-    `Review sample: ${sample.length}/${reviewableCandidates.length} reviewable v2-only impact additions; ${bundleExcluded.length} minified/vendor bundle additions excluded from labels and counted separately; seed ${options.seed}; file-level impact delta median ${artifact.fileLevelBlastRadiusDelta.median}, p90 ${artifact.fileLevelBlastRadiusDelta.p90}, max ${artifact.fileLevelBlastRadiusDelta.max}.\n`,
+    `Review sample: ${reviewedSample.length} reviewed/${sample.length} selected of ${reviewableCandidates.length} reviewable v2-only impact additions; ${bundleExcluded.length} minified/vendor bundle additions excluded from labels and counted separately; stratified stress score ${formatPercent(stratifiedStressScore)}; population-weighted precision ${formatPercent(populationWeightedPrecision.estimate)} (nominal 95% interval ${formatPercent(populationWeightedPrecision.interval.lower)} to ${formatPercent(populationWeightedPrecision.interval.upper)}); gate ${acceptanceGate.status}; seed ${options.seed}; file-level impact delta median ${artifact.fileLevelBlastRadiusDelta.median}, p90 ${artifact.fileLevelBlastRadiusDelta.p90}, max ${artifact.fileLevelBlastRadiusDelta.max}.\n`,
   );
 }
 

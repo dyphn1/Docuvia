@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   EXACT_CALLER_ADDITION_CATEGORIES,
   distribution,
+  estimatePopulationWeightedPrecision,
+  evaluateAcceptanceGate,
   extractCallSiteEvidence,
   hasPathSegment,
   isExcludedBundlePath,
@@ -10,6 +12,12 @@ import {
   partitionBundleReviewCandidates,
   selectSeededStratifiedSample,
 } from "../scripts/semantic-corpus/exact-caller-impact-parity-sampling.js";
+import { computeRiskLevelFromCounts } from "../lib/core/src/impact/impact.service.js";
+import { filterConfirmedImpactDependencies } from "../lib/ui-core/src/workflows/impact/is-confirmed-impact-dependency.js";
+
+const EMPTY_ELIGIBLE_COUNTS = Object.fromEntries(
+  EXACT_CALLER_ADDITION_CATEGORIES.map((category) => [category, 0]),
+) as Record<(typeof EXACT_CALLER_ADDITION_CATEGORIES)[number], number>;
 
 describe("exact caller parity sampling", () => {
   it("[happy] selects a deterministic, balanced sample independent of input order", () => {
@@ -79,6 +87,143 @@ describe("exact caller parity sampling", () => {
       judgedPrecision: 0.5,
       conservativePrecision: 1 / 3,
     });
+  });
+
+  it("[invalid-input] returns inconclusive when a large stratum has fewer than ten labels", () => {
+    const eligibleCounts = { ...EMPTY_ELIGIBLE_COUNTS, other: 20 };
+    const sample = [
+      { category: "other" as const, sampleKey: "one", label: "TP" as const },
+    ];
+    const weighted = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    const gate = evaluateAcceptanceGate(eligibleCounts, sample, weighted);
+
+    expect(gate.status).toBe("inconclusive");
+    expect(gate.insufficientCoverageCategories).toEqual(["other"]);
+  });
+
+  it("[invalid-input] returns inconclusive when a small stratum is not exhaustively labeled", () => {
+    const eligibleCounts = { ...EMPTY_ELIGIBLE_COUNTS, other: 5 };
+    const sample = [
+      { category: "other" as const, sampleKey: "one", label: "TP" as const },
+      { category: "other" as const, sampleKey: "two", label: "FP" as const },
+      {
+        category: "other" as const,
+        sampleKey: "three",
+        label: "unsure" as const,
+      },
+    ];
+    const weighted = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    const gate = evaluateAcceptanceGate(eligibleCounts, sample, weighted);
+
+    expect(gate.status).toBe("inconclusive");
+    expect(gate.insufficientCoverageCategories).toEqual(["other"]);
+  });
+
+  it("[invalid-input] does not count placeholder labels as reviewed coverage", () => {
+    const eligibleCounts = { ...EMPTY_ELIGIBLE_COUNTS, other: 20 };
+    const sample = Array.from({ length: 10 }, (_, index) => ({
+      category: "other" as const,
+      sampleKey: `other-${index}`,
+      label: "unsure" as const,
+      reviewed: false,
+    }));
+    const weighted = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    const gate = evaluateAcceptanceGate(eligibleCounts, sample, weighted);
+
+    expect(gate.status).toBe("inconclusive");
+    expect(gate.insufficientCoverageCategories).toEqual(["other"]);
+  });
+
+  it("[happy] weights precision by eligible stratum counts and returns simultaneous Wilson bounds", () => {
+    const eligibleCounts = {
+      ...EMPTY_ELIGIBLE_COUNTS,
+      "anonymous-callback/lexical-parent": 100,
+      other: 10,
+    };
+    const sample = [
+      ...Array.from({ length: 10 }, (_, index) => ({
+        category: "anonymous-callback/lexical-parent" as const,
+        sampleKey: `callback-${index}`,
+        label: index === 9 ? ("FP" as const) : ("TP" as const),
+      })),
+      ...Array.from({ length: 10 }, (_, index) => ({
+        category: "other" as const,
+        sampleKey: `other-${index}`,
+        label: "FP" as const,
+      })),
+    ];
+
+    const estimate = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    expect(estimate.estimate).toBeCloseTo(90 / 110, 6);
+    expect(estimate.strata["anonymous-callback/lexical-parent"]).toMatchObject({
+      eligibleCount: 100,
+      sampleCount: 10,
+      truePositives: 9,
+      falsePositives: 1,
+      unsure: 0,
+    });
+    expect(estimate.interval.confidenceLevel).toBe(0.95);
+    expect(estimate.interval.lower).toBeLessThan(estimate.estimate ?? 0);
+    expect(estimate.interval.upper).toBeGreaterThan(estimate.estimate ?? 0);
+  });
+
+  it("[happy] allows a fully covered, exact census to pass the precision gate", () => {
+    const eligibleCounts = { ...EMPTY_ELIGIBLE_COUNTS, other: 100 };
+    const sample = Array.from({ length: 100 }, (_, index) => ({
+      category: "other" as const,
+      sampleKey: `other-${index}`,
+      label: "TP" as const,
+    }));
+    const weighted = estimatePopulationWeightedPrecision(
+      eligibleCounts,
+      sample,
+    );
+
+    expect(
+      evaluateAcceptanceGate(eligibleCounts, sample, weighted).status,
+    ).toBe("pass");
+  });
+
+  it("[happy] uses confirmed caller entries as the product risk numerator, even within one file", () => {
+    const entries = [
+      ...Array.from({ length: 6 }, (_, index) => ({
+        name: `caller${index}`,
+        type: "function",
+        filePath: "src/callers.ts",
+      })),
+      {
+        name: "legacyCaller",
+        type: "function",
+        filePath: "src/callers.ts",
+        edgeSource: "caller-candidate" as const,
+      },
+    ];
+    const confirmedCount = filterConfirmedImpactDependencies(entries).length;
+    const fileProxyCount = new Set(entries.map(({ filePath }) => filePath))
+      .size;
+
+    expect({ confirmedCount, fileProxyCount }).toEqual({
+      confirmedCount: 6,
+      fileProxyCount: 1,
+    });
+    expect(computeRiskLevelFromCounts(confirmedCount, 100)).toBe("HIGH");
+    expect(computeRiskLevelFromCounts(fileProxyCount, 100)).toBe("MEDIUM");
   });
 
   it("matches excluded directory names at any path depth", () => {

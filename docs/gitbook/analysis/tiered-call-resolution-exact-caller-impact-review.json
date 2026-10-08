@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "policies": {
     "baseline": "scope-resolver-v1",
     "candidate": "exact-enclosing-v2"
@@ -53,7 +53,9 @@
     ],
     "sampling": "SHA-256(seed, repo + target node key + added caller node key), balanced round-robin by category after explicit bundle exclusion",
     "bundleExclusion": "Minified and vendored target/caller source paths remain counted in the audit population and are reported separately, but are not selected for precision labels.",
-    "precisionGateMetric": "Conservative precision = TP / (TP + FP + unsure); overall threshold 0.90; per-category threshold 0.80 only when at least 10 items are sampled."
+    "stratifiedStressScore": "Diagnostic only: TP / all reviewed sample items, with unsure in the denominator. The balanced-stratum score is not a population precision estimate.",
+    "populationWeightedPrecision": "Each reviewable category's TP rate (unsure counts as not-TP) is weighted by its eligible population count. The nominal 95% interval sums weighted per-stratum 99% Wilson bounds; Bonferroni correction spans the five categories, exhaustive strata use exact bounds, and sampled strata do not use a finite-population correction.",
+    "precisionGate": "Pass requires adequate reviewed-sample coverage, a population-weighted nominal 95% lower bound >= 0.90, and conservative per-category TP rates >= 0.80 for categories with at least 10 eligible items. Categories with fewer than 10 eligible items must be exhaustively labeled. The stratified stress score is diagnostic and does not drive the gate."
   },
   "auditTotals": {
     "addedNamedFunctionImpactPairs": 4631,
@@ -98,7 +100,7 @@
     "min": -1177,
     "max": 75
   },
-  "riskLevelTransitions": {
+  "fileLevelRiskProxyTransitions": {
     "MEDIUM->MEDIUM": 19285,
     "HIGH->HIGH": 83,
     "CRITICAL->CRITICAL": 8,
@@ -106,6 +108,24 @@
     "CRITICAL->MEDIUM": 30,
     "MEDIUM->HIGH": 2,
     "MEDIUM->CRITICAL": 5
+  },
+  "productionRiskTransitions": {
+    "MEDIUM->MEDIUM": 17371,
+    "MEDIUM->HIGH": 1052,
+    "HIGH->HIGH": 755,
+    "HIGH->CRITICAL": 37,
+    "MEDIUM->CRITICAL": 99,
+    "CRITICAL->CRITICAL": 79,
+    "HIGH->MEDIUM": 39,
+    "CRITICAL->HIGH": 2,
+    "CRITICAL->MEDIUM": 17
+  },
+  "productionRiskNumeratorDelta": {
+    "count": 19451,
+    "median": 0,
+    "p90": 3,
+    "min": -1176,
+    "max": 187
   },
   "worstFileLevelBlastRadiusDrops": [
     {
@@ -4013,105 +4033,186 @@
     "caller-candidate": 0,
     "other": 29
   },
-  "precision": {
-    "overall": {
+  "reviewedSampleCounts": {
+    "anonymous-callback/lexical-parent": 29,
+    "ambiguous-spans": 0,
+    "class-ownership": 2,
+    "caller-candidate": 0,
+    "other": 29
+  },
+  "sampleScores": {
+    "stratifiedStress": {
       "truePositives": 51,
       "falsePositives": 9,
       "unsure": 0,
+      "reviewedSampleCount": 60,
+      "selectedSampleCount": 60,
       "judgedPrecision": 0.85,
-      "conservativePrecision": 0.85
+      "stratifiedStressScore": 0.85
+    }
+  },
+  "categoryPrecision": {
+    "anonymous-callback/lexical-parent": {
+      "sampleCount": 29,
+      "truePositives": 29,
+      "falsePositives": 0,
+      "unsure": 0,
+      "judgedPrecision": 1,
+      "conservativePrecision": 1
     },
-    "byCategory": {
+    "ambiguous-spans": {
+      "sampleCount": 0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "unsure": 0,
+      "judgedPrecision": null,
+      "conservativePrecision": null
+    },
+    "class-ownership": {
+      "sampleCount": 2,
+      "truePositives": 1,
+      "falsePositives": 1,
+      "unsure": 0,
+      "judgedPrecision": 0.5,
+      "conservativePrecision": 0.5
+    },
+    "caller-candidate": {
+      "sampleCount": 0,
+      "truePositives": 0,
+      "falsePositives": 0,
+      "unsure": 0,
+      "judgedPrecision": null,
+      "conservativePrecision": null
+    },
+    "other": {
+      "sampleCount": 29,
+      "truePositives": 21,
+      "falsePositives": 8,
+      "unsure": 0,
+      "judgedPrecision": 0.7241379310344828,
+      "conservativePrecision": 0.7241379310344828
+    }
+  },
+  "populationWeightedPrecision": {
+    "eligibleCount": 23600,
+    "estimate": 0.9779821741671537,
+    "interval": {
+      "confidenceLevel": 0.95,
+      "method": "Weighted 99% Wilson stratum bounds with Bonferroni correction across five categories; census strata use exact bounds; no finite-population correction.",
+      "lower": 0.787595898685416,
+      "upper": 0.9903765032578082
+    },
+    "strata": {
       "anonymous-callback/lexical-parent": {
+        "eligibleCount": 21718,
         "sampleCount": 29,
         "truePositives": 29,
         "falsePositives": 0,
         "unsure": 0,
-        "judgedPrecision": 1,
-        "conservativePrecision": 1
+        "conservativePrecision": 1,
+        "weight": 0.9202542372881356,
+        "interval": {
+          "lower": 0.813809012123496,
+          "upper": 1
+        },
+        "intervalMethod": "wilson-99-bonferroni"
       },
       "ambiguous-spans": {
+        "eligibleCount": 0,
         "sampleCount": 0,
         "truePositives": 0,
         "falsePositives": 0,
         "unsure": 0,
-        "judgedPrecision": null,
-        "conservativePrecision": null
+        "conservativePrecision": null,
+        "weight": 0,
+        "interval": null,
+        "intervalMethod": null
       },
       "class-ownership": {
+        "eligibleCount": 2,
         "sampleCount": 2,
         "truePositives": 1,
         "falsePositives": 1,
         "unsure": 0,
-        "judgedPrecision": 0.5,
-        "conservativePrecision": 0.5
+        "conservativePrecision": 0.5,
+        "weight": 0.00008474576271186441,
+        "interval": {
+          "lower": 0.5,
+          "upper": 0.5
+        },
+        "intervalMethod": "exact-census"
       },
       "caller-candidate": {
+        "eligibleCount": 0,
         "sampleCount": 0,
         "truePositives": 0,
         "falsePositives": 0,
         "unsure": 0,
-        "judgedPrecision": null,
-        "conservativePrecision": null
+        "conservativePrecision": null,
+        "weight": 0,
+        "interval": null,
+        "intervalMethod": null
       },
       "other": {
+        "eligibleCount": 1880,
         "sampleCount": 29,
         "truePositives": 21,
         "falsePositives": 8,
         "unsure": 0,
-        "judgedPrecision": 0.7241379310344828,
-        "conservativePrecision": 0.7241379310344828
+        "conservativePrecision": 0.7241379310344828,
+        "weight": 0.07966101694915254,
+        "interval": {
+          "lower": 0.48508461897751753,
+          "upper": 0.8797263174916359
+        },
+        "intervalMethod": "wilson-99-bonferroni"
       }
     }
   },
   "acceptanceGate": {
+    "status": "fail",
+    "coverageSufficient": true,
+    "insufficientCoverageCategories": [],
     "overallThreshold": 0.9,
     "categoryThreshold": 0.8,
-    "overallConservativePrecision": 0.85,
-    "overallPass": false,
+    "weightedLowerBound": 0.787595898685416,
     "categoryFloors": {
       "anonymous-callback/lexical-parent": {
         "applies": true,
-        "reviewableEligibleCount": 21718,
-        "sampleCount": 29,
+        "eligibleCount": 21718,
+        "reviewedCount": 29,
         "conservativePrecision": 1,
-        "passes": true,
-        "fullySampledWhenUnderTenEligible": true
+        "passes": true
       },
       "ambiguous-spans": {
         "applies": false,
-        "reviewableEligibleCount": 0,
-        "sampleCount": 0,
+        "eligibleCount": 0,
+        "reviewedCount": 0,
         "conservativePrecision": null,
-        "passes": true,
-        "fullySampledWhenUnderTenEligible": true
+        "passes": true
       },
       "class-ownership": {
         "applies": false,
-        "reviewableEligibleCount": 2,
-        "sampleCount": 2,
+        "eligibleCount": 2,
+        "reviewedCount": 2,
         "conservativePrecision": 0.5,
-        "passes": true,
-        "fullySampledWhenUnderTenEligible": true
+        "passes": true
       },
       "caller-candidate": {
         "applies": false,
-        "reviewableEligibleCount": 0,
-        "sampleCount": 0,
+        "eligibleCount": 0,
+        "reviewedCount": 0,
         "conservativePrecision": null,
-        "passes": true,
-        "fullySampledWhenUnderTenEligible": true
+        "passes": true
       },
       "other": {
         "applies": true,
-        "reviewableEligibleCount": 1880,
-        "sampleCount": 29,
+        "eligibleCount": 1880,
+        "reviewedCount": 29,
         "conservativePrecision": 0.7241379310344828,
-        "passes": false,
-        "fullySampledWhenUnderTenEligible": true
+        "passes": false
       }
-    },
-    "passes": false
+    }
   },
   "sample": [
     {
@@ -4174,6 +4275,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct stripSessionPrefix call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4234,6 +4336,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "This class calls this.client.execute for a TypeScript service command; it does not call ApplyFixAllCodeAction.execute."
     },
     {
@@ -4275,6 +4378,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows handleSelection directly invoking getModelContainer on the target’s receiver or binding."
     },
     {
@@ -4337,6 +4441,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct createParamDecorator call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4399,6 +4504,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "FileDiagnostics.clearDiagnosticsForFile calls this.publishDiagnostics, so the owning class contains a confirmed caller."
     },
     {
@@ -4439,6 +4545,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows fetchFileContent directly invoking getFileType on the target’s receiver or binding."
     },
     {
@@ -4499,6 +4606,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct mapToClass call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4559,6 +4667,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows setup directly invoking instanceOf on the target’s receiver or binding."
     },
     {
@@ -4599,6 +4708,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct handleNewSessionNaming call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4639,6 +4749,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows resolvesToUnknown directly invoking referencedAliasName on the target’s receiver or binding."
     },
     {
@@ -4699,6 +4810,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct endPacket call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4737,6 +4849,7 @@
         "callSiteSnippets": ["173: \n174:       return next();\n175:     };"]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows targetCallback directly invoking next on the target’s receiver or binding."
     },
     {
@@ -4799,6 +4912,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct createStopPacket call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -4859,6 +4973,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows delete directly invoking _prefix_key on the target’s receiver or binding."
     },
     {
@@ -4917,6 +5032,7 @@
         "callSiteSnippets": []
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The spec imports worldTest as test and registers this callback through that fixture, which provides the world fixture used by the callback."
     },
     {
@@ -4967,6 +5083,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "NoOpSpan.__enter__ calls NoOpSpan.start; the target is the separate SpanImpl.start method."
     },
     {
@@ -5027,6 +5144,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct testHelper call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5056,6 +5174,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "The callback focuses a DOM textarea; the target is CraftInputBar’s imperative-handle focus function."
     },
     {
@@ -5118,6 +5237,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct setupTree call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5178,6 +5298,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "OpenAIEmbeddingProvider calls its own _call_api method; the target belongs to VoyageEmbeddingProvider."
     },
     {
@@ -5239,6 +5360,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct stringCleaner call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5299,6 +5421,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows visit directly invoking unwrap on the target’s receiver or binding."
     },
     {
@@ -5357,6 +5480,7 @@
         "callSiteSnippets": []
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The test imports decorators from ../../index.js and applies those exported decorators inside this callback, making the barrel an exercised dependency."
     },
     {
@@ -5407,6 +5531,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows ErrorBanner directly invoking getErrorIcon on the target’s receiver or binding."
     },
     {
@@ -5458,6 +5583,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct calcFixture call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5518,6 +5644,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "hits.add(cand) invokes Set.add; the target is the local graph resolver add helper."
     },
     {
@@ -5579,6 +5706,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct compareFileSymbols call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5640,6 +5768,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "This wrapper calls parser.analyzeFileFull on a parser fixture; the target is a different registry stub in another test."
     },
     {
@@ -5681,6 +5810,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct scoreByPointer call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5741,6 +5871,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows setup_method directly invoking _seed_data on the target’s receiver or binding."
     },
     {
@@ -5801,6 +5932,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct buildFreshnessBanner call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5862,6 +5994,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "This wrapper calls parser.analyzeFileFull on a parser fixture; the target is a different registry stub in another test."
     },
     {
@@ -5924,6 +6057,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct hasFailedIntegrity call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -5984,6 +6118,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows exportJSON directly invoking filterNodes on the target’s receiver or binding."
     },
     {
@@ -6044,6 +6179,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct flattenRoutePaths call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6084,6 +6220,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows setup directly invoking setupChannel on the target’s receiver or binding."
     },
     {
@@ -6145,6 +6282,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct main call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6176,6 +6314,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "The Python ContextVar.reset call is unrelated to the TypeScript CraftInputBar reset function."
     },
     {
@@ -6236,6 +6375,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct compare call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6286,6 +6426,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows checkAssertion directly invoking resolvedVariableForIdentifier on the target’s receiver or binding."
     },
     {
@@ -6326,6 +6467,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct error call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6376,6 +6518,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows renderDiagram directly invoking requestFixedMermaidCode on the target’s receiver or binding."
     },
     {
@@ -6436,6 +6579,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct repo call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6476,6 +6620,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows loadSession directly invoking waitForWebappReady on the target’s receiver or binding."
     },
     {
@@ -6516,6 +6661,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct loadNodes call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6576,6 +6722,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows langOf directly invoking languageLabelOf on the target’s receiver or binding."
     },
     {
@@ -6637,6 +6784,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct createPacket call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6666,6 +6814,7 @@
         ]
       },
       "label": "FP",
+      "reviewed": true,
       "justification": "The callback focuses a DOM textarea; the target is CraftInputBar’s imperative-handle focus function."
     },
     {
@@ -6728,6 +6877,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct parse call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6788,6 +6938,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows imageStart directly invoking makePlacedPacket on the target’s receiver or binding."
     },
     {
@@ -6839,6 +6990,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct read call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6879,6 +7031,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows update directly invoking _update_single_chunk on the target’s receiver or binding."
     },
     {
@@ -6939,6 +7092,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct fakeInstall call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -6999,6 +7153,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows testUsingArray directly invoking Param on the target’s receiver or binding."
     },
     {
@@ -7059,6 +7214,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct flushClosedSessions call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -7110,6 +7266,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows lex directly invoking score on the target’s receiver or binding."
     },
     {
@@ -7160,6 +7317,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct handleServerAuthentication call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -7210,6 +7368,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows handleFocus directly invoking refresh on the target’s receiver or binding."
     },
     {
@@ -7260,6 +7419,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The callback contains the shown direct handleClose call, so its enclosing test or callback context is a true caller."
     },
     {
@@ -7310,6 +7470,7 @@
         ]
       },
       "label": "TP",
+      "reviewed": true,
       "justification": "The source snippet shows handleRetry directly invoking requestFixedMermaidCode on the target’s receiver or binding."
     }
   ]

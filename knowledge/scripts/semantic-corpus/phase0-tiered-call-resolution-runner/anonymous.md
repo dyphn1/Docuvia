@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase0-tiered-call-resolution-runner.mts#anonymous@L993
+id: scripts/semantic-corpus/phase0-tiered-call-resolution-runner.mts#anonymous@L814
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase0-tiered-call-resolution-runner.mts

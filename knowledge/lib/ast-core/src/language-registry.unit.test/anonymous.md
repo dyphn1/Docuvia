@@ -7,3 +7,4 @@ filePath: lib/ast-core/src/language-registry.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/src/language-registry.unit.test.ts`
+

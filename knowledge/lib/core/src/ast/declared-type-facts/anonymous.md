@@ -7,4 +7,3 @@ filePath: lib/core/src/ast/declared-type-facts.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/declared-type-facts.ts`
-

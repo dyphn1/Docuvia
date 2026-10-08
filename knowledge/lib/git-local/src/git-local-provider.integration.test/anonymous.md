@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.integration.test.ts#anonymous@L879
+id: lib/git-local/src/git-local-provider.integration.test.ts#anonymous@L943
 type: symbol
 name: anonymous
 filePath: lib/git-local/src/git-local-provider.integration.test.ts

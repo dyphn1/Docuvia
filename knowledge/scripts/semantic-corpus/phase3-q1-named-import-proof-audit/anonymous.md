@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase3-q1-named-import-proof-audit.mts#anonymous@L460
+id: scripts/semantic-corpus/phase3-q1-named-import-proof-audit.mts#anonymous@L436
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase3-q1-named-import-proof-audit.mts

@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/compression.ts#anonymous@L86
+id: lib/ast-core/src/compression.ts#anonymous@L119
 type: symbol
 name: anonymous
 filePath: lib/ast-core/src/compression.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/semantic-corpus-metrics.ts#anonymous@L28
+id: lib/core/src/semantic/semantic-corpus-metrics.ts#anonymous@L66
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/semantic-corpus-metrics.ts

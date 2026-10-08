@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts#LicensedPhase2CorpusInputs
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts#licensedPhase2CorpusInputs
 type: symbol
-name: LicensedPhase2CorpusInputs
+name: licensedPhase2CorpusInputs
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts
 ---
-# Symbol: LicensedPhase2CorpusInputs
+# Symbol: licensedPhase2CorpusInputs
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-support.mts`

@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/call-resolution-hypothesis-ranking.ts#candidateFilterStageKeys
+id: lib/core/src/semantic/call-resolution-hypothesis-ranking.ts#CandidateFilterStageKeys
 type: symbol
-name: candidateFilterStageKeys
+name: CandidateFilterStageKeys
 filePath: lib/core/src/semantic/call-resolution-hypothesis-ranking.ts
 ---
-# Symbol: candidateFilterStageKeys
+# Symbol: CandidateFilterStageKeys
 
 File: `lib/core/src/semantic/call-resolution-hypothesis-ranking.ts`

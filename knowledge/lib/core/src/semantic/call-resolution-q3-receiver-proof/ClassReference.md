@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts#ClassReference
+id: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts#classReference
 type: symbol
-name: ClassReference
+name: classReference
 filePath: lib/core/src/semantic/call-resolution-q3-receiver-proof.ts
 ---
-# Symbol: ClassReference
+# Symbol: classReference
 
 File: `lib/core/src/semantic/call-resolution-q3-receiver-proof.ts`

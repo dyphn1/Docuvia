@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase2-tiered-call-resolution-configured-path-alias.unit.test.ts#anonymous@L12
+id: test/semantic-corpus/phase2-tiered-call-resolution-configured-path-alias.unit.test.ts#anonymous@L32
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/phase2-tiered-call-resolution-configured-path-alias.unit.test.ts

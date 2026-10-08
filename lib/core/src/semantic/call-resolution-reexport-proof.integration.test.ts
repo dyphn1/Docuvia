@@ -795,14 +795,21 @@ describe("call-resolution strict Q2 re-export proof", () => {
       files: collisionFiles,
       reason: "no-unique-owner-candidate",
       options: {},
+      consultedCandidateMemberNames: ["work"],
     },
-  ])("$name", async ({ files, reason, options }) => {
-    const result = await hypothesize(files, options);
-    expect(result.strictProof).toEqual({
-      status: "abstained",
-      targetKey: null,
-      ruleSignature: null,
-      reason,
-    });
-  });
+  ])(
+    "$name",
+    async ({ files, reason, options, consultedCandidateMemberNames }) => {
+      const result = await hypothesize(files, options);
+      expect(result.strictProof).toEqual({
+        status: "abstained",
+        targetKey: null,
+        ruleSignature: null,
+        reason,
+        ...(consultedCandidateMemberNames
+          ? { consultedCandidateMemberNames }
+          : {}),
+      });
+    },
+  );
 });

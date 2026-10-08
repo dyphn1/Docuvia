@@ -1,5 +1,6 @@
 import type {
   AstParseFailure,
+  AstProcessResult,
   CallResolutionStats,
   DiscoveredFile,
   IAstProcessor,
@@ -114,6 +115,87 @@ function sourceIndexResultFields(
   };
 }
 
+async function processFilesNotPreParsed(
+  astProcessor: IAstProcessor,
+  workspaceRoot: string,
+  filesToParse: DiscoveredFile[],
+  preParsed: AstProcessResult | undefined,
+): Promise<AstProcessResult> {
+  const preParsedPaths = new Set([
+    ...(preParsed?.parsed.map(({ file }) => file) ?? []),
+    ...(preParsed?.failures.map(({ file }) => file) ?? []),
+  ]);
+  const filesNotPreParsed = filesToParse.filter(
+    ({ file }) => !preParsedPaths.has(file),
+  );
+  return filesNotPreParsed.length > 0
+    ? astProcessor.processFiles(workspaceRoot, filesNotPreParsed)
+    : { parsed: [], failures: [] };
+}
+
+function collectParseResults(
+  filesToParse: DiscoveredFile[],
+  preParsed: AstProcessResult | undefined,
+  remaining: AstProcessResult,
+): Pick<RunParseAndPersistResult, "parsedResults" | "failures"> {
+  const parsedByFile = new Map(
+    [...(preParsed?.parsed ?? []), ...remaining.parsed].map((result) => [
+      result.file,
+      result,
+    ]),
+  );
+  const parsedResults = filesToParse.flatMap((file) => {
+    const parsed = parsedByFile.get(file.file);
+    return parsed ? [parsed] : [];
+  });
+  return {
+    parsedResults,
+    failures: [...(preParsed?.failures ?? []), ...remaining.failures],
+  };
+}
+
+function mergeParsedLanguages(
+  inputTags: Set<string>,
+  parsedResults: ParsedAstFileResult[],
+): Set<string> {
+  const tags = new Set(inputTags);
+  for (const result of parsedResults) {
+    if (result.language) tags.add(result.language);
+  }
+  return tags;
+}
+
+async function logParseDiagnostics(input: {
+  workspaceRoot: string;
+  appendLogLine: (
+    workspaceRoot: string,
+    event: Record<string, unknown>,
+  ) => Promise<void>;
+  logEvents: RunParseAndPersistLogEvents;
+  failures: AstParseFailure[];
+  skippedOversized: { file: string; sizeBytes: number }[];
+}): Promise<void> {
+  const {
+    workspaceRoot,
+    appendLogLine,
+    logEvents,
+    failures,
+    skippedOversized,
+  } = input;
+  for (const failure of failures) {
+    await appendLogLine(workspaceRoot, {
+      event: logEvents.parseFailure,
+      ...failure,
+    });
+  }
+  for (const skipped of skippedOversized) {
+    await appendLogLine(workspaceRoot, {
+      event: logEvents.fileSkippedOversized,
+      ...skipped,
+    });
+  }
+}
+
 /** Phase 4: AST parse, per-file language-tag merge, then hands off to `IGraphPersister` (the Domain Core service resolved from the factory) for graph persistence. */
 export async function runParseAndPersist(deps: {
   astProcessor: IAstProcessor;
@@ -122,6 +204,8 @@ export async function runParseAndPersist(deps: {
   workspaceRoot: string;
   projectId: number;
   filesToParse: DiscoveredFile[];
+  /** Parse results already produced by delta candidate-domain comparison. */
+  preParsed?: AstProcessResult;
   /** Full-discovery candidate count; omitted by delta ingestion, which can never claim a complete index. */
   candidateFileCount?: number;
   /** Full ingestion replaces all facts; a delta merges into a validated complete baseline. */
@@ -145,6 +229,7 @@ export async function runParseAndPersist(deps: {
     workspaceRoot,
     projectId,
     filesToParse,
+    preParsed,
     candidateFileCount,
     sourceIndexUpdateMode,
     sourceIndexBaseComplete,
@@ -153,28 +238,25 @@ export async function runParseAndPersist(deps: {
     logEvents,
   } = deps;
 
-  const { parsed: parsedResults, failures } = await astProcessor.processFiles(
+  const remaining = await processFilesNotPreParsed(
+    astProcessor,
     workspaceRoot,
     filesToParse,
+    preParsed,
   );
-
-  const tags = new Set(deps.tags);
-  for (const result of parsedResults) {
-    if (result.language) tags.add(result.language);
-  }
-
-  for (const failure of failures) {
-    await appendLogLine(workspaceRoot, {
-      event: logEvents.parseFailure,
-      ...failure,
-    });
-  }
-  for (const skipped of skippedOversized) {
-    await appendLogLine(workspaceRoot, {
-      event: logEvents.fileSkippedOversized,
-      ...skipped,
-    });
-  }
+  const { parsedResults, failures } = collectParseResults(
+    filesToParse,
+    preParsed,
+    remaining,
+  );
+  const tags = mergeParsedLanguages(deps.tags, parsedResults);
+  await logParseDiagnostics({
+    workspaceRoot,
+    appendLogLine,
+    logEvents,
+    failures,
+    skippedOversized,
+  });
 
   const sourceIndexComplete = canProvideCompleteSourceIndex({
     parsedResults,

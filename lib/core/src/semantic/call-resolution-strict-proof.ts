@@ -489,7 +489,7 @@ function proveResolvedNamedImport(
       candidateKey,
     )
   ) {
-    return abstain("no-unique-owner-candidate");
+    return abstain("no-unique-owner-candidate", [descriptor.originalName]);
   }
   const dependencies = namedImportDependencies(
     request,
@@ -507,6 +507,7 @@ function proveResolvedNamedImport(
     targetFilePath: targetPath,
     targetName: descriptor.originalName,
     dependencies,
+    consultedCandidateMemberNames: [descriptor.originalName],
   };
 }
 
@@ -620,11 +621,15 @@ function abstain(
     | "unique-typed-receiver-member"
     | "unique-new-receiver-member"
   >,
+  consultedCandidateMemberNames: readonly string[] = [],
 ): CallResolutionStrictProof {
   return {
     status: "abstained",
     targetKey: null,
     ruleSignature: null,
     reason,
+    ...(consultedCandidateMemberNames.length > 0
+      ? { consultedCandidateMemberNames }
+      : {}),
   };
 }

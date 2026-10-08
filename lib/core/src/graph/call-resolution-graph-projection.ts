@@ -9,6 +9,7 @@ import {
   type CallSiteResolutionObservationInput,
   type ParsedAstFileResult,
   CallSiteResolutionClasses,
+  CallSiteResolutionDependencyKinds,
   CallSiteResolutionObservationSources,
   CallSiteVerificationStatuses,
   CALL_RESOLUTION_Q2_REEXPORT_RULE_SIGNATURE,
@@ -38,7 +39,7 @@ export type StrictCallProofExclusion = {
 export type CallSiteProof = {
   readonly callSiteKey: string;
   readonly resolution: CallSiteResolutionRecord;
-  readonly strictObservation: CallSiteResolutionObservationInput;
+  readonly strictObservation?: CallSiteResolutionObservationInput;
 };
 
 type ParsedCall = NonNullable<ParsedAstFileResult["data"]["calls"]>[number];
@@ -386,8 +387,13 @@ function createCallSiteProof(input: {
       ? strictProof.dependencies
       : [{ filePath: result.file, contentHash: sourceHash }]
   )
-    .slice()
-    .sort((left, right) => left.filePath.localeCompare(right.filePath));
+    .concat(
+      candidateMemberDependencies(
+        callSite.calleeName,
+        strictProof.consultedCandidateMemberNames ?? [],
+      ),
+    )
+    .sort(compareResolutionDependencies);
   const dependencyFingerprint = sha256(JSON.stringify(dependencies));
   const evidenceJson = JSON.stringify({
     kind: strictProof.reason,
@@ -432,6 +438,82 @@ function createCallSiteProof(input: {
   return { callSiteKey, resolution, strictObservation };
 }
 
+function candidateMemberDependencies(
+  calleeName: string,
+  consultedNames: readonly string[],
+): CallSiteResolutionRecord["dependencies"] {
+  return [...new Set([calleeName, ...consultedNames])]
+    .filter((name) => name.length > 0)
+    .sort((left, right) => left.localeCompare(right))
+    .map((filePath) => ({
+      kind: CallSiteResolutionDependencyKinds.CANDIDATE_MEMBER,
+      filePath,
+      contentHash: null,
+    }));
+}
+
+function compareResolutionDependencies(
+  left: CallSiteResolutionRecord["dependencies"][number],
+  right: CallSiteResolutionRecord["dependencies"][number],
+): number {
+  return (
+    (left.kind ?? CallSiteResolutionDependencyKinds.FILE).localeCompare(
+      right.kind ?? CallSiteResolutionDependencyKinds.FILE,
+    ) || left.filePath.localeCompare(right.filePath)
+  );
+}
+
+function createCandidateDependencyOnlyRow(input: {
+  result: ParsedAstFileResult;
+  call: ParsedCall;
+  callSite: CallSiteShape;
+  sourceHash: string;
+  strictProof: CallResolutionStrictProof;
+  functionNodes: readonly FunctionNodeReference[];
+  sourceFingerprint: string;
+}): CallSiteProof {
+  const { result, call, callSite, sourceHash, strictProof, functionNodes } =
+    input;
+  const callSiteKey = portableCallSiteKey(result.file, sourceHash, callSite);
+  const dependencies = [
+    { filePath: result.file, contentHash: sourceHash },
+    ...candidateMemberDependencies(
+      callSite.calleeName,
+      strictProof.consultedCandidateMemberNames ?? [],
+    ),
+  ].sort(compareResolutionDependencies);
+  const evidenceJson = JSON.stringify({
+    kind: strictProof.reason,
+    sourceFingerprint: input.sourceFingerprint,
+  });
+  return {
+    callSiteKey,
+    resolution: {
+      callSiteKey,
+      identityVersion: 1,
+      filePath: result.file,
+      sourceContentHash: sourceHash,
+      startLine: callSite.startLine,
+      startColumn: callSite.startColumn,
+      calleeKind: callSite.calleeKind,
+      calleeName: callSite.calleeName,
+      callerNodeKey: exactCallerNodeForCall(result, call, functionNodes)
+        .nodeKey,
+      resolutionClass: CallSiteResolutionClasses.UNRESOLVED,
+      selectedTargetNodeKey: null,
+      confidence: null,
+      resolver: "strict-proof",
+      ruleSignature: `strict-proof-candidate-domain:${strictProof.reason}`,
+      dependencyFingerprint: sha256(JSON.stringify(dependencies)),
+      dependencies,
+      verificationStatus: CallSiteVerificationStatuses.UNVERIFIED,
+      verifiedTargetNodeKey: null,
+      isStale: false,
+      candidates: [],
+    },
+  };
+}
+
 function proofForCall(
   service: ICallResolutionHypothesisService,
   workspaceIndex: CallResolutionHypothesisWorkspaceIndex,
@@ -454,7 +536,19 @@ function proofForCall(
     workspaceIndex,
   });
   const { strictProof } = hypothesis;
-  if (strictProof.status !== "proven") return {};
+  if (strictProof.status !== "proven") {
+    return {
+      proof: createCandidateDependencyOnlyRow({
+        result,
+        call,
+        callSite,
+        sourceHash,
+        strictProof,
+        functionNodes,
+        sourceFingerprint: hypothesis.sourceFingerprint,
+      }),
+    };
+  }
 
   const targetMatch = isQ3ReceiverProof(strictProof)
     ? q3TargetFunction(strictProof, functionNodesByFile)
@@ -464,6 +558,15 @@ function proofForCall(
       : strictTargetFunction(result, strictProof.targetKey, functionNodes);
   if (!("functionNode" in targetMatch)) {
     return {
+      proof: createCandidateDependencyOnlyRow({
+        result,
+        call,
+        callSite,
+        sourceHash,
+        strictProof,
+        functionNodes,
+        sourceFingerprint: hypothesis.sourceFingerprint,
+      }),
       exclusion: {
         callSiteKey: portableCallSiteKey(result.file, sourceHash, callSite),
         filePath: result.file,

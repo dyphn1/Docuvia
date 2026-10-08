@@ -31,6 +31,7 @@ import {
   getReceiverTypeFact,
   hashFeatureInput,
   canSearchWorkspaceExportsForImportSpecifier,
+  candidateMemberDomainSignaturesByFile,
   isWorkspaceBoundSourcePath,
   resolveDirectConfiguredImportPath,
   resolveDirectRelativeImportPath,
@@ -347,6 +348,12 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
   constructor(options: CallResolutionHypothesisServiceOptions = {}) {
     this.options = normalizeServiceOptions(options);
     this.configurationHash = createConfigurationHash(this.options);
+  }
+
+  candidateMemberDomainSignaturesByFile(
+    sourceFiles: readonly CallResolutionHypothesisWorkspaceInput["sourceFiles"][number][],
+  ): ReadonlyMap<string, ReadonlyMap<string, string>> {
+    return candidateMemberDomainSignaturesByFile(sourceFiles);
   }
 
   indexWorkspace(

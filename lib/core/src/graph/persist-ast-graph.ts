@@ -13,6 +13,7 @@ import {
   DocuviaError,
   ErrorCodes,
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
+  GitConstants,
   CallsProjectionCallerPolicies,
   DEFAULT_CALLS_PROJECTION_CALLER_POLICY,
   type CallsProjectionCallerPolicy,
@@ -181,11 +182,9 @@ function readStrictProofSourceFiles(input: {
         complete: false,
         fallbackReason: "persisted-source-facts-provider-unavailable",
       };
-    if (!persisted.complete)
-      return {
-        complete: false,
-        fallbackReason: `persisted-source-facts-incomplete:${persisted.incompleteFilePaths.length}`,
-      };
+    // Merge mode's caller has already validated source facts for every changed path against the
+    // current HEAD. Unchanged paths whose facts were unavailable in the baseline stay absent,
+    // matching the resolver inventory that was persisted by that ingestion.
     sourceFiles = persisted.sourceFiles;
     functionNodeReferencesByFile = persisted.functionNodeReferencesByFile;
   }
@@ -376,6 +375,16 @@ export class GraphPersisterService implements IGraphPersister {
         this.callsProjectionCallerPolicy,
         sourceIndexUpdateMode,
       );
+      if (
+        sourceIndexUpdateMode === "replace" &&
+        sourceIndexComplete &&
+        strictCallProofIndex.complete
+      ) {
+        store.meta.set(
+          GitConstants.META_KEY_CALL_RESOLUTION_CANDIDATE_DEPENDENCY_VERSION,
+          GitConstants.CALL_RESOLUTION_CANDIDATE_DEPENDENCY_VERSION,
+        );
+      }
       this.reattachExternalIncomingLinks(store, externalIncoming);
       if (sourceIndexComplete) {
         store.meta.set(
@@ -457,13 +466,13 @@ export class GraphPersisterService implements IGraphPersister {
       input.sourceIndexComplete && input.sourceIndexUpdateMode === "merge"
         ? input.store.files.getCallResolutionSourceFiles?.(input.projectId)
         : undefined;
-    if (persisted?.complete) {
-      const completeSources = mergeResolverSourceFiles({
+    if (persisted) {
+      const availableSources = mergeResolverSourceFiles({
         sourceFiles: persisted.sourceFiles,
         resolverLocalSymbolsByFile: persisted.resolverLocalSymbolsByFile,
         parsedResults: input.parsedResults,
       });
-      for (const source of completeSources) {
+      for (const source of availableSources) {
         resolver.registerFile(
           source.filePath,
           normalizeResolverImports(source.sourceFile.imports),
@@ -945,11 +954,14 @@ export class GraphPersisterService implements IGraphPersister {
     });
     if (collection.proofs.length === 0) return [...collection.exclusions];
     const proofs = collection.proofs;
+    const provenProofs = proofs.filter(
+      ({ resolution }) => resolution.selectedTargetNodeKey !== null,
+    );
 
     const sourceFileId = fileIdMap.get(result.file)!;
     const projectionCallers = this.projectionCallersForProofs(
       result,
-      proofs,
+      provenProofs,
       sourceFileId,
       symbolIdMap.get(result.file),
       nodeKeyById,
@@ -963,10 +975,13 @@ export class GraphPersisterService implements IGraphPersister {
       projectionCallers,
     );
     for (const proof of proofs) {
-      repo.appendObservation(projectId, proof.strictObservation);
+      if (proof.strictObservation)
+        repo.appendObservation(projectId, proof.strictObservation);
     }
 
-    const provenKeys = new Set(proofs.map(({ callSiteKey }) => callSiteKey));
+    const provenKeys = new Set(
+      provenProofs.map(({ callSiteKey }) => callSiteKey),
+    );
     this.restoreUnprovenCallsForCallerPolicy(
       store,
       resolver,

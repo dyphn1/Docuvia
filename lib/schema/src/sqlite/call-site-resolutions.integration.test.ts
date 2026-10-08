@@ -1398,6 +1398,79 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toEqual([]);
   });
 
+  it("[state-diff] invalidates only resolutions that consulted a changed candidate member", () => {
+    const caller = resolution(portableKey("candidate-member"), [], {
+      dependencies: [
+        {
+          kind: "candidate-member",
+          filePath: "greet",
+          contentHash: null,
+        },
+      ],
+    });
+    const unrelated = resolution(portableKey("other-member"), [], {
+      filePath: "src/other-caller.ts",
+      callerNodeKey: "src/other-caller.ts#caller",
+      dependencies: [
+        {
+          kind: "candidate-member",
+          filePath: "run",
+          contentHash: null,
+        },
+      ],
+    });
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      caller,
+    ]);
+    store.callSiteResolutions.replaceForFile(projectId, "src/other-caller.ts", [
+      unrelated,
+    ]);
+
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts")[0]
+        ?.dependencies,
+    ).toContainEqual({
+      kind: "candidate-member",
+      filePath: "greet",
+      contentHash: null,
+    });
+    expect(
+      store.callSiteResolutions.hasMissingCandidateMemberDependencies(
+        projectId,
+      ),
+    ).toBe(false);
+    expect(
+      store.callSiteResolutions.invalidateChangedDependencies(projectId, [
+        {
+          kind: "candidate-member",
+          filePath: "greet",
+          contentHash: null,
+        },
+      ]),
+    ).toEqual({ invalidatedCount: 1, affectedFilePaths: ["src/caller.ts"] });
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/caller.ts")[0]
+        ?.isStale,
+    ).toBe(true);
+    expect(
+      store.callSiteResolutions.getForFile(projectId, "src/other-caller.ts")[0]
+        ?.isStale,
+    ).toBe(false);
+  });
+
+  it("[legacy] detects strict-proof rows without candidate-member dependencies", () => {
+    store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
+      resolution(portableKey("legacy-candidate-index"), [], {
+        resolver: "strict-proof",
+      }),
+    ]);
+    expect(
+      store.callSiteResolutions.hasMissingCandidateMemberDependencies(
+        projectId,
+      ),
+    ).toBe(true);
+  });
+
   it("[error-handling][state-diff] rolls back invalidation when projection rebuilding fails", () => {
     const callerId = store.graph.insertNode({
       projectId,

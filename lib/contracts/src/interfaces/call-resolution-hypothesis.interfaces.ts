@@ -169,7 +169,7 @@ export type CallResolutionStrictProofReason =
   | "unresolved-call-binding"
   | "unresolved-type-binding";
 
-export type CallResolutionStrictProof =
+export type CallResolutionStrictProof = (
   | {
       readonly status: "proven";
       readonly targetKey: string;
@@ -247,7 +247,11 @@ export type CallResolutionStrictProof =
         | "unique-typed-receiver-member"
         | "unique-new-receiver-member"
       >;
-    };
+    }
+) & {
+  /** Candidate-map member names consulted by this proof, including proof abstentions. */
+  readonly consultedCandidateMemberNames?: readonly string[];
+};
 
 export type CallResolutionHypothesisReason =
   | "calibrated-likely"
@@ -295,6 +299,10 @@ export interface CallResolutionHypothesisServiceOptions {
 }
 
 export interface ICallResolutionHypothesisService {
+  /** Candidate-map signatures by source file, excluding source-position-only changes. */
+  candidateMemberDomainSignaturesByFile(
+    sourceFiles: readonly CallResolutionHypothesisSourceFile[],
+  ): ReadonlyMap<string, ReadonlyMap<string, string>>;
   indexWorkspace(
     input: CallResolutionHypothesisWorkspaceInput,
   ): CallResolutionHypothesisWorkspaceIndex;

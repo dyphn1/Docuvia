@@ -176,7 +176,12 @@ describe("call resolution graph projection target mapping", () => {
       ]),
     });
 
-    expect(collection.proofs).toEqual([]);
+    expect(collection.proofs).toHaveLength(1);
+    expect(collection.proofs[0]?.resolution.dependencies).toContainEqual({
+      kind: "candidate-member",
+      filePath: "toSdkModelId",
+      contentHash: null,
+    });
     expect(collection.exclusions).toEqual([
       {
         callSiteKey: portableCallSiteKeyForCall(data.caller, data.call),
@@ -205,7 +210,12 @@ describe("call resolution graph projection target mapping", () => {
       ]),
     });
 
-    expect(collection.proofs).toEqual([]);
+    expect(collection.proofs).toHaveLength(1);
+    expect(collection.proofs[0]?.resolution.dependencies).toContainEqual({
+      kind: "candidate-member",
+      filePath: "toSdkModelId",
+      contentHash: null,
+    });
     expect(collection.exclusions).toMatchObject([
       {
         ruleSignature: "q1:named-import:v1",
@@ -225,7 +235,12 @@ describe("call resolution graph projection target mapping", () => {
       functionNodesByFile: new Map([[data.caller.file, data.callerNodes]]),
     });
 
-    expect(collection.proofs).toEqual([]);
+    expect(collection.proofs).toHaveLength(1);
+    expect(collection.proofs[0]?.resolution.dependencies).toContainEqual({
+      kind: "candidate-member",
+      filePath: "toSdkModelId",
+      contentHash: null,
+    });
     expect(collection.exclusions).toHaveLength(1);
     expect(collection.exclusions[0]?.reason).toBe(
       "target-declaration-node-unmatched",

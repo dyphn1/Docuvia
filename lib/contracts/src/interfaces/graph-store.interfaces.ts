@@ -820,8 +820,17 @@ export interface CallSiteResolutionCandidate {
   evidenceJson: string;
 }
 
+export const CallSiteResolutionDependencyKinds = {
+  FILE: "file",
+  CANDIDATE_MEMBER: "candidate-member",
+} as const;
+export type CallSiteResolutionDependencyKind =
+  (typeof CallSiteResolutionDependencyKinds)[keyof typeof CallSiteResolutionDependencyKinds];
+
 /** File inputs whose hashes contributed to the current resolution's dependency fingerprint. */
 export interface CallSiteResolutionDependency {
+  /** Omitted for legacy callers and interpreted as `file`. */
+  kind?: CallSiteResolutionDependencyKind;
   filePath: string;
   contentHash: string | null;
 }
@@ -934,6 +943,8 @@ export interface ICallSiteResolutionsRepo {
   ): CallSiteResolutionInvalidationResult;
   /** Marks every current resolution stale before a full graph replacement or hydration. */
   invalidateAll(projectId: number): CallSiteResolutionInvalidationResult;
+  /** True when strict-proof rows lack the candidate-member dependency index. */
+  hasMissingCandidateMemberDependencies?(projectId: number): boolean;
   /** Appends immutable resolver/proof/ranking/Tier B evidence for a call site. */
   appendObservation(
     projectId: number,

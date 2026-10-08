@@ -629,11 +629,14 @@ describe("Q3 receiver strict proofs", () => {
       functionNodes: functionNodesByFile.get(parsedCaller.filePath) ?? [],
       functionNodesByFile,
     });
-    expect(projected.proofs).toHaveLength(1);
-    expect(projected.proofs[0]?.resolution.callerNodeKey).toEqual(
+    expect(projected.proofs).toHaveLength(2);
+    const provenCall = projected.proofs.find(
+      ({ resolution }) => resolution.selectedTargetNodeKey !== null,
+    );
+    expect(provenCall?.resolution.callerNodeKey).toEqual(
       "src/caller.ts#.anonymous",
     );
-    expect(projected.proofs[0]?.resolution.selectedTargetNodeKey).toEqual(
+    expect(provenCall?.resolution.selectedTargetNodeKey).toEqual(
       "src/service.ts#Service.m",
     );
   });

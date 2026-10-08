@@ -14,7 +14,7 @@ const rawArtifact = readFileSync(
   "utf8",
 );
 const FROZEN_Q1_RULE_CONFIGURATION_SHA256 =
-  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
+  "5f3e8c9dae8ed1c3c850b533f735813b212e0f286ef7ca91b6ad61cf7b926c9a";
 
 describe("shipped Q1 call-resolution certification", () => {
   it("[happy] trusts only the pinned Q1 named-import signature at its certified source hash", () => {

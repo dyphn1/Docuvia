@@ -114,6 +114,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
   call_site_resolution_dependencies: [
     "project_id",
     "call_site_key",
+    "dependency_kind",
     "dependency_path",
     "content_hash",
   ],
@@ -208,6 +209,7 @@ const EXPECTED_COLUMN_TYPES: Record<string, Record<string, string>> = {
   call_site_resolution_dependencies: {
     project_id: "INTEGER",
     call_site_key: "TEXT",
+    dependency_kind: "TEXT",
     dependency_path: "TEXT",
     content_hash: "TEXT",
   },
@@ -365,6 +367,7 @@ describe("applyMigrations", () => {
       "0017_verified_call_site_targets.sql",
       "0018_call_site_rule_quarantine_recertification.sql",
       "0019_call_resolution_source_index.sql",
+      "0020_call_resolution_dependency_kind.sql",
     ]);
   });
 
@@ -427,7 +430,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(19);
+    expect(migrationRows).toHaveLength(20);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);
@@ -444,7 +447,8 @@ describe("applyMigrations", () => {
       .filter(
         (entry) =>
           entry.endsWith(".sql") &&
-          entry !== "0017_verified_call_site_targets.sql",
+          entry !== "0017_verified_call_site_targets.sql" &&
+          entry !== "0020_call_resolution_dependency_kind.sql",
       )) {
       fs.copyFileSync(
         path.join(MIGRATIONS_DIR, filename),

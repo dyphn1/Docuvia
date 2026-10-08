@@ -29,7 +29,7 @@ const OTHER_SIGNATURE = "q2:reexport-trace:v1";
 const FILE_PATH = "caller.ts";
 const CANARY_RATE = 0.1;
 const FROZEN_Q1_RULE_CONFIGURATION_SHA256 =
-  "96d314c147163bed22286b1116941a43c2065ed6d644bff8f77b2e449e9de728";
+  "5f3e8c9dae8ed1c3c850b533f735813b212e0f286ef7ca91b6ad61cf7b926c9a";
 
 interface FixtureSite {
   calleeName: string;

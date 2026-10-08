@@ -47,8 +47,8 @@ export async function stampFullIngestionForTierB(deps: {
       );
     return;
   }
-  const sourceIndexIsCurrent =
-    sourceIndexComplete === true &&
+  const sourceIndexIsAtHead =
+    sourceIndexComplete !== undefined &&
     !(await git.hasUncommittedChanges(workspaceRoot));
 
   const tierBEntries: TierBQueueEntry[] = parsedResults.map((r) => ({
@@ -60,9 +60,9 @@ export async function stampFullIngestionForTierB(deps: {
     if (sourceIndexComplete !== undefined)
       store.meta.set(
         GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
-        sourceIndexIsCurrent ? headSha : "",
+        sourceIndexIsAtHead ? headSha : "",
       );
-    if (sourceIndexIsCurrent)
+    if (sourceIndexComplete === true && sourceIndexIsAtHead)
       store.meta.set(
         GitConstants.META_KEY_CALL_RESOLUTION_REPROOF_PENDING_PATHS,
         "[]",

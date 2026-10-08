@@ -68,8 +68,42 @@ type ProvenRow = {
 };
 
 type CallEdge = { source_node_key: string; target_node_key: string };
+type ResolutionRow = {
+  project_id: number;
+  call_site_key: string;
+  identity_version: number;
+  file_path: string;
+  source_content_hash: string;
+  start_line: number;
+  start_column: number;
+  callee_kind: string;
+  callee_name: string;
+  caller_node_key: string;
+  resolution_class: string;
+  selected_target_node_key: string | null;
+  confidence: number | null;
+  resolver: string;
+  rule_signature: string;
+  dependency_fingerprint: string;
+  verification_status: string;
+  verified_target_node_key: string | null;
+  is_stale: number;
+};
+type ResolutionDependencyRow = { dependency_path: string };
+type CandidateMemberDependencyRow = { dependency_path: string };
+type StoredResolutionDependencyRow = {
+  call_site_key: string;
+  dependency_kind: string;
+  dependency_path: string;
+  content_hash: string | null;
+};
 
-type GraphSnapshot = { provenRows: ProvenRow[]; calls: CallEdge[] };
+type GraphSnapshot = {
+  provenRows: ProvenRow[];
+  resolutionRows: ResolutionRow[];
+  dependencies: StoredResolutionDependencyRow[];
+  calls: CallEdge[];
+};
 type Constructor<T> = abstract new (...args: never[]) => T;
 
 function instantiate<T>(constructor: Constructor<T>, args: unknown[]): T {
@@ -91,6 +125,29 @@ function readGraphSnapshot(workspaceRoot: string): GraphSnapshot {
            ORDER BY call_site_key, caller_node_key, selected_target_node_key, rule_signature`,
         )
         .all() as ProvenRow[],
+      resolutionRows: db
+        .prepare(
+          `SELECT project_id, call_site_key, identity_version, file_path,
+                  source_content_hash, start_line, start_column, callee_kind,
+                  callee_name, caller_node_key, resolution_class,
+                  selected_target_node_key, confidence, resolver, rule_signature,
+                  dependency_fingerprint, verification_status,
+                  verified_target_node_key, is_stale
+           FROM call_site_resolutions
+           WHERE resolver = 'strict-proof'
+           ORDER BY call_site_key, file_path, resolver, rule_signature`,
+        )
+        .all() as ResolutionRow[],
+      dependencies: db
+        .prepare(
+          `SELECT d.call_site_key, d.dependency_kind, d.dependency_path, d.content_hash
+           FROM call_site_resolution_dependencies AS d
+           JOIN call_site_resolutions AS r
+             ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+           WHERE r.resolver = 'strict-proof'
+           ORDER BY d.call_site_key, d.dependency_kind, d.dependency_path`,
+        )
+        .all() as StoredResolutionDependencyRow[],
       calls: db
         .prepare(
           `SELECT source.node_key AS source_node_key, target.node_key AS target_node_key
@@ -123,6 +180,56 @@ function readProjectFileHashes(
     return new Map(
       rows.map(({ file_path, content_hash }) => [file_path, content_hash]),
     );
+  } finally {
+    db.close();
+  }
+}
+
+function readResolutionDependencies(
+  workspaceRoot: string,
+  filePath: string,
+): ResolutionDependencyRow[] {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+    { readonly: true },
+  ]);
+  try {
+    const rows = db
+      .prepare(
+        `SELECT d.dependency_path
+         FROM call_site_resolution_dependencies AS d
+         JOIN call_site_resolutions AS r
+           ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+         WHERE r.file_path = ?
+         ORDER BY d.dependency_path`,
+      )
+      .all(filePath) as ResolutionDependencyRow[];
+    return rows;
+  } finally {
+    db.close();
+  }
+}
+
+function readCandidateMemberDependencies(
+  workspaceRoot: string,
+  filePath: string,
+): string[] {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+    { readonly: true },
+  ]);
+  try {
+    const rows = db
+      .prepare(
+        `SELECT DISTINCT d.dependency_path
+         FROM call_site_resolution_dependencies AS d
+         JOIN call_site_resolutions AS r
+           ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+         WHERE r.file_path = ? AND d.dependency_kind = 'candidate-member'
+         ORDER BY d.dependency_path`,
+      )
+      .all(filePath) as CandidateMemberDependencyRow[];
+    return rows.map(({ dependency_path }) => dependency_path);
   } finally {
     db.close();
   }
@@ -164,6 +271,51 @@ async function latestDeltaSummary(
   return summaries.at(-1) ?? {};
 }
 
+function clearSourceIndexFacts(workspaceRoot: string, filePath: string): void {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+  ]);
+  try {
+    const result = db
+      .prepare(
+        "UPDATE project_files SET source_index_json = NULL WHERE file_path = ?",
+      )
+      .run(filePath);
+    expect(result.changes).toBe(1);
+  } finally {
+    db.close();
+  }
+}
+
+function deletePersistedFileRow(workspaceRoot: string, filePath: string): void {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+  ]);
+  try {
+    const result = db
+      .prepare("DELETE FROM project_files WHERE file_path = ?")
+      .run(filePath);
+    expect(result.changes).toBe(1);
+  } finally {
+    db.close();
+  }
+}
+
+function readMetaValue(workspaceRoot: string, key: string): string | undefined {
+  const db = instantiate<InstanceType<typeof Database>>(Database, [
+    `${workspaceRoot}/.docuvia/local.db`,
+    { readonly: true },
+  ]);
+  try {
+    return (
+      db.prepare("SELECT value FROM docuvia_meta WHERE key = ?").get(key) as
+        { value: string } | undefined
+    )?.value;
+  } finally {
+    db.close();
+  }
+}
+
 async function initializeAtCurrentCommit(
   sandbox: TestSandbox,
   scopeId: string,
@@ -171,6 +323,70 @@ async function initializeAtCurrentCommit(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, sandbox.dir);
   await docuviaApi.init(scopeId, createNoopLogger());
+}
+
+async function compareCandidateDomainChangeWithFreshInit(input: {
+  readonly label: string;
+  readonly baselineFiles: Record<string, string>;
+  readonly finalFiles: Record<string, string>;
+  readonly sandboxes: TestSandbox[];
+  readonly scopes: string[];
+}): Promise<{
+  delta: GraphSnapshot;
+  full: GraphSnapshot;
+  baselineCallerDependencies: ResolutionDependencyRow[];
+}> {
+  const deltaSandbox = instantiate(TestSandbox, []);
+  const fullSandbox = instantiate(TestSandbox, []);
+  input.sandboxes.push(deltaSandbox, fullSandbox);
+  await deltaSandbox.setup({ initGit: true, files: input.baselineFiles });
+  await commitAll(deltaSandbox, `${input.label}: commit A`);
+  const deltaScope = `delta-candidate-domain-${Date.now()}-${Math.random()}`;
+  input.scopes.push(deltaScope);
+  await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+  const baselineCallerDependencies = readResolutionDependencies(
+    deltaSandbox.dir,
+    "src/caller.ts",
+  );
+
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const baselineSourcePaths = Object.keys(input.baselineFiles).filter((file) =>
+    file.startsWith("src/"),
+  );
+  const finalSourcePaths = new Set(
+    Object.keys(input.finalFiles).filter((file) => file.startsWith("src/")),
+  );
+  for (const file of baselineSourcePaths) {
+    if (!finalSourcePaths.has(file))
+      await fs.rm(path.join(deltaSandbox.dir, file), { force: true });
+  }
+  for (const [file, source] of Object.entries(input.finalFiles)) {
+    if (!file.startsWith("src/")) continue;
+    const fullPath = path.join(deltaSandbox.dir, file);
+    await fs.mkdir(path.dirname(fullPath), { recursive: true });
+    await fs.writeFile(fullPath, source, "utf8");
+  }
+  await commitAll(deltaSandbox, `${input.label}: commit B`);
+  expect((await docuviaApi.analyze(deltaScope, createNoopLogger())).kind).toBe(
+    AnalyzeResultKind.AUTO_DELTA,
+  );
+  expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+    strictProofCandidateDomainChangedMemberNames: ["greet"],
+    strictProofCandidateDomainReproofAffectedCallerFiles: 1,
+  });
+
+  await fullSandbox.setup({ initGit: true, files: input.finalFiles });
+  await commitAll(fullSandbox, `${input.label}: fresh full reference`);
+  const fullScope = `full-candidate-domain-${Date.now()}-${Math.random()}`;
+  input.scopes.push(fullScope);
+  await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+  return {
+    delta: readGraphSnapshot(deltaSandbox.dir),
+    full: readGraphSnapshot(fullSandbox.dir),
+    baselineCallerDependencies,
+  };
 }
 
 describe("delta strict-proof reproof matches a fresh full init", () => {
@@ -182,6 +398,735 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
     for (const scope of scopes.splice(0)) docuviaMemory.deleteScope(scope);
     await Promise.all(sandboxes.splice(0).map((sandbox) => sandbox.teardown()));
   });
+
+  it(
+    "[state-diff] re-proves a caller when a new file adds a competing same-name function",
+    async () => {
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function greet() { return "other"; }\n',
+      };
+      const { delta, full } = await compareCandidateDomainChangeWithFreshInit({
+        label: "add competing same-name function",
+        baselineFiles,
+        finalFiles,
+        sandboxes,
+        scopes,
+      });
+
+      expect(
+        full.provenRows.some(
+          ({ caller_node_key, rule_signature }) =>
+            caller_node_key === "src/caller.ts#caller" &&
+            rule_signature === "q1:named-import:v1",
+        ),
+      ).toBe(false);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] re-proves a caller when an unrelated file adds a competing export",
+    async () => {
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": 'export function unrelated() { return "other"; }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts":
+          'export function unrelated() { return "other"; }\nexport function greet() { return "competitor"; }\n',
+      };
+      const { delta, full } = await compareCandidateDomainChangeWithFreshInit({
+        label: "modify unrelated file with competitor",
+        baselineFiles,
+        finalFiles,
+        sandboxes,
+        scopes,
+      });
+
+      expect(
+        full.provenRows.some(
+          ({ caller_node_key, rule_signature }) =>
+            caller_node_key === "src/caller.ts#caller" &&
+            rule_signature === "q1:named-import:v1",
+        ),
+      ).toBe(false);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] proves a previously abstained caller after a competitor is deleted",
+    async () => {
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": 'export function greet() { return "other"; }\n',
+      };
+      const finalFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": baselineFiles["src/target.ts"]!,
+        "src/caller.ts": baselineFiles["src/caller.ts"]!,
+      };
+      const { delta, full, baselineCallerDependencies } =
+        await compareCandidateDomainChangeWithFreshInit({
+          label: "delete one competitor",
+          baselineFiles,
+          finalFiles,
+          sandboxes,
+          scopes,
+        });
+
+      expect(
+        baselineCallerDependencies.map(
+          ({ dependency_path }) => dependency_path,
+        ),
+      ).toEqual(["greet", "src/caller.ts"]);
+      expect(
+        full.provenRows.some(
+          ({ caller_node_key, rule_signature }) =>
+            caller_node_key === "src/caller.ts#caller" &&
+            rule_signature === "q1:named-import:v1",
+        ),
+      ).toBe(true);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] keeps parity when a rename only moves a same-name competitor",
+    async () => {
+      const competitor = 'export function greet() { return "other"; }\n';
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": competitor,
+      };
+      const finalFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": baselineFiles["src/target.ts"]!,
+        "src/caller.ts": baselineFiles["src/caller.ts"]!,
+        "src/moved.ts": competitor,
+      };
+      const { delta, full } = await compareCandidateDomainChangeWithFreshInit({
+        label: "move competitor by rename",
+        baselineFiles,
+        finalFiles,
+        sandboxes,
+        scopes,
+      });
+
+      expect(
+        full.provenRows.some(
+          ({ caller_node_key, rule_signature }) =>
+            caller_node_key === "src/caller.ts#caller" &&
+            rule_signature === "q1:named-import:v1",
+        ),
+      ).toBe(false);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[performance] keeps a body-only edit on the precise dependency path",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox);
+      await sandbox.setup({
+        initGit: true,
+        files: {
+          ".gitignore": ".docuvia/\n",
+          "src/target.ts": 'export function greet() { return "target"; }\n',
+          "src/caller.ts":
+            'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+          "src/other.ts": 'export function unrelated() { return "body A"; }\n',
+        },
+      });
+      await commitAll(sandbox, "body-only baseline");
+      const scope = `delta-body-only-${Date.now()}`;
+      scopes.push(scope);
+      await initializeAtCurrentCommit(sandbox, scope);
+      const baselineSnapshot = readGraphSnapshot(sandbox.dir);
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "body-only unrelated edit", ["src/other.ts"]);
+      const result = await docuviaApi.analyze(scope, createNoopLogger());
+
+      expect(result.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+      expect(readGraphSnapshot(sandbox.dir)).toEqual(baselineSnapshot);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] keeps unrelated proofs while a dirty delta adds a competing candidate",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/stable.ts": 'export function stableWork() { return "stable"; }\n',
+        "src/stable-caller.ts":
+          'import { stableWork } from "./stable.js";\nexport function stableCaller() { return stableWork(); }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function greet() { return "competitor"; }\n',
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "dirty competitor baseline");
+      const deltaScope = `delta-dirty-competitor-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+      const affectedCallSiteKeys = new Set(
+        readGraphSnapshot(deltaSandbox.dir)
+          .resolutionRows.filter(
+            ({ file_path, rule_signature }) =>
+              file_path === "src/caller.ts" &&
+              rule_signature === "q1:named-import:v1",
+          )
+          .map(({ call_site_key }) => call_site_key),
+      );
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(`${deltaSandbox.dir}/dirty-marker.txt`, "dirty\n");
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(
+        deltaSandbox,
+        "add competitor while worktree is dirty",
+        ["src/other.ts"],
+      );
+      const result = await docuviaApi.analyze(deltaScope, createNoopLogger());
+
+      expect(result.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      const summary = await latestDeltaSummary(deltaSandbox.dir);
+      expect(summary).toMatchObject({
+        filesReparsed: 2,
+        strictProofCandidateDomainChangedMemberNames: ["greet"],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 1,
+      });
+      expect(summary).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
+
+      const delta = readGraphSnapshot(deltaSandbox.dir);
+      expect(
+        delta.resolutionRows.some(
+          ({ file_path, rule_signature, resolution_class, is_stale }) =>
+            file_path === "src/caller.ts" &&
+            rule_signature === "q1:named-import:v1" &&
+            resolution_class === "proven" &&
+            is_stale === 0,
+        ),
+      ).toBe(false);
+      expect(
+        delta.resolutionRows.filter(
+          ({ file_path, resolution_class, is_stale }) =>
+            file_path === "src/stable-caller.ts" &&
+            resolution_class === "proven" &&
+            is_stale === 0,
+        ),
+      ).toHaveLength(1);
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "dirty competitor fresh full reference");
+      const fullScope = `full-dirty-competitor-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+      const full = readGraphSnapshot(fullSandbox.dir);
+
+      const staleKeys = new Set(
+        delta.resolutionRows
+          .filter(({ is_stale }) => is_stale === 1)
+          .map(({ call_site_key }) => call_site_key),
+      );
+      expect(
+        delta.resolutionRows.filter(
+          ({ is_stale, call_site_key }) =>
+            is_stale === 0 &&
+            !staleKeys.has(call_site_key) &&
+            !affectedCallSiteKeys.has(call_site_key),
+        ),
+      ).toEqual(
+        full.resolutionRows.filter(
+          ({ call_site_key }) =>
+            !staleKeys.has(call_site_key) &&
+            !affectedCallSiteKeys.has(call_site_key),
+        ),
+      );
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[performance] keeps dirty body-only deltas to the changed file and recovers a missing SHA stamp precisely",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox);
+      await sandbox.setup({
+        initGit: true,
+        files: {
+          ".gitignore": ".docuvia/\n",
+          "src/target.ts": 'export function greet() { return "target"; }\n',
+          "src/caller.ts":
+            'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+          "src/other.ts": 'export function unrelated() { return "body A"; }\n',
+        },
+      });
+      await commitAll(sandbox, "dirty body-only baseline");
+      const scope = `delta-dirty-body-only-${Date.now()}`;
+      scopes.push(scope);
+      await initializeAtCurrentCommit(sandbox, scope);
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(`${sandbox.dir}/dirty-marker.txt`, "dirty\n");
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "dirty body-only first edit", [
+        "src/other.ts",
+      ]);
+      const dirtyResult = await docuviaApi.analyze(scope, createNoopLogger());
+      expect(dirtyResult.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+      expect(await latestDeltaSummary(sandbox.dir)).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
+
+      await fs.rm(`${sandbox.dir}/dirty-marker.txt`);
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body C"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "clean body-only after dirty delta", [
+        "src/other.ts",
+      ]);
+      const cleanResult = await docuviaApi.analyze(scope, createNoopLogger());
+      expect(cleanResult.kind).toBe(AnalyzeResultKind.AUTO_DELTA);
+      const cleanSummary = await latestDeltaSummary(sandbox.dir);
+      expect(cleanSummary).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+      expect(cleanSummary).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
+      expect(readMetaValue(sandbox.dir, "callResolutionSourceIndexSha")).toBe(
+        await sandbox
+          .runGit(["rev-parse", "HEAD"])
+          .then(({ stdout }) => stdout.trim()),
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[performance] keeps a persistent source-facts gap out of unrelated delta reparses",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox);
+      await sandbox.setup({
+        initGit: true,
+        files: {
+          ".gitignore": ".docuvia/\n",
+          "src/target.ts": 'export function greet() { return "target"; }\n',
+          "src/caller.ts":
+            'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+          "src/other.ts": 'export function unrelated() { return "body A"; }\n',
+          "src/partial.ts":
+            'export function neverCalled() { return "partial"; }\n',
+          "src/no-facts.ts":
+            'export function alsoNeverCalled() { return "missing"; }\n',
+        },
+      });
+      await commitAll(sandbox, "partial source-index baseline");
+      const scope = `delta-partial-body-${Date.now()}`;
+      scopes.push(scope);
+      await initializeAtCurrentCommit(sandbox, scope);
+      const fs = await import("node:fs/promises");
+      clearSourceIndexFacts(sandbox.dir, "src/partial.ts");
+      deletePersistedFileRow(sandbox.dir, "src/no-facts.ts");
+
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "partial source-index body edit", [
+        "src/other.ts",
+      ]);
+      expect((await docuviaApi.analyze(scope, createNoopLogger())).kind).toBe(
+        AnalyzeResultKind.AUTO_DELTA,
+      );
+
+      const firstSummary = await latestDeltaSummary(sandbox.dir);
+      expect(firstSummary).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+      expect(firstSummary).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
+      expect(readMetaValue(sandbox.dir, "callResolutionSourceIndexSha")).toBe(
+        await sandbox
+          .runGit(["rev-parse", "HEAD"])
+          .then(({ stdout }) => stdout.trim()),
+      );
+
+      clearSourceIndexFacts(sandbox.dir, "src/partial.ts");
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body C"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "second partial source-index body edit", [
+        "src/other.ts",
+      ]);
+      await docuviaApi.analyze(scope, createNoopLogger());
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] precisely re-proves a new competitor with an unrelated missing source-facts row",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": 'export function unrelated() { return "other"; }\n',
+        "src/partial.ts":
+          'export function neverCalled() { return "partial"; }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts":
+          'export function unrelated() { return "other"; }\nexport function greet() { return "competitor"; }\n',
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "partial candidate-domain baseline");
+      const deltaScope = `delta-partial-competitor-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+      clearSourceIndexFacts(deltaSandbox.dir, "src/partial.ts");
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "add competitor with partial facts", [
+        "src/other.ts",
+      ]);
+      await docuviaApi.analyze(deltaScope, createNoopLogger());
+
+      const deltaSummary = await latestDeltaSummary(deltaSandbox.dir);
+      expect(deltaSummary).toMatchObject({
+        filesReparsed: 2,
+        strictProofCandidateDomainChangedMemberNames: ["greet"],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 1,
+      });
+      expect(deltaSummary).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "partial facts fresh full reference");
+      const fullScope = `full-partial-competitor-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+      expect(readGraphSnapshot(deltaSandbox.dir).resolutionRows).toEqual(
+        readGraphSnapshot(fullSandbox.dir).resolutionRows,
+      );
+      expect(readGraphSnapshot(deltaSandbox.dir).calls).toEqual(
+        readGraphSnapshot(fullSandbox.dir).calls,
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[fallback] refreshes conservatively when a changed file has no old source facts",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": 'export function unrelated() { return "other"; }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts":
+          'export function unrelated() { return "other"; }\nexport function greet() { return "competitor"; }\n',
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "changed missing-facts baseline");
+      const deltaScope = `delta-changed-missing-facts-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+      clearSourceIndexFacts(deltaSandbox.dir, "src/other.ts");
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "change missing-facts source", [
+        "src/other.ts",
+      ]);
+      await docuviaApi.analyze(deltaScope, createNoopLogger());
+      expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+        strictProofCandidateDomainInventoryFallback: true,
+      });
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "missing-facts fresh full reference");
+      const fullScope = `full-changed-missing-facts-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+      expect(readGraphSnapshot(deltaSandbox.dir).resolutionRows).toEqual(
+        readGraphSnapshot(fullSandbox.dir).resolutionRows,
+      );
+      expect(readGraphSnapshot(deltaSandbox.dir).calls).toEqual(
+        readGraphSnapshot(fullSandbox.dir).calls,
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] records the imported export name for an aliased candidate lookup",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const caller =
+        'import { greet as hi } from "./target.js";\nexport function caller() { return hi(); }\n';
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts": caller,
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function greet() { return "other"; }\n',
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "aliased import baseline");
+      const deltaScope = `delta-aliased-import-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+      expect(
+        readCandidateMemberDependencies(deltaSandbox.dir, "src/caller.ts"),
+      ).toEqual(expect.arrayContaining(["greet", "hi"]));
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "add aliased import competitor", [
+        "src/other.ts",
+      ]);
+      expect(
+        (await docuviaApi.analyze(deltaScope, createNoopLogger())).kind,
+      ).toBe(AnalyzeResultKind.AUTO_DELTA);
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "aliased import full reference");
+      const fullScope = `full-aliased-import-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+      expect(readGraphSnapshot(deltaSandbox.dir).resolutionRows).toEqual(
+        readGraphSnapshot(fullSandbox.dir).resolutionRows,
+      );
+      expect(readGraphSnapshot(deltaSandbox.dir).calls).toEqual(
+        readGraphSnapshot(fullSandbox.dir).calls,
+      );
+      expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+        strictProofCandidateDomainChangedMemberNames: ["greet"],
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] tracks the underlying declaration name through a reexport alias",
+    async () => {
+      const caller =
+        'import { publicGreet as hi } from "./barrel.js";\nexport function caller() { return hi(); }\n';
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/barrel.ts":
+          'export { greet as publicGreet } from "./target.js";\n',
+        "src/caller.ts": caller,
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function greet() { return "other"; }\n',
+      };
+      const { delta, full, baselineCallerDependencies } =
+        await compareCandidateDomainChangeWithFreshInit({
+          label: "reexport alias competitor",
+          baselineFiles,
+          finalFiles,
+          sandboxes,
+          scopes,
+        });
+
+      expect(
+        baselineCallerDependencies.map(
+          ({ dependency_path }) => dependency_path,
+        ),
+      ).toEqual(expect.arrayContaining(["greet", "hi"]));
+      expect(
+        full.resolutionRows.some(
+          ({ file_path, resolution_class, rule_signature }) =>
+            file_path === "src/caller.ts" &&
+            resolution_class === "unresolved" &&
+            rule_signature ===
+              "strict-proof-candidate-domain:no-unique-owner-candidate",
+        ),
+      ).toBe(true);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[legacy] refreshes missing candidate dependencies once and stays precise afterward",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox);
+      await sandbox.setup({
+        initGit: true,
+        files: {
+          ".gitignore": ".docuvia/\n",
+          "src/target.ts": 'export function greet() { return "target"; }\n',
+          "src/caller.ts":
+            'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+          "src/other.ts": 'export function unrelated() { return "body A"; }\n',
+        },
+      });
+      await commitAll(sandbox, "legacy refresh baseline");
+      const scope = `delta-legacy-refresh-${Date.now()}`;
+      scopes.push(scope);
+      await initializeAtCurrentCommit(sandbox, scope);
+
+      const db = instantiate<InstanceType<typeof Database>>(Database, [
+        `${sandbox.dir}/.docuvia/local.db`,
+      ]);
+      db.prepare(
+        "DELETE FROM call_site_resolution_dependencies WHERE dependency_kind = 'candidate-member'",
+      ).run();
+      db.prepare("DELETE FROM docuvia_meta WHERE key = ?").run(
+        "callResolutionCandidateDependencyVersion",
+      );
+      db.close();
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "legacy one-time refresh", ["src/other.ts"]);
+      await docuviaApi.analyze(scope, createNoopLogger());
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        strictProofCandidateDomainLegacyRefresh: true,
+      });
+      expect(
+        readCandidateMemberDependencies(sandbox.dir, "src/caller.ts"),
+      ).toContain("greet");
+
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body C"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "precise second body edit", ["src/other.ts"]);
+      await docuviaApi.analyze(scope, createNoopLogger());
+      expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
+        filesReparsed: 1,
+        strictProofCandidateDomainChangedMemberNames: [],
+        strictProofCandidateDomainReproofAffectedCallerFiles: 0,
+      });
+      expect(await latestDeltaSummary(sandbox.dir)).not.toHaveProperty(
+        "strictProofCandidateDomainLegacyRefresh",
+      );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
 
   it(
     "[happy] [state-diff] re-derives Q1/Q2/Q3 proofs after target, caller, rename/delete, and barrel changes",

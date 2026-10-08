@@ -219,6 +219,7 @@ export type {
   CallSiteResolutionObservationSource,
   CallSiteResolutionCandidate,
   CallSiteResolutionDependency,
+  CallSiteResolutionDependencyKind,
   CallSiteResolutionInvalidationResult,
   CallSiteResolutionRecord,
   SnapshotCallResolutionRow,
@@ -248,6 +249,7 @@ export {
   CallSiteResolutionClasses,
   CallSiteVerificationStatuses,
   CallSiteResolutionObservationSources,
+  CallSiteResolutionDependencyKinds,
   CallSiteRuleQuarantineReasons,
   CALL_SITE_VERIFICATION_POLICY_VERSION,
 } from "./interfaces/graph-store.interfaces.js";

@@ -2063,6 +2063,7 @@ describe("call-resolution hypothesis service", () => {
       targetFilePath: "src/caller.ts",
       targetName: "close",
       targetOwnerName: "Logger",
+      consultedCandidateMemberNames: ["close"],
       dependencies: [
         { filePath: "src/caller.ts", contentHash: sourceContentHash },
       ],

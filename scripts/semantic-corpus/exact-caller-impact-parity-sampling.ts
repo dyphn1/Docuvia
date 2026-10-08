@@ -40,7 +40,7 @@ export function isExcludedBundlePath(filePath: string): boolean {
       basename,
     );
   const isKnownVendorLibrary =
-    /^(?:jquery|bootstrap|prettify)(?:[.-][a-z0-9_-]+)*\.(?:cjs|js|jsx|mjs|ts|tsx)$/.test(
+    /^(?:jquery|bootstrap|prettify)(?:[.-][a-z0-9_.-]*)?\.(?:cjs|js|jsx|mjs|ts|tsx)$/.test(
       basename,
     );
   const hasVendorDirectory = segments.some((segment) =>

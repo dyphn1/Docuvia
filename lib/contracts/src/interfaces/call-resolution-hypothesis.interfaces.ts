@@ -302,7 +302,7 @@ export interface ICallResolutionHypothesisService {
   /** Candidate-map signatures by source file, excluding source-position-only changes. */
   candidateMemberDomainSignaturesByFile(
     sourceFiles: readonly CallResolutionHypothesisSourceFile[],
-  ): ReadonlyMap<string, ReadonlyMap<string, string>>;
+  ): Map<string, Map<string, string>>;
   indexWorkspace(
     input: CallResolutionHypothesisWorkspaceInput,
   ): CallResolutionHypothesisWorkspaceIndex;

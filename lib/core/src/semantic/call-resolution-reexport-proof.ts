@@ -725,6 +725,7 @@ function proofFromTrace(
   if (trace.target.hops === 0) return null;
   const candidateMemberName = trace.target.declaration.name;
   if (!candidateMemberName) return abstain("no-unique-owner-candidate");
+  const consultedCandidateMemberNames = [candidateMemberName];
   if (
     !uniqueFinalCandidate(
       workspace,
@@ -733,7 +734,7 @@ function proofFromTrace(
       trace.target.targetKey,
     )
   )
-    return abstain("no-unique-owner-candidate", [candidateMemberName]);
+    return abstain("no-unique-owner-candidate", consultedCandidateMemberNames);
 
   return {
     status: "proven",
@@ -742,7 +743,7 @@ function proofFromTrace(
     reason: "unique-named-import",
     targetFilePath: trace.target.filePath,
     targetName: trace.target.targetName,
-    consultedCandidateMemberNames: [candidateMemberName],
+    consultedCandidateMemberNames,
     dependencies: [...dependencies]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([filePath, contentHash]) => ({ filePath, contentHash })),

@@ -629,7 +629,7 @@ describe("Q3 receiver strict proofs", () => {
       functionNodes: functionNodesByFile.get(parsedCaller.filePath) ?? [],
       functionNodesByFile,
     });
-    expect(projected.proofs).toHaveLength(2);
+    expect(projected.proofs).toHaveLength(1);
     const provenCall = projected.proofs.find(
       ({ resolution }) => resolution.selectedTargetNodeKey !== null,
     );

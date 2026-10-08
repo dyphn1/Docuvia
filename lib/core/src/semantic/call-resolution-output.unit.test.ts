@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type {
   IGraphStore,
   SnapshotCallResolutionRow,
@@ -208,6 +208,50 @@ describe("call-resolution output summaries", () => {
         "src/target.ts#open",
       ),
     ).toStrictEqual([unknownCallResolution()]);
+  });
+
+  it("[performance] reads only exact edge rows when targeted lookup is available", () => {
+    const row = makeResolution();
+    const getForProjectionEdge = vi.fn(() => [row]);
+    const getAllForProject = vi.fn(() => [row]);
+    const store = {
+      projects: { getFirst: () => ({ id: 42 }) },
+      meta: { get: () => undefined },
+      callSiteResolutions: { getForProjectionEdge, getAllForProject },
+    } as unknown as IGraphStore;
+
+    expect(
+      getCallResolutionSummariesForEdge(
+        store,
+        "src/caller.ts#run",
+        "src/target.ts#open",
+      ),
+    ).toStrictEqual([toCallResolutionSummary(row, false)]);
+    expect(getForProjectionEdge).toHaveBeenCalledWith(
+      42,
+      "src/caller.ts#run",
+      "src/target.ts#open",
+    );
+    expect(getAllForProject).not.toHaveBeenCalled();
+  });
+
+  it("[negative] keeps an edge without an exact row unknown on targeted lookup", () => {
+    const getForProjectionEdge = vi.fn(() => []);
+    const getAllForProject = vi.fn(() => [makeResolution()]);
+    const store = {
+      projects: { getFirst: () => ({ id: 42 }) },
+      meta: { get: () => undefined },
+      callSiteResolutions: { getForProjectionEdge, getAllForProject },
+    } as unknown as IGraphStore;
+
+    expect(
+      getCallResolutionSummariesForEdge(
+        store,
+        "src/caller.ts#run",
+        "src/target.ts#open",
+      ),
+    ).toStrictEqual([unknownCallResolution()]);
+    expect(getAllForProject).not.toHaveBeenCalled();
   });
 
   it("[error-handling] returns no rows when the optional resolution repository is absent", () => {

@@ -17,10 +17,7 @@ import {
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
 } from "@workspace/contracts";
-import {
-  getCallResolutionSummariesForEdge,
-  getCurrentCallResolutionRows,
-} from "../semantic/call-resolution-output.js";
+import { getCallResolutionSummariesForEdge } from "../semantic/call-resolution-output.js";
 
 const ImpactMessages = {
   NO_NODE_RESOLVED: "No node resolved for impact target",
@@ -112,7 +109,6 @@ function getCallResolutionsByCallerId(
   targetNodeKey: string | undefined,
   options?: { explainResolution?: boolean },
 ): Map<number, NonNullable<BlastRadiusEntry["callResolutions"]>> {
-  const resolutionRows = getCurrentCallResolutionRows(store);
   const byCallerId = new Map<
     number,
     NonNullable<BlastRadiusEntry["callResolutions"]>
@@ -124,7 +120,6 @@ function getCallResolutionsByCallerId(
       store.graph.getNodeKeyById?.(relation.id),
       targetNodeKey,
       options?.explainResolution,
-      resolutionRows,
     );
     if (
       callResolutions.every((resolution) => resolution.callSiteKey === null)

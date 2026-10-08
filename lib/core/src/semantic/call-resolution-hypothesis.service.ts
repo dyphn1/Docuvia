@@ -175,6 +175,8 @@ function strictProofForCandidates(
       targetKey: null,
       ruleSignature: null,
       reason: "unresolved-type-binding" as const,
+      consultedCandidateMemberNames:
+        thisMemberProof.consultedCandidateMemberNames ?? [],
     };
   return thisMemberProof;
 }
@@ -352,7 +354,7 @@ export class CallResolutionHypothesisService implements ICallResolutionHypothesi
 
   candidateMemberDomainSignaturesByFile(
     sourceFiles: readonly CallResolutionHypothesisWorkspaceInput["sourceFiles"][number][],
-  ): ReadonlyMap<string, ReadonlyMap<string, string>> {
+  ): Map<string, Map<string, string>> {
     return candidateMemberDomainSignaturesByFile(sourceFiles);
   }
 

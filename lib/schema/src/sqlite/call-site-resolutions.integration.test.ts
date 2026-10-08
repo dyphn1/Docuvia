@@ -1458,6 +1458,115 @@ describe("CallSiteResolutionsRepo (SQLite persistence)", () => {
     ).toBe(false);
   });
 
+  it("[state-diff] reads an exact projection edge and stales candidate proofs when coverage is incomplete", () => {
+    const callerA = "src/caller.ts#callerA";
+    const callerB = "src/caller.ts#callerB";
+    const targetA = "src/target.ts#targetA";
+    const targetB = "src/target.ts#targetB";
+    const callerAId = store.graph.insertNode({
+      projectId,
+      name: "callerA",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerA,
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "callerB",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: callerB,
+    });
+    const targetAId = store.graph.insertNode({
+      projectId,
+      name: "targetA",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: targetA,
+    });
+    store.graph.insertNode({
+      projectId,
+      name: "targetB",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: targetB,
+    });
+    const provenKey = portableKey("candidate-domain-proven");
+    const abstainedKey = portableKey("candidate-domain-abstained");
+    const localKey = portableKey("caller-local-abstention");
+    store.callSiteResolutions.replaceForFile(
+      projectId,
+      "src/caller.ts",
+      [
+        resolution(provenKey, [], {
+          callerNodeKey: callerA,
+          resolver: "strict-proof",
+          selectedTargetNodeKey: targetA,
+          dependencies: [
+            { kind: "candidate-member", filePath: "greet", contentHash: null },
+          ],
+        }),
+        resolution(abstainedKey, [], {
+          callerNodeKey: callerB,
+          resolver: "strict-proof",
+          resolutionClass: "unresolved",
+          selectedTargetNodeKey: null,
+          dependencies: [
+            { kind: "candidate-member", filePath: "greet", contentHash: null },
+          ],
+        }),
+        resolution(localKey, [], {
+          callerNodeKey: callerB,
+          resolver: "strict-proof",
+          resolutionClass: "unresolved",
+          selectedTargetNodeKey: null,
+          dependencies: [
+            { filePath: "src/caller.ts", contentHash: "d".repeat(64) },
+          ],
+        }),
+      ],
+      [{ callSiteKey: provenKey, callerNodeKey: callerA }],
+    );
+
+    expect(
+      store.callSiteResolutions
+        .getForProjectionEdge(projectId, callerA, targetA)
+        .map(({ callSiteKey }) => callSiteKey),
+    ).toEqual([provenKey]);
+    expect(
+      store.callSiteResolutions.getForProjectionEdge(
+        projectId,
+        callerB,
+        targetB,
+      ),
+    ).toEqual([]);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerAId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([
+      { id: targetAId, name: "targetA", type: "module", linkType: "calls" },
+    ]);
+
+    expect(
+      store.callSiteResolutions.invalidateCandidateDomainProofs(projectId),
+    ).toEqual({
+      invalidatedCount: 2,
+      affectedFilePaths: ["src/caller.ts"],
+    });
+    const expectedStaleStates = [
+      { callSiteKey: abstainedKey, isStale: true },
+      { callSiteKey: localKey, isStale: false },
+      { callSiteKey: provenKey, isStale: true },
+    ].sort((left, right) => left.callSiteKey.localeCompare(right.callSiteKey));
+    expect(
+      store.callSiteResolutions
+        .getForFile(projectId, "src/caller.ts")
+        .map(({ callSiteKey, isStale }) => ({ callSiteKey, isStale })),
+    ).toEqual(expectedStaleStates);
+    expect(
+      store.graph
+        .getOutgoingRelations(callerAId)
+        .filter(({ linkType }) => linkType === "calls"),
+    ).toEqual([]);
+  });
+
   it("[legacy] detects strict-proof rows without candidate-member dependencies", () => {
     store.callSiteResolutions.replaceForFile(projectId, "src/caller.ts", [
       resolution(portableKey("legacy-candidate-index"), [], {

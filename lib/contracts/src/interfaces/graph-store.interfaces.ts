@@ -909,6 +909,12 @@ export interface ICallSiteResolutionsRepo {
   deleteForFile(projectId: number, filePath: string): void;
   /** Returns current resolutions in portable-key order, with ordinal-ordered candidates. */
   getForFile(projectId: number, filePath: string): CallSiteResolutionRecord[];
+  /** Reads exact resolutions projected onto one caller-to-target graph edge. */
+  getForProjectionEdge?(
+    projectId: number,
+    callerNodeKey: string,
+    targetNodeKey: string,
+  ): SnapshotCallResolutionRow[];
   /** Stable portable read for snapshot packing. Optional for alternate providers. */
   getAllForProject?(projectId: number): SnapshotCallResolutionRow[];
   /** Replaces portable current state without rebuilding graph edges during hydration. */
@@ -940,6 +946,10 @@ export interface ICallSiteResolutionsRepo {
   invalidateChangedDependencies(
     projectId: number,
     changedDependencies: CallSiteResolutionDependency[],
+  ): CallSiteResolutionInvalidationResult;
+  /** Stales strict proofs and candidate-dependent abstentions when source coverage is incomplete. */
+  invalidateCandidateDomainProofs?(
+    projectId: number,
   ): CallSiteResolutionInvalidationResult;
   /** Marks every current resolution stale before a full graph replacement or hydration. */
   invalidateAll(projectId: number): CallSiteResolutionInvalidationResult;

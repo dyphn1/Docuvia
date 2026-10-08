@@ -191,6 +191,17 @@ describe("GraphPersister call-resolution integration", () => {
     ).toEqual([]);
   });
 
+  it("[regression][caller-local] omits unresolved-call-binding abstentions from persisted rows", async () => {
+    const { projectId, filePath } = await persistSource(
+      "export function caller(): void { unresolvedCall(); }\n",
+    );
+    if (!store) throw new Error("GraphStore was not initialized");
+
+    expect(store.callSiteResolutions?.getForFile(projectId, filePath)).toEqual(
+      [],
+    );
+  });
+
   it("[regression][exact-v1] does not persist v2 lexical links", async () => {
     const { projectId } = await persistSourceWithPolicy(
       callbackOwnerSource,
@@ -395,7 +406,6 @@ describe("GraphPersister call-resolution integration", () => {
       calleeName: callSite.calleeName,
     });
     const dependencies = [
-      { kind: "candidate-member", filePath: "finish", contentHash: null },
       { kind: "candidate-member", filePath: "shutdown", contentHash: null },
       { filePath: "src/caller.ts", contentHash: caller.hash },
       {
@@ -520,7 +530,6 @@ describe("GraphPersister call-resolution integration", () => {
       calleeName: callSite.calleeName,
     });
     const dependencies = [
-      { kind: "candidate-member", filePath: "run", contentHash: null },
       { kind: "candidate-member", filePath: "work", contentHash: null },
       {
         filePath: "src/barrel.ts",
@@ -977,16 +986,7 @@ describe("GraphPersister call-resolution integration", () => {
             }),
           ),
         })),
-    ).toEqual([
-      {
-        resolutionClass: "unresolved",
-        ruleSignature: "strict-proof-candidate-domain:unresolved-type-binding",
-        dependencies: [
-          { kind: "candidate-member", filePath: "close" },
-          { kind: "file", filePath },
-        ],
-      },
-    ]);
+    ).toEqual([]);
     expect(projectedCallKeys()).toContainEqual({
       source: filePath,
       target: `${filePath}#Client.close`,

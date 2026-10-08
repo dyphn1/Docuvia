@@ -92,7 +92,10 @@ type ResolutionRow = {
   verified_target_node_key: string | null;
   is_stale: number;
 };
-type ResolutionDependencyRow = { dependency_path: string };
+type ResolutionDependencyRow = {
+  dependency_kind: string;
+  dependency_path: string;
+};
 type CandidateMemberDependencyRow = { dependency_path: string };
 type StoredResolutionDependencyRow = {
   call_site_key: string;
@@ -199,7 +202,7 @@ function readResolutionDependencies(
   try {
     const rows = db
       .prepare(
-        `SELECT d.dependency_path
+        `SELECT d.dependency_kind, d.dependency_path
          FROM call_site_resolution_dependencies AS d
          JOIN call_site_resolutions AS r
            ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
@@ -1121,7 +1124,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
       await initializeAtCurrentCommit(deltaSandbox, deltaScope);
       expect(
         readCandidateMemberDependencies(deltaSandbox.dir, "src/caller.ts"),
-      ).toEqual(expect.arrayContaining(["greet", "hi"]));
+      ).toEqual(["greet"]);
 
       const fs = await import("node:fs/promises");
       await fs.writeFile(
@@ -1181,10 +1184,14 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
         });
 
       expect(
-        baselineCallerDependencies.map(
-          ({ dependency_path }) => dependency_path,
-        ),
-      ).toEqual(expect.arrayContaining(["greet", "hi"]));
+        baselineCallerDependencies
+          .map(({ dependency_path }) => dependency_path)
+          .filter(
+            (_dependencyPath, index) =>
+              baselineCallerDependencies[index]?.dependency_kind ===
+              "candidate-member",
+          ),
+      ).toEqual(["greet"]);
       expect(
         full.resolutionRows.some(
           ({ file_path, resolution_class, rule_signature }) =>
@@ -2015,6 +2022,135 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
         source_node_key: "src/caller.ts#caller",
         target_node_key: "src/x.ts#named",
       });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[state-diff] stales proven candidate proofs when targeted source repair fails, then restores fresh-full parity",
+    async () => {
+      const deltaSandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(deltaSandbox, fullSandbox);
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/missing.ts":
+          'export function unrelatedFact() { return "missing index facts"; }\n',
+        "src/other.ts": 'export function other() { return "body A"; }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function other() { return "body C"; }\n',
+      };
+      await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(deltaSandbox, "incomplete candidate domain baseline");
+      const deltaScope = `delta-incomplete-domain-${Date.now()}`;
+      scopes.push(deltaScope);
+      await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+      clearSourceIndexFacts(deltaSandbox.dir, "src/missing.ts");
+
+      const baseline = readGraphSnapshot(deltaSandbox.dir);
+      const baselineProof = baseline.resolutionRows.find(
+        ({ file_path, rule_signature }) =>
+          file_path === "src/caller.ts" &&
+          rule_signature === "q1:named-import:v1",
+      );
+      if (!baselineProof?.selected_target_node_key)
+        throw new Error("Baseline Q1 proof was not persisted");
+      expect(baselineProof).toMatchObject({
+        resolution_class: "proven",
+        is_stale: 0,
+      });
+      const proofEdge = {
+        source_node_key: baselineProof.caller_node_key,
+        target_node_key: baselineProof.selected_target_node_key,
+      };
+      expect(baseline.calls).toContainEqual(proofEdge);
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        'export function other() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "unrelated change with missing facts", [
+        "src/other.ts",
+      ]);
+
+      const originalResolve = docuviaFactory.resolve.bind(docuviaFactory);
+      let forcedRepairFailure = true;
+      const resolveSpy = vi.spyOn(docuviaFactory, "resolve");
+      resolveSpy.mockImplementation((token, params) => {
+        const resolved = originalResolve(token, params);
+        if (token !== TOKENS.AstProcessor || !forcedRepairFailure)
+          return resolved;
+        const processor = resolved as IAstProcessor;
+        return {
+          processFiles: async (workspaceRoot, filesToParse) => {
+            const failedFiles = filesToParse.filter(
+              ({ file }) => file === "src/missing.ts",
+            );
+            if (failedFiles.length === 0)
+              return processor.processFiles(workspaceRoot, filesToParse);
+            forcedRepairFailure = false;
+            const parsed = await processor.processFiles(
+              workspaceRoot,
+              filesToParse.filter(({ file }) => file !== "src/missing.ts"),
+            );
+            return {
+              parsed: parsed.parsed,
+              failures: [
+                ...parsed.failures,
+                ...failedFiles.map(({ file, hash }) => ({
+                  file,
+                  hash,
+                  error: "forced AST parse failure for missing source facts",
+                })),
+              ],
+            };
+          },
+        } as typeof resolved;
+      });
+      try {
+        await docuviaApi.analyze(deltaScope, createNoopLogger());
+      } finally {
+        resolveSpy.mockRestore();
+      }
+
+      expect(forcedRepairFailure).toBe(false);
+      expect(await latestDeltaSummary(deltaSandbox.dir)).toMatchObject({
+        strictProofReproofStatus: "scope-resolver-fallback",
+        strictProofReproofFallbackReason: "candidate-domain-incomplete",
+      });
+      const incompleteSnapshot = readGraphSnapshot(deltaSandbox.dir);
+      const incompleteProof = incompleteSnapshot.resolutionRows.find(
+        ({ call_site_key }) => call_site_key === baselineProof.call_site_key,
+      );
+      expect(incompleteProof?.is_stale ?? 1).toBe(1);
+      expect(incompleteSnapshot.calls).not.toContainEqual(proofEdge);
+
+      await fs.writeFile(
+        `${deltaSandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(deltaSandbox, "retry source facts on next delta", [
+        "src/other.ts",
+      ]);
+      await docuviaApi.analyze(deltaScope, createNoopLogger());
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "fresh full after source repair");
+      const fullScope = `full-incomplete-domain-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+      const delta = readGraphSnapshot(deltaSandbox.dir);
+      const full = readGraphSnapshot(fullSandbox.dir);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

@@ -57,6 +57,12 @@ type Q3ReceiverProof = Extract<
 >;
 
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const CANDIDATE_DOMAIN_ABSTENTION_REASONS = new Set([
+  "ambiguous-owner-declaration",
+  "no-unique-owner-candidate",
+  "candidate-list-truncated",
+  "incomplete-inventory",
+]);
 const Q3_RECEIVER_RULE_SIGNATURES = new Set<string>([
   CALL_RESOLUTION_Q3_NEW_RECEIVER_RULE_SIGNATURE,
   CALL_RESOLUTION_Q3_SUPER_CALL_RULE_SIGNATURE,
@@ -442,7 +448,8 @@ function candidateMemberDependencies(
   calleeName: string,
   consultedNames: readonly string[],
 ): CallSiteResolutionRecord["dependencies"] {
-  return [...new Set([calleeName, ...consultedNames])]
+  const memberNames = consultedNames.length > 0 ? consultedNames : [calleeName];
+  return [...new Set(memberNames)]
     .filter((name) => name.length > 0)
     .sort((left, right) => left.localeCompare(right))
     .map((filePath) => ({
@@ -450,6 +457,31 @@ function candidateMemberDependencies(
       filePath,
       contentHash: null,
     }));
+}
+
+function candidateMemberNamesForAbstention(
+  result: ParsedAstFileResult,
+  callSite: CallSiteShape,
+  strictProof: CallResolutionStrictProof,
+): string[] {
+  const importedNames = (result.data.imports ?? [])
+    .filter(({ localName }) => localName === callSite.calleeName)
+    .map(({ originalName }) => originalName)
+    .filter((name) => name !== "default" && name !== "*");
+  const consultedNames = strictProof.consultedCandidateMemberNames ?? [];
+  if (consultedNames.length > 0) return [...new Set(consultedNames)];
+  if (importedNames.length > 0) return [...new Set(importedNames)];
+  return [callSite.calleeName];
+}
+
+function shouldPersistCandidateDomainAbstention(
+  strictProof: CallResolutionStrictProof,
+): boolean {
+  if (strictProof.status === "proven") return true;
+  if (strictProof.reason === "unresolved-type-binding") {
+    return (strictProof.consultedCandidateMemberNames?.length ?? 0) > 0;
+  }
+  return CANDIDATE_DOMAIN_ABSTENTION_REASONS.has(strictProof.reason);
 }
 
 function compareResolutionDependencies(
@@ -479,7 +511,7 @@ function createCandidateDependencyOnlyRow(input: {
     { filePath: result.file, contentHash: sourceHash },
     ...candidateMemberDependencies(
       callSite.calleeName,
-      strictProof.consultedCandidateMemberNames ?? [],
+      candidateMemberNamesForAbstention(result, callSite, strictProof),
     ),
   ].sort(compareResolutionDependencies);
   const evidenceJson = JSON.stringify({
@@ -537,6 +569,7 @@ function proofForCall(
   });
   const { strictProof } = hypothesis;
   if (strictProof.status !== "proven") {
+    if (!shouldPersistCandidateDomainAbstention(strictProof)) return {};
     return {
       proof: createCandidateDependencyOnlyRow({
         result,

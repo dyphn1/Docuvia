@@ -178,6 +178,33 @@ describe("ImpactService", () => {
   });
 
   describe("getBlastRadius()", () => {
+    it("[performance] avoids loading every project resolution for a call edge", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "target",
+        pathPatterns: ["src/target.ts"],
+      });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/caller.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: LinkTypes.CALLS,
+      });
+      const getAllForProject = vi.spyOn(
+        store.callSiteResolutions!,
+        "getAllForProject",
+      );
+
+      expect(impactService.getBlastRadius(store, "target")).toEqual([
+        { name: "caller", type: "module" },
+      ]);
+      expect(getAllForProject).not.toHaveBeenCalled();
+    });
+
     it("returns undefined when the target does not resolve to any node", () => {
       const result = impactService.getBlastRadius(store, "nope");
       expect(result).toBeUndefined();

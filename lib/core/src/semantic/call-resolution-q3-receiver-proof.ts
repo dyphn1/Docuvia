@@ -41,6 +41,10 @@ interface ClassReference {
   readonly scopeSpan: { readonly start: number; readonly end: number };
 }
 
+function sortedConsultedCandidateMemberNames(context: ProofContext): string[] {
+  return [...context.consultedCandidateMemberNames].sort();
+}
+
 interface SourceBoundClassFact {
   readonly source: CallResolutionHypothesisSourceFile;
   readonly fact: AstQ3ClassDeclarationFact;
@@ -813,9 +817,7 @@ function proven(
     targetName: memberName,
     targetOwnerName: classRef.name,
     dependencies: dependencyRows(context.dependencies),
-    consultedCandidateMemberNames: [
-      ...context.consultedCandidateMemberNames,
-    ].sort(),
+    consultedCandidateMemberNames: sortedConsultedCandidateMemberNames(context),
   } as CallResolutionStrictProof;
 }
 
@@ -1074,9 +1076,8 @@ export function proveUniqueQ3Receiver(
       : abstain("unresolved-type-binding");
   }
 
-  const consultedCandidateMemberNames = [
-    ...context.consultedCandidateMemberNames,
-  ].sort();
+  const consultedCandidateMemberNames =
+    sortedConsultedCandidateMemberNames(context);
   return consultedCandidateMemberNames.length > 0
     ? { ...proof, consultedCandidateMemberNames }
     : proof;

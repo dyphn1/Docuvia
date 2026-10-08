@@ -405,6 +405,62 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
     }
   }
 
+  getForProjectionEdge(
+    projectId: number,
+    callerNodeKey: string,
+    targetNodeKey: string,
+  ): SnapshotCallResolutionRow[] {
+    assertProjectId(projectId);
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT r.call_site_key, r.identity_version, r.file_path, r.source_content_hash,
+                  r.start_line, r.start_column, r.callee_kind, r.callee_name,
+                  r.caller_node_key, r.resolution_class, r.selected_target_node_key,
+                  r.confidence, r.resolver, r.rule_signature, r.dependency_fingerprint,
+                  r.verification_status, r.verified_target_node_key, r.is_stale,
+                  c.ordinal, c.target_node_key AS candidate_target_node_key, c.evidence_json
+           FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} p
+             ON p.project_id = r.project_id AND p.call_site_key = r.call_site_key
+           LEFT JOIN ${SchemaTables.CALL_SITE_RESOLUTION_CANDIDATES} c
+             ON c.project_id = r.project_id AND c.call_site_key = r.call_site_key
+           WHERE r.project_id = ? AND p.caller_node_key = ?
+             AND r.selected_target_node_key = ?
+           ORDER BY r.call_site_key COLLATE BINARY, c.ordinal`,
+        )
+        .all(projectId, callerNodeKey, targetNodeKey) as ResolutionDbRow[];
+      const records = buildResolutionRecords(rows);
+      if (records.length === 0) return [];
+
+      const dependencyRows = this.db
+        .prepare(
+          `SELECT d.call_site_key, d.dependency_kind, d.dependency_path, d.content_hash
+           FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTION_PROJECTION_CALLERS} p
+             ON p.project_id = d.project_id AND p.call_site_key = d.call_site_key
+           JOIN ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+             ON r.project_id = d.project_id AND r.call_site_key = d.call_site_key
+           WHERE d.project_id = ? AND p.caller_node_key = ?
+             AND r.selected_target_node_key = ?
+           ORDER BY d.call_site_key COLLATE BINARY, d.dependency_kind COLLATE BINARY,
+                    d.dependency_path COLLATE BINARY`,
+        )
+        .all(projectId, callerNodeKey, targetNodeKey) as DependencyDbRow[];
+      appendResolutionDependencies(records, dependencyRows);
+      return records.map((record) => ({
+        ...record,
+        projectionCallerNodeKey: callerNodeKey,
+      }));
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.READ_PROJECT_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
   getAllForProject(projectId: number): SnapshotCallResolutionRow[] {
     assertProjectId(projectId);
     try {
@@ -786,6 +842,70 @@ export class CallSiteResolutionsRepo implements ICallSiteResolutionsRepo {
           return {
             invalidatedCount: newlyStale,
             affectedFilePaths: [...affectedFiles].sort(comparePaths),
+          };
+        })
+        .immediate();
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        CALL_SITE_RESOLUTIONS_ERRORS.INVALIDATE_DEPENDENCIES_FAILED(projectId),
+        err,
+      );
+    }
+  }
+
+  invalidateCandidateDomainProofs(
+    projectId: number,
+  ): CallSiteResolutionInvalidationResult {
+    assertProjectId(projectId);
+    try {
+      return this.db
+        .transaction(() => {
+          const affectedFilePaths = (
+            this.db
+              .prepare(
+                `SELECT DISTINCT r.file_path
+                 FROM ${SchemaTables.CALL_SITE_RESOLUTIONS} r
+                 WHERE r.project_id = ? AND r.is_stale = 0
+                   AND r.resolver = 'strict-proof'
+                   AND (
+                     r.resolution_class = ? OR EXISTS (
+                       SELECT 1
+                       FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                       WHERE d.project_id = r.project_id
+                         AND d.call_site_key = r.call_site_key
+                         AND d.dependency_kind = 'candidate-member'
+                     )
+                   )
+                 ORDER BY r.file_path COLLATE BINARY`,
+              )
+              .all(projectId, CallSiteResolutionClasses.PROVEN) as Array<{
+              file_path: string;
+            }>
+          ).map(({ file_path: filePath }) => filePath);
+          const result = this.db
+            .prepare(
+              `UPDATE ${SchemaTables.CALL_SITE_RESOLUTIONS} AS r
+               SET is_stale = 1
+               WHERE r.project_id = ? AND r.is_stale = 0
+                 AND r.resolver = 'strict-proof'
+                 AND (
+                   r.resolution_class = ? OR EXISTS (
+                     SELECT 1
+                     FROM ${SchemaTables.CALL_SITE_RESOLUTION_DEPENDENCIES} d
+                     WHERE d.project_id = r.project_id
+                       AND d.call_site_key = r.call_site_key
+                       AND d.dependency_kind = 'candidate-member'
+                   )
+                 )`,
+            )
+            .run(projectId, CallSiteResolutionClasses.PROVEN);
+          for (const filePath of affectedFilePaths) {
+            rebuildCallsProjection(this.db, projectId, filePath);
+          }
+          return {
+            invalidatedCount: result.changes,
+            affectedFilePaths,
           };
         })
         .immediate();

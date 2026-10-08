@@ -124,16 +124,48 @@ export function getCallResolutionSummariesForEdge(
   availableRows?: SnapshotCallResolutionRow[],
 ): CallResolutionSummary[] {
   if (!callerNodeKey || !targetNodeKey) return [unknownCallResolution()];
-  const rows = (availableRows ?? getCurrentCallResolutionRows(store))
+  const rows = availableRows
+    ? matchingEdgeRows(availableRows, callerNodeKey, targetNodeKey)
+    : getRowsForProjectionEdge(store, callerNodeKey, targetNodeKey);
+  return rows.length > 0
+    ? rows.map((row) => toCallResolutionSummary(row, explainResolution))
+    : [unknownCallResolution()];
+}
+
+function getRowsForProjectionEdge(
+  store: IGraphStore,
+  callerNodeKey: string,
+  targetNodeKey: string,
+): SnapshotCallResolutionRow[] {
+  const project = store.projects.getFirst();
+  const repo = store.callSiteResolutions;
+  const getForProjectionEdge = repo?.getForProjectionEdge;
+  if (!project || typeof getForProjectionEdge !== "function") return [];
+  const availability = store.meta.get(
+    `${SNAPSHOT_CALL_RESOLUTIONS_AVAILABILITY_META_KEY_PREFIX}${project.id}`,
+  );
+  if (availability === SnapshotCallResolutionAvailabilityStates.UNAVAILABLE) {
+    return [];
+  }
+  return matchingEdgeRows(
+    getForProjectionEdge.call(repo, project.id, callerNodeKey, targetNodeKey),
+    callerNodeKey,
+    targetNodeKey,
+  );
+}
+
+function matchingEdgeRows(
+  rows: readonly SnapshotCallResolutionRow[],
+  callerNodeKey: string,
+  targetNodeKey: string,
+): SnapshotCallResolutionRow[] {
+  return rows
     .filter(
       (row) =>
         row.projectionCallerNodeKey === callerNodeKey &&
         row.selectedTargetNodeKey === targetNodeKey,
     )
     .sort((left, right) => compareText(left.callSiteKey, right.callSiteKey));
-  return rows.length > 0
-    ? rows.map((row) => toCallResolutionSummary(row, explainResolution))
-    : [unknownCallResolution()];
 }
 
 export function unknownCallResolution(): CallResolutionSummary {

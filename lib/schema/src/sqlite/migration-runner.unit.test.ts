@@ -368,6 +368,7 @@ describe("applyMigrations", () => {
       "0018_call_site_rule_quarantine_recertification.sql",
       "0019_call_resolution_source_index.sql",
       "0020_call_resolution_dependency_kind.sql",
+      "0021_call_site_projection_caller_lookup.sql",
     ]);
   });
 
@@ -430,7 +431,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(20);
+    expect(migrationRows).toHaveLength(21);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

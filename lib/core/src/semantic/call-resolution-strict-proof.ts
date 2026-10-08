@@ -481,6 +481,7 @@ function proveResolvedNamedImport(
     declaration,
   );
   if (!candidateKey) return abstain("no-unique-owner-candidate");
+  const consultedCandidateMemberNames = [descriptor.originalName];
   if (
     !hasUniqueNamedImportCandidate(
       workspace,
@@ -489,7 +490,7 @@ function proveResolvedNamedImport(
       candidateKey,
     )
   ) {
-    return abstain("no-unique-owner-candidate", [descriptor.originalName]);
+    return abstain("no-unique-owner-candidate", consultedCandidateMemberNames);
   }
   const dependencies = namedImportDependencies(
     request,
@@ -507,7 +508,7 @@ function proveResolvedNamedImport(
     targetFilePath: targetPath,
     targetName: descriptor.originalName,
     dependencies,
-    consultedCandidateMemberNames: [descriptor.originalName],
+    consultedCandidateMemberNames,
   };
 }
 

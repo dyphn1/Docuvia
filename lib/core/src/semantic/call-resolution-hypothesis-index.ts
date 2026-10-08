@@ -1423,8 +1423,8 @@ export function createIndexedWorkspace(
 /** Returns candidate-key signatures per source without including source positions or bodies. */
 export function candidateMemberDomainSignaturesByFile(
   sourceFiles: readonly CallResolutionHypothesisWorkspaceInput["sourceFiles"][number][],
-): ReadonlyMap<string, ReadonlyMap<string, string>> {
-  const result = new Map<string, ReadonlyMap<string, string>>();
+): Map<string, Map<string, string>> {
+  const result = new Map<string, Map<string, string>>();
   for (const sourceFile of sourceFiles) {
     const workspace = createIndexedWorkspace(
       {

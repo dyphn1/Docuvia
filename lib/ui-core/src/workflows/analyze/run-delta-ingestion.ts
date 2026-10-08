@@ -1243,8 +1243,21 @@ async function persistPreparedDelta(
     filesToPersist,
     parsed.callResolutionByFile,
   );
+  const candidateDomainCoverageComplete = hasCompleteCandidateDomainCoverage(
+    deps,
+    work.headBlobHashes,
+  );
   const sourceIndexComplete =
-    prepared.sourceIndexComplete && parsed.sourceIndexComplete;
+    prepared.sourceIndexComplete &&
+    parsed.sourceIndexComplete &&
+    candidateDomainCoverageComplete;
+  const finalInvalidation = await invalidateIncompleteCandidateDomain(
+    deps,
+    candidateDomainCoverageComplete,
+    work.legacyCandidateDependencyRefresh ||
+      work.candidateDomainInventoryFallback,
+    invalidation,
+  );
   const legacyCandidateDependencyRefreshComplete =
     work.legacyCandidateDependencyRefresh &&
     work.headBlobHashes !== undefined &&
@@ -1253,7 +1266,7 @@ async function persistPreparedDelta(
     parsed.strictProofFallbackReason === undefined;
   const pendingReproofCandidates = deltaPersistedFilePaths(
     filesToPersist,
-    invalidation,
+    finalInvalidation,
     parsed.failures,
     work.skippedOversizedFilePaths,
     missingTrackedSourcePaths(deps, work.headBlobHashes),
@@ -1269,9 +1282,10 @@ async function persistPreparedDelta(
     failures: parsed.failures,
     filesToPersist,
     sourceIndexComplete,
+    candidateDomainCoverageComplete,
     prepared,
     parsedFallbackReason: parsed.strictProofFallbackReason,
-    invalidation,
+    invalidation: finalInvalidation,
   });
 }
 
@@ -1289,6 +1303,59 @@ function deltaPersistedFilePaths(
     ...skippedOversizedFilePaths,
     ...missingSourceFilePaths,
   ];
+}
+
+async function invalidateIncompleteCandidateDomain(
+  deps: DeltaDeps,
+  candidateDomainCoverageComplete: boolean,
+  alreadyInvalidatedAll: boolean,
+  current: DeltaInvalidation,
+): Promise<DeltaInvalidation> {
+  if (candidateDomainCoverageComplete || alreadyInvalidatedAll) return current;
+  const additional = await deps.store.withWriteLock(() => {
+    const resolutions = deps.store.callSiteResolutions;
+    return (
+      resolutions?.invalidateCandidateDomainProofs?.(deps.projectId) ??
+      resolutions?.invalidateAll(deps.projectId)
+    );
+  });
+  return combineDeltaInvalidations(current, additional);
+}
+
+function hasCompleteCandidateDomainCoverage(
+  deps: DeltaDeps,
+  headBlobHashes: ReadonlyMap<string, string> | undefined,
+): boolean {
+  if (!headBlobHashes) return false;
+  const persisted = deps.store.files.getCallResolutionSourceFiles?.(
+    deps.projectId,
+  );
+  if (!persisted) return false;
+  const trackedPaths = trackedSourcePaths(headBlobHashes) ?? [];
+  const indexedPaths = new Set(
+    persisted.sourceFiles.map(({ filePath }) => filePath),
+  );
+  const incompletePaths = new Set(persisted.incompleteFilePaths);
+  return trackedPaths.every(
+    (filePath) => indexedPaths.has(filePath) && !incompletePaths.has(filePath),
+  );
+}
+
+function combineDeltaInvalidations(
+  current: DeltaInvalidation,
+  additional: DeltaInvalidation,
+): DeltaInvalidation {
+  if (!current) return additional;
+  if (!additional) return current;
+  return {
+    invalidatedCount: current.invalidatedCount + additional.invalidatedCount,
+    affectedFilePaths: [
+      ...new Set([
+        ...current.affectedFilePaths,
+        ...additional.affectedFilePaths,
+      ]),
+    ].sort(),
+  };
 }
 
 function missingTrackedSourcePaths(
@@ -1313,6 +1380,7 @@ function deltaPersistResult(input: {
   failures: AstParseFailure[];
   filesToPersist: DiscoveredFile[];
   sourceIndexComplete: boolean;
+  candidateDomainCoverageComplete: boolean;
   prepared: PreparedDeltaFiles;
   parsedFallbackReason?: string;
   invalidation: DeltaInvalidation;
@@ -1321,6 +1389,7 @@ function deltaPersistResult(input: {
     failures,
     filesToPersist,
     sourceIndexComplete,
+    candidateDomainCoverageComplete,
     prepared,
     parsedFallbackReason,
     invalidation,
@@ -1336,7 +1405,9 @@ function deltaPersistResult(input: {
           strictProofFallbackReason:
             prepared.sourceIndexFallbackReason ??
             parsedFallbackReason ??
-            "delta-parse-incomplete",
+            (candidateDomainCoverageComplete
+              ? "delta-parse-incomplete"
+              : "candidate-domain-incomplete"),
         }
       : {}),
   };

@@ -84,7 +84,7 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
     ) as { files?: string[] };
 
     expect(hash).toBe(
-      "c3863c2311e47db839bfa46311dd51dacd5637c0fd22e066fe817a2724e59f4e",
+      "1323e7b3de34e36cad69f84409d4ad62af5953ff3bb6da38df1e7b1cce521510",
     );
     expect(packageJson.files).toContain("dist");
   });
@@ -116,7 +116,7 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
         certificationStatus: "trusted",
         certifiedRuleSignatures: ["q1:named-import:v1"],
         artifactSha256:
-          "c3863c2311e47db839bfa46311dd51dacd5637c0fd22e066fe817a2724e59f4e",
+          "1323e7b3de34e36cad69f84409d4ad62af5953ff3bb6da38df1e7b1cce521510",
       });
     },
     SUBPROCESS_TEST_TIMEOUT_MS,

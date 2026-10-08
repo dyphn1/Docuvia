@@ -81,6 +81,8 @@ function canProvideCompleteSourceIndex(input: {
   candidateFileCount?: number;
   sourceIndexUpdateMode?: "replace" | "merge";
   sourceIndexBaseComplete?: boolean;
+  /** Complete tracked source inventory for delta merges; full passes derive it from discovery. */
+  sourceIndexExpectedFilePaths?: readonly string[];
 }): boolean {
   const parsedEveryInput =
     input.failures.length === 0 &&
@@ -211,6 +213,8 @@ export async function runParseAndPersist(deps: {
   /** Full ingestion replaces all facts; a delta merges into a validated complete baseline. */
   sourceIndexUpdateMode?: "replace" | "merge";
   sourceIndexBaseComplete?: boolean;
+  /** Complete tracked source inventory for delta merges; full passes derive it from discovery. */
+  sourceIndexExpectedFilePaths?: readonly string[];
   skippedOversized: { file: string; sizeBytes: number }[];
   /** Config + hotspot tags from `runDiscoveryPipeline`; a fresh `Set` is returned with per-file language tags folded in — the input is never mutated. */
   tags: Set<string>;
@@ -233,6 +237,7 @@ export async function runParseAndPersist(deps: {
     candidateFileCount,
     sourceIndexUpdateMode,
     sourceIndexBaseComplete,
+    sourceIndexExpectedFilePaths,
     skippedOversized,
     appendLogLine,
     logEvents,
@@ -267,6 +272,11 @@ export async function runParseAndPersist(deps: {
     sourceIndexUpdateMode,
     sourceIndexBaseComplete,
   });
+  const expectedSourceFilePaths =
+    sourceIndexExpectedFilePaths ??
+    (sourceIndexUpdateMode === "merge"
+      ? undefined
+      : filesToParse.map(({ file }) => file));
 
   const persistResult = await graphPersister.persist({
     store,
@@ -275,6 +285,9 @@ export async function runParseAndPersist(deps: {
     parsedResults,
     tags: Array.from(tags),
     sourceIndexComplete,
+    ...(expectedSourceFilePaths
+      ? { sourceIndexExpectedFilePaths: expectedSourceFilePaths }
+      : {}),
     ...(sourceIndexUpdateMode ? { sourceIndexUpdateMode } : {}),
   });
   const sourceIndexFields = sourceIndexResultFields(

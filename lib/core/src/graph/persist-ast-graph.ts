@@ -159,6 +159,7 @@ function readStrictProofSourceFiles(input: {
     readonly FunctionNodeReference[]
   >;
   updateMode: "replace" | "merge" | undefined;
+  expectedSourceFilePaths?: readonly string[];
 }): StrictProofSourceIndexRead {
   let sourceFiles: readonly CallResolutionHypothesisSourceFile[];
   let functionNodeReferencesByFile: readonly {
@@ -182,12 +183,22 @@ function readStrictProofSourceFiles(input: {
         complete: false,
         fallbackReason: "persisted-source-facts-provider-unavailable",
       };
-    // Merge mode's caller has already validated source facts for every changed path against the
-    // current HEAD. Unchanged paths whose facts were unavailable in the baseline stay absent,
-    // matching the resolver inventory that was persisted by that ingestion.
+    if (!persisted.complete)
+      return { complete: false, fallbackReason: "candidate-domain-incomplete" };
     sourceFiles = persisted.sourceFiles;
     functionNodeReferencesByFile = persisted.functionNodeReferencesByFile;
   }
+
+  if (input.updateMode === "merge" && !input.expectedSourceFilePaths)
+    return {
+      complete: false,
+      fallbackReason: "candidate-domain-coverage-unavailable",
+    };
+  if (
+    input.expectedSourceFilePaths &&
+    !hasExpectedSourceFileCoverage(sourceFiles, input.expectedSourceFilePaths)
+  )
+    return { complete: false, fallbackReason: "candidate-domain-incomplete" };
 
   if (!hasValidSourceFactHashes(sourceFiles))
     return {
@@ -195,6 +206,18 @@ function readStrictProofSourceFiles(input: {
       fallbackReason: "persisted-source-fact-hash-invalid",
     };
   return { complete: true, sourceFiles, functionNodeReferencesByFile };
+}
+
+function hasExpectedSourceFileCoverage(
+  sourceFiles: readonly CallResolutionHypothesisSourceFile[],
+  expectedSourceFilePaths: readonly string[],
+): boolean {
+  const expectedPaths = new Set(expectedSourceFilePaths);
+  const indexedPaths = new Set(sourceFiles.map(({ filePath }) => filePath));
+  return (
+    expectedPaths.size === indexedPaths.size &&
+    [...expectedPaths].every((filePath) => indexedPaths.has(filePath))
+  );
 }
 
 function hasValidSourceFactHashes(
@@ -250,6 +273,7 @@ export class GraphPersisterService implements IGraphPersister {
     tags: string[];
     sourceIndexComplete?: boolean;
     sourceIndexUpdateMode?: "replace" | "merge";
+    sourceIndexExpectedFilePaths?: readonly string[];
   }): Promise<{
     updatedCount: number;
     callResolution?: CallResolutionStats;
@@ -265,6 +289,7 @@ export class GraphPersisterService implements IGraphPersister {
       tags,
       sourceIndexComplete,
       sourceIndexUpdateMode,
+      sourceIndexExpectedFilePaths,
     } = input;
 
     return store.withWriteLock(() =>
@@ -276,6 +301,7 @@ export class GraphPersisterService implements IGraphPersister {
         tags,
         sourceIndexComplete === true,
         sourceIndexUpdateMode,
+        sourceIndexExpectedFilePaths,
       ),
     );
   }
@@ -296,6 +322,7 @@ export class GraphPersisterService implements IGraphPersister {
     tags: string[],
     sourceIndexComplete: boolean,
     sourceIndexUpdateMode: "replace" | "merge" | undefined,
+    sourceIndexExpectedFilePaths: readonly string[] | undefined,
   ): {
     updatedCount: number;
     callResolution?: CallResolutionStats;
@@ -374,6 +401,7 @@ export class GraphPersisterService implements IGraphPersister {
         resolver,
         this.callsProjectionCallerPolicy,
         sourceIndexUpdateMode,
+        sourceIndexExpectedFilePaths,
       );
       if (
         sourceIndexUpdateMode === "replace" &&
@@ -463,10 +491,13 @@ export class GraphPersisterService implements IGraphPersister {
   }): ScopeResolver {
     const resolver = new ScopeResolver(input.workspaceRoot);
     const persisted =
-      input.sourceIndexComplete && input.sourceIndexUpdateMode === "merge"
+      input.sourceIndexUpdateMode === "merge"
         ? input.store.files.getCallResolutionSourceFiles?.(input.projectId)
         : undefined;
     if (persisted) {
+      // ScopeResolver can keep projecting calls from available facts while the strict-proof
+      // inventory is incomplete; persistStrictCallSiteProofs independently requires full HEAD
+      // coverage before it can make a workspace-wide uniqueness claim.
       const availableSources = mergeResolverSourceFiles({
         sourceFiles: persisted.sourceFiles,
         resolverLocalSymbolsByFile: persisted.resolverLocalSymbolsByFile,
@@ -840,6 +871,7 @@ export class GraphPersisterService implements IGraphPersister {
     resolver: ScopeResolver,
     callerPolicy: CallsProjectionCallerPolicy,
     sourceIndexUpdateMode: "replace" | "merge" | undefined,
+    sourceIndexExpectedFilePaths: readonly string[] | undefined,
   ): {
     exclusions: StrictCallProofExclusion[];
     complete: boolean;
@@ -857,7 +889,10 @@ export class GraphPersisterService implements IGraphPersister {
       return {
         exclusions: [],
         complete: false,
-        fallbackReason: "source-index-completeness-not-established",
+        fallbackReason:
+          sourceIndexUpdateMode === "merge"
+            ? "candidate-domain-incomplete"
+            : "source-index-completeness-not-established",
       };
 
     const sourceIndexRead = readStrictProofSourceFiles({
@@ -866,6 +901,7 @@ export class GraphPersisterService implements IGraphPersister {
       parsedResults,
       parsedFunctionNodeReferencesByFile: functionNodeRefsByFile,
       updateMode: sourceIndexUpdateMode,
+      expectedSourceFilePaths: sourceIndexExpectedFilePaths,
     });
     if (!sourceIndexRead.complete)
       return {

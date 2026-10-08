@@ -4,9 +4,12 @@ import {
   AnalyzeResultKind,
   createNoopLogger,
   DocuviaError,
+  docuviaFactory,
   docuviaMemory,
   ErrorCodes,
   MemoryKeys,
+  TOKENS,
+  type IAstProcessor,
 } from "@workspace/contracts";
 import { GitLocalProvider } from "@workspace/git-local";
 import { docuviaApi } from "@workspace/ui-core";
@@ -389,6 +392,74 @@ async function compareCandidateDomainChangeWithFreshInit(input: {
   };
 }
 
+async function compareMissingCandidateFactsWithFreshInit(input: {
+  readonly label: string;
+  readonly missingFacts: "null-source-index" | "missing-project-file-row";
+  /** Defaults to a same-name competitor; `unrelated` makes the caller's import uniquely provable. */
+  readonly otherFile?: "competitor" | "unrelated";
+  readonly sandboxes: TestSandbox[];
+  readonly scopes: string[];
+}): Promise<{
+  delta: GraphSnapshot;
+  full: GraphSnapshot;
+  summary: Record<string, unknown>;
+}> {
+  const baselineCaller =
+    'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n';
+  const baselineFiles = {
+    ".gitignore": ".docuvia/\n",
+    "src/target.ts": 'export function greet() { return "target"; }\n',
+    "src/competitor.ts":
+      input.otherFile === "unrelated"
+        ? 'export function farewell() { return "unrelated"; }\n'
+        : 'export function greet() { return "competitor"; }\n',
+    "src/caller.ts": baselineCaller,
+  };
+  const finalFiles = {
+    ...baselineFiles,
+    "src/caller.ts": `// caller-only edit\n${baselineCaller}`,
+  };
+  const deltaSandbox = instantiate(TestSandbox, []);
+  const fullSandbox = instantiate(TestSandbox, []);
+  input.sandboxes.push(deltaSandbox, fullSandbox);
+  await deltaSandbox.setup({ initGit: true, files: baselineFiles });
+  await commitAll(deltaSandbox, `${input.label}: commit A`);
+  const deltaScope = `delta-missing-candidate-facts-${Date.now()}-${Math.random()}`;
+  input.scopes.push(deltaScope);
+  await initializeAtCurrentCommit(deltaSandbox, deltaScope);
+
+  if (input.missingFacts === "null-source-index") {
+    clearSourceIndexFacts(deltaSandbox.dir, "src/competitor.ts");
+  } else {
+    deletePersistedFileRow(deltaSandbox.dir, "src/competitor.ts");
+  }
+
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(
+    `${deltaSandbox.dir}/src/caller.ts`,
+    finalFiles["src/caller.ts"],
+    "utf8",
+  );
+  await commitPaths(deltaSandbox, `${input.label}: caller-only commit B`, [
+    "src/caller.ts",
+  ]);
+  expect((await docuviaApi.analyze(deltaScope, createNoopLogger())).kind).toBe(
+    AnalyzeResultKind.AUTO_DELTA,
+  );
+
+  await fullSandbox.setup({ initGit: true, files: finalFiles });
+  await commitAll(fullSandbox, `${input.label}: fresh full reference`);
+  const fullScope = `full-missing-candidate-facts-${Date.now()}-${Math.random()}`;
+  input.scopes.push(fullScope);
+  await initializeAtCurrentCommit(fullSandbox, fullScope);
+
+  return {
+    delta: readGraphSnapshot(deltaSandbox.dir),
+    full: readGraphSnapshot(fullSandbox.dir),
+    summary: await latestDeltaSummary(deltaSandbox.dir),
+  };
+}
+
 describe("delta strict-proof reproof matches a fresh full init", () => {
   const sandboxes: TestSandbox[] = [];
   const scopes: string[] = [];
@@ -465,6 +536,72 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
       ).toBe(false);
       expect(delta.resolutionRows).toEqual(full.resolutionRows);
       expect(delta.calls).toEqual(full.calls);
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it.each(["null-source-index", "missing-project-file-row"] as const)(
+    "[state-diff] repairs an unrelated missing source fact and still proves a unique import (%s)",
+    async (missingFacts) => {
+      const { delta, full, summary } =
+        await compareMissingCandidateFactsWithFreshInit({
+          label: `missing unrelated facts ${missingFacts}`,
+          missingFacts,
+          otherFile: "unrelated",
+          sandboxes,
+          scopes,
+        });
+
+      expect(
+        full.resolutionRows.filter(
+          ({ file_path }) => file_path === "src/caller.ts",
+        ),
+      ).toMatchObject([
+        {
+          resolution_class: "proven",
+          rule_signature: "q1:named-import:v1",
+          is_stale: 0,
+        },
+      ]);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+      expect(summary).toMatchObject({
+        filesReparsed: 2,
+        strictProofReproofStatus: "complete",
+      });
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it.each(["null-source-index", "missing-project-file-row"] as const)(
+    "[state-diff] repairs a missing competitor fact before proving uniqueness (%s)",
+    async (missingFacts) => {
+      const { delta, full, summary } =
+        await compareMissingCandidateFactsWithFreshInit({
+          label: `missing competitor facts ${missingFacts}`,
+          missingFacts,
+          sandboxes,
+          scopes,
+        });
+
+      expect(
+        full.resolutionRows.filter(
+          ({ file_path }) => file_path === "src/caller.ts",
+        ),
+      ).toMatchObject([
+        {
+          resolution_class: "unresolved",
+          rule_signature:
+            "strict-proof-candidate-domain:no-unique-owner-candidate",
+          is_stale: 0,
+        },
+      ]);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
+      expect(summary).toMatchObject({ filesReparsed: 2 });
+      expect(summary).not.toHaveProperty(
+        "strictProofCandidateDomainInventoryFallback",
+      );
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );
@@ -770,7 +907,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
   );
 
   it(
-    "[performance] keeps a persistent source-facts gap out of unrelated delta reparses",
+    "[performance] repairs persistent source-facts gaps without a full-inventory reparse",
     async () => {
       const sandbox = instantiate(TestSandbox, []);
       sandboxes.push(sandbox);
@@ -810,7 +947,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
 
       const firstSummary = await latestDeltaSummary(sandbox.dir);
       expect(firstSummary).toMatchObject({
-        filesReparsed: 1,
+        filesReparsed: 3,
         strictProofCandidateDomainChangedMemberNames: [],
         strictProofCandidateDomainReproofAffectedCallerFiles: 0,
       });
@@ -834,7 +971,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
       ]);
       await docuviaApi.analyze(scope, createNoopLogger());
       expect(await latestDeltaSummary(sandbox.dir)).toMatchObject({
-        filesReparsed: 1,
+        filesReparsed: 2,
         strictProofCandidateDomainChangedMemberNames: [],
         strictProofCandidateDomainReproofAffectedCallerFiles: 0,
       });
@@ -882,7 +1019,7 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
 
       const deltaSummary = await latestDeltaSummary(deltaSandbox.dir);
       expect(deltaSummary).toMatchObject({
-        filesReparsed: 2,
+        filesReparsed: 3,
         strictProofCandidateDomainChangedMemberNames: ["greet"],
         strictProofCandidateDomainReproofAffectedCallerFiles: 1,
       });
@@ -1124,6 +1261,141 @@ describe("delta strict-proof reproof matches a fresh full init", () => {
       expect(await latestDeltaSummary(sandbox.dir)).not.toHaveProperty(
         "strictProofCandidateDomainLegacyRefresh",
       );
+    },
+    SUBPROCESS_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "[legacy] retries a failed candidate-dependency refresh and matches fresh full state",
+    async () => {
+      const sandbox = instantiate(TestSandbox, []);
+      const fullSandbox = instantiate(TestSandbox, []);
+      sandboxes.push(sandbox, fullSandbox);
+      const baselineFiles = {
+        ".gitignore": ".docuvia/\n",
+        "src/target.ts": 'export function greet() { return "target"; }\n',
+        "src/caller.ts":
+          'import { greet } from "./target.js";\nexport function caller() { return greet(); }\n',
+        "src/other.ts": 'export function unrelated() { return "body A"; }\n',
+      };
+      const finalFiles = {
+        ...baselineFiles,
+        "src/other.ts": 'export function unrelated() { return "body C"; }\n',
+      };
+      await sandbox.setup({ initGit: true, files: baselineFiles });
+      await commitAll(sandbox, "legacy refresh parse failure baseline");
+      const scope = `delta-legacy-refresh-failure-${Date.now()}`;
+      scopes.push(scope);
+      await initializeAtCurrentCommit(sandbox, scope);
+
+      const db = instantiate<InstanceType<typeof Database>>(Database, [
+        `${sandbox.dir}/.docuvia/local.db`,
+      ]);
+      db.prepare(
+        "DELETE FROM call_site_resolution_dependencies WHERE dependency_kind = 'candidate-member'",
+      ).run();
+      db.prepare("DELETE FROM docuvia_meta WHERE key = ?").run(
+        "callResolutionCandidateDependencyVersion",
+      );
+      db.close();
+
+      const fs = await import("node:fs/promises");
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        'export function unrelated() { return "body B"; }\n',
+        "utf8",
+      );
+      await commitPaths(sandbox, "legacy refresh parse failure commit B", [
+        "src/other.ts",
+      ]);
+
+      const originalResolve = docuviaFactory.resolve.bind(docuviaFactory);
+      let forceTargetFailure = true;
+      const resolveSpy = vi.spyOn(docuviaFactory, "resolve");
+      resolveSpy.mockImplementation((token, params) => {
+        const resolved = originalResolve(token, params);
+        if (token !== TOKENS.AstProcessor || !forceTargetFailure)
+          return resolved;
+        const processor = resolved as IAstProcessor;
+        return {
+          processFiles: async (workspaceRoot, filesToParse) => {
+            const failedFiles = filesToParse.filter(
+              ({ file }) => file === "src/target.ts",
+            );
+            if (failedFiles.length === 0)
+              return processor.processFiles(workspaceRoot, filesToParse);
+            forceTargetFailure = false;
+            const parsed = await processor.processFiles(
+              workspaceRoot,
+              filesToParse.filter(({ file }) => file !== "src/target.ts"),
+            );
+            return {
+              parsed: parsed.parsed,
+              failures: [
+                ...parsed.failures,
+                ...failedFiles.map(({ file, hash }) => ({
+                  file,
+                  hash,
+                  error: "forced AST parse failure for legacy refresh",
+                })),
+              ],
+            };
+          },
+        } as typeof resolved;
+      });
+      await docuviaApi.analyze(scope, createNoopLogger());
+      resolveSpy.mockRestore();
+
+      const firstSummary = await latestDeltaSummary(sandbox.dir);
+      expect(firstSummary).toMatchObject({
+        filesFailed: 1,
+        strictProofReproofStatus: "scope-resolver-fallback",
+        strictProofReproofFallbackReason: "candidate-domain-incomplete",
+      });
+      expect(
+        readMetaValue(
+          sandbox.dir,
+          "callResolutionCandidateDependencyVersion",
+        ) ?? null,
+      ).toBeNull();
+      expect(
+        JSON.parse(
+          readMetaValue(sandbox.dir, "callResolutionReproofPendingPaths") ??
+            "null",
+        ),
+      ).toContain("src/target.ts");
+
+      await fs.writeFile(
+        `${sandbox.dir}/src/other.ts`,
+        finalFiles["src/other.ts"],
+        "utf8",
+      );
+      await commitPaths(sandbox, "legacy refresh retry commit C", [
+        "src/other.ts",
+      ]);
+      await docuviaApi.analyze(scope, createNoopLogger());
+      const secondSummary = await latestDeltaSummary(sandbox.dir);
+      expect(secondSummary).toMatchObject({
+        filesReparsed: 3,
+        strictProofCandidateDomainLegacyRefresh: true,
+        strictProofReproofStatus: "complete",
+      });
+      expect(
+        readMetaValue(sandbox.dir, "callResolutionCandidateDependencyVersion"),
+      ).toBe("1");
+      expect(
+        readMetaValue(sandbox.dir, "callResolutionReproofPendingPaths"),
+      ).toBe("[]");
+
+      await fullSandbox.setup({ initGit: true, files: finalFiles });
+      await commitAll(fullSandbox, "legacy refresh fresh full reference");
+      const fullScope = `full-legacy-refresh-failure-${Date.now()}`;
+      scopes.push(fullScope);
+      await initializeAtCurrentCommit(fullSandbox, fullScope);
+      const delta = readGraphSnapshot(sandbox.dir);
+      const full = readGraphSnapshot(fullSandbox.dir);
+      expect(delta.resolutionRows).toEqual(full.resolutionRows);
+      expect(delta.calls).toEqual(full.calls);
     },
     SUBPROCESS_TEST_TIMEOUT_MS,
   );

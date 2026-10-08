@@ -141,6 +141,7 @@ export async function runDeltaIngestion(deps: {
     const persisted = await persistDelta(deps, {
       pathsToRetire,
       filesToParse,
+      skippedOversizedFilePaths: skippedOversized.map(({ file }) => file),
       candidateDomainChanged,
       candidateDomainChangedMemberNames,
       legacyCandidateDependencyRefresh,
@@ -258,7 +259,6 @@ type SourceIndexBaseline = {
   readonly fallbackReason?: string;
   readonly headBlobHashes?: ReadonlyMap<string, string>;
   readonly persistedSourceFiles?: readonly CallResolutionHypothesisSourceFile[];
-  readonly persistedSourceIndexComplete?: boolean;
   readonly candidateDomainBaselineAvailable?: boolean;
   readonly filesToReparse?: readonly string[];
   readonly pendingFilePaths?: readonly string[];
@@ -306,9 +306,12 @@ async function prepareDeltaWork(
     changedPaths,
   );
   const changedPathsToReparse = new Set(toReparse.map(({ file }) => file));
-  const sourceIndexRecoveryEntries: ChangedFileEntry[] = [
+  const sourceIndexRecoveryPaths = new Set([
     ...(sourceIndexBaseline.filesToReparse ?? []),
     ...(sourceIndexBaseline.pendingFilePaths ?? []),
+  ]);
+  const sourceIndexRecoveryEntries: ChangedFileEntry[] = [
+    ...sourceIndexRecoveryPaths,
   ]
     .filter((file) => !changedPathsToReparse.has(file))
     .map((file) => ({ file, status: ChangedFileStatuses.MODIFIED }));
@@ -347,7 +350,7 @@ async function prepareDeltaWork(
     sourceIndexBaseline.candidateDomainBaselineAvailable === true
       ? candidateDomainChangesForDelta({
           baseline: sourceIndexBaseline,
-          entries: allEntriesToReparse,
+          entries: toReparse,
           deletedPaths: toDelete,
           parsedResults: preParsedFiles.parsed,
           parseFailures: preParsedFiles.failures,
@@ -453,15 +456,9 @@ async function determineSourceIndexBaseline(
     deps.projectId,
   );
   const pending = readPendingReproofPaths(deps.store);
-  const sourceIndexGenerationMatchesFromSha =
-    deps.store.meta.get(
-      GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
-    ) === deps.fromSha;
-  // The source-index SHA is a generation marker, not a claim that every file parsed. Missing
-  // facts are checked per changed path by candidateDomainChangesForDelta below.
-  // This is only the inventory/readiness gate. Per-file old facts and HEAD parses are validated
-  // after changed files are loaded, so a missing SHA stamp (for example after a dirty init) does
-  // not force an all-workspace refresh when those changed-file facts are present.
+  // The source-index SHA is a generation marker, not proof of inventory coverage. Per-file
+  // gaps are scheduled for targeted repair below; strict proofs stay disabled until the persisted
+  // facts cover the complete tracked HEAD inventory.
   const candidateDomainBaselineAvailable = Boolean(
     persisted && headSourceInventory.complete && pending.valid,
   );
@@ -475,7 +472,6 @@ async function determineSourceIndexBaseline(
     ...(persisted
       ? {
           persistedSourceFiles: persisted.sourceFiles,
-          persistedSourceIndexComplete: persisted.complete,
         }
       : {}),
     candidateDomainBaselineAvailable,
@@ -498,7 +494,6 @@ async function determineSourceIndexBaseline(
     persisted,
     headSourceInventory.hashes,
     changedPaths,
-    sourceIndexGenerationMatchesFromSha,
   );
   const trackedSourcePaths = new Set(
     [...headSourceInventory.hashes.keys()].filter(isDiscoverableSourceFile),
@@ -593,7 +588,6 @@ function planSourceIndexRepair(
   persisted: CallResolutionSourceIndexRead,
   headBlobHashes: Map<string, string>,
   changedPaths: ReadonlySet<string>,
-  sourceIndexGenerationMatchesFromSha: boolean,
 ): SourceIndexBaseline {
   const trackedSourcePaths = new Set(
     [...headBlobHashes.keys()].filter(isDiscoverableSourceFile),
@@ -604,7 +598,6 @@ function planSourceIndexRepair(
     headBlobHashes,
     trackedSourcePaths,
     changedPaths,
-    sourceIndexGenerationMatchesFromSha,
   );
   const pathsToRetire = findSourceIndexPathsToRetire(
     persisted,
@@ -624,12 +617,10 @@ function findSourceIndexRepairPaths(
   headBlobHashes: ReadonlyMap<string, string>,
   trackedSourcePaths: ReadonlySet<string>,
   changedPaths: ReadonlySet<string>,
-  sourceIndexGenerationMatchesFromSha: boolean,
 ): string[] {
   const persistedSourcePaths = new Set(
     persisted.sourceFiles.map(({ filePath }) => filePath),
   );
-  const incompleteSourcePaths = new Set(persisted.incompleteFilePaths);
   const fileHashByPath = new Map(
     store.files
       .getAllHashes()
@@ -643,9 +634,7 @@ function findSourceIndexRepairPaths(
         filePath,
         expectedBlobHash: headBlobHashes.get(filePath),
         persistedSourcePaths,
-        incompleteSourcePaths,
         fileHashByPath,
-        sourceIndexGenerationMatchesFromSha,
       })
     ) {
       filesToReparse.push(filePath);
@@ -658,18 +647,11 @@ function needsSourceIndexRepair(input: {
   filePath: string;
   expectedBlobHash: string | undefined;
   persistedSourcePaths: ReadonlySet<string>;
-  incompleteSourcePaths: ReadonlySet<string>;
   fileHashByPath: ReadonlyMap<string, string | null>;
-  sourceIndexGenerationMatchesFromSha: boolean;
 }): boolean {
-  const hasUnrecordedSourceFacts =
-    !input.persistedSourcePaths.has(input.filePath) &&
-    !input.incompleteSourcePaths.has(input.filePath) &&
-    !input.sourceIndexGenerationMatchesFromSha;
-  if (hasUnrecordedSourceFacts) return true;
-  const hasPersistedFileHash = input.fileHashByPath.has(input.filePath);
+  if (!input.persistedSourcePaths.has(input.filePath)) return true;
   return (
-    hasPersistedFileHash &&
+    !input.fileHashByPath.has(input.filePath) ||
     input.fileHashByPath.get(input.filePath) !== input.expectedBlobHash
   );
 }
@@ -1200,6 +1182,7 @@ async function classifyChangedFile(
 type DeltaPersistWork = {
   pathsToRetire: Set<string>;
   filesToParse: DiscoveredFile[];
+  skippedOversizedFilePaths: string[];
   candidateDomainChanged: boolean;
   candidateDomainChangedMemberNames: readonly string[];
   legacyCandidateDependencyRefresh: boolean;
@@ -1252,6 +1235,7 @@ async function persistPreparedDelta(
     filesToPersist,
     prepared.sourceIndexComplete,
     work.preParsedFiles,
+    trackedSourcePaths(work.headBlobHashes),
   );
   await recordDeltaCallResolution(
     deps,
@@ -1264,13 +1248,22 @@ async function persistPreparedDelta(
   const legacyCandidateDependencyRefreshComplete =
     work.legacyCandidateDependencyRefresh &&
     work.headBlobHashes !== undefined &&
-    prepared.sourceIndexComplete;
+    sourceIndexComplete &&
+    parsed.failures.length === 0 &&
+    parsed.strictProofFallbackReason === undefined;
+  const pendingReproofCandidates = deltaPersistedFilePaths(
+    filesToPersist,
+    invalidation,
+    parsed.failures,
+    work.skippedOversizedFilePaths,
+    missingTrackedSourcePaths(deps, work.headBlobHashes),
+  );
   await commitDeltaMetadata(
     deps,
     { ...work, legacyCandidateDependencyRefreshComplete },
     parsed.failures,
     sourceIndexComplete,
-    deltaPersistedFilePaths(filesToPersist, invalidation),
+    pendingReproofCandidates,
   );
   return deltaPersistResult({
     failures: parsed.failures,
@@ -1285,11 +1278,35 @@ async function persistPreparedDelta(
 function deltaPersistedFilePaths(
   files: DiscoveredFile[],
   invalidation: DeltaInvalidation,
+  failures: readonly AstParseFailure[],
+  skippedOversizedFilePaths: readonly string[],
+  missingSourceFilePaths: readonly string[],
 ): string[] {
   return [
     ...files.map(({ file }) => file),
     ...(invalidation?.affectedFilePaths ?? []),
+    ...failures.map(({ file }) => file),
+    ...skippedOversizedFilePaths,
+    ...missingSourceFilePaths,
   ];
+}
+
+function missingTrackedSourcePaths(
+  deps: DeltaDeps,
+  headBlobHashes: ReadonlyMap<string, string> | undefined,
+): string[] {
+  if (!headBlobHashes) return [];
+  const persisted = deps.store.files.getCallResolutionSourceFiles?.(
+    deps.projectId,
+  );
+  const persistedPaths = new Set(
+    persisted?.sourceFiles.map(({ filePath }) => filePath) ?? [],
+  );
+  return (
+    trackedSourcePaths(headBlobHashes)?.filter(
+      (filePath) => !persistedPaths.has(filePath),
+    ) ?? []
+  );
 }
 
 function deltaPersistResult(input: {
@@ -1407,11 +1424,19 @@ async function retireDeltaPaths(
   });
 }
 
+function trackedSourcePaths(
+  headBlobHashes: ReadonlyMap<string, string> | undefined,
+): readonly string[] | undefined {
+  if (!headBlobHashes) return undefined;
+  return [...headBlobHashes.keys()].filter(isDiscoverableSourceFile).sort();
+}
+
 async function parseDeltaFiles(
   deps: DeltaDeps,
   filesToPersist: DiscoveredFile[],
   sourceIndexBaseComplete: boolean,
   preParsedFiles: AstProcessResult,
+  expectedSourceFilePaths: readonly string[] | undefined,
 ): Promise<{
   failures: AstParseFailure[];
   callResolutionByFile?: Record<string, CallResolutionStats>;
@@ -1430,6 +1455,9 @@ async function parseDeltaFiles(
         tags: [],
         sourceIndexComplete: sourceIndexBaseComplete,
         sourceIndexUpdateMode: "merge",
+        ...(expectedSourceFilePaths
+          ? { sourceIndexExpectedFilePaths: expectedSourceFilePaths }
+          : {}),
       });
     return {
       failures: [],
@@ -1456,6 +1484,7 @@ async function parseDeltaFiles(
     preParsed: preParsedFiles,
     sourceIndexUpdateMode: "merge",
     sourceIndexBaseComplete,
+    sourceIndexExpectedFilePaths: expectedSourceFilePaths,
     // Already logged (analyze.delta.file_skipped_oversized) while collecting source changes.
     skippedOversized: [],
     tags: new Set(),
@@ -1515,6 +1544,10 @@ async function commitDeltaMetadata(
 ): Promise<void> {
   const { store, projectId, headSha, logger } = deps;
   const failedPaths = new Set(failures.map(({ file }) => file));
+  const pendingCandidates = new Set(pendingReproofCandidates);
+  const retiredPendingPaths = [...work.pathsToRetire].filter(
+    (filePath) => !pendingCandidates.has(filePath),
+  );
   await store.withWriteLock(() => {
     for (const file of failedPaths) retirePath(store, projectId, file);
     if (work.tierBEntries.length > 0) {
@@ -1536,7 +1569,7 @@ async function commitDeltaMetadata(
     }
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
     // This marks which HEAD the available facts describe. It can advance for a partial index;
-    // the next delta checks old facts only for paths that changed.
+    // the next delta checks every tracked path for facts before allowing strict proofs.
     store.meta.set(
       GitConstants.META_KEY_CALL_RESOLUTION_SOURCE_INDEX_SHA,
       work.sourceIndexBaseComplete ? headSha : "",
@@ -1551,7 +1584,7 @@ async function commitDeltaMetadata(
       store,
       sourceIndexComplete,
       pendingReproofCandidates,
-      [...work.pathsToRetire, ...failedPaths],
+      retiredPendingPaths,
     );
   });
 }

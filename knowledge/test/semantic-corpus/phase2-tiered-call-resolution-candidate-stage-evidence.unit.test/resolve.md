@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.unit.test.ts#resolve@L135
+id: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.unit.test.ts#resolve
 type: symbol
 name: resolve
 filePath: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.unit.test.ts
@@ -7,3 +7,4 @@ filePath: test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evi
 # Symbol: resolve
 
 File: `test/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.unit.test.ts`
+.ts`

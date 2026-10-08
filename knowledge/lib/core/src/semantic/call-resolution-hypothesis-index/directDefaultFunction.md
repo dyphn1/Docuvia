@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/call-resolution-hypothesis-index.ts#directDefaultFunction
+id: lib/core/src/semantic/call-resolution-hypothesis-index.ts#DirectDefaultFunction
 type: symbol
-name: directDefaultFunction
+name: DirectDefaultFunction
 filePath: lib/core/src/semantic/call-resolution-hypothesis-index.ts
 ---
-# Symbol: directDefaultFunction
+# Symbol: DirectDefaultFunction
 
 File: `lib/core/src/semantic/call-resolution-hypothesis-index.ts`

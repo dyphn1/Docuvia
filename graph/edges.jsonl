@@ -6036,6 +6036,8 @@
 {"source":"artifacts/cli/test/unit/skills/skill-templates.unit.test.ts","target":"artifacts/cli/test/unit/skills/skill-templates.unit.test.ts#anonymous@L81","type":"contains"}
 {"source":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts","target":"artifacts/cli/test/support/impact-honesty-corpus.phase3.ts#parseAnalyzeDeltaSummary","type":"calls"}
 {"source":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts","target":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts#anonymous","type":"contains"}
+{"source":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts","target":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts#anonymous@L17","type":"contains"}
+{"source":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts","target":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts#anonymous@L35","type":"contains"}
 {"source":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts","target":"artifacts/cli/test/unit/support/impact-honesty-corpus.phase3.unit.test.ts#anonymous@L4","type":"contains"}
 {"source":"artifacts/cli/test/unit/ui/table.unit.test.ts","target":"artifacts/cli/src/ui/table.ts#renderBanner","type":"calls"}
 {"source":"artifacts/cli/test/unit/ui/table.unit.test.ts","target":"artifacts/cli/src/ui/table.ts#renderTable","type":"calls"}

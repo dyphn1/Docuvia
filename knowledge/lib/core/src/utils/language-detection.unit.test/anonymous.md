@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/utils/language-detection.unit.test.ts#anonymous@L63
+id: lib/core/src/utils/language-detection.unit.test.ts#anonymous@L20
 type: symbol
 name: anonymous
 filePath: lib/core/src/utils/language-detection.unit.test.ts

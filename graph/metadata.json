@@ -486,7 +486,7 @@
     },
     {
       "filePath": "artifacts/cli/test/integration/commands/call-resolution-delta-reproof.integration.test.ts",
-      "contentHash": "b813f4bb67db055b7f0d5933113e9f6b16868916",
+      "contentHash": "bdefc0c0b6196b5c850001a5092b8c40f2211d9b",
       "lastTierBProcessedAt": "2026-10-08 00:14:28",
       "lastTierBCommitSha": "02783d9187fc33ec8e1a5230c53ab5eacfc50c9c"
     },
@@ -5573,7 +5573,7 @@
       "lastTierBCommitSha": "c09a37d353a07ca30a85c91f18bfb5c4d50bec31"
     }
   ],
-  "lastIngestedSourceSha": "cfbe74072e0aa9f35a899c77e8a6ab5c494d2317",
+  "lastIngestedSourceSha": "1ced45d420a8216ce16fa4d763adbab89f7adec6",
   "snapshotVersion": 1,
   "capabilities": {
     "dynamicDependencyEvidence": {

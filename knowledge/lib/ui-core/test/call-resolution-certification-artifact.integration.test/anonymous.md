@@ -7,4 +7,3 @@ filePath: lib/ui-core/test/call-resolution-certification-artifact.integration.te
 # Symbol: anonymous
 
 File: `lib/ui-core/test/call-resolution-certification-artifact.integration.test.ts`
-ts`

@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts#anonymous@L209
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts#anonymous@L88
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts
@@ -7,3 +7,4 @@ filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-
 # Symbol: anonymous
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evidence.mts`
+

@@ -1,5 +1,5 @@
 ---
-id: test/semantic-corpus/q1-rule-configuration.unit.test.ts#anonymous@L29
+id: test/semantic-corpus/q1-rule-configuration.unit.test.ts#anonymous@L56
 type: symbol
 name: anonymous
 filePath: test/semantic-corpus/q1-rule-configuration.unit.test.ts

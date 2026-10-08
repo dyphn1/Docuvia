@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/impact/impact-workflow.ts#ImpactWorkflow.anonymous
+id: lib/ui-core/src/workflows/impact/impact-workflow.ts#anonymous@L465
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/impact/impact-workflow.ts

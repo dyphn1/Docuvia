@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/hydrate-pack-failure-data-loss-guard.integration.test.ts#anonymous@L108
+id: artifacts/cli/test/integration/hydrate-pack-failure-data-loss-guard.integration.test.ts#anonymous@L179
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/hydrate-pack-failure-data-loss-guard.integration.test.ts

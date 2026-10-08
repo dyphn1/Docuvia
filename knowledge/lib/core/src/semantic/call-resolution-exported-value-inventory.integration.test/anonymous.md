@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-exported-value-inventory.integration.test.ts#anonymous@L84
+id: lib/core/src/semantic/call-resolution-exported-value-inventory.integration.test.ts#anonymous@L95
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-exported-value-inventory.integration.test.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/semantic/call-resolution-exported-value-inventory.integra
 # Symbol: anonymous
 
 File: `lib/core/src/semantic/call-resolution-exported-value-inventory.integration.test.ts`
-

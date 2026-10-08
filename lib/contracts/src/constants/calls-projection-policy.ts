@@ -22,9 +22,9 @@ export function isCallsProjectionCallerPolicy(
   );
 }
 
-/** Exact v2 is the default after the full-callee parity audit found no named-function omissions. */
+/** V2 remains opt-in until its source-reviewed additions meet the documented gate. */
 export const DEFAULT_CALLS_PROJECTION_CALLER_POLICY: CallsProjectionCallerPolicy =
-  CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2;
+  CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1;
 
 /**
  * Opt-in evaluation switch for the active caller policy. Unset or empty means the default.

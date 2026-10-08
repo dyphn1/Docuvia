@@ -468,6 +468,118 @@ describe("ImpactService", () => {
       expect(entries.map(({ name }) => name)).not.toContain("src/consumer.ts");
     });
 
+    it("[regression][exact-v2] omits a same-span callback's caller-candidate self entry", () => {
+      const insertNode = (name: string, nodeKey: string): number =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          type: "module",
+          pathPatterns: [nodeKey.split("#")[0]!],
+          nodeKey,
+        });
+      const targetFile = insertNode("src/same-span.ts", "src/same-span.ts");
+      const target = insertNode("target", "src/same-span.ts#target");
+      const callback = insertNode("callback", "src/same-span.ts#callback@L2");
+
+      store.graph.insertLink({
+        sourceNodeId: targetFile,
+        targetNodeId: target,
+        linkType: LinkTypes.CONTAINS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: targetFile,
+        targetNodeId: callback,
+        linkType: LinkTypes.CONTAINS,
+      });
+      // Tied spans intentionally have no lexical_parent relation.
+      store.graph.insertLink({
+        sourceNodeId: callback,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: target,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const names = impactService
+        .getBlastRadius(store, "target")
+        ?.map(({ name }) => name);
+
+      expect(names).toContain("callback");
+      expect(names).not.toContain("target");
+    });
+
+    it("[regression][exact-v2] does not promote a lexical ancestor's caller candidate to a dependent", () => {
+      const insertNode = (name: string, nodeKey: string): number =>
+        store.graph.insertNode({
+          projectId,
+          name,
+          type: "module",
+          pathPatterns: [nodeKey.split("#")[0]!],
+          nodeKey,
+        });
+      const targetFile = insertNode("src/target.ts", "src/target.ts");
+      const callerFile = insertNode("src/caller.ts", "src/caller.ts");
+      const consumerFile = insertNode("src/consumer.ts", "src/consumer.ts");
+      const target = insertNode("target", "src/target.ts#target");
+      const outer = insertNode("outer", "src/caller.ts#outer");
+      const callback = insertNode("callback", "src/caller.ts#outer.callback");
+      const legacy = insertNode("legacy", "src/caller.ts#legacy");
+      const consumer = insertNode("consumeLegacy", "src/consumer.ts#consume");
+
+      for (const [fileId, symbolId] of [
+        [targetFile, target],
+        [callerFile, outer],
+        [callerFile, callback],
+        [callerFile, legacy],
+        [consumerFile, consumer],
+      ]) {
+        store.graph.insertLink({
+          sourceNodeId: fileId!,
+          targetNodeId: symbolId!,
+          linkType: LinkTypes.CONTAINS,
+        });
+      }
+      store.graph.insertLink({
+        sourceNodeId: outer,
+        targetNodeId: callback,
+        linkType: LinkTypes.LEXICAL_PARENT,
+      });
+      store.graph.insertLink({
+        sourceNodeId: callback,
+        targetNodeId: target,
+        linkType: LinkTypes.CALLS,
+      });
+      store.graph.insertLink({
+        sourceNodeId: legacy,
+        targetNodeId: outer,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      });
+      store.graph.insertLink({
+        sourceNodeId: consumer,
+        targetNodeId: legacy,
+        linkType: LinkTypes.CALLS,
+      });
+      store.meta.set(
+        `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
+        CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      );
+
+      const entries = impactService.getBlastRadius(store, "target") ?? [];
+      const names = entries.map(({ name }) => name);
+
+      expect(names).toContain("outer");
+      expect(names).not.toContain("legacy");
+      expect(names).not.toContain("consumeLegacy");
+      expect(names).not.toContain("src/consumer.ts");
+    });
+
     it("returns multiple callers for a widely-used symbol", () => {
       const targetId = store.graph.insertNode({
         projectId,

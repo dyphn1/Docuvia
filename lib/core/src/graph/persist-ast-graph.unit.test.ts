@@ -77,6 +77,92 @@ describe("GraphPersisterService.persist()", () => {
     ]);
   });
 
+  it("does not persist a caller_candidate self-edge", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "target",
+      pathPatterns: ["src/target.ts"],
+      nodeKey: "src/target.ts#target",
+    });
+    const persisterInternals = persister as unknown as {
+      insertCallerCandidateLink: (
+        graphStore: GraphStore,
+        candidateNodeId: number,
+        targetNodeId: number,
+        candidateLinkKeys?: Set<string>,
+      ) => void;
+    };
+
+    persisterInternals.insertCallerCandidateLink(
+      store,
+      targetId,
+      targetId,
+      new Set(),
+    );
+
+    expect(
+      store.graph
+        .getIncomingRelations(targetId)
+        .filter(({ linkType }) => linkType === "caller_candidate"),
+    ).toEqual([]);
+  });
+
+  it("keeps direct recursion recorded while matching v1's omitted self-call edge", async () => {
+    const file = "src/recursive.ts";
+    const parsedResult: ParsedAstFileResult = {
+      file,
+      hash: "recursive-hash",
+      data: {
+        imports: [],
+        exports: [],
+        functions: [{ name: "recurse", startLine: 0, endLine: 2 }],
+        classes: [],
+        calls: [
+          {
+            sourceFunction: "recurse",
+            targetFunction: "recurse",
+            startLine: 1,
+            startColumn: 2,
+            calleeName: "recurse",
+            calleeKind: "bare",
+          },
+        ],
+      },
+    };
+    const recursiveCallEdges: number[][] = [];
+
+    for (const callerPolicy of [
+      "scope-resolver-v1",
+      "exact-enclosing-v2",
+    ] as const) {
+      const result = await new GraphPersisterService(
+        undefined,
+        callerPolicy,
+      ).persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults: [parsedResult],
+        tags: [],
+        sourceIndexComplete: false,
+      });
+      const targetId = store.graph.findNodeIdByName(file, "recurse");
+      expect(targetId).toBeTypeOf("number");
+      recursiveCallEdges.push(
+        store.graph
+          .getIncomingRelations(targetId!)
+          .filter(({ linkType }) => linkType === "calls")
+          .map(({ id }) => id),
+      );
+      expect(result.callResolutionByFile?.[file]?.selfDiscarded).toBe(1);
+      expect(store.callSites.getForFiles(projectId, [file]).get(file)).toEqual([
+        expect.objectContaining({ targetFunction: "recurse" }),
+      ]);
+    }
+
+    expect(recursiveCallEdges).toEqual([[], []]);
+  });
+
   it("persists ScopeResolver caller context when exact spans tie without changing calls or ownership", async () => {
     const file = "src/ambiguous-caller.ts";
     const parsedResult = {

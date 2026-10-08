@@ -166,7 +166,7 @@ describe("GraphPersister call-resolution integration", () => {
     };
   }
 
-  it("[regression][default-policy] constructs the persister with exact-v2 caller and lexical projections", async () => {
+  it("[regression][default-policy] keeps v1 active until the exact-v2 gate passes", async () => {
     const { projectId, filePath } =
       await persistSourceWithPolicy(defaultPolicySource);
     if (!store) throw new Error("GraphStore was not initialized");
@@ -175,21 +175,22 @@ describe("GraphPersister call-resolution integration", () => {
       store.meta.get(
         `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
       ),
-    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2);
-    const callbackNode = store.graph
-      .getAllNodes()
-      .find((node) => node.node_key?.startsWith(`${filePath}#anonymous`));
-    expect(callbackNode?.node_key).toBe(`${filePath}#anonymous`);
+    ).toBe(CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1);
+    expect(
+      store.graph
+        .getAllLinks()
+        .map(({ link_type }) => link_type)
+        .filter(
+          (linkType) =>
+            linkType === LinkTypes.LEXICAL_PARENT ||
+            linkType === LinkTypes.LEXICAL_OWNER ||
+            linkType === LinkTypes.CALLER_CANDIDATE,
+        ),
+    ).toEqual([]);
     expect(projectedCallKeys()).toContainEqual({
-      source: callbackNode?.node_key,
+      source: filePath,
       target: `${filePath}#localTarget`,
     });
-    expect(store.graph.getIncomingRelations(callbackNode!.id)).toContainEqual(
-      expect.objectContaining({
-        name: "outer",
-        linkType: LinkTypes.LEXICAL_PARENT,
-      }),
-    );
   });
 
   it("[regression][exact-v1] does not persist v2 lexical links", async () => {

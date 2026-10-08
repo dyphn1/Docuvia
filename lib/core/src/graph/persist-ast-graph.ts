@@ -1592,6 +1592,11 @@ export class GraphPersisterService implements IGraphPersister {
     targetNodeId: number,
     candidateLinkKeys?: Set<string>,
   ): void {
+    // A legacy attribution can name the callee itself (for example when tied spans fall back to
+    // the file caller). The call edge and call-site record carry the actual recursion evidence;
+    // a caller_candidate self-edge is never useful context and must not be persisted.
+    if (candidateNodeId === targetNodeId) return;
+
     const key = `${candidateNodeId}:${targetNodeId}`;
     if (candidateLinkKeys?.has(key)) return;
     const exists = store.graph

@@ -21,6 +21,8 @@
     "format": "prettier --write .",
     "prepare": "husky",
     "eval:semantic": "tsx scripts/semantic-corpus-audit.mts",
+    "eval:exact-caller-impact-parity": "node --import tsx scripts/semantic-corpus/exact-caller-impact-parity.mts",
+    "eval:exact-caller-impact-sample": "node --import tsx scripts/semantic-corpus/exact-caller-impact-sample.mts",
     "eval:semantic:collect": "tsx scripts/semantic-corpus/collect.mts",
     "eval:semantic:system1-export": "node --import tsx scripts/semantic-corpus/system1-export.mts",
     "eval:semantic:system1-eval": "node --import tsx scripts/semantic-corpus/system1-eval.mts --final-evaluation",

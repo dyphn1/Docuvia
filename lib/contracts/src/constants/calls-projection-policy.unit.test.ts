@@ -8,9 +8,9 @@ import {
 import { ErrorCodes } from "../errors/error-codes.js";
 
 describe("resolveActiveCallsProjectionCallerPolicy", () => {
-  it("[regression][default-policy] defaults to exact-enclosing-v2 after full-callee parity", () => {
+  it("[regression][default-policy] keeps v1 default while the exact-v2 gate fails", () => {
     expect(DEFAULT_CALLS_PROJECTION_CALLER_POLICY).toBe(
-      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+      CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1,
     );
   });
 

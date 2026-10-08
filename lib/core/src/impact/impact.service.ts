@@ -329,7 +329,7 @@ export class ImpactService implements IImpactService {
     const callerCandidates = incomingRelations.filter(
       ({ linkType }) => linkType === LinkTypes.CALLER_CANDIDATE,
     );
-    const resolvedIds = new Set(alreadyResolvedIds);
+    const resolvedIds = new Set([targetNodeId, ...alreadyResolvedIds]);
     const entries: BlastRadiusEntry[] = [];
 
     const append = (

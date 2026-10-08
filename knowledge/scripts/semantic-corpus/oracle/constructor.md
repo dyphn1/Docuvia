@@ -7,4 +7,3 @@ filePath: scripts/semantic-corpus/oracle.mts
 # Symbol: constructor
 
 File: `scripts/semantic-corpus/oracle.mts`
-mts`

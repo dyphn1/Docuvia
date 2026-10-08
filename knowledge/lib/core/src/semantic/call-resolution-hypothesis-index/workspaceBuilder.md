@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/semantic/call-resolution-hypothesis-index.ts#workspaceBuilder
+id: lib/core/src/semantic/call-resolution-hypothesis-index.ts#WorkspaceBuilder
 type: symbol
-name: workspaceBuilder
+name: WorkspaceBuilder
 filePath: lib/core/src/semantic/call-resolution-hypothesis-index.ts
 ---
-# Symbol: workspaceBuilder
+# Symbol: WorkspaceBuilder
 
 File: `lib/core/src/semantic/call-resolution-hypothesis-index.ts`

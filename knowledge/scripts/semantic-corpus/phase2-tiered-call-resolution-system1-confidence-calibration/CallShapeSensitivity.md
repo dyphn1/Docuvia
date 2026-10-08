@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts#reliabilityMetric
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts#callShapeSensitivity
 type: symbol
-name: reliabilityMetric
+name: callShapeSensitivity
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts
 ---
-# Symbol: reliabilityMetric
+# Symbol: callShapeSensitivity
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-system1-confidence-calibration.mts`

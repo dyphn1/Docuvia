@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.anonymous@L350
+id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.anonymous
 type: symbol
 name: anonymous
 filePath: lib/ast-core/src/detector/semantic-diff.ts

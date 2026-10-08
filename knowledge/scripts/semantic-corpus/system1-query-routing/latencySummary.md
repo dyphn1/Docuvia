@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/system1-query-routing.mts#latencySummary
+id: scripts/semantic-corpus/system1-query-routing.mts#LatencySummary
 type: symbol
-name: latencySummary
+name: LatencySummary
 filePath: scripts/semantic-corpus/system1-query-routing.mts
 ---
-# Symbol: latencySummary
+# Symbol: LatencySummary
 
 File: `scripts/semantic-corpus/system1-query-routing.mts`

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-output.unit.test.ts#getFirst@L258
+id: lib/core/src/semantic/call-resolution-output.unit.test.ts#getFirst
 type: symbol
 name: getFirst
 filePath: lib/core/src/semantic/call-resolution-output.unit.test.ts

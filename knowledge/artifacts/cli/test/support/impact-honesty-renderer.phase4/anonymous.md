@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/impact-honesty-renderer.phase4.ts#anonymous@L93
+id: artifacts/cli/test/support/impact-honesty-renderer.phase4.ts#anonymous@L79
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/support/impact-honesty-renderer.phase4.ts

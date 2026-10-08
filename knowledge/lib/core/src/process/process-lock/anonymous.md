@@ -7,3 +7,5 @@ filePath: lib/core/src/process/process-lock.ts
 # Symbol: anonymous
 
 File: `lib/core/src/process/process-lock.ts`
+ts`
+

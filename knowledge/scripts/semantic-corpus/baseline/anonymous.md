@@ -7,5 +7,3 @@ filePath: scripts/semantic-corpus/baseline.mts
 # Symbol: anonymous
 
 File: `scripts/semantic-corpus/baseline.mts`
-ts`
-

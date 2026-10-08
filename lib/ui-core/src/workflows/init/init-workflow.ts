@@ -7,6 +7,7 @@ import {
   type ILogger,
 } from "@workspace/contracts";
 import { INIT_EVENTS, INIT_MESSAGES } from "./init-messages.js";
+import { stampFullCallsProjectionCallerPolicy } from "../calls-projection-caller-policy.js";
 import { appendInitLogLine, writeInitSummary } from "./init-log-writer.js";
 import { ensureGitBranchAndHooks } from "./ensure-git-branch-and-hooks.js";
 import { seedProjectRow } from "./seed-project-row.js";
@@ -183,6 +184,7 @@ export class InitWorkflow {
         failedFileCount: failures.length,
         skippedOversizedCount: discoveryResult.skippedOversized.length,
       });
+      stampFullCallsProjectionCallerPolicy(store.meta, project.id);
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
 
       // Issue #221: init's parse+persist pass covers the whole workspace, so its per-file

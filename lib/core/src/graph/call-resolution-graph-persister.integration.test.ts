@@ -166,7 +166,7 @@ describe("GraphPersister call-resolution integration", () => {
     };
   }
 
-  it("[regression][default-policy] constructs the persister without a policy and preserves the ScopeResolver calls projection", async () => {
+  it("[regression][default-policy] keeps v1 active until the exact-v2 gate passes", async () => {
     const { projectId, filePath } =
       await persistSourceWithPolicy(defaultPolicySource);
     if (!store) throw new Error("GraphStore was not initialized");
@@ -176,9 +176,6 @@ describe("GraphPersister call-resolution integration", () => {
         `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${projectId}`,
       ),
     ).toBe(CallsProjectionCallerPolicies.SCOPE_RESOLVER_V1);
-    expect(projectedCallKeys()).toEqual([
-      { source: filePath, target: `${filePath}#localTarget` },
-    ]);
     expect(
       store.graph
         .getAllLinks()
@@ -186,9 +183,14 @@ describe("GraphPersister call-resolution integration", () => {
         .filter(
           (linkType) =>
             linkType === LinkTypes.LEXICAL_PARENT ||
-            linkType === LinkTypes.LEXICAL_OWNER,
+            linkType === LinkTypes.LEXICAL_OWNER ||
+            linkType === LinkTypes.CALLER_CANDIDATE,
         ),
     ).toEqual([]);
+    expect(projectedCallKeys()).toContainEqual({
+      source: filePath,
+      target: `${filePath}#localTarget`,
+    });
   });
 
   it("[regression][exact-v1] does not persist v2 lexical links", async () => {
@@ -915,6 +917,98 @@ describe("GraphPersister call-resolution integration", () => {
       source: filePath,
       target: `${filePath}#Service.close`,
     });
+  });
+
+  it("[regression][exact-v2] keeps legacy caller context for a strict-proof call", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    tempDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-exact-proof-caller-context-"),
+    );
+    store = await GraphStore.open({
+      dbPath: path.join(tempDir, ".docuvia", "local.db"),
+    });
+    const projectId = store.projects.insert({
+      name: "exact-proof-caller-context",
+      repoUrl: "file:///exact-proof-caller-context",
+    }).id;
+    const sources = [
+      {
+        file: "src/provider.ts",
+        code: "export class Provider { close(): void {} }",
+      },
+      {
+        file: "src/caller.ts",
+        code: [
+          'import { Provider } from "./provider.js";',
+          "function legacyCaller(): void {}",
+          "function run(): void { const provider = new Provider(); provider.close(); }",
+        ].join("\n"),
+      },
+    ];
+    const parsedResults = await Promise.all(
+      sources.map((source) =>
+        parseAndWriteSource(tempDir!, "exact-proof-candidate", source),
+      ),
+    );
+    const callerResult = parsedResults.find(
+      ({ file }) => file === "src/caller.ts",
+    );
+    if (!callerResult) throw new Error("Caller source was not parsed");
+    const modifiedResults = parsedResults.map((result) =>
+      result.file === callerResult.file
+        ? {
+            ...result,
+            data: {
+              ...result.data,
+              calls: result.data.calls?.map((call) =>
+                call.calleeName === "close"
+                  ? { ...call, sourceFunction: "legacyCaller" }
+                  : call,
+              ),
+            },
+          }
+        : result,
+    );
+    await new GraphPersisterService(
+      new CallResolutionHypothesisService(),
+      CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+    ).persist({
+      store,
+      workspaceRoot: tempDir,
+      projectId,
+      parsedResults: modifiedResults,
+      sourceIndexComplete: true,
+      tags: [],
+    });
+    const targetKey = "src/provider.ts#Provider.close";
+    const candidateId = store.graph.findNodeIdByNodeKey(
+      "src/caller.ts#legacyCaller",
+    );
+    const targetId = store.graph.findNodeIdByNodeKey(targetKey);
+
+    expect(
+      store.callSiteResolutions?.getForFile(projectId, "src/caller.ts"),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleSignature: "q3:new-receiver:v1",
+          selectedTargetNodeKey: targetKey,
+          callerNodeKey: "src/caller.ts#run",
+        }),
+      ]),
+    );
+    expect(
+      store.graph
+        .getIncomingRelations(targetId!)
+        .filter(({ linkType }) => linkType === LinkTypes.CALLER_CANDIDATE),
+    ).toContainEqual(
+      expect.objectContaining({
+        id: candidateId,
+        linkType: LinkTypes.CALLER_CANDIDATE,
+      }),
+    );
   });
 
   it("[invalid-input][error-handling][state-diff] abstains for an interface-typed receiver and keeps the legacy edge", async () => {

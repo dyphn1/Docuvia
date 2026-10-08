@@ -139,7 +139,7 @@ describe("SnapshotWorkflow.execute()", () => {
     vi.mocked(store.projects.getFirst).mockReturnValue(project);
     vi.mocked(store.meta.get).mockImplementation((key) =>
       key === `${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}${project.id}`
-        ? CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1
+        ? CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2
         : undefined,
     );
 
@@ -147,7 +147,7 @@ describe("SnapshotWorkflow.execute()", () => {
 
     expect(input.metadata?.capabilities?.callsProjectionCallerPolicy).toEqual({
       version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
-      policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V1,
+      policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
     });
   });
 

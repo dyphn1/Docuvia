@@ -1616,15 +1616,16 @@ export const poisonExactEmpty: Phase3JsonMutation = (json) => ({
 export const poisonStaleReportedFresh: Phase3JsonMutation = (json) =>
   withoutKeys(json, ["epistemic", "riskNote", "graphFreshness"]);
 
-/** Q5 / Q9: drops the blast-radius entry named `name` (Q9 also marks the result lower-bound). */
+/** Q5 / Q9: drops named blast-radius entries (Q9 may include the owner's file context). */
 export function poisonDropDependent(
-  name: string,
+  name: string | readonly string[],
   markLowerBound = false,
 ): Phase3JsonMutation {
+  const names = typeof name === "string" ? [name] : name;
   return (json) => ({
     ...json,
     blastRadius: asRecordArray(json.blastRadius).filter(
-      (entry) => entry.name !== name,
+      (entry) => !names.includes(entry.name),
     ),
     ...(markLowerBound
       ? {

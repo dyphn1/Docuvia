@@ -93,6 +93,7 @@ export const LinkTypes = {
   CONTAINS: "contains",
   LEXICAL_PARENT: "lexical_parent",
   LEXICAL_OWNER: "lexical_owner",
+  CALLER_CANDIDATE: "caller_candidate",
   CALLS: "calls",
   IMPLEMENTS: "implements",
   EXTENDS: "extends",
@@ -107,6 +108,7 @@ export const StructuralLinkTypes: readonly string[] = [
   LinkTypes.CONTAINS,
   LinkTypes.LEXICAL_PARENT,
   LinkTypes.LEXICAL_OWNER,
+  LinkTypes.CALLER_CANDIDATE,
 ];
 
 export interface NodeLinkRow {

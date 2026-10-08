@@ -17,6 +17,7 @@ import {
   CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX,
   CallsProjectionCallerPolicies,
 } from "@workspace/contracts";
+import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 import {
   getCallResolutionSummariesForEdge,
   getCurrentCallResolutionRows,
@@ -144,7 +145,10 @@ export class ImpactService implements IImpactService {
       return undefined;
     }
 
-    const directIncoming = store.graph.getIncomingEdges(node.id);
+    const usesExactEnclosingV2 = this.usesExactEnclosingV2(store);
+    const directIncoming = usesExactEnclosingV2
+      ? this.getIncomingEdgesWithoutCallerCandidates(store, node.id)
+      : store.graph.getIncomingEdges(node.id);
     const targetNodeKey = store.graph.getNodeKeyById?.(node.id);
     const callResolutionsByCallerId = getCallResolutionsByCallerId(
       store,
@@ -199,7 +203,7 @@ export class ImpactService implements IImpactService {
       blastRadius.push(...fallbackEntries);
     }
 
-    if (this.usesExactEnclosingV2(store)) {
+    if (usesExactEnclosingV2) {
       blastRadius.push(
         ...this.resolveExactCallerContext(
           store,
@@ -214,6 +218,21 @@ export class ImpactService implements IImpactService {
       count: blastRadius.length,
     });
     return blastRadius;
+  }
+
+  private getIncomingEdgesWithoutCallerCandidates(
+    store: IGraphStore,
+    targetNodeId: number,
+  ): ReturnType<IGraphStore["graph"]["getIncomingEdges"]> {
+    const ordinaryIncomingIds = new Set(
+      store.graph
+        .getIncomingRelations(targetNodeId)
+        .filter(({ linkType }) => linkType !== LinkTypes.CALLER_CANDIDATE)
+        .map(({ id }) => id),
+    );
+    return store.graph
+      .getIncomingEdges(targetNodeId)
+      .filter(({ id }) => ordinaryIncomingIds.has(id));
   }
 
   private buildDirectIncomingEntry(
@@ -280,7 +299,7 @@ export class ImpactService implements IImpactService {
   }
 
   /** Exact callback callers walk back through lexical-parent links so impact retains the
-   *  enclosing function and that function's direct callers. This is policy-gated because legacy
+   *  enclosing function. This is policy-gated because legacy
    *  ScopeResolver graphs attribute those calls to the enclosing caller already. */
   private usesExactEnclosingV2(store: IGraphStore): boolean {
     const projectId = store.projects.getFirst()?.id;
@@ -293,44 +312,41 @@ export class ImpactService implements IImpactService {
   }
 
   /**
-   * Resolves an exact caller's lexical parents and includes each enclosing function's direct
-   * incoming dependents. Only lexical-parent links continue the walk; file ownership and class
-   * ownership are context edges. Ordinary caller edges do not recurse, preserving the bounded
-   * single-call-hop behavior while recovering the prior outer-function projection.
+   * Resolves an exact caller's lexical context: the enclosing functions reached through
+   * lexical-parent links. A class owner or file is added only when no named function encloses the
+   * caller. Dependents of those enclosing functions are not added, so breadth stays at the legacy
+   * single call hop.
    */
   private resolveExactCallerContext(
     store: IGraphStore,
     targetNodeId: number,
     alreadyResolvedIds: ReadonlySet<number>,
   ): BlastRadiusEntry[] {
-    const callers = store.graph
-      .getIncomingRelations(targetNodeId)
-      .filter(({ linkType }) => linkType === LinkTypes.CALLS)
-      .map(({ id }) => id);
-    const queue: number[] = [];
-    const visitedParentIds = new Set<number>();
-    const resolvedIds = new Set(alreadyResolvedIds);
+    const incomingRelations = store.graph.getIncomingRelations(targetNodeId);
+    const callers = incomingRelations.filter(
+      ({ linkType }) => linkType === LinkTypes.CALLS,
+    );
+    const callerCandidates = incomingRelations.filter(
+      ({ linkType }) => linkType === LinkTypes.CALLER_CANDIDATE,
+    );
+    const resolvedIds = new Set([targetNodeId, ...alreadyResolvedIds]);
     const entries: BlastRadiusEntry[] = [];
 
-    const append = (node: { id: number; name: string; type: string }): void => {
+    const append = (
+      node: { id: number; name: string; type: string },
+      edgeSource?: BlastRadiusEntry["edgeSource"],
+    ): void => {
       if (resolvedIds.has(node.id)) return;
       resolvedIds.add(node.id);
-      entries.push(this.buildEntry(store, node.id, node.name, node.type));
+      const entry = this.buildEntry(store, node.id, node.name, node.type);
+      entries.push(edgeSource ? { ...entry, edgeSource } : entry);
     };
 
-    for (const callerId of callers) {
-      this.appendContainerChain(store, callerId, append);
-      for (const parent of this.lexicalParents(store, callerId)) {
-        append(parent);
-        if (parent.linkType === LinkTypes.LEXICAL_PARENT) queue.push(parent.id);
-      }
+    for (const caller of callers) {
+      this.appendLexicalContext(store, caller, append);
     }
-
-    for (let index = 0; index < queue.length; index++) {
-      const parentId = queue[index];
-      if (parentId === undefined || visitedParentIds.has(parentId)) continue;
-      visitedParentIds.add(parentId);
-      queue.push(...this.appendParentDependents(store, parentId, append));
+    for (const candidate of callerCandidates) {
+      append(candidate, BlastRadiusEdgeSources.CALLER_CANDIDATE);
     }
 
     return entries;
@@ -349,47 +365,61 @@ export class ImpactService implements IImpactService {
       );
   }
 
-  /** Appends one incoming hop from an enclosing function and returns nested callers to revisit. */
-  private appendParentDependents(
+  /** Appends enclosing functions, falling back to the class owner or file for anonymous chains. */
+  private appendLexicalContext(
     store: IGraphStore,
-    parentId: number,
-    append: (node: { id: number; name: string; type: string }) => void,
-  ): number[] {
-    const lexicalParents: number[] = [];
-    for (const dependent of store.graph.getIncomingRelations(parentId)) {
-      append(dependent);
-      if (StructuralLinkTypes.includes(dependent.linkType)) {
-        if (dependent.linkType === LinkTypes.LEXICAL_PARENT) {
-          lexicalParents.push(dependent.id);
-        }
-        continue;
-      }
-      this.appendContainerChain(store, dependent.id, append);
-    }
-    return lexicalParents;
-  }
-
-  private appendContainerChain(
-    store: IGraphStore,
-    nodeId: number,
+    caller: { id: number; name: string },
     append: (node: { id: number; name: string; type: string }) => void,
   ): void {
-    const containers = [nodeId];
+    const { enclosingFunctions, owners } = this.collectLexicalAncestors(
+      store,
+      caller.id,
+    );
+    for (const enclosing of enclosingFunctions) append(enclosing);
+    const hasNamedScope = [caller, ...enclosingFunctions].some(
+      ({ name }) => name !== ANONYMOUS_SYMBOL_NAME,
+    );
+    if (hasNamedScope) return;
+    if (owners.length > 0) {
+      for (const owner of owners) append(owner);
+      return;
+    }
+    const fileOwner = store.graph
+      .getIncomingRelations(caller.id)
+      .find(({ linkType }) => linkType === LinkTypes.CONTAINS);
+    if (fileOwner) append(fileOwner);
+  }
+
+  /** Walks lexical-parent links upward; lexical-owner links are terminal. */
+  private collectLexicalAncestors(
+    store: IGraphStore,
+    callerId: number,
+  ): {
+    enclosingFunctions: ReturnType<
+      IGraphStore["graph"]["getIncomingRelations"]
+    >;
+    owners: ReturnType<IGraphStore["graph"]["getIncomingRelations"]>;
+  } {
+    const enclosingFunctions: ReturnType<
+      IGraphStore["graph"]["getIncomingRelations"]
+    > = [];
+    const owners: ReturnType<IGraphStore["graph"]["getIncomingRelations"]> = [];
+    const queue = [callerId];
     const visited = new Set<number>();
-    while (containers.length > 0) {
-      const childId = containers.shift();
+    while (queue.length > 0) {
+      const childId = queue.shift();
       if (childId === undefined || visited.has(childId)) continue;
       visited.add(childId);
-      const fileOwner = store.graph
-        .getIncomingRelations(childId)
-        .find(({ linkType }) => linkType === LinkTypes.CONTAINS);
-      if (fileOwner) append(fileOwner);
       for (const parent of this.lexicalParents(store, childId)) {
-        append(parent);
-        if (parent.linkType === LinkTypes.LEXICAL_PARENT)
-          containers.push(parent.id);
+        if (parent.linkType !== LinkTypes.LEXICAL_PARENT) {
+          owners.push(parent);
+          continue;
+        }
+        enclosingFunctions.push(parent);
+        queue.push(parent.id);
       }
     }
+    return { enclosingFunctions, owners };
   }
 
   /**

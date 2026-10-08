@@ -457,7 +457,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   }
 
   /**
-   * Nodes with a dependency edge INTO nodeId — the 1-hop "blast radius". Lexical context links
+   * Nodes with a dependency edge INTO nodeId — the 1-hop "blast radius". Structural context links
    * are omitted here and remain available through `getIncomingRelations()`. `DISTINCT` dedupes a
    * neighbor that's connected by more than one dependency type, so it isn't double-counted.
    */
@@ -471,12 +471,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
            FROM ${SchemaTables.NODE_LINKS} l
            JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.SOURCE_NODE_ID}
            WHERE l.${SchemaColumns.TARGET_NODE_ID} = ?
-             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?)`,
+             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?, ?)`,
         )
         .all(
           nodeId,
           LinkTypes.LEXICAL_PARENT,
           LinkTypes.LEXICAL_OWNER,
+          LinkTypes.CALLER_CANDIDATE,
         ) as Array<{
         id: number;
         name: string;
@@ -491,7 +492,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     }
   }
 
-  /** Nodes nodeId has dependency links to. Lexical context links are omitted. */
+  /** Nodes nodeId has dependency links to. Structural context links are omitted. */
   getOutgoingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }> {
@@ -502,12 +503,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
            FROM ${SchemaTables.NODE_LINKS} l
            JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.TARGET_NODE_ID}
            WHERE l.${SchemaColumns.SOURCE_NODE_ID} = ?
-             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?)`,
+             AND l.${SchemaColumns.LINK_TYPE} NOT IN (?, ?, ?)`,
         )
         .all(
           nodeId,
           LinkTypes.LEXICAL_PARENT,
           LinkTypes.LEXICAL_OWNER,
+          LinkTypes.CALLER_CANDIDATE,
         ) as Array<{
         id: number;
         name: string;

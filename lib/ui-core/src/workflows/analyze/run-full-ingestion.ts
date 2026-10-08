@@ -7,6 +7,7 @@ import {
   type ILogger,
 } from "@workspace/contracts";
 import { seedProjectRow } from "../init/seed-project-row.js";
+import { stampFullCallsProjectionCallerPolicy } from "../calls-projection-caller-policy.js";
 import { runDiscoveryPipeline } from "../init/run-discovery-pipeline.js";
 import {
   markCallSitesAvailableAfterCompleteIngestion,
@@ -126,6 +127,8 @@ export async function runFullIngestion(deps: {
       removeTierCQueueEntriesForFiles(store, failedPaths);
     });
   }
+
+  stampFullCallsProjectionCallerPolicy(store.meta, project.id);
 
   // Issue #221: a full run reparses every discoverable file, so its per-file call-resolution
   // counters replace the stored map wholesale, including an authoritative empty result.

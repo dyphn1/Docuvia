@@ -22,6 +22,7 @@ describe("GraphPersisterService", () => {
         getCanarySample: vi.fn().mockReturnValue([]),
         insertNode: vi.fn().mockReturnValue(1),
         insertLink: vi.fn(),
+        getIncomingRelations: vi.fn().mockReturnValue([]),
         findNodeIdByName: vi.fn(),
         findNodeByName: vi.fn(),
         withFtsSyncSuspended: vi.fn().mockImplementation((fn: any) => fn()),

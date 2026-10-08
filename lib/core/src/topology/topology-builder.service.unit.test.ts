@@ -253,7 +253,7 @@ describe("TopologyBuilderService.build()", () => {
     expect(graph.stats.foldedLinkCount).toBe(0);
   });
 
-  it("[regression][exact-v2] excludes lexical links from symbol and file topology projections", () => {
+  it("[regression][exact-v2] excludes structural links from symbol and file topology projections", () => {
     const rows = [
       makeL2({ id: 1, name: "src/a.ts", path_patterns: '["src/a.ts"]' }),
       makeL2({ id: 2, name: "outer", path_patterns: '["src/a.ts"]' }),
@@ -294,6 +294,12 @@ describe("TopologyBuilderService.build()", () => {
         source_node_id: 2,
         target_node_id: 3,
         link_type: LinkTypes.LEXICAL_PARENT,
+      }),
+      makeLink({
+        id: 6,
+        source_node_id: 2,
+        target_node_id: 5,
+        link_type: LinkTypes.CALLER_CANDIDATE,
       }),
     ];
     const build = (linkRows: NodeLinkRow[], collapse: "file" | "symbol") =>

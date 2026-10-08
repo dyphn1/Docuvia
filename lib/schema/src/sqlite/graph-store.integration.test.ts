@@ -1061,6 +1061,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
         targetNodeId: ids.target,
         linkType: "lexical_owner",
       });
+      store.graph.insertLink({
+        sourceNodeId: ids.lexicalOnly,
+        targetNodeId: ids.target,
+        linkType: "caller_candidate",
+      });
       const links = store.graph.getExternalIncomingLinks(["src/a.ts"]);
       expect(
         links
@@ -1068,6 +1073,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
           .sort(),
       ).toEqual(
         [
+          `${ids.lexicalOnly}>src/a.ts#evalTarget:caller_candidate`,
           `${ids.barrel}>src/a.ts#evalTarget:depends_on`,
           `${ids.caller}>src/a.ts#evalTarget:calls`,
           `${ids.sibling}>src/a.ts#evalTarget:calls`,

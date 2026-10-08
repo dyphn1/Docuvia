@@ -250,7 +250,8 @@ function buildSymbolLevel(
     .filter(
       ({ linkType }) =>
         linkType !== LinkTypes.LEXICAL_PARENT &&
-        linkType !== LinkTypes.LEXICAL_OWNER,
+        linkType !== LinkTypes.LEXICAL_OWNER &&
+        linkType !== LinkTypes.CALLER_CANDIDATE,
     )
     .map((link) => ({
       source: toL2NodeId(link.sourceNodeId),

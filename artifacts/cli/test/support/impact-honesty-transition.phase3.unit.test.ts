@@ -681,6 +681,19 @@ describe("Phase 3 gates and poisoned controls (contract §4, §5)", () => {
     expect(gatesOf(poisoned)).toContain("S10");
   });
 
+  it("can remove both an exact caller and its file context from a poisoned result", () => {
+    const mutation = poisonDropDependent(["evalUserC", "src/users/c.ts"], true);
+    const poisoned = mutation({
+      blastRadius: [
+        { name: "evalUserC" },
+        { name: "src/users/c.ts" },
+        { name: "src/users/keep.ts" },
+      ],
+    });
+
+    expect(poisoned.blastRadius).toEqual([{ name: "src/users/keep.ts" }]);
+  });
+
   it("[negative-control] Q10: an out-of-contract freshness value is an error, never fresh", () => {
     const poisoned = poisonPhase3Target(
       honestObservations(),

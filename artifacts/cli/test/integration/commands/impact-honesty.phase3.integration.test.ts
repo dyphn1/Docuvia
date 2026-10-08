@@ -513,7 +513,7 @@ describe("Phase 3: impact staleness and graph state-transition robustness (#508)
       first.observations,
       "T4@after",
       T.OTHER,
-      poisonDropDependent("evalP3Switch", true),
+      poisonDropDependent(["evalP3Switch", F.SWITCHER], true),
     );
     expect(poisoned(first, observations, "T4@after", T.OTHER)).toThrow(
       /state-diff/,

@@ -695,6 +695,12 @@ describe("HydrationService.hydrate()", () => {
       project: { name: "demo", repoUrl: "file:///demo" },
       files: [],
       snapshotVersion: 1,
+      capabilities: {
+        callsProjectionCallerPolicy: {
+          version: SNAPSHOT_CALLS_PROJECTION_CALLER_POLICY_VERSION,
+          policy: CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2,
+        },
+      },
     });
     const git = makeMockGitProvider({
       getBranchTipSha: vi.fn().mockResolvedValue("know-v2"),
@@ -715,6 +721,7 @@ describe("HydrationService.hydrate()", () => {
           ),
         ),
     });
+    const meta = makeMemoryMeta();
     const store = makeMockGraphStore({
       projects: {
         getFirst: vi.fn().mockReturnValue({ id: 42 }),
@@ -722,6 +729,7 @@ describe("HydrationService.hydrate()", () => {
         getOrInsert: vi.fn().mockReturnValue({ id: 42 }),
         count: vi.fn(),
       },
+      meta: meta.repo,
     });
 
     await new HydrationService(git).hydrate("/workspace", store);
@@ -729,6 +737,9 @@ describe("HydrationService.hydrate()", () => {
     expect(
       vi.mocked(store.graph.bulkLoadGraph).mock.calls[0]?.[0]?.edges,
     ).toStrictEqual(lexicalEdges);
+    expect(
+      meta.values.get(`${CALLS_PROJECTION_CALLER_POLICY_META_KEY_PREFIX}42`),
+    ).toBe(CallsProjectionCallerPolicies.EXACT_ENCLOSING_V2);
   });
 
   it.each([

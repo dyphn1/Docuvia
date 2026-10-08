@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/semantic/call-resolution-q3-receiver-proof.integration.test.ts#anonymous@L69
+id: lib/core/src/semantic/call-resolution-q3-receiver-proof.integration.test.ts#anonymous@L79
 type: symbol
 name: anonymous
 filePath: lib/core/src/semantic/call-resolution-q3-receiver-proof.integration.test.ts

@@ -7,4 +7,3 @@ filePath: test/exact-caller-impact-parity-sampling.unit.test.ts
 # Symbol: anonymous
 
 File: `test/exact-caller-impact-parity-sampling.unit.test.ts`
-

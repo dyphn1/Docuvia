@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/init-call-resolution.integration.test.ts#anonymous@L75
+id: artifacts/cli/test/integration/commands/init-call-resolution.integration.test.ts#anonymous@L74
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/init-call-resolution.integration.test.ts

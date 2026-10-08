@@ -1,9 +1,9 @@
 ---
-id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.mts#StageView
+id: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.mts#stageView
 type: symbol
-name: StageView
+name: stageView
 filePath: scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.mts
 ---
-# Symbol: StageView
+# Symbol: stageView
 
 File: `scripts/semantic-corpus/phase2-tiered-call-resolution-candidate-stage-evaluation.mts`

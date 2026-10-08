@@ -1,5 +1,5 @@
 ---
-id: scripts/semantic-corpus/phase3-q3-receiver-proof-audit.mts#anonymous@L475
+id: scripts/semantic-corpus/phase3-q3-receiver-proof-audit.mts#anonymous@L415
 type: symbol
 name: anonymous
 filePath: scripts/semantic-corpus/phase3-q3-receiver-proof-audit.mts

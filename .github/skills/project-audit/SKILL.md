@@ -32,7 +32,7 @@ For each functional category in the Todo list, mark it `in-progress` and execute
 1. **ADR Contradiction Sweep**: Use the terminal to list `docs/gitbook/adr/`. Read them to build a timeline. If a newer ADR overrides an older one, it MUST have an explicit `Supersedes: [ADR-Name]` header. Flag any undocumented overrides.
 2. **Visual & Architectural Assessment**: Read `.md` files in `docs/gitbook/architecture/` and `docs/gitbook/architecture/`. Identify complex workflows, state transitions, or architecture descriptions. If a section's readability can be significantly improved with a visual diagram, verify there is a ````mermaid` block supplementing it. If missing, flag it for illustration supplement.
 3. **Cross-Link Resolution**: Verify that inter-document links (e.g., `[Agent Details](./path)` in `AGENTS.md` or roadmap items) actually resolve to correct and existing files. Flag any broken markdown links, outdated references, or mismatching anchors.
-4. **Code Alignment**: If `docs/gitbook/evaluate/` or `docs/gitbook/architecture/` claims a specific module exists (e.g., "intent router"), use `grep` or `Explore` to verify the actual folder/file exists in `artifacts/` or `lib/`. Flag undocumented or missing layers.
+4. **Code Alignment**: If `docs/gitbook/analysis/` or `docs/gitbook/architecture/` claims a specific module exists (e.g., "intent router"), use `grep` or `Explore` to verify the actual folder/file exists in `artifacts/` or `lib/`. Flag undocumented or missing layers.
 
 ### Round 2: Contract Boundary & Database Schema Validation
 
@@ -41,7 +41,7 @@ For each functional category in the Todo list, mark it `in-progress` and execute
 
 1. **Virtual Contracts Enforcement**: Per AGENTS.md's architecture mandate, cross-importing between implementation libraries (`lib/schema`, `lib/ast-core`, `lib/git-local`, etc.) is forbidden — all cross-package calls must go through `lib/contracts` interfaces. Run `grep -rn "from '@workspace/schema'" lib/ast-core/src/ lib/git-local/src/` (and similar pairs) to catch illegal direct imports. Flag any found as Severe.
 2. **Schema Integrity**: Read files in `lib/schema/src/sqlite/migrations/`. Verify that knowledge tier tables (`l1_tags`, `l2_nodes`, `l3_nodes`, `node_links`) exist. Verify appropriate `CREATE INDEX` statements exist for frequently-queried columns. Flag missing indexes.
-3. **Roadmap Truthfulness Check**: Read `docs/gitbook/evaluate/index.md` and `docs/gitbook/roadmap/`. For every `[x]` (completed item), find the corresponding source file. If the source file contains `TODO`, `stub`, or hardcoded mock returns, flag it as a "False Positive" and instruct the user to downgrade the markdown file to `[ ]`.
+3. **Roadmap Truthfulness Check**: Read `docs/gitbook/analysis/roadmap-and-open-items.md` and `docs/gitbook/analysis/`. For every `[x]` (completed item), find the corresponding source file. If the source file contains `TODO`, `stub`, or hardcoded mock returns, flag it as a "False Positive" and instruct the user to downgrade the markdown file to `[ ]`.
 
 ### Round 3: Implementation Verification
 

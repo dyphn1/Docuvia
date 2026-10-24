@@ -260,7 +260,15 @@ deciding, but the implementation confirmed the separation is correct as-is.
 > considered recommendation, not an oversight: `docuvia analyze` (incremental) and `docuvia clean` +
 > `docuvia init` (full wipe) already cover "I want a real refresh," and this project favors an
 > existing command over a new flag when the essence is the same. Full detail:
-> [`implement_init-platform-scoping-fix.md`](../../ai_plans/implement_init-platform-scoping-fix.md).
+> [`implement_init-platform-scoping-fix.md`](../../ai_plans/implement_init-platform-scoping-fix.md)
+> (historical — the plan file is no longer tracked in this repo; link kept only as history,
+> not a live navigation target).
+
+> **Historical pre-fix notes (superseded).** The paragraphs below date from before the
+> 2026-08-15 fix above and describe the old behavior. They are kept for history only.
+> Confirmed against the source on 2026-10-24:
+> [`init-workflow.ts:137-143`](../../../lib/ui-core/src/workflows/init/init-workflow.ts) now
+> detects an already-initialized workspace and returns early via `buildSkippedInitResult()`.
 
 Verified in [`lib/ui-core/src/workflows/init/init-workflow.ts`](../../../lib/ui-core/src/workflows/init/init-workflow.ts):
 `execute()` always runs the full discovery → parse → persist sequence regardless of whether
@@ -512,7 +520,7 @@ unchanged for this reason — not re-tested this pass, no updated number claimed
 
 > **Fixed 2026-08-05.** `export abstract class Foo {}` parses as tree-sitter's own distinct
 > `abstract_class_declaration` grammar node — not a modifier flag on `class_declaration` — and
-> [`typescriptConfig`](../../../lib/plugins-ast/src/languages/typescript.ts)'s `classes` fallback
+> [`typescriptConfig`](../../../lib/ast-core/src/languages/typescript.ts)'s `classes` fallback
 > array and compiled `queries.classes` string enumerated only `class_declaration`/
 > `interface_declaration`/`enum_declaration`/`type_alias_declaration`; `abstract_class_declaration`
 > was referenced nowhere else in the codebase. Every `export abstract class` in any TS/TSX file, in
@@ -521,9 +529,9 @@ unchanged for this reason — not re-tested this pass, no updated number claimed
 > freshly-built `vscode` `local.db` showed zero node named `Disposable` for
 > `src/vs/base/common/lifecycle.ts`, even though every other class in that file (123 nodes total)
 > extracted correctly. Fixed by adding `ABSTRACT_CLASS_DECLARATION: "abstract_class_declaration"`
-> ([`tree-sitter-node-types.ts:17`](../../../lib/plugins-ast/src/constants/tree-sitter-node-types.ts))
+> ([`tree-sitter-node-types.ts`](../../../lib/ast-core/src/constants/tree-sitter-node-types.ts))
 > and wiring it into both the `classes` fallback array and the compiled query in
-> [`typescript.ts`](../../../lib/plugins-ast/src/languages/typescript.ts), mirroring
+> [`typescript.ts`](../../../lib/ast-core/src/languages/typescript.ts), mirroring
 > `CLASS_DECLARATION`'s existing pattern. New regression test in
 > [`ast-worker.fixture.unit.test.ts:485-519`](../../../lib/core/src/ast/ast-worker.fixture.unit.test.ts),
 > verified via actual revert-and-rerun by both the implementer and, independently, `task-verifier`.

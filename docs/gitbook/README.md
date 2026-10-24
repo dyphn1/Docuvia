@@ -1,3 +1,8 @@
+---
+role: reference
+status: active
+---
+
 # Docuvia Docs
 
 > Universal VCS Knowledge Graph Engine: ingest Git history, documents, and build artifacts, construct a queryable three-tier knowledge graph (L1 → L2 → L3), and expose it to AI agents via REST, MCP, and a VS Code extension.
@@ -16,4 +21,13 @@ graph TD
 
 This space serves as the primary documentation for **Docuvia2** — the next-generation, refactored version of the knowledge graph engine. Our architecture focuses on an isomorphic AST microkernel, centralized schema, and robust composition.
 
-_(This README serves as the prologue to the project's goals. We will expand the structural documentation, ADRs, and API guides progressively.)_
+Explore the documentation by topic:
+
+- [System architecture](architecture/README.md)
+- [Coding guidelines](guidelines/README.md)
+- [User guide](user-guide/README.md)
+- [Architecture decision records](adr/README.md)
+- [Workflows](workflows/README.md)
+- [Analysis and roadmap](analysis/roadmap-and-open-items.md)
+
+See the [table of contents](SUMMARY.md) for the complete page list.

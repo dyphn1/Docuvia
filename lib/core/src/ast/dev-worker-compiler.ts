@@ -12,7 +12,7 @@ import type { BuildOptions, BuildResult } from "esbuild";
 const DevWorkerBuildConfig = {
   FORMAT: "esm",
   PLATFORM: "node",
-  TARGET: "node20",
+  TARGET: "node22",
   EXTERNAL_TREE_SITTER: "web-tree-sitter",
 } as const;
 

@@ -16,7 +16,7 @@ export default defineConfig({
     "ast-worker": "../../lib/core/src/ast/ast-worker.ts",
   },
   format: ["esm"],
-  target: "node20",
+  target: "node22",
   platform: "node",
   clean: true,
   minify: true,

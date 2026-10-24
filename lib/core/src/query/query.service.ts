@@ -89,7 +89,7 @@ function resolveFtsCandidateLimit(limit: number): number {
 /**
  * Stable-sorts FTS rows by keyword coverage (desc), falling back to each row's original BM25 rank
  * order as a tiebreaker (`Array.prototype.sort` is spec-guaranteed stable as of ES2019, and this
- * package targets Node 20 — see `artifacts/cli/tsup.config.ts`). Plain BM25 rank alone lets a
+ * package targets Node 22 — see `artifacts/cli/tsup.config.ts`). Plain BM25 rank alone lets a
  * document matching one *rare* keyword (e.g. "command", if few files mention it) outrank a document
  * matching a *common* one (e.g. "query", mentioned everywhere) even when the second document is the
  * actual target and the first is unrelated — the failure
